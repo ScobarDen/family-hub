@@ -18,6 +18,20 @@ _Avoid_: User, account, participant
 An animal the Family cares for; a subject of records, never an actor in the app.
 _Avoid_: Animal, dog (as a type name)
 
+### Shopping
+
+**Shopping List**:
+A named list of things a Family intends to buy; it is either Shared or Private as a whole.
+_Avoid_: Cart, basket, checklist
+
+**Shopping Item**:
+One line in a Shopping List: a free-text name with an optional free-text amount and note.
+_Avoid_: Product, goods, entry
+
+**Bought**:
+The state of a Shopping Item once a Member has marked it as purchased; it can be undone.
+_Avoid_: Done, completed, checked
+
 ### Reminders
 
 **Reminder**:
