@@ -50,11 +50,29 @@ _Avoid_: Product, goods, entry
 The state of a Shopping Item once a Member has marked it as purchased; it can be undone.
 _Avoid_: Done, completed, checked
 
+### Calendar
+
+**Event**:
+A dated entry in the Family calendar, either all-day or at a specific time.
+_Avoid_: Meeting, appointment, task
+
+**Recurrence**:
+The rule by which an Event or Reminder repeats: weekly, monthly or yearly, optionally until an end date.
+_Avoid_: Repeat, schedule, series rule
+
+**Occurrence**:
+One concrete date of a recurring Event or Reminder.
+_Avoid_: Instance, repetition
+
 ### Reminders
 
 **Reminder**:
-A message the bot sends to chosen Members in Telegram at a given moment.
+A prompt the bot delivers to chosen Members in Telegram at a given moment; it comes from an Event, a Pet's Due Date, or stands alone.
 _Avoid_: Notification, alert, push
+
+**Recipient**:
+A Member a Reminder is delivered to.
+_Avoid_: Subscriber, assignee, target
 
 ### Visibility
 
