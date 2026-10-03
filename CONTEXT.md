@@ -18,6 +18,24 @@ _Avoid_: User, account, participant
 An animal the Family cares for; a subject of records, never an actor in the app.
 _Avoid_: Animal, dog (as a type name)
 
+**Archived Pet**:
+A Pet the Family no longer actively cares for; its history stays viewable and it triggers no Reminders.
+_Avoid_: Deleted pet, inactive pet
+
+### Pet care
+
+**Care Entry**:
+A dated record in a Pet's journal of something done for or observed about that Pet.
+_Avoid_: Event, log, activity
+
+**Care Kind**:
+One of the fixed categories a Care Entry belongs to: feeding, walk, vaccination, treatment, weight, vet visit or note.
+_Avoid_: Entry type, category
+
+**Due Date**:
+The date by which a vaccination, treatment or vet visit should be repeated, set on the Care Entry that precedes it.
+_Avoid_: Deadline, next date
+
 ### Shopping
 
 **Shopping List**:
