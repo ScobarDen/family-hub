@@ -14,6 +14,22 @@ _Avoid_: Household, group, tenant, team
 A person who belongs to the Family and acts in the app through their Telegram account.
 _Avoid_: User, account, participant
 
+**Family Owner**:
+The one Member of a Family who may delete it, remove Members and hand the role to another Member.
+_Avoid_: Admin, creator, head
+
+**Operator**:
+The person who runs the app installation and approves Family Requests; a role outside any Family with no access to Family data.
+_Avoid_: Admin, superuser, moderator
+
+**Family Request**:
+A Telegram user's request to create a new Family, awaiting the Operator's approval.
+_Avoid_: Application, signup, registration
+
+**Invite**:
+A single-use, expiring link through which a Member brings a new person into their Family.
+_Avoid_: Invite code, referral, invitation token
+
 **Pet**:
 An animal the Family cares for; a subject of records, never an actor in the app.
 _Avoid_: Animal, dog (as a type name)
