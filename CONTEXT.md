@@ -50,6 +50,32 @@ _Avoid_: Product, goods, entry
 The state of a Shopping Item once a Member has marked it as purchased; it can be undone.
 _Avoid_: Done, completed, checked
 
+### Savings
+
+**Savings Goal**:
+An amount of money the Family or a Member intends to accumulate, optionally by a deadline.
+_Avoid_: Piggy bank, fund, budget
+
+**Contribution**:
+A recorded amount a Member put toward a Savings Goal.
+_Avoid_: Deposit, transaction, payment
+
+**Withdrawal**:
+A recorded amount taken back out of a Savings Goal.
+_Avoid_: Expense, spending, transaction
+
+**Balance**:
+The sum of a Savings Goal's Contributions minus its Withdrawals; never negative.
+_Avoid_: Total, saved amount
+
+**Achieved**:
+The state of a Savings Goal whose Balance has reached its target; it reverts if the Balance drops below.
+_Avoid_: Done, reached, finished
+
+**Completed Goal**:
+A Savings Goal a Member has closed as either fulfilled or cancelled; it is read-only.
+_Avoid_: Archived goal, closed goal
+
 ### Calendar
 
 **Event**:
