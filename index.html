@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Family Hub — PROTOTYPE v2</title>
-<!-- PROTOTYPE v2: throwaway UI shell for https://github.com/ScobarDen/family-hub/issues/19. Telegram-style tab bar, configurable tabs, single-pet tab, iOS/Android looks via ?platform=ios|android. -->
+<title>Family Hub — PROTOTYPE v3</title>
+<!-- PROTOTYPE v3 (no Profile tab, settings via the Telegram menu): throwaway UI shell for https://github.com/ScobarDen/family-hub/issues/19. Telegram-style tab bar, configurable tabs, single-pet tab, iOS/Android looks via ?platform=ios|android. -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
@@ -149,12 +149,7 @@ function tabIcon(id) {
 }
 
 function tabbar(active) {
-  const all = [...tabs, 'profile'];
-  return `<nav class="tabbar">${all.map(id => {
-    const title = id === 'profile' ? 'Профиль' : modules[id].title;
-    const ic = id === 'profile' ? `<div class="ava" style="background:#9ec5f8">Д</div>` : tabIcon(id);
-    return `<button class="tab press ${active === id ? 'on' : ''}" data-go="${id}">${ic}<span>${title}</span></button>`;
-  }).join('')}</nav>`;
+  return `<nav class="tabbar">${tabs.map(id => `<button class="tab press ${active === id ? 'on' : ''}" data-go="${id}">${tabIcon(id)}<span>${modules[id].title}</span></button>`).join('')}</nav>`;
 }
 
 function feedScreen() {
@@ -239,7 +234,7 @@ function profileScreen() {
     ${hidden.length ? `<div class="section-title">Модули</div><div class="section mx-3">${hidden.map(id => `<div class="row press" data-go="${id}"><div class="tile" style="background:#8a8f98">${icon(modules[id].icon)}</div><div class="flex-1">${modules[id].title}</div>${icon('chevron-right')}</div>`).join('')}</div>` : ''}
     <div class="section-title">Приложение</div>
     <div class="section mx-3">
-      <div class="row press" data-go="profile/tabs"><div class="tile" style="background:#3390ec">${icon('panel-bottom')}</div><div class="flex-1">Нижнее меню</div><span class="hint text-sm">${tabs.length} из 4</span>${icon('chevron-right')}</div>
+      <div class="row press" data-go="profile/tabs"><div class="tile" style="background:#3390ec">${icon('panel-bottom')}</div><div class="flex-1">Нижнее меню</div><span class="hint text-sm">${tabs.length} из 5</span>${icon('chevron-right')}</div>
       <div class="row press"><div class="tile" style="background:#e2574c">${icon('bell')}</div><div class="flex-1">Уведомления от бота</div><span class="hint text-sm">Вкл</span></div>
       <div class="row press"><div class="tile" style="background:#36b37e">${icon('globe')}</div><div class="flex-1">Часовой пояс</div><span class="hint text-sm">Москва</span></div>
     </div>
@@ -255,7 +250,7 @@ function tabsScreen() {
   const ids = Object.keys(modules);
   const order = [...tabs, ...ids.filter(id => !tabs.includes(id))];
   return `<div class="big-title">Нижнее меню</div>
-    <div class="hint px-5 text-sm">От 2 до 4 разделов + «Профиль». Включайте и двигайте.</div>
+    <div class="hint px-5 text-sm">От 2 до 5 разделов. Профиль и настройки — в меню «⋯ → Настройки».</div>
     <div class="section-title">Разделы</div>
     <div class="section mx-3">${order.map(id => {
       const on = tabs.includes(id);
@@ -265,7 +260,6 @@ function tabsScreen() {
         ${on ? `<button class="hint press" data-move="${id}:-1" ${i === 0 ? 'disabled style="opacity:.3"' : ''}>${icon('chevron-up')}</button><button class="hint press" data-move="${id}:1" ${i === tabs.length - 1 ? 'disabled style="opacity:.3"' : ''}>${icon('chevron-down')}</button>` : ''}
         <input type="checkbox" class="w-5 h-5" data-toggle="${id}" ${on ? 'checked' : ''}></div>`;
     }).join('')}
-      <div class="row"><div class="tile" style="background:#3390ec">${icon('user')}</div><div class="flex-1">Профиль</div><span class="hint text-xs">всегда последний</span></div>
     </div>`;
 }
 
@@ -281,15 +275,15 @@ function render() {
   if (!r) return go(tabs[0], { replace: true });
   const [top, sub] = r.split('/');
   const html = top === 'plans' && sub ? planScreen(sub) : (screens[r] || screens[top] || feedScreen)();
-  document.getElementById('app').innerHTML = html + tabbar(top);
+  document.getElementById('app').innerHTML = html + (top === 'profile' ? '' : tabbar(top));
   renderProtoBar();
   window.lucide?.createIcons();
-  if (tg) { sub ? tg.BackButton.show() : tg.BackButton.hide(); tg.MainButton.hide(); tg.SettingsButton?.show(); }
+  if (tg) { sub || top === 'profile' ? tg.BackButton.show() : tg.BackButton.hide(); tg.MainButton.hide(); tg.SettingsButton?.show(); }
 }
 
 function renderProtoBar() {
   const opt = (name, values, cur) => `<select data-param="${name}">${values.map(([v, t]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
-  document.getElementById('proto-bar').innerHTML = `<span>v2</span>${opt('platform', [['android', 'Android'], ['ios', 'iOS']], platform())}${inTelegram ? '' : opt('theme', [['light', 'Светлая'], ['dark', 'Тёмная']], theme())}`;
+  document.getElementById('proto-bar').innerHTML = `<span>v3</span>${opt('platform', [['android', 'Android'], ['ios', 'iOS']], platform())}${inTelegram ? '' : opt('theme', [['light', 'Светлая'], ['dark', 'Тёмная']], theme()) + '<button data-go="profile" title="Имитация «⋯ → Настройки»">⚙</button>'}`;
 }
 
 document.addEventListener('click', e => {
@@ -308,7 +302,7 @@ document.addEventListener('change', e => {
   if (e.target.dataset.param) return setParam(e.target.dataset.param, e.target.value);
   const id = e.target.dataset.toggle;
   if (!id) return;
-  if (e.target.checked && tabs.length >= 4) { e.target.checked = false; return tg?.showAlert ? tg.showAlert('Максимум 4 раздела + Профиль') : alert('Максимум 4 раздела + Профиль'); }
+  if (e.target.checked && tabs.length >= 5) { e.target.checked = false; return tg?.showAlert ? tg.showAlert('Максимум 5 разделов') : alert('Максимум 5 разделов'); }
   if (!e.target.checked && tabs.length <= 2) { e.target.checked = true; return tg?.showAlert ? tg.showAlert('Минимум 2 раздела') : alert('Минимум 2 раздела'); }
   tabs = e.target.checked ? [...tabs, id] : tabs.filter(t => t !== id);
   saveTabs(tabs); render();
