@@ -57,8 +57,16 @@ A dated record in a Pet's journal of something done for or observed about that P
 _Avoid_: Event, log, activity
 
 **Care Kind**:
-One of the fixed categories a Care Entry belongs to: feeding, walk, vaccination, treatment, weight, vet visit or note.
+One of the fixed categories a Care Entry belongs to: vaccination, treatment, vet visit, weight, expense or note.
 _Avoid_: Entry type, category
+
+**Pet Expense**:
+Money spent on a Pet: an expense Care Entry, or the cost recorded on a vaccination, treatment or vet visit.
+_Avoid_: Payment, purchase, bill
+
+**Pet Memo**:
+The pinned facts about a Pet that anyone looking after it needs now: current food, vet clinic and important notes.
+_Avoid_: Profile, info, cheat sheet
 
 **Due Date**:
 The date by which a vaccination, treatment or vet visit should be repeated, set on the Care Entry that precedes it.
