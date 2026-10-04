@@ -143,9 +143,7 @@ function go(path, { replace = false } = {}) {
 function setParam(k, v) { const p = params(); p.set(k, v); history.replaceState(null, '', location.pathname + '?' + p); render(); }
 
 function tabIcon(id) {
-  const m = modules[id];
-  if (id === 'pet' && m.pet) return `<div class="ava">${m.pet.emoji}</div>`;
-  return icon(m.icon);
+  return icon(modules[id].icon);
 }
 
 function tabbar(active) {
