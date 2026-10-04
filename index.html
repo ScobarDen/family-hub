@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Family Hub — PROTOTYPE</title>
+<!-- PROTOTYPE: throwaway UI shell for https://github.com/ScobarDen/family-hub/issues/19. Three navigation variants via ?variant=A|B|C, onboarding states via ?state=member|stranger|invite. -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --bg2: var(--tg-theme-secondary-bg-color, #f2f2f7);
+    --text: var(--tg-theme-text-color, #111111);
+    --hint: var(--tg-theme-hint-color, #8e8e93);
+    --accent: var(--tg-theme-button-color, #2481cc);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --section: var(--tg-theme-section-bg-color, #ffffff);
+    --danger: var(--tg-theme-destructive-text-color, #e53935);
+  }
+  html, body { background: var(--bg2); color: var(--text); font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
+  .card { background: var(--section); border-radius: 14px; }
+  .hint { color: var(--hint); }
+  .accent { color: var(--accent); }
+  .btn { background: var(--accent); color: var(--accent-text); border-radius: 12px; padding: 12px 16px; font-weight: 600; }
+  .btn-ghost { background: var(--bg2); color: var(--accent); border-radius: 12px; padding: 10px 14px; font-weight: 600; }
+  .bar { background: var(--accent); }
+  .tabbar { background: var(--section); border-top: 1px solid rgba(127,127,127,.2); padding-bottom: env(safe-area-inset-bottom); }
+  .chip { border-radius: 999px; padding: 6px 14px; white-space: nowrap; font-weight: 600; background: var(--section); }
+  .chip.on { background: var(--accent); color: var(--accent-text); }
+  .done { text-decoration: line-through; color: var(--hint); }
+  .overdue { color: var(--danger); }
+  #proto-bar { position: fixed; top: 8px; right: 8px; z-index: 50; background: #111; color: #fff; border-radius: 999px; padding: 4px 6px; font: 600 12px system-ui; display: flex; gap: 4px; align-items: center; box-shadow: 0 4px 16px rgba(0,0,0,.35); opacity: .92; }
+  #proto-bar button { padding: 4px 8px; border-radius: 999px; }
+  #proto-bar button:hover { background: #333; }
+  #proto-bar select { background: #222; color: #fff; border-radius: 999px; padding: 2px 6px; }
+  svg.lucide { width: 20px; height: 20px; }
+  #app { padding-top: 40px; }
+</style>
+</head>
+<body>
+<div id="app" class="min-h-screen"></div>
+<div id="proto-bar"></div>
+<script>
+const tg = window.Telegram?.WebApp;
+const inTelegram = !!tg?.initData;
+if (tg) { tg.ready(); tg.expand(); }
+
+const base = location.pathname.startsWith('/family-hub/') || location.pathname === '/family-hub' ? '/family-hub/' : '/';
+const variants = { A: 'Таб-бар', B: 'Сводка «Сегодня»', C: 'Чипы + MainButton' };
+const states = { member: 'Member', stranger: 'Незнакомец', invite: 'По Invite' };
+
+const data = {
+  family: 'Гущины',
+  me: 'Денис',
+  members: ['Денис (Owner)', 'Маша'],
+  lists: [
+    { id: 'food', name: 'Продукты', visibility: 'Shared', items: [
+      { name: 'Молоко', amount: '2 л', bought: false },
+      { name: 'Хлеб', amount: '', bought: false },
+      { name: 'Яйца', amount: '10 шт', bought: false },
+      { name: 'Сыр', amount: 'кусок', bought: true, by: 'Маша' },
+    ] },
+    { id: 'buick', name: 'Бьюику', visibility: 'Shared', items: [{ name: 'Корм', amount: '12 кг', bought: false }] },
+    { id: 'gift', name: 'Подарок Маше', visibility: 'Private', items: [{ name: 'Серьги', amount: '', bought: false }] },
+  ],
+  pet: {
+    name: 'Бьюик', species: 'Собака', today: { feedings: 1, lastWalk: '08:10' },
+    soon: [{ what: '💉 Бешенство', when: '12.11', note: 'через 39 дней' }, { what: '🐛 Клещи', when: '28.09', note: 'просрочено', overdue: true }],
+    journal: [
+      { kind: '🦮 Прогулка', at: 'сегодня 08:10', by: 'Денис', note: '40 мин, пописал, покакал' },
+      { kind: '🍖 Кормление', at: 'сегодня 07:55', by: 'Маша', note: '1 миска' },
+      { kind: '⚖️ Вес', at: '01.10', by: 'Денис', note: '24.6 кг' },
+    ],
+  },
+  events: [
+    { when: 'Сегодня 19:00', what: 'Созвон с мамой', tag: '🔔 за 15 мин' },
+    { when: 'Сб, 5 окт', what: 'Забрать посылку', tag: '' },
+    { when: '15 окт', what: 'ДР тёщи', tag: '🎂 весь день' },
+    { when: '12 ноя', what: '💉 Бьюик: бешенство', tag: 'Due Date' },
+  ],
+  goals: [
+    { name: 'Отпуск в Турции', icon: 'plane', saved: 150000, target: 300000, deadline: 'июнь 2027', monthly: '~16 700 ₽/мес' },
+    { name: 'Подушка безопасности', icon: 'umbrella', saved: 80000, target: 200000, deadline: '', monthly: '' },
+  ],
+};
+
+const modules = [
+  { id: 'shopping', title: 'Покупки', icon: 'shopping-cart' },
+  { id: 'pets', title: 'Питомцы', icon: 'dog' },
+  { id: 'calendar', title: 'Календарь', icon: 'calendar' },
+  { id: 'goals', title: 'Цели', icon: 'piggy-bank' },
+];
+
+function params() { return new URLSearchParams(location.search); }
+function variant() { const v = params().get('variant'); return variants[v] ? v : 'A'; }
+function state() { const s = params().get('state') || (tg?.initDataUnsafe?.start_param?.startsWith('inv_') ? 'invite' : null); return states[s] ? s : 'member'; }
+function route() { return location.pathname.slice(base.length).replace(/\/$/, '') || ''; }
+function go(path, { replace = false } = {}) {
+  const url = base + path + location.search;
+  replace ? history.replaceState(null, '', url) : history.pushState(null, '', url);
+  render();
+}
+function setParam(key, value) {
+  const p = params(); p.set(key, value);
+  history.replaceState(null, '', location.pathname + '?' + p.toString());
+  render();
+}
+const money = n => n.toLocaleString('ru-RU') + ' ₽';
+const icon = name => `<i data-lucide="${name}"></i>`;
+
+function header(title, { back = false, gear = false } = {}) {
+  const showBack = back && !inTelegram;
+  const showGear = gear && !inTelegram;
+  return `<div class="flex items-center gap-2 px-4 pt-4 pb-2">
+    ${showBack ? `<button data-action="back" class="accent">${icon('chevron-left')}</button>` : ''}
+    <h1 class="text-2xl font-bold flex-1">${title}</h1>
+    ${showGear ? `<button data-go="settings" class="hint">${icon('settings')}</button>` : ''}
+  </div>`;
+}
+
+function shoppingBody() {
+  return data.lists.map(l => `
+    <div class="card mx-4 mb-3 p-4">
+      <div class="flex justify-between items-center mb-2">
+        <div class="font-semibold">${l.name}</div>
+        <div class="text-xs hint">${l.visibility === 'Private' ? '🔒 Private' : 'Shared'}</div>
+      </div>
+      ${l.items.filter(i => !i.bought).map(i => `<label class="flex items-center gap-3 py-1.5"><input type="checkbox" class="w-5 h-5"><span class="flex-1">${i.name}</span><span class="hint text-sm">${i.amount}</span></label>`).join('')}
+      ${l.items.some(i => i.bought) ? `<div class="hint text-xs mt-2">Куплено</div>${l.items.filter(i => i.bought).map(i => `<div class="flex gap-3 py-1 done"><span class="flex-1">${i.name}</span><span class="text-xs">${i.by}</span></div>`).join('')}` : ''}
+    </div>`).join('');
+}
+
+function petsBody() {
+  const p = data.pet;
+  return `<div class="card mx-4 mb-3 p-4" data-go="pets/buick">
+    <div class="flex items-center gap-3"><div class="w-14 h-14 rounded-full bg-amber-200 grid place-items-center text-2xl">🐕</div>
+    <div class="flex-1"><div class="font-semibold text-lg">${p.name}</div><div class="hint text-sm">${p.species} · покормлен ${p.today.feedings} раз, гуляли в ${p.today.lastWalk}</div></div>${icon('chevron-right')}</div>
+  </div>
+  <div class="hint text-sm px-4">Ещё питомцев нет · <span class="accent">+ Добавить</span></div>`;
+}
+
+function petCardBody(withQuickButtons = true) {
+  const p = data.pet;
+  return `
+  <div class="card mx-4 mb-3 p-4">
+    <div class="hint text-xs mb-1">Сегодня</div>
+    <div>🍖 Кормлений: <b>${p.today.feedings}</b> · 🦮 Последняя прогулка: <b>${p.today.lastWalk}</b></div>
+    ${withQuickButtons ? `<div class="flex gap-2 mt-3"><button class="btn flex-1">🍖 Покормили</button><button class="btn flex-1">🦮 Погуляли</button></div>` : ''}
+  </div>
+  <div class="card mx-4 mb-3 p-4">
+    <div class="hint text-xs mb-1">Скоро</div>
+    ${p.soon.map(s => `<div class="flex justify-between py-1 ${s.overdue ? 'overdue' : ''}"><span>${s.what}</span><span class="text-sm">${s.when} · ${s.note}</span></div>`).join('')}
+  </div>
+  <div class="card mx-4 mb-3 p-4">
+    <div class="flex justify-between mb-1"><span class="hint text-xs">Журнал</span><span class="hint text-xs">⚖️ График · 🖼 Галерея</span></div>
+    ${p.journal.map(j => `<div class="py-2 border-b border-black/5"><div class="flex justify-between"><span>${j.kind}</span><span class="hint text-xs">${j.at} · ${j.by}</span></div><div class="hint text-sm">${j.note}</div></div>`).join('')}
+  </div>`;
+}
+
+function calendarBody() {
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const marks = { 4: 'bar', 5: 'bar', 15: 'bar' };
+  return `<div class="card mx-4 mb-3 p-3">
+    <div class="flex justify-between items-center mb-2"><span class="font-semibold">Октябрь 2026</span><span class="hint">${icon('chevron-left')}${icon('chevron-right')}</span></div>
+    <div class="grid grid-cols-7 gap-1 text-center text-sm">
+      ${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d => `<div class="hint text-xs">${d}</div>`).join('')}
+      <div></div><div></div><div></div>
+      ${days.map(d => `<div class="py-1 rounded-lg ${d === 4 ? 'bar text-white' : ''}">${d}${marks[d] && d !== 4 ? '<div class="mx-auto w-1 h-1 rounded-full bar"></div>' : ''}</div>`).join('')}
+    </div>
+  </div>
+  <div class="hint text-xs px-5 mb-1">Ближайшее</div>
+  <div class="card mx-4 mb-3">
+    ${data.events.map(e => `<div class="px-4 py-3 border-b border-black/5 flex justify-between"><div><div>${e.what}</div><div class="hint text-xs">${e.when}</div></div><div class="hint text-xs">${e.tag}</div></div>`).join('')}
+  </div>`;
+}
+
+function goalsBody() {
+  const total = data.goals.reduce((s, g) => s + g.saved, 0);
+  return `<div class="card mx-4 mb-3 p-4"><div class="hint text-xs">Всего накоплено</div><div class="text-3xl font-bold">${money(total)}</div></div>
+  ${data.goals.map(g => `<div class="card mx-4 mb-3 p-4">
+    <div class="flex items-center gap-3 mb-2"><div class="w-10 h-10 rounded-xl bar text-white grid place-items-center">${icon(g.icon)}</div>
+    <div class="flex-1"><div class="font-semibold">${g.name}</div><div class="hint text-xs">${g.deadline ? 'до ' + g.deadline + ' · ' + g.monthly : 'без дедлайна'}</div></div>
+    <div class="text-sm font-semibold">${Math.round(g.saved / g.target * 100)}%</div></div>
+    <div class="h-2 rounded-full bg-black/10"><div class="h-2 rounded-full bar" style="width:${g.saved / g.target * 100}%"></div></div>
+    <div class="hint text-xs mt-1">${money(g.saved)} из ${money(g.target)}</div>
+  </div>`).join('')}`;
+}
+
+function settingsBody() {
+  return `<div class="card mx-4 mb-3">
+    <div class="px-4 py-3 border-b border-black/5"><div class="hint text-xs">Семья</div><div class="font-semibold">${data.family}</div></div>
+    ${data.members.map(m => `<div class="px-4 py-3 border-b border-black/5">${m}</div>`).join('')}
+    <div class="px-4 py-3 accent">${icon('user-plus')} Пригласить в семью</div>
+  </div>
+  <div class="card mx-4 mb-3">
+    <div class="px-4 py-3 border-b border-black/5 flex justify-between"><span>📸 Хранилище фото</span><span class="hint">Подключено</span></div>
+    <div class="px-4 py-3 border-b border-black/5 flex justify-between"><span>🔔 Уведомления от бота</span><span class="hint">Включены</span></div>
+    <div class="px-4 py-3 flex justify-between"><span>🕒 Часовой пояс</span><span class="hint">Europe/Moscow</span></div>
+  </div>
+  <div class="hint text-xs px-5">Имя и аватар — из Telegram</div>`;
+}
+
+const bodies = { shopping: shoppingBody, pets: petsBody, 'pets/buick': () => petCardBody(), calendar: calendarBody, goals: goalsBody, settings: settingsBody };
+const titles = { shopping: 'Покупки', pets: 'Питомцы', 'pets/buick': 'Бьюик', calendar: 'Календарь', goals: 'Цели', settings: 'Настройки' };
+const mainActions = { shopping: 'Добавить позицию', pets: 'Добавить питомца', 'pets/buick': 'Новая запись', calendar: 'Новое событие', goals: 'Пополнить цель', settings: '' };
+
+function variantA(r) {
+  const current = r || localStorage.getItem('proto-last-tab') || 'shopping';
+  if (!r) return go(current, { replace: true });
+  const tab = current.split('/')[0];
+  if (modules.some(m => m.id === tab)) localStorage.setItem('proto-last-tab', tab);
+  return {
+    html: `${header(titles[current], { back: current.includes('/') || current === 'settings', gear: true })}
+      <div class="pb-24">${bodies[current]()}</div>
+      <nav class="tabbar fixed bottom-0 inset-x-0 grid grid-cols-4">
+        ${modules.map(m => `<button data-go="${m.id}" class="py-2 flex flex-col items-center text-xs ${tab === m.id ? 'accent' : 'hint'}">${icon(m.icon)}${m.title}</button>`).join('')}
+      </nav>`,
+    back: current.includes('/') || current === 'settings',
+    main: '',
+  };
+}
+
+function variantB(r) {
+  if (!r) {
+    const p = data.pet;
+    const toBuy = data.lists.reduce((s, l) => s + l.items.filter(i => !i.bought).length, 0);
+    return {
+      html: `${header('Сегодня', { gear: true })}
+        <div class="hint text-sm px-4 mb-3">Сб, 4 октября · ${data.family}</div>
+        <div class="card mx-4 mb-3 p-4" data-go="calendar"><div class="flex justify-between mb-1"><span class="font-semibold">📅 Сегодня</span>${icon('chevron-right')}</div><div>19:00 Созвон с мамой</div><div class="hint text-sm">Дальше: ДР тёщи 15 окт</div></div>
+        <div class="card mx-4 mb-3 p-4" data-go="pets/buick"><div class="flex justify-between mb-1"><span class="font-semibold">🐕 Бьюик</span>${icon('chevron-right')}</div><div>Покормлен ${p.today.feedings} раз · гуляли в ${p.today.lastWalk}</div><div class="overdue text-sm">🐛 Клещи — просрочено</div>
+          <div class="flex gap-2 mt-3"><button class="btn-ghost flex-1">🍖 Покормили</button><button class="btn-ghost flex-1">🦮 Погуляли</button></div></div>
+        <div class="card mx-4 mb-3 p-4" data-go="shopping"><div class="flex justify-between mb-1"><span class="font-semibold">🛒 Купить</span>${icon('chevron-right')}</div><div>${toBuy} позиций в ${data.lists.length} списках</div><div class="hint text-sm">Молоко, хлеб, яйца, корм…</div></div>
+        <div class="card mx-4 mb-3 p-4" data-go="goals"><div class="flex justify-between mb-1"><span class="font-semibold">💰 Цели</span>${icon('chevron-right')}</div><div>Отпуск в Турции — 50%</div><div class="hint text-sm">Всего накоплено ${money(230000)}</div></div>`,
+      back: false,
+      main: '',
+    };
+  }
+  return { html: `${header(titles[r], { back: true })}<div class="pb-8">${bodies[r]()}</div>`, back: true, main: '' };
+}
+
+function variantC(r) {
+  const current = r || 'shopping';
+  if (!r) return go(current, { replace: true });
+  const tab = current.split('/')[0];
+  const sub = current.includes('/') || current === 'settings';
+  const action = mainActions[current];
+  return {
+    html: `<div class="sticky top-0 z-10 pt-3 pb-2" style="background:var(--bg2)">
+        <div class="flex gap-2 overflow-x-auto px-4 pr-24">
+          ${modules.map(m => `<button data-go="${m.id}" class="chip ${tab === m.id ? 'on' : ''}">${m.title}</button>`).join('')}
+          ${inTelegram ? '' : `<button data-go="settings" class="chip ${current === 'settings' ? 'on' : ''}">${icon('settings')}</button>`}
+        </div>
+      </div>
+      ${sub ? header(titles[current], { back: true }) : ''}
+      <div class="pb-24">${current === 'pets/buick' ? petCardBody(false) : bodies[current]()}</div>
+      ${!inTelegram && action ? `<div class="fixed bottom-0 inset-x-0 p-3" style="background:var(--bg2)"><button class="btn w-full">${action}</button></div>` : ''}`,
+    back: sub,
+    main: current === 'pets/buick' ? '🍖 Покормили' : action,
+  };
+}
+
+function strangerScreen() {
+  const form = route() === 'request';
+  return { html: `<div class="px-6 pt-16 text-center">
+    <div class="text-5xl mb-4">🏡</div>
+    <h1 class="text-2xl font-bold mb-2">${form ? 'Создать свою семью' : 'Family Hub работает по приглашениям'}</h1>
+    ${form
+      ? `<p class="hint mb-4">Заявку рассмотрит оператор. Ответ придёт сообщением от бота.</p>
+         <input class="card w-full p-3 mb-3" placeholder="Название семьи, например «Гущины»">
+         <button class="btn w-full">Отправить заявку</button>`
+      : `<p class="hint mb-6">Попросите родственника прислать ссылку-приглашение из приложения — или подайте заявку на свою семью.</p>
+         <button class="btn-ghost w-full mb-2">У меня есть приглашение</button>
+         <button class="btn w-full" data-go="request">Создать свою семью</button>`}
+  </div>`, back: form, main: '' };
+}
+
+function inviteScreen() {
+  return { html: `<div class="px-6 pt-16 text-center">
+    <div class="w-20 h-20 mx-auto rounded-full bg-pink-200 grid place-items-center text-3xl mb-4">👩</div>
+    <h1 class="text-2xl font-bold mb-2">Маша зовёт вас в семью «${data.family}»</h1>
+    <p class="hint mb-6">Общие покупки, календарь, цели и уход за Бьюиком. Бот будет присылать напоминания.</p>
+    <button class="btn w-full mb-2">Вступить</button>
+    <button class="btn-ghost w-full">Не сейчас</button>
+  </div>`, back: false, main: '' };
+}
+
+function render() {
+  const s = state();
+  const r = route();
+  const view = s === 'stranger' ? strangerScreen() : s === 'invite' ? inviteScreen() : ({ A: variantA, B: variantB, C: variantC })[variant()](r);
+  if (!view) return;
+  document.getElementById('app').innerHTML = view.html;
+  renderProtoBar();
+  if (window.lucide) lucide.createIcons();
+  if (tg) {
+    view.back ? tg.BackButton.show() : tg.BackButton.hide();
+    if (view.main) { tg.MainButton.setText(view.main); tg.MainButton.show(); } else tg.MainButton.hide();
+    tg.SettingsButton?.show();
+  }
+}
+
+function renderProtoBar() {
+  const v = variant();
+  document.getElementById('proto-bar').innerHTML = `
+    <button data-proto="prev">‹</button><span>${v} · ${variants[v]}</span><button data-proto="next">›</button>
+    <select data-proto="state">${Object.entries(states).map(([k, t]) => `<option value="${k}" ${state() === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+}
+
+function cycle(dir) {
+  const keys = Object.keys(variants);
+  const next = keys[(keys.indexOf(variant()) + dir + keys.length) % keys.length];
+  const p = params(); p.set('variant', next);
+  history.replaceState(null, '', base + '?' + p.toString());
+  render();
+}
+
+document.addEventListener('click', e => {
+  const proto = e.target.closest('[data-proto]');
+  if (proto?.dataset.proto === 'prev') return cycle(-1);
+  if (proto?.dataset.proto === 'next') return cycle(1);
+  const nav = e.target.closest('[data-go]');
+  if (nav) { tg?.HapticFeedback?.selectionChanged(); return go(nav.dataset.go); }
+  if (e.target.closest('[data-action="back"]')) return history.back();
+  if (e.target.closest('.btn, .btn-ghost')) tg?.HapticFeedback?.impactOccurred('light');
+});
+document.addEventListener('change', e => { if (e.target.dataset.proto === 'state') setParam('state', e.target.value); });
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') cycle(-1);
+  if (e.key === 'ArrowRight') cycle(1);
+});
+window.addEventListener('popstate', render);
+tg?.BackButton.onClick(() => history.back());
+tg?.SettingsButton?.onClick(() => go('settings'));
+tg?.MainButton.onClick(() => tg.showAlert?.(`PROTOTYPE: «${tg.MainButton.text}» — тут откроется форма`));
+
+render();
+</script>
+</body>
+</html>
