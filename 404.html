@@ -3,40 +3,82 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Family Hub — PROTOTYPE</title>
-<!-- PROTOTYPE: throwaway UI shell for https://github.com/ScobarDen/family-hub/issues/19. Three navigation variants via ?variant=A|B|C, onboarding states via ?state=member|stranger|invite. -->
+<title>Family Hub — PROTOTYPE v2</title>
+<!-- PROTOTYPE v2: throwaway UI shell for https://github.com/ScobarDen/family-hub/issues/19. Telegram-style tab bar, configurable tabs, single-pet tab, iOS/Android looks via ?platform=ios|android. -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
 <style>
   :root {
     --bg: var(--tg-theme-bg-color, #ffffff);
-    --bg2: var(--tg-theme-secondary-bg-color, #f2f2f7);
-    --text: var(--tg-theme-text-color, #111111);
-    --hint: var(--tg-theme-hint-color, #8e8e93);
-    --accent: var(--tg-theme-button-color, #2481cc);
+    --bg2: var(--tg-theme-secondary-bg-color, #f0f2f5);
+    --text: var(--tg-theme-text-color, #000000);
+    --hint: var(--tg-theme-hint-color, #8a8f98);
+    --accent: var(--tg-theme-button-color, #3390ec);
     --accent-text: var(--tg-theme-button-text-color, #ffffff);
     --section: var(--tg-theme-section-bg-color, #ffffff);
+    --header-text: var(--tg-theme-section-header-text-color, #3390ec);
     --danger: var(--tg-theme-destructive-text-color, #e53935);
+    --sep: rgba(127,127,127,.18);
   }
-  html, body { background: var(--bg2); color: var(--text); font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif; }
-  .card { background: var(--section); border-radius: 14px; }
+  html.dark-fallback {
+    --bg: var(--tg-theme-bg-color, #17212b);
+    --bg2: var(--tg-theme-secondary-bg-color, #0e1621);
+    --text: var(--tg-theme-text-color, #f5f5f5);
+    --hint: var(--tg-theme-hint-color, #7d8b99);
+    --accent: var(--tg-theme-button-color, #5288c1);
+    --section: var(--tg-theme-section-bg-color, #17212b);
+    --header-text: var(--tg-theme-section-header-text-color, #6ab3f3);
+  }
+  html, body { background: var(--bg2); color: var(--text); }
+  body.android { font-family: Roboto, "Segoe UI", system-ui, sans-serif; }
+  body.ios { font-family: -apple-system, "SF Pro Text", system-ui, sans-serif; }
   .hint { color: var(--hint); }
   .accent { color: var(--accent); }
+  .section { background: var(--section); }
+  body.ios .section { border-radius: 12px; }
+  body.android .section { border-radius: 18px; }
+  .section-title { color: var(--header-text); font-size: 13px; font-weight: 600; padding: 16px 20px 6px; }
+  body.ios .section-title { color: var(--hint); text-transform: uppercase; font-weight: 400; font-size: 12px; }
+  .row { display: flex; align-items: center; gap: 14px; padding: 11px 16px; position: relative; }
+  .row + .row::before { content: ""; position: absolute; top: 0; right: 0; left: 62px; border-top: 1px solid var(--sep); }
+  .tile { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; color: #fff; flex: none; }
+  body.android .tile { border-radius: 50%; }
+  .tile svg { width: 18px; height: 18px; }
+  .big-title { font-size: 30px; font-weight: 700; padding: 8px 20px 4px; }
+  body.android .big-title { font-size: 26px; font-weight: 600; }
+  .chip { border-radius: 999px; padding: 7px 16px; white-space: nowrap; font-weight: 600; color: var(--hint); background: var(--section); }
+  .chip.on { color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--section)); }
   .btn { background: var(--accent); color: var(--accent-text); border-radius: 12px; padding: 12px 16px; font-weight: 600; }
-  .btn-ghost { background: var(--bg2); color: var(--accent); border-radius: 12px; padding: 10px 14px; font-weight: 600; }
-  .bar { background: var(--accent); }
-  .tabbar { background: var(--section); border-top: 1px solid rgba(127,127,127,.2); padding-bottom: env(safe-area-inset-bottom); }
-  .chip { border-radius: 999px; padding: 6px 14px; white-space: nowrap; font-weight: 600; background: var(--section); }
-  .chip.on { background: var(--accent); color: var(--accent-text); }
-  .done { text-decoration: line-through; color: var(--hint); }
+  .btn-tonal { background: color-mix(in srgb, var(--accent) 15%, var(--section)); color: var(--accent); border-radius: 12px; padding: 10px 14px; font-weight: 600; }
+  .progress { height: 6px; border-radius: 3px; background: var(--sep); }
+  .progress > div { height: 6px; border-radius: 3px; background: var(--accent); }
   .overdue { color: var(--danger); }
+  .done-text { color: var(--hint); text-decoration: line-through; }
+  .check { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--hint); display: grid; place-items: center; flex: none; }
+  .check.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .check svg { width: 14px; height: 14px; }
+
+  .tabbar { position: fixed; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); z-index: 20; display: flex; padding: 6px; }
+  body.android .tabbar { background: var(--section); border-radius: 26px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+  body.ios .tabbar { background: color-mix(in srgb, var(--section) 70%, transparent); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); border-radius: 30px; border: 1px solid var(--sep); box-shadow: 0 8px 30px rgba(0,0,0,.18); }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; font-size: 11px; color: var(--text); border-radius: 20px; min-width: 0; }
+  .tab span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tab svg { width: 24px; height: 24px; }
+  .tab.on { color: var(--accent); }
+  body.android .tab.on { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+  body.ios .tab.on { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  .tab .ava { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 16px; background: #f6c58f; }
+  .tab.on .ava { outline: 2px solid var(--accent); }
+
+  body.android .press { position: relative; overflow: hidden; }
+  body.android .press:active { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  body.ios .press:active { opacity: .55; }
+
   #proto-bar { position: fixed; top: 8px; right: 8px; z-index: 50; background: #111; color: #fff; border-radius: 999px; padding: 4px 6px; font: 600 12px system-ui; display: flex; gap: 4px; align-items: center; box-shadow: 0 4px 16px rgba(0,0,0,.35); opacity: .92; }
-  #proto-bar button { padding: 4px 8px; border-radius: 999px; }
-  #proto-bar button:hover { background: #333; }
   #proto-bar select { background: #222; color: #fff; border-radius: 999px; padding: 2px 6px; }
+  #app { padding-top: 36px; padding-bottom: 110px; }
   svg.lucide { width: 20px; height: 20px; }
-  #app { padding-top: 40px; }
 </style>
 </head>
 <body>
@@ -47,295 +89,234 @@ const tg = window.Telegram?.WebApp;
 const inTelegram = !!tg?.initData;
 if (tg) { tg.ready(); tg.expand(); }
 
-const base = location.pathname.startsWith('/family-hub/') || location.pathname === '/family-hub' ? '/family-hub/' : '/';
-const variants = { A: 'Таб-бар', B: 'Сводка «Сегодня»', C: 'Чипы + MainButton' };
-const states = { member: 'Member', stranger: 'Незнакомец', invite: 'По Invite' };
+const base = location.pathname.startsWith('/family-hub') ? '/family-hub/' : '/';
+const params = () => new URLSearchParams(location.search);
+const platform = () => params().get('platform') || (['ios', 'macos'].includes(tg?.platform) ? 'ios' : tg?.platform === 'android' ? 'android' : 'android');
+const theme = () => params().get('theme') || (tg?.colorScheme ?? 'light');
+const route = () => location.pathname.slice(base.length).replace(/\/$/, '');
+const icon = name => `<i data-lucide="${name}"></i>`;
+const money = n => n.toLocaleString('ru-RU') + ' ₽';
 
-const data = {
-  family: 'Гущины',
-  me: 'Денис',
-  members: ['Денис (Owner)', 'Маша'],
-  lists: [
-    { id: 'food', name: 'Продукты', visibility: 'Shared', items: [
-      { name: 'Молоко', amount: '2 л', bought: false },
-      { name: 'Хлеб', amount: '', bought: false },
-      { name: 'Яйца', amount: '10 шт', bought: false },
-      { name: 'Сыр', amount: 'кусок', bought: true, by: 'Маша' },
-    ] },
-    { id: 'buick', name: 'Бьюику', visibility: 'Shared', items: [{ name: 'Корм', amount: '12 кг', bought: false }] },
-    { id: 'gift', name: 'Подарок Маше', visibility: 'Private', items: [{ name: 'Серьги', amount: '', bought: false }] },
-  ],
-  pet: {
-    name: 'Бьюик', species: 'Собака', today: { feedings: 1, lastWalk: '08:10' },
-    soon: [{ what: '💉 Бешенство', when: '12.11', note: 'через 39 дней' }, { what: '🐛 Клещи', when: '28.09', note: 'просрочено', overdue: true }],
-    journal: [
-      { kind: '🦮 Прогулка', at: 'сегодня 08:10', by: 'Денис', note: '40 мин, пописал, покакал' },
-      { kind: '🍖 Кормление', at: 'сегодня 07:55', by: 'Маша', note: '1 миска' },
-      { kind: '⚖️ Вес', at: '01.10', by: 'Денис', note: '24.6 кг' },
-    ],
-  },
-  events: [
-    { when: 'Сегодня 19:00', what: 'Созвон с мамой', tag: '🔔 за 15 мин' },
-    { when: 'Сб, 5 окт', what: 'Забрать посылку', tag: '' },
-    { when: '15 окт', what: 'ДР тёщи', tag: '🎂 весь день' },
-    { when: '12 ноя', what: '💉 Бьюик: бешенство', tag: 'Due Date' },
-  ],
-  goals: [
-    { name: 'Отпуск в Турции', icon: 'plane', saved: 150000, target: 300000, deadline: 'июнь 2027', monthly: '~16 700 ₽/мес' },
-    { name: 'Подушка безопасности', icon: 'umbrella', saved: 80000, target: 200000, deadline: '', monthly: '' },
-  ],
+const pets = [{ id: 'buick', name: 'Бьюик', emoji: '🐕' }];
+const modules = {
+  feed: { title: 'Лента', icon: 'list' },
+  plans: { title: 'Планы', icon: 'list-checks' },
+  calendar: { title: 'Календарь', icon: 'calendar' },
+  pet: { title: pets.length === 1 ? pets[0].name : 'Питомцы', icon: 'dog', pet: pets.length === 1 ? pets[0] : null },
+  goals: { title: 'Цели', icon: 'piggy-bank' },
 };
+const DEFAULT_TABS = ['feed', 'plans', 'calendar', 'pet'];
+function loadTabs() { try { const t = JSON.parse(localStorage.getItem('proto-tabs')); return Array.isArray(t) && t.length ? t : DEFAULT_TABS; } catch { return DEFAULT_TABS; } }
+function saveTabs(t) { try { localStorage.setItem('proto-tabs', JSON.stringify(t)); } catch {} }
+let tabs = loadTabs();
 
-const modules = [
-  { id: 'shopping', title: 'Покупки', icon: 'shopping-cart' },
-  { id: 'pets', title: 'Питомцы', icon: 'dog' },
-  { id: 'calendar', title: 'Календарь', icon: 'calendar' },
-  { id: 'goals', title: 'Цели', icon: 'piggy-bank' },
+const plans = [
+  { id: 'bedroom', title: 'Ремонт в спальне', due: 'до 30 ноя', visibility: 'Shared', subs: [
+    { title: 'Выбрать обои', done: true, by: 'Маша' }, { title: 'Купить краску', done: true, by: 'Денис' },
+    { title: 'Покрасить потолок', done: false, due: '12 окт' }, { title: 'Поклеить обои', done: false }, { title: 'Собрать шкаф', done: false } ] },
+  { id: 'trip', title: 'Поездка в Казань', due: '15–18 ноя', visibility: 'Shared', subs: [
+    { title: 'Билеты', done: true, by: 'Денис' }, { title: 'Отель', done: false }, { title: 'Кто посидит с Бьюиком', done: false } ] },
+  { id: 'gift', title: 'Подарок Маше', due: '', visibility: 'Private', subs: [] },
 ];
 
-function params() { return new URLSearchParams(location.search); }
-function variant() { const v = params().get('variant'); return variants[v] ? v : 'A'; }
-function state() { const s = params().get('state') || (tg?.initDataUnsafe?.start_param?.startsWith('inv_') ? 'invite' : null); return states[s] ? s : 'member'; }
-function route() { return location.pathname.slice(base.length).replace(/\/$/, '') || ''; }
+const feed = [
+  { group: 'Предстоит', items: [
+    { t: 'Сегодня 19:00', icon: 'calendar', color: '#3390ec', title: 'Созвон с мамой', by: '', kind: 'calendar' },
+    { t: '12 окт', icon: 'list-checks', color: '#8e6ce8', title: 'Покрасить потолок · Ремонт в спальне', by: '', kind: 'plans' },
+    { t: '12 ноя', icon: 'syringe', color: '#e2574c', title: 'Бьюик: прививка от бешенства', by: '', kind: 'pet' },
+  ] },
+  { group: 'Сегодня', items: [
+    { t: '08:10', icon: 'footprints', color: '#36b37e', title: 'Бьюик погулял 40 мин', by: 'Денис', kind: 'pet' },
+    { t: '07:55', icon: 'bone', color: '#f5a623', title: 'Бьюик покормлен', by: 'Маша', kind: 'pet' },
+  ] },
+  { group: 'Вчера', items: [
+    { t: '21:30', icon: 'circle-check', color: '#8e6ce8', title: 'Выполнено: Купить краску', by: 'Денис', kind: 'plans' },
+    { t: '18:02', icon: 'piggy-bank', color: '#f5a623', title: 'Отпуск в Турции +10 000 ₽', by: 'Денис', kind: 'goals' },
+  ] },
+];
+
 function go(path, { replace = false } = {}) {
   const url = base + path + location.search;
   replace ? history.replaceState(null, '', url) : history.pushState(null, '', url);
   render();
 }
-function setParam(key, value) {
-  const p = params(); p.set(key, value);
-  history.replaceState(null, '', location.pathname + '?' + p.toString());
-  render();
-}
-const money = n => n.toLocaleString('ru-RU') + ' ₽';
-const icon = name => `<i data-lucide="${name}"></i>`;
+function setParam(k, v) { const p = params(); p.set(k, v); history.replaceState(null, '', location.pathname + '?' + p); render(); }
 
-function header(title, { back = false, gear = false } = {}) {
-  const showBack = back && !inTelegram;
-  const showGear = gear && !inTelegram;
-  return `<div class="flex items-center gap-2 px-4 pt-4 pb-2">
-    ${showBack ? `<button data-action="back" class="accent">${icon('chevron-left')}</button>` : ''}
-    <h1 class="text-2xl font-bold flex-1">${title}</h1>
-    ${showGear ? `<button data-go="settings" class="hint">${icon('settings')}</button>` : ''}
-  </div>`;
+function tabIcon(id) {
+  const m = modules[id];
+  if (id === 'pet' && m.pet) return `<div class="ava">${m.pet.emoji}</div>`;
+  return icon(m.icon);
 }
 
-function shoppingBody() {
-  return data.lists.map(l => `
-    <div class="card mx-4 mb-3 p-4">
-      <div class="flex justify-between items-center mb-2">
-        <div class="font-semibold">${l.name}</div>
-        <div class="text-xs hint">${l.visibility === 'Private' ? '🔒 Private' : 'Shared'}</div>
-      </div>
-      ${l.items.filter(i => !i.bought).map(i => `<label class="flex items-center gap-3 py-1.5"><input type="checkbox" class="w-5 h-5"><span class="flex-1">${i.name}</span><span class="hint text-sm">${i.amount}</span></label>`).join('')}
-      ${l.items.some(i => i.bought) ? `<div class="hint text-xs mt-2">Куплено</div>${l.items.filter(i => i.bought).map(i => `<div class="flex gap-3 py-1 done"><span class="flex-1">${i.name}</span><span class="text-xs">${i.by}</span></div>`).join('')}` : ''}
-    </div>`).join('');
+function tabbar(active) {
+  const all = [...tabs, 'profile'];
+  return `<nav class="tabbar">${all.map(id => {
+    const title = id === 'profile' ? 'Профиль' : modules[id].title;
+    const ic = id === 'profile' ? `<div class="ava" style="background:#9ec5f8">Д</div>` : tabIcon(id);
+    return `<button class="tab press ${active === id ? 'on' : ''}" data-go="${id}">${ic}<span>${title}</span></button>`;
+  }).join('')}</nav>`;
 }
 
-function petsBody() {
-  const p = data.pet;
-  return `<div class="card mx-4 mb-3 p-4" data-go="pets/buick">
-    <div class="flex items-center gap-3"><div class="w-14 h-14 rounded-full bg-amber-200 grid place-items-center text-2xl">🐕</div>
-    <div class="flex-1"><div class="font-semibold text-lg">${p.name}</div><div class="hint text-sm">${p.species} · покормлен ${p.today.feedings} раз, гуляли в ${p.today.lastWalk}</div></div>${icon('chevron-right')}</div>
-  </div>
-  <div class="hint text-sm px-4">Ещё питомцев нет · <span class="accent">+ Добавить</span></div>`;
+function feedScreen() {
+  const filter = params().get('feed') || 'all';
+  const chips = [['all', 'Все'], ['plans', 'Планы'], ['pet', pets.length === 1 ? pets[0].name : 'Питомцы'], ['calendar', 'Календарь'], ['goals', 'Цели']];
+  return `<div class="big-title">Лента</div>
+    <div class="flex gap-2 overflow-x-auto px-4 py-2">${chips.map(([k, t]) => `<button class="chip press ${filter === k ? 'on' : ''}" data-feed="${k}">${t}</button>`).join('')}</div>
+    ${feed.map(g => {
+      const items = g.items.filter(i => filter === 'all' || i.kind === filter);
+      if (!items.length) return '';
+      return `<div class="section-title">${g.group}</div><div class="section mx-3">${items.map(i => `
+        <div class="row press"><div class="tile" style="background:${i.color}">${icon(i.icon)}</div>
+        <div class="flex-1 min-w-0"><div class="truncate">${i.title}</div><div class="hint text-xs">${i.t}${i.by ? ' · ' + i.by : ''}</div></div></div>`).join('')}</div>`;
+    }).join('')}`;
 }
 
-function petCardBody(withQuickButtons = true) {
-  const p = data.pet;
-  return `
-  <div class="card mx-4 mb-3 p-4">
-    <div class="hint text-xs mb-1">Сегодня</div>
-    <div>🍖 Кормлений: <b>${p.today.feedings}</b> · 🦮 Последняя прогулка: <b>${p.today.lastWalk}</b></div>
-    ${withQuickButtons ? `<div class="flex gap-2 mt-3"><button class="btn flex-1">🍖 Покормили</button><button class="btn flex-1">🦮 Погуляли</button></div>` : ''}
-  </div>
-  <div class="card mx-4 mb-3 p-4">
-    <div class="hint text-xs mb-1">Скоро</div>
-    ${p.soon.map(s => `<div class="flex justify-between py-1 ${s.overdue ? 'overdue' : ''}"><span>${s.what}</span><span class="text-sm">${s.when} · ${s.note}</span></div>`).join('')}
-  </div>
-  <div class="card mx-4 mb-3 p-4">
-    <div class="flex justify-between mb-1"><span class="hint text-xs">Журнал</span><span class="hint text-xs">⚖️ График · 🖼 Галерея</span></div>
-    ${p.journal.map(j => `<div class="py-2 border-b border-black/5"><div class="flex justify-between"><span>${j.kind}</span><span class="hint text-xs">${j.at} · ${j.by}</span></div><div class="hint text-sm">${j.note}</div></div>`).join('')}
-  </div>`;
+function plansScreen() {
+  return `<div class="big-title">Планы</div>
+    <div class="section mx-3 mt-3">${plans.map(p => {
+      const done = p.subs.filter(s => s.done).length;
+      const pct = p.subs.length ? Math.round(done / p.subs.length * 100) : 0;
+      return `<div class="row press" data-go="plans/${p.id}">
+        <div class="tile" style="background:#8e6ce8">${icon('list-checks')}</div>
+        <div class="flex-1 min-w-0"><div class="flex justify-between"><span class="truncate">${p.title}</span><span class="hint text-xs">${p.visibility === 'Private' ? '🔒' : ''}</span></div>
+        <div class="hint text-xs mb-1">${p.subs.length ? `${done} из ${p.subs.length}` : 'без подпланов'}${p.due ? ' · ' + p.due : ''}</div>
+        ${p.subs.length ? `<div class="progress"><div style="width:${pct}%"></div></div>` : ''}</div></div>`;
+    }).join('')}</div>`;
 }
 
-function calendarBody() {
+function planScreen(id) {
+  const p = plans.find(x => x.id === id);
+  const done = p.subs.filter(s => s.done).length;
+  return `<div class="big-title">${p.title}</div>
+    <div class="hint px-5 mb-2">${p.due} · ${done} из ${p.subs.length} · ${p.visibility}</div>
+    <div class="px-5 mb-2"><div class="progress"><div style="width:${p.subs.length ? done / p.subs.length * 100 : 0}%"></div></div></div>
+    <div class="section-title">Подпланы</div>
+    <div class="section mx-3">${p.subs.map(s => `<div class="row press"><div class="check ${s.done ? 'on' : ''}">${s.done ? icon('check') : ''}</div>
+      <div class="flex-1"><div class="${s.done ? 'done-text' : ''}">${s.title}</div><div class="hint text-xs">${s.done ? 'выполнил(а) ' + s.by : s.due || ''}</div></div></div>`).join('')}
+      <div class="row press accent">${icon('plus')} Добавить подплан</div></div>`;
+}
+
+function calendarScreen() {
   const days = Array.from({ length: 31 }, (_, i) => i + 1);
-  const marks = { 4: 'bar', 5: 'bar', 15: 'bar' };
-  return `<div class="card mx-4 mb-3 p-3">
-    <div class="flex justify-between items-center mb-2"><span class="font-semibold">Октябрь 2026</span><span class="hint">${icon('chevron-left')}${icon('chevron-right')}</span></div>
-    <div class="grid grid-cols-7 gap-1 text-center text-sm">
-      ${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d => `<div class="hint text-xs">${d}</div>`).join('')}
-      <div></div><div></div><div></div>
-      ${days.map(d => `<div class="py-1 rounded-lg ${d === 4 ? 'bar text-white' : ''}">${d}${marks[d] && d !== 4 ? '<div class="mx-auto w-1 h-1 rounded-full bar"></div>' : ''}</div>`).join('')}
+  return `<div class="big-title">Календарь</div>
+    <div class="section mx-3 mt-3 p-3"><div class="flex justify-between mb-2"><b>Октябрь 2026</b><span class="hint flex">${icon('chevron-left')}${icon('chevron-right')}</span></div>
+      <div class="grid grid-cols-7 gap-1 text-center text-sm">${['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d => `<div class="hint text-xs">${d}</div>`).join('')}<div></div><div></div><div></div>
+      ${days.map(d => `<div class="py-1 rounded-full ${d === 4 ? 'text-white' : ''}" style="${d === 4 ? 'background:var(--accent)' : ''}">${d}</div>`).join('')}</div></div>
+    <div class="section-title">Ближайшее</div>
+    <div class="section mx-3">${feed[0].items.map(i => `<div class="row press"><div class="tile" style="background:${i.color}">${icon(i.icon)}</div><div class="flex-1"><div>${i.title}</div><div class="hint text-xs">${i.t}</div></div></div>`).join('')}</div>`;
+}
+
+function petScreen() {
+  if (!modules.pet.pet) return `<div class="big-title">Питомцы</div>`;
+  return `<div class="flex flex-col items-center pt-2 pb-3"><div class="w-24 h-24 rounded-full grid place-items-center text-5xl" style="background:#f6c58f">🐕</div>
+      <div class="text-2xl font-bold mt-2">Бьюик</div><div class="hint text-sm">Собака · 4 года</div></div>
+    <div class="flex gap-2 px-3"><button class="btn flex-1 press">🍖 Покормили</button><button class="btn flex-1 press">🦮 Погуляли</button></div>
+    <div class="section-title">Сегодня</div>
+    <div class="section mx-3"><div class="row"><div class="tile" style="background:#f5a623">${icon('bone')}</div><div class="flex-1">Кормлений</div><b>1</b></div>
+      <div class="row"><div class="tile" style="background:#36b37e">${icon('footprints')}</div><div class="flex-1">Последняя прогулка</div><span class="hint">08:10</span></div></div>
+    <div class="section-title">Скоро</div>
+    <div class="section mx-3"><div class="row"><div class="tile" style="background:#e2574c">${icon('syringe')}</div><div class="flex-1">Бешенство</div><span class="hint text-sm">12 ноя</span></div>
+      <div class="row overdue"><div class="tile" style="background:#e2574c">${icon('bug')}</div><div class="flex-1">Клещи</div><span class="text-sm">просрочено</span></div></div>
+    <div class="section mx-3 mt-3"><div class="row press" data-go="pet/settings"><div class="tile" style="background:#8a8f98">${icon('settings')}</div><div class="flex-1">Карточка и настройки Бьюика</div>${icon('chevron-right')}</div></div>`;
+}
+
+function petSettingsScreen() {
+  return `<div class="big-title">Бьюик</div>
+    <div class="section mx-3 mt-3">${[['Имя', 'Бьюик'], ['Вид', 'Собака'], ['Порода', 'Бостон-терьер'], ['Дата рождения', '12.03.2022'], ['Чип', '643…1234']].map(([k, v]) => `<div class="row"><div class="flex-1">${k}</div><span class="hint">${v}</span></div>`).join('')}</div>
+    <div class="section mx-3 mt-3"><div class="row press accent">${icon('archive')} В архив</div></div>`;
+}
+
+function goalsScreen() {
+  return `<div class="big-title">Цели</div>
+    <div class="section mx-3 mt-3 p-4"><div class="hint text-xs">Всего накоплено</div><div class="text-3xl font-bold">${money(230000)}</div></div>
+    <div class="section mx-3 mt-3"><div class="row press"><div class="tile" style="background:#3390ec">${icon('plane')}</div><div class="flex-1"><div>Отпуск в Турции</div><div class="progress mt-1"><div style="width:50%"></div></div></div><span class="hint text-sm">50%</span></div></div>`;
+}
+
+function profileScreen() {
+  const hidden = Object.keys(modules).filter(id => !tabs.includes(id));
+  return `<div class="flex flex-col items-center pt-2 pb-2"><div class="w-24 h-24 rounded-full grid place-items-center text-4xl text-white" style="background:#3390ec">Д</div>
+      <div class="text-2xl font-bold mt-2">Денис</div><div class="hint text-sm">Семья «Гущины» · Owner</div></div>
+    ${hidden.length ? `<div class="section-title">Модули</div><div class="section mx-3">${hidden.map(id => `<div class="row press" data-go="${id}"><div class="tile" style="background:#8a8f98">${icon(modules[id].icon)}</div><div class="flex-1">${modules[id].title}</div>${icon('chevron-right')}</div>`).join('')}</div>` : ''}
+    <div class="section-title">Приложение</div>
+    <div class="section mx-3">
+      <div class="row press" data-go="profile/tabs"><div class="tile" style="background:#3390ec">${icon('panel-bottom')}</div><div class="flex-1">Нижнее меню</div><span class="hint text-sm">${tabs.length} из 4</span>${icon('chevron-right')}</div>
+      <div class="row press"><div class="tile" style="background:#e2574c">${icon('bell')}</div><div class="flex-1">Уведомления от бота</div><span class="hint text-sm">Вкл</span></div>
+      <div class="row press"><div class="tile" style="background:#36b37e">${icon('globe')}</div><div class="flex-1">Часовой пояс</div><span class="hint text-sm">Москва</span></div>
     </div>
-  </div>
-  <div class="hint text-xs px-5 mb-1">Ближайшее</div>
-  <div class="card mx-4 mb-3">
-    ${data.events.map(e => `<div class="px-4 py-3 border-b border-black/5 flex justify-between"><div><div>${e.what}</div><div class="hint text-xs">${e.when}</div></div><div class="hint text-xs">${e.tag}</div></div>`).join('')}
-  </div>`;
+    <div class="section-title">Семья</div>
+    <div class="section mx-3">
+      <div class="row press"><div class="tile" style="background:#8e6ce8">${icon('users')}</div><div class="flex-1">Участники</div><span class="hint text-sm">2</span></div>
+      <div class="row press"><div class="tile" style="background:#f5a623">${icon('user-plus')}</div><div class="flex-1">Пригласить</div></div>
+      <div class="row press"><div class="tile" style="background:#00b8d9">${icon('image')}</div><div class="flex-1">Хранилище фото</div><span class="hint text-sm">Подключено</span></div>
+    </div>`;
 }
 
-function goalsBody() {
-  const total = data.goals.reduce((s, g) => s + g.saved, 0);
-  return `<div class="card mx-4 mb-3 p-4"><div class="hint text-xs">Всего накоплено</div><div class="text-3xl font-bold">${money(total)}</div></div>
-  ${data.goals.map(g => `<div class="card mx-4 mb-3 p-4">
-    <div class="flex items-center gap-3 mb-2"><div class="w-10 h-10 rounded-xl bar text-white grid place-items-center">${icon(g.icon)}</div>
-    <div class="flex-1"><div class="font-semibold">${g.name}</div><div class="hint text-xs">${g.deadline ? 'до ' + g.deadline + ' · ' + g.monthly : 'без дедлайна'}</div></div>
-    <div class="text-sm font-semibold">${Math.round(g.saved / g.target * 100)}%</div></div>
-    <div class="h-2 rounded-full bg-black/10"><div class="h-2 rounded-full bar" style="width:${g.saved / g.target * 100}%"></div></div>
-    <div class="hint text-xs mt-1">${money(g.saved)} из ${money(g.target)}</div>
-  </div>`).join('')}`;
+function tabsScreen() {
+  const ids = Object.keys(modules);
+  const order = [...tabs, ...ids.filter(id => !tabs.includes(id))];
+  return `<div class="big-title">Нижнее меню</div>
+    <div class="hint px-5 text-sm">От 2 до 4 разделов + «Профиль». Включайте и двигайте.</div>
+    <div class="section-title">Разделы</div>
+    <div class="section mx-3">${order.map(id => {
+      const on = tabs.includes(id);
+      const i = tabs.indexOf(id);
+      return `<div class="row"><div class="tile" style="background:${on ? 'var(--accent)' : '#8a8f98'}">${icon(modules[id].icon)}</div>
+        <div class="flex-1">${modules[id].title}</div>
+        ${on ? `<button class="hint press" data-move="${id}:-1" ${i === 0 ? 'disabled style="opacity:.3"' : ''}>${icon('chevron-up')}</button><button class="hint press" data-move="${id}:1" ${i === tabs.length - 1 ? 'disabled style="opacity:.3"' : ''}>${icon('chevron-down')}</button>` : ''}
+        <input type="checkbox" class="w-5 h-5" data-toggle="${id}" ${on ? 'checked' : ''}></div>`;
+    }).join('')}
+      <div class="row"><div class="tile" style="background:#3390ec">${icon('user')}</div><div class="flex-1">Профиль</div><span class="hint text-xs">всегда последний</span></div>
+    </div>`;
 }
 
-function settingsBody() {
-  return `<div class="card mx-4 mb-3">
-    <div class="px-4 py-3 border-b border-black/5"><div class="hint text-xs">Семья</div><div class="font-semibold">${data.family}</div></div>
-    ${data.members.map(m => `<div class="px-4 py-3 border-b border-black/5">${m}</div>`).join('')}
-    <div class="px-4 py-3 accent">${icon('user-plus')} Пригласить в семью</div>
-  </div>
-  <div class="card mx-4 mb-3">
-    <div class="px-4 py-3 border-b border-black/5 flex justify-between"><span>📸 Хранилище фото</span><span class="hint">Подключено</span></div>
-    <div class="px-4 py-3 border-b border-black/5 flex justify-between"><span>🔔 Уведомления от бота</span><span class="hint">Включены</span></div>
-    <div class="px-4 py-3 flex justify-between"><span>🕒 Часовой пояс</span><span class="hint">Europe/Moscow</span></div>
-  </div>
-  <div class="hint text-xs px-5">Имя и аватар — из Telegram</div>`;
-}
-
-const bodies = { shopping: shoppingBody, pets: petsBody, 'pets/buick': () => petCardBody(), calendar: calendarBody, goals: goalsBody, settings: settingsBody };
-const titles = { shopping: 'Покупки', pets: 'Питомцы', 'pets/buick': 'Бьюик', calendar: 'Календарь', goals: 'Цели', settings: 'Настройки' };
-const mainActions = { shopping: 'Добавить позицию', pets: 'Добавить питомца', 'pets/buick': 'Новая запись', calendar: 'Новое событие', goals: 'Пополнить цель', settings: '' };
-
-function variantA(r) {
-  const current = r || localStorage.getItem('proto-last-tab') || 'shopping';
-  if (!r) return go(current, { replace: true });
-  const tab = current.split('/')[0];
-  if (modules.some(m => m.id === tab)) localStorage.setItem('proto-last-tab', tab);
-  return {
-    html: `${header(titles[current], { back: current.includes('/') || current === 'settings', gear: true })}
-      <div class="pb-24">${bodies[current]()}</div>
-      <nav class="tabbar fixed bottom-0 inset-x-0 grid grid-cols-4">
-        ${modules.map(m => `<button data-go="${m.id}" class="py-2 flex flex-col items-center text-xs ${tab === m.id ? 'accent' : 'hint'}">${icon(m.icon)}${m.title}</button>`).join('')}
-      </nav>`,
-    back: current.includes('/') || current === 'settings',
-    main: '',
-  };
-}
-
-function variantB(r) {
-  if (!r) {
-    const p = data.pet;
-    const toBuy = data.lists.reduce((s, l) => s + l.items.filter(i => !i.bought).length, 0);
-    return {
-      html: `${header('Сегодня', { gear: true })}
-        <div class="hint text-sm px-4 mb-3">Сб, 4 октября · ${data.family}</div>
-        <div class="card mx-4 mb-3 p-4" data-go="calendar"><div class="flex justify-between mb-1"><span class="font-semibold">📅 Сегодня</span>${icon('chevron-right')}</div><div>19:00 Созвон с мамой</div><div class="hint text-sm">Дальше: ДР тёщи 15 окт</div></div>
-        <div class="card mx-4 mb-3 p-4" data-go="pets/buick"><div class="flex justify-between mb-1"><span class="font-semibold">🐕 Бьюик</span>${icon('chevron-right')}</div><div>Покормлен ${p.today.feedings} раз · гуляли в ${p.today.lastWalk}</div><div class="overdue text-sm">🐛 Клещи — просрочено</div>
-          <div class="flex gap-2 mt-3"><button class="btn-ghost flex-1">🍖 Покормили</button><button class="btn-ghost flex-1">🦮 Погуляли</button></div></div>
-        <div class="card mx-4 mb-3 p-4" data-go="shopping"><div class="flex justify-between mb-1"><span class="font-semibold">🛒 Купить</span>${icon('chevron-right')}</div><div>${toBuy} позиций в ${data.lists.length} списках</div><div class="hint text-sm">Молоко, хлеб, яйца, корм…</div></div>
-        <div class="card mx-4 mb-3 p-4" data-go="goals"><div class="flex justify-between mb-1"><span class="font-semibold">💰 Цели</span>${icon('chevron-right')}</div><div>Отпуск в Турции — 50%</div><div class="hint text-sm">Всего накоплено ${money(230000)}</div></div>`,
-      back: false,
-      main: '',
-    };
-  }
-  return { html: `${header(titles[r], { back: true })}<div class="pb-8">${bodies[r]()}</div>`, back: true, main: '' };
-}
-
-function variantC(r) {
-  const current = r || 'shopping';
-  if (!r) return go(current, { replace: true });
-  const tab = current.split('/')[0];
-  const sub = current.includes('/') || current === 'settings';
-  const action = mainActions[current];
-  return {
-    html: `<div class="sticky top-0 z-10 pt-3 pb-2" style="background:var(--bg2)">
-        <div class="flex gap-2 overflow-x-auto px-4 pr-24">
-          ${modules.map(m => `<button data-go="${m.id}" class="chip ${tab === m.id ? 'on' : ''}">${m.title}</button>`).join('')}
-          ${inTelegram ? '' : `<button data-go="settings" class="chip ${current === 'settings' ? 'on' : ''}">${icon('settings')}</button>`}
-        </div>
-      </div>
-      ${sub ? header(titles[current], { back: true }) : ''}
-      <div class="pb-24">${current === 'pets/buick' ? petCardBody(false) : bodies[current]()}</div>
-      ${!inTelegram && action ? `<div class="fixed bottom-0 inset-x-0 p-3" style="background:var(--bg2)"><button class="btn w-full">${action}</button></div>` : ''}`,
-    back: sub,
-    main: current === 'pets/buick' ? '🍖 Покормили' : action,
-  };
-}
-
-function strangerScreen() {
-  const form = route() === 'request';
-  return { html: `<div class="px-6 pt-16 text-center">
-    <div class="text-5xl mb-4">🏡</div>
-    <h1 class="text-2xl font-bold mb-2">${form ? 'Создать свою семью' : 'Family Hub работает по приглашениям'}</h1>
-    ${form
-      ? `<p class="hint mb-4">Заявку рассмотрит оператор. Ответ придёт сообщением от бота.</p>
-         <input class="card w-full p-3 mb-3" placeholder="Название семьи, например «Гущины»">
-         <button class="btn w-full">Отправить заявку</button>`
-      : `<p class="hint mb-6">Попросите родственника прислать ссылку-приглашение из приложения — или подайте заявку на свою семью.</p>
-         <button class="btn-ghost w-full mb-2">У меня есть приглашение</button>
-         <button class="btn w-full" data-go="request">Создать свою семью</button>`}
-  </div>`, back: form, main: '' };
-}
-
-function inviteScreen() {
-  return { html: `<div class="px-6 pt-16 text-center">
-    <div class="w-20 h-20 mx-auto rounded-full bg-pink-200 grid place-items-center text-3xl mb-4">👩</div>
-    <h1 class="text-2xl font-bold mb-2">Маша зовёт вас в семью «${data.family}»</h1>
-    <p class="hint mb-6">Общие покупки, календарь, цели и уход за Бьюиком. Бот будет присылать напоминания.</p>
-    <button class="btn w-full mb-2">Вступить</button>
-    <button class="btn-ghost w-full">Не сейчас</button>
-  </div>`, back: false, main: '' };
-}
+const screens = {
+  feed: feedScreen, plans: plansScreen, calendar: calendarScreen, pet: petScreen, goals: goalsScreen, profile: profileScreen,
+  'profile/tabs': tabsScreen, 'pet/settings': petSettingsScreen,
+};
 
 function render() {
-  const s = state();
-  const r = route();
-  const view = s === 'stranger' ? strangerScreen() : s === 'invite' ? inviteScreen() : ({ A: variantA, B: variantB, C: variantC })[variant()](r);
-  if (!view) return;
-  document.getElementById('app').innerHTML = view.html;
+  document.body.className = platform();
+  document.documentElement.classList.toggle('dark-fallback', theme() === 'dark');
+  let r = route();
+  if (!r) return go(tabs[0], { replace: true });
+  const [top, sub] = r.split('/');
+  const html = top === 'plans' && sub ? planScreen(sub) : (screens[r] || screens[top] || feedScreen)();
+  document.getElementById('app').innerHTML = html + tabbar(top);
   renderProtoBar();
-  if (window.lucide) lucide.createIcons();
-  if (tg) {
-    view.back ? tg.BackButton.show() : tg.BackButton.hide();
-    if (view.main) { tg.MainButton.setText(view.main); tg.MainButton.show(); } else tg.MainButton.hide();
-    tg.SettingsButton?.show();
-  }
+  window.lucide?.createIcons();
+  if (tg) { sub ? tg.BackButton.show() : tg.BackButton.hide(); tg.MainButton.hide(); tg.SettingsButton?.show(); }
 }
 
 function renderProtoBar() {
-  const v = variant();
-  document.getElementById('proto-bar').innerHTML = `
-    <button data-proto="prev">‹</button><span>${v} · ${variants[v]}</span><button data-proto="next">›</button>
-    <select data-proto="state">${Object.entries(states).map(([k, t]) => `<option value="${k}" ${state() === k ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
-}
-
-function cycle(dir) {
-  const keys = Object.keys(variants);
-  const next = keys[(keys.indexOf(variant()) + dir + keys.length) % keys.length];
-  const p = params(); p.set('variant', next);
-  history.replaceState(null, '', base + '?' + p.toString());
-  render();
+  const opt = (name, values, cur) => `<select data-param="${name}">${values.map(([v, t]) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+  document.getElementById('proto-bar').innerHTML = `<span>v2</span>${opt('platform', [['android', 'Android'], ['ios', 'iOS']], platform())}${inTelegram ? '' : opt('theme', [['light', 'Светлая'], ['dark', 'Тёмная']], theme())}`;
 }
 
 document.addEventListener('click', e => {
-  const proto = e.target.closest('[data-proto]');
-  if (proto?.dataset.proto === 'prev') return cycle(-1);
-  if (proto?.dataset.proto === 'next') return cycle(1);
   const nav = e.target.closest('[data-go]');
   if (nav) { tg?.HapticFeedback?.selectionChanged(); return go(nav.dataset.go); }
-  if (e.target.closest('[data-action="back"]')) return history.back();
-  if (e.target.closest('.btn, .btn-ghost')) tg?.HapticFeedback?.impactOccurred('light');
+  const chip = e.target.closest('[data-feed]');
+  if (chip) return setParam('feed', chip.dataset.feed);
+  const mv = e.target.closest('[data-move]');
+  if (mv) {
+    const [id, d] = mv.dataset.move.split(':'); const i = tabs.indexOf(id); const j = i + Number(d);
+    [tabs[i], tabs[j]] = [tabs[j], tabs[i]]; saveTabs(tabs); return render();
+  }
+  if (e.target.closest('.btn')) tg?.HapticFeedback?.impactOccurred('light');
 });
-document.addEventListener('change', e => { if (e.target.dataset.proto === 'state') setParam('state', e.target.value); });
-document.addEventListener('keydown', e => {
-  if (e.target.closest('input, textarea, select, [contenteditable]')) return;
-  if (e.key === 'ArrowLeft') cycle(-1);
-  if (e.key === 'ArrowRight') cycle(1);
+document.addEventListener('change', e => {
+  if (e.target.dataset.param) return setParam(e.target.dataset.param, e.target.value);
+  const id = e.target.dataset.toggle;
+  if (!id) return;
+  if (e.target.checked && tabs.length >= 4) { e.target.checked = false; return tg?.showAlert ? tg.showAlert('Максимум 4 раздела + Профиль') : alert('Максимум 4 раздела + Профиль'); }
+  if (!e.target.checked && tabs.length <= 2) { e.target.checked = true; return tg?.showAlert ? tg.showAlert('Минимум 2 раздела') : alert('Минимум 2 раздела'); }
+  tabs = e.target.checked ? [...tabs, id] : tabs.filter(t => t !== id);
+  saveTabs(tabs); render();
 });
 window.addEventListener('popstate', render);
 tg?.BackButton.onClick(() => history.back());
-tg?.SettingsButton?.onClick(() => go('settings'));
-tg?.MainButton.onClick(() => tg.showAlert?.(`PROTOTYPE: «${tg.MainButton.text}» — тут откроется форма`));
+tg?.SettingsButton?.onClick(() => go('profile'));
+tg?.onEvent?.('themeChanged', render);
 
 render();
 </script>
