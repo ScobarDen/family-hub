@@ -56,6 +56,24 @@ _Avoid_: Entry type, category
 The date by which a vaccination, treatment or vet visit should be repeated, set on the Care Entry that precedes it.
 _Avoid_: Deadline, next date
 
+### Plans
+
+**Plan**:
+Something the Family intends to get done, optionally by a due date; it ends up Completed.
+_Avoid_: Task, todo, checklist
+
+**Subplan**:
+A step inside a Plan; Plans have exactly one level of Subplans.
+_Avoid_: Subtask, item, step
+
+**Assignee**:
+The one Member responsible for a Plan or Subplan; optional.
+_Avoid_: Owner, executor, responsible
+
+**Completed**:
+The state of a Plan or Subplan a Member has marked as done; a Plan becomes Completed when all its Subplans are.
+_Avoid_: Done, finished, closed
+
 ### Savings
 
 **Savings Goal**:
@@ -104,7 +122,7 @@ _Avoid_: Notification, alert, push
 
 **Recipient**:
 A Member a Reminder is delivered to.
-_Avoid_: Subscriber, assignee, target
+_Avoid_: Subscriber, target
 
 ### Visibility
 
