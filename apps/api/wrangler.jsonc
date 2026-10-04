@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "family-hub-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "family-hub",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "secrets": {
+    "required": ["BOT_TOKEN", "JWT_SECRET", "WEBHOOK_SECRET", "OPERATOR_TELEGRAM_ID"],
+  },
+  "triggers": {
+    "crons": ["* * * * *"],
+  },
+}
