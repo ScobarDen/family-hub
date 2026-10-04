@@ -56,20 +56,6 @@ _Avoid_: Entry type, category
 The date by which a vaccination, treatment or vet visit should be repeated, set on the Care Entry that precedes it.
 _Avoid_: Deadline, next date
 
-### Shopping
-
-**Shopping List**:
-A named list of things a Family intends to buy; it is either Shared or Private as a whole.
-_Avoid_: Cart, basket, checklist
-
-**Shopping Item**:
-One line in a Shopping List: a free-text name with an optional free-text amount and note.
-_Avoid_: Product, goods, entry
-
-**Bought**:
-The state of a Shopping Item once a Member has marked it as purchased; it can be undone.
-_Avoid_: Done, completed, checked
-
 ### Savings
 
 **Savings Goal**:
