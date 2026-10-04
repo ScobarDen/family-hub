@@ -30,6 +30,14 @@ _Avoid_: Application, signup, registration
 A single-use, expiring link through which a Member brings a new person into their Family.
 _Avoid_: Invite code, referral, invitation token
 
+**Photo**:
+A picture belonging to the Family, kept in its Photo Storage; it may appear in several Albums or none.
+_Avoid_: Image, picture, attachment
+
+**Album**:
+A named, always Shared selection of the Family's Photos; each Pet also has an automatic Album of its Care Entry photos.
+_Avoid_: Gallery, folder, collection
+
 **Photo Storage**:
 A Family's own private Telegram channel, connected by its Family Owner, where the Family's photos are kept.
 _Avoid_: Bucket, gallery, media library
