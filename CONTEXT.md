@@ -56,6 +56,20 @@ _Avoid_: Entry type, category
 The date by which a vaccination, treatment or vet visit should be repeated, set on the Care Entry that precedes it.
 _Avoid_: Deadline, next date
 
+### Feed
+
+**Feed**:
+The Family's chronology: what is overdue, what is upcoming and what Members have done.
+_Avoid_: Timeline, event feed, log
+
+**Activity**:
+A past fact in the Feed that a Member did something, such as a Care Entry, a Completed Plan or a Contribution.
+_Avoid_: Event, action, log entry
+
+**Upcoming**:
+A dated thing ahead of the Family shown in the Feed: an Event Occurrence, a Plan due date, a Pet's Due Date or a Reminder.
+_Avoid_: Agenda, schedule
+
 ### Plans
 
 **Plan**:
