@@ -4,12 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "prepare": "vp config --no-agent",
+    "fix": "vp check --fix && vp check --fix",
     "feod": "feod-analyzer analyze apps/web --fail-on warning --formats json && feod-analyzer analyze apps/api --fail-on warning --formats json",
     "ready": "vp check && vp run feod && vp run -r test && vp run -r build"
   },
   "devDependencies": {
     "@feod/analyzer": "catalog:",
+    "@stylistic/eslint-plugin": "catalog:",
     "@types/node": "catalog:",
+    "eslint-plugin-unicorn": "catalog:",
     "vite-plus": "catalog:"
   },
   "devEngines": {

@@ -1,3 +1,7 @@
+## Code style
+
+The linter and formatter (`vite.config.ts`) set the style: run `vp run fix` before committing; the pre-commit hook does the same on staged files.
+
 ## Agent skills
 
 ### Issue tracker

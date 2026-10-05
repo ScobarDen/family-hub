@@ -6,6 +6,7 @@ export type FakeClock = Clock & {
 
 export function createFakeClock(iso: string): FakeClock {
   let current = Date.parse(iso);
+
   return {
     now: () => current,
     set(next) {
