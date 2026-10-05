@@ -1,0 +1,25 @@
+{
+  "name": "family-hub",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "feod": "feod-analyzer analyze apps/web --fail-on warning --formats json && feod-analyzer analyze apps/api --fail-on warning --formats json",
+    "ready": "vp check && vp run feod && vp run -r test && vp run -r build"
+  },
+  "devDependencies": {
+    "@feod/analyzer": "catalog:",
+    "@types/node": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.9.1",
+      "onFail": "download"
+    }
+  },
+  "engines": {
+    "node": ">=24.11.0"
+  }
+}

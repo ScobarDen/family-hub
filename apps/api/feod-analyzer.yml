@@ -1,0 +1,5 @@
+srcDir: src
+outputDir: dist/feod
+aliases:
+  "@": src
+tsconfig: tsconfig.worker.json
