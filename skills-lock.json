@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "skills": {
+    "cloudflare": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/cloudflare/SKILL.md",
+      "computedHash": "6f0a70840cad114f020e5950874f255b22e669f07036cf4f81d8f733ae0233a0"
+    },
+    "code-craft": {
+      "source": "ScobarDen/scobar-skills",
+      "sourceType": "github",
+      "skillPath": "skills/workflow/code-craft/SKILL.md",
+      "computedHash": "e5a07b94428db94d978ed3b15f102ceb760b3818a2821dd4193d39ffdeec1d08"
+    },
+    "feod": {
+      "source": "ScobarDen/scobar-skills",
+      "sourceType": "github",
+      "skillPath": "skills/architecture/feod/SKILL.md",
+      "computedHash": "71c5f8573ed35eeb8e2bf40565e6e6693e4c207bf85d871ce5df4496c593f2c7"
+    },
+    "frontend-boundaries": {
+      "source": "ScobarDen/scobar-skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend/frontend-boundaries/SKILL.md",
+      "computedHash": "8b2e0a4fe48e74c7746ba831bbab677ef7b57787b3673cc8e0bb05c6df859bb6"
+    },
+    "frontend-mvvm": {
+      "source": "ScobarDen/scobar-skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend/frontend-mvvm/SKILL.md",
+      "computedHash": "f48f87dafa47edeaf35242adba4a7e26daeb7b490fb47d9e1089b908fb9a4051"
+    },
+    "hono": {
+      "source": "honojs/skills",
+      "sourceType": "github",
+      "skillPath": "skills/hono/SKILL.md",
+      "computedHash": "e3f141a41800df815000216a53510fe6f888629471c214706cc05adff27297fb"
+    },
+    "mvvm": {
+      "source": "ScobarDen/scobar-skills",
+      "sourceType": "github",
+      "skillPath": "skills/architecture/mvvm/SKILL.md",
+      "computedHash": "1c27bd80f12efe3324a8ab3969bdc8d5aa5bdd839cd1abb2c1c61472a10ed739"
+    },
+    "pnpm": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/pnpm/SKILL.md",
+      "computedHash": "d1bd6f4fd38ff1ba33b857223c58a832d1cd5b488163ba0d389db449be472603"
+    },
+    "react-hooks-best-practices": {
+      "source": "siberiacancode/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/react-hooks-best-practices/SKILL.md",
+      "computedHash": "ba38b519221f42e702dfcf4460750f7cc355b59f3cdab9705b8a7c514a7fcaea"
+    },
+    "reactuse": {
+      "source": "siberiacancode/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/reactuse/SKILL.md",
+      "computedHash": "5bd80dbb03674c74fe8b3cc207b910d9bcc737cb382ad9fb8c92b2ea8247a789"
+    },
+    "reatom": {
+      "source": "reatom/reatom",
+      "sourceType": "github",
+      "skillPath": "skills/reatom/SKILL.md",
+      "computedHash": "de9586017eddbb781a9fdf5233636c2305892776363fa5d4e12517bea6ba82b4"
+    },
+    "reatom-async": {
+      "source": "reatom/reatom",
+      "sourceType": "github",
+      "skillPath": "skills/reatom-async/SKILL.md",
+      "computedHash": "f0dcf99d9d9338f5e6ab2a38a8d2e67823e0d8a15fce1d5a013b5c8ed01a5799"
+    },
+    "reatom-field-notes": {
+      "source": "ScobarDen/scobar-skills",
+      "sourceType": "github",
+      "skillPath": "skills/reatom/reatom-field-notes/SKILL.md",
+      "computedHash": "33a67dfaed65f3ab867f3edba81539976d6f9ef8072ac69c3891b021998db7b3"
+    },
+    "reatom-review": {
+      "source": "reatom/reatom",
+      "sourceType": "github",
+      "skillPath": "skills/reatom-review/SKILL.md",
+      "computedHash": "0bcb4b58892d94667805bc4eb1a61391bfe8b0ff1f1a3b23329d24fa48d36cc7"
+    },
+    "reatom-testing": {
+      "source": "ScobarDen/scobar-skills",
+      "sourceType": "github",
+      "skillPath": "skills/reatom/reatom-testing/SKILL.md",
+      "computedHash": "67d9b55af86a32e5d2a1c8e0ad0eaaedab335b7b54709fb28efde6e6ed9452d8"
+    },
+    "role-files": {
+      "source": "ScobarDen/scobar-skills",
+      "sourceType": "github",
+      "skillPath": "skills/architecture/role-files/SKILL.md",
+      "computedHash": "34c7e9b565a9fe4316288fe9e56b031f12ac1f074704d51ab998c15e6228398e"
+    },
+    "shadcn": {
+      "source": "shadcn-ui/ui",
+      "sourceType": "github",
+      "skillPath": "skills/shadcn/SKILL.md",
+      "computedHash": "f615de216e085a84e31593ad0fa9062232adc40cd87b7c7ab2b8e49abf6500be"
+    },
+    "test-craft": {
+      "source": "ScobarDen/scobar-skills",
+      "sourceType": "github",
+      "skillPath": "skills/workflow/test-craft/SKILL.md",
+      "computedHash": "1dc788ed1142500fdf3d901ca0de22d5270ffbe08bffc3176bb2f8054630e943"
+    },
+    "vite": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/vite/SKILL.md",
+      "computedHash": "88ee465fd10f711efecc76e91e96accae2b229dda371614dcf219099c264a486"
+    },
+    "vitest": {
+      "source": "antfu/skills",
+      "sourceType": "github",
+      "skillPath": "skills/vitest/SKILL.md",
+      "computedHash": "21af2b13d47d31f3094b61c0f41abc8d6a7eed0df3c9a4029ea671f6978b7209"
+    },
+    "workers-best-practices": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/workers-best-practices/SKILL.md",
+      "computedHash": "e1c30e93854345114dfa6a0a077363119eb99c03e5c64a8f2109349802e1f2aa"
+    },
+    "wrangler": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "skillPath": "skills/wrangler/SKILL.md",
+      "computedHash": "6d2bade1438d89034a750b1ddf30d0e5b62823306eccf85a5b25ccc4352ff8a9"
+    }
+  }
+}
