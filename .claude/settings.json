@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "skillOverrides": {
+    "vue": "off",
+    "pinia": "off",
+    "mobx-mvvm": "off",
+    "qt-mvvm": "off",
+    "qt-cmake-boundaries": "off",
+    "unocss": "off",
+    "antfu-design": "off",
+    "antfu": "off",
+    "reatom-jsx": "off"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(vp check)",
+      "Bash(vp check:*)",
+      "Bash(vp run fix)",
+      "Bash(vp run feod)",
+      "Bash(vp run ready)",
+      "Bash(vp run -r test)",
+      "Bash(vp run -r build)",
+      "Bash(vp test:*)",
+      "Bash(vp run @family-hub/api#cf-typegen)",
+      "Bash(vp run @family-hub/api#db:generate)",
+      "Bash(gh issue view:*)",
+      "Bash(gh issue list:*)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr list:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(gh pr checks:*)"
+    ]
+  }
+}

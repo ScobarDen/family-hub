@@ -1,6 +1,6 @@
 # Family Hub
 
-A Telegram Mini App in which a family runs its shared household: money goals, events, reminders, shopping and the care of its pets.
+A Telegram Mini App in which a family runs its shared household: plans, events and reminders, savings goals, recipes, photo albums and the care of its pets.
 
 ## Language
 
