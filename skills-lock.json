@@ -37,6 +37,12 @@
       "skillPath": "skills/hono/SKILL.md",
       "computedHash": "e3f141a41800df815000216a53510fe6f888629471c214706cc05adff27297fb"
     },
+    "integration-test-grill": {
+      "source": "siberiacancode/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/integration-test-grill/SKILL.md",
+      "computedHash": "b2541417263dfa885182a751b42efda612bc82304c955887c47902600536d0e6"
+    },
     "mvvm": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
@@ -108,6 +114,24 @@
       "sourceType": "github",
       "skillPath": "skills/workflow/test-craft/SKILL.md",
       "computedHash": "1dc788ed1142500fdf3d901ca0de22d5270ffbe08bffc3176bb2f8054630e943"
+    },
+    "testcase-grill": {
+      "source": "siberiacancode/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/testcase-grill/SKILL.md",
+      "computedHash": "7145025aa7284432344ec549b1e9abce73499c6ec657dc0df6f47018cd45568c"
+    },
+    "testing-best-practices": {
+      "source": "siberiacancode/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/testing-best-practices/SKILL.md",
+      "computedHash": "01dbbbdd8f81e10ac6a6b21676132ebfc4e5d66f6ce00649e80e219dca7663c0"
+    },
+    "unit-test-grill": {
+      "source": "siberiacancode/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/unit-test-grill/SKILL.md",
+      "computedHash": "27eec93f9d7ffb0ccd779fbd1e887a1b55389b49b815c26837a568c233331d26"
     },
     "vite": {
       "source": "antfu/skills",

@@ -17,7 +17,8 @@ Dependencies come from the pnpm catalog in `pnpm-workspace.yaml`, added with `vp
 
 Load these before writing code in the area; project rules above and in each app's `AGENTS.md` win over any skill.
 
-- **Anywhere**: `code-craft` (names, signatures, placement), `test-craft` and `vitest` (tests), `feod` and `role-files` (where a file goes), `vite` and `pnpm` (toolchain).
+- **Anywhere**: `code-craft` (names, signatures, placement), `feod` and `role-files` (where a file goes), `vite` and `pnpm` (toolchain).
+- **Tests**: `test-craft`, `testing-best-practices` and `vitest`; plan coverage with `unit-test-grill` / `integration-test-grill`, manual QA cases with `testcase-grill`. Automated tests go through the project's seams only — the Worker harness in `apps/api`, ViewModels and models in `apps/web` — while Playwright and component tests wait until the project adopts them.
 - **`apps/web`**: `frontend-mvvm`, `mvvm`, `frontend-boundaries`, `reatom` (+ `reatom-async`, `reatom-field-notes`, `reatom-testing`, `reatom-review` by task), `react-hooks-best-practices`, `reactuse`, `shadcn`.
 - **`apps/api`**: `hono`, `workers-best-practices`, `wrangler`, `cloudflare`.
 - **Telegram** (Mini App wrapper, initData, `start_param`, bot, photos): `telegram-mini-app`.
