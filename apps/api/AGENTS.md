@@ -31,7 +31,7 @@ One Cloudflare Worker serving `/api/*`, `/bot/webhook` and the per-minute cron. 
 ## Tooling
 
 - `vp run @family-hub/api#dev` runs plain `wrangler dev`; deploy is plain `wrangler deploy`. The Worker builds without the Cloudflare Vite plugin, which has open bugs with Vite+.
-- Secrets (`BOT_TOKEN`, `JWT_SECRET`, `WEBHOOK_SECRET`, `OPERATOR_TELEGRAM_ID`) go through `wrangler secret`, locally `.dev.vars`. After editing `wrangler.jsonc` run `vp run @family-hub/api#cf-typegen` and commit `worker-configuration.d.ts`.
+- Secrets (`BOT_TOKEN`, `JWT_SECRET`, `WEBHOOK_SECRET`, `OPERATOR_TELEGRAM_ID`) live in the GitHub environment `production` and reach the Worker with each deploy (`wrangler deploy --secrets-file`, see [docs/deploy.md](../../docs/deploy.md)), locally `.dev.vars`. After editing `wrangler.jsonc` run `vp run @family-hub/api#cf-typegen` and commit `worker-configuration.d.ts`.
 
 ## Tests
 

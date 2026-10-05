@@ -4,13 +4,17 @@ A merge into `main` releases Family Hub through `.github/workflows/deploy.yml`. 
 
 1. **`deploy-api`** (GitHub environment `production`)
    1. `wrangler d1 migrations apply family-hub --remote` — expand-only, see `apps/api/migrations/README.md`.
-   2. Secrets from the `production` environment are written to a secrets file.
+   2. Secrets from the `production` environment are written to a secrets file (the run fails first if any secret or variable is empty).
    3. `wrangler deploy --secrets-file …` — the secrets ride with the new version.
    4. Bot registration, idempotent: `setWebhook` with the secret token, `setMyCommands`, `setChatMenuButton`.
    5. Smoke check: `GET $API_URL/api/health` must answer `{"status":"ok"}`.
 2. **`deploy-web`** — builds `apps/web` and publishes it to GitHub Pages.
 
-Any failing step stops the chain: a failed migration or deploy leaves the previous Worker live, and the Mini App is published only after the Worker passed its smoke check. GitHub emails the author of the push about a failed run (Settings → Notifications → Actions: «Notify me only for failed workflows», email on).
+Any failing step stops the chain. A failed configuration check, migration or `wrangler deploy` leaves the previous Worker live, and the Mini App is published only after the Worker passed its smoke check. A failure in bot registration or the smoke check comes **after** the new Worker went live: production then runs the new Worker with the previous Mini App, and rolling back is a manual decision.
+
+GitHub emails the person who triggered a failed run (Settings → Notifications → Actions: «Notify me only for failed workflows», email on). When someone else triggered it — a Renovate automerge above all — the `report-failure` job opens an issue assigned to the repository owner, which sends the email instead.
+
+Secrets are upserted: one missing from the `production` environment fails the run, but removing a secret for good also needs `vp exec wrangler secret delete <NAME>` in `apps/api`.
 
 There is no automatic rollback. To roll back the Worker: `vp exec wrangler rollback` in `apps/api` (or Workers → Deployments in the dashboard), or revert the commit on `main`. The database is never rolled back by hand during an incident; D1 Time Travel keeps 7 days if it truly has to be.
 
