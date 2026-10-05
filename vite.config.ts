@@ -202,9 +202,6 @@ export default defineConfig({
       "import/first": "error",
       "import/newline-after-import": "error",
       "import/no-default-export": "error",
-
-      // `export {}` keeps a placeholder module non-empty for unicorn/no-empty-file.
-      "unicorn/require-module-specifiers": "off",
     },
     overrides: [
       {
