@@ -1,0 +1,116 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  WRANGLER_SEND_METRICS: "false"
+
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      API_URL: ${{ vars.API_URL }}
+      MINI_APP_URL: ${{ vars.MINI_APP_URL }}
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version-file: .node-version
+          cache: true
+          run-install: false
+
+      - run: vp install --frozen-lockfile
+
+      - name: Apply D1 migrations
+        run: vp exec wrangler d1 migrations apply family-hub --remote
+
+      - name: Sync secrets from the production environment
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          OPERATOR_TELEGRAM_ID: ${{ secrets.OPERATOR_TELEGRAM_ID }}
+        run: |
+          jq -n 'env | {BOT_TOKEN, JWT_SECRET, WEBHOOK_SECRET, OPERATOR_TELEGRAM_ID}' \
+            > "$RUNNER_TEMP/secrets.json"
+
+      # Secrets ride with the new version, so a failed deploy leaves the live one untouched.
+      - name: Deploy Worker
+        run: vp exec wrangler deploy --secrets-file "$RUNNER_TEMP/secrets.json"
+
+      - name: Register bot webhook, commands and menu button
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+        run: |
+          bot() {
+            curl -fsS --retry 3 -X POST "https://api.telegram.org/bot$BOT_TOKEN/$1" \
+              -H 'content-type: application/json' -d "$2" | jq -e '.ok' > /dev/null
+          }
+
+          bot setWebhook "$(jq -n '{
+            url: (env.API_URL + "/bot/webhook"),
+            secret_token: env.WEBHOOK_SECRET,
+            allowed_updates: ["message", "callback_query", "my_chat_member"]
+          }')"
+          bot setMyCommands "$(jq -n '{
+            commands: [{command: "start", description: "Открыть Family Hub"}]
+          }')"
+          bot setChatMenuButton "$(jq -n '{
+            menu_button: {type: "web_app", text: "Открыть", web_app: {url: env.MINI_APP_URL}}
+          }')"
+
+      - name: Smoke check health
+        run: |
+          curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "$API_URL/api/health" \
+            | jq -e '.status == "ok"'
+
+  deploy-web:
+    needs: deploy-api
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version-file: .node-version
+          cache: true
+          run-install: false
+
+      - run: vp install --frozen-lockfile
+
+      - uses: actions/configure-pages@v6
+
+      - name: Build Mini App
+        run: vp run @family-hub/web#build
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: apps/web/dist
+
+      - id: pages
+        uses: actions/deploy-pages@v5

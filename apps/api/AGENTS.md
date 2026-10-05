@@ -24,7 +24,7 @@ One Cloudflare Worker serving `/api/*`, `/bot/webhook` and the per-minute cron. 
 
 ## Database
 
-- The schema is `src/common/db/schema.ts`. After changing it run `vp run @family-hub/api#db:generate`, commit the generated SQL in `migrations/` and review it like code. Production applies it with `wrangler d1 migrations apply`.
+- The schema is `src/common/db/schema.ts`. After changing it run `vp run @family-hub/api#db:generate`, commit the generated SQL in `migrations/` and review it like code. The deploy workflow applies it with `wrangler d1 migrations apply --remote` before the new Worker goes live, so every migration follows the expand / contract rule in [migrations/README.md](migrations/README.md).
 - Moments are `INTEGER` epoch ms UTC, floating dates `TEXT` `YYYY-MM-DD`, zones IANA names. Every Family table has `family_id`, `created_at`, `created_by`, `updated_at`. Deletion is physical, cascading from Family and from parent to child; references to a Member never cascade.
 - Care Entry kind-specific fields live in the `details` JSON validated by the contract schema; promote a field to a column only to filter, sort or chart on it ([ADR 0001](../../docs/adr/0001-care-entries-single-table-with-json-details.md)).
 
