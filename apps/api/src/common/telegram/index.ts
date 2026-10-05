@@ -5,4 +5,4 @@ export {
   type BotMethod,
   type BotParams,
   type BotResult,
-} from "./bot-api.ts";
+} from "./bot.api.ts";

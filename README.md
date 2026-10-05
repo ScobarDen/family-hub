@@ -32,3 +32,7 @@ vp run ready                   # everything CI runs
 ## Worker tests
 
 `apps/api/test/worker-harness.ts` runs the whole Worker in Node: HTTP requests, bot webhook updates and cron ticks go through the real routes and Drizzle on in-memory SQLite with the production migrations. Only the Telegram Bot API (`fake-bot-api.ts`) and the clock (`fake-clock.ts`) are fakes.
+
+The in-memory database is Node's built-in `node:sqlite` behind a small D1-compatible binding (`sqlite-d1.ts`), so the Worker gets `env.DB` exactly as in production and no native module has to be built. `sqlite-d1.test.ts` pins the D1 behaviour Drizzle relies on.
+
+Worker code is typechecked without Node types (`tsconfig.worker.json`); tests and configs get them (`tsconfig.node.json`).

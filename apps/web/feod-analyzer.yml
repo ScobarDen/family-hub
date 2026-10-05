@@ -2,4 +2,4 @@ srcDir: src
 outputDir: dist/feod
 aliases:
   "@": src
-tsconfig: tsconfig.json
+tsconfig: tsconfig.app.json

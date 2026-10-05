@@ -27,7 +27,8 @@ const restrict = (
   "no-restricted-imports": ["error", { paths: allowReactuse ? [] : [reactuse], patterns }],
 });
 
-const web = (glob: string) => `apps/web/src/${glob}`;
+const webSrc = (glob: string) => `apps/web/src/${glob}`;
+const apiSrc = (glob: string) => `apps/api/src/${glob}`;
 
 const generated = ["apps/api/worker-configuration.d.ts", "apps/api/migrations/**"];
 
@@ -56,20 +57,20 @@ export default defineConfig({
         },
       },
       {
-        files: [web("app/main.tsx")],
+        files: [webSrc("app/main.tsx")],
         rules: restrict([deepImport, role("dto")]),
       },
-      { files: [web("**/*.dto.ts")], rules: restrict([deepImport, globalImport]) },
+      { files: [webSrc("**/*.dto.ts")], rules: restrict([deepImport, globalImport]) },
       {
-        files: [web("**/*.api.ts")],
+        files: [webSrc("**/*.api.ts")],
         rules: restrict([deepImport, globalImport, role("vm", "view")]),
       },
       {
-        files: [web("**/*.model.ts")],
+        files: [webSrc("**/*.model.ts")],
         rules: restrict([deepImport, globalImport, role("vm", "view", "dto")]),
       },
       {
-        files: [web("**/*.vm.ts")],
+        files: [webSrc("**/*.vm.ts")],
         rules: restrict([
           deepImport,
           globalImport,
@@ -78,8 +79,20 @@ export default defineConfig({
         ]),
       },
       {
-        files: [web("**/*.view.tsx")],
+        files: [webSrc("**/*.view.tsx")],
         rules: restrict([deepImport, globalImport, role("api", "dto")], { allowReactuse: true }),
+      },
+      {
+        files: [apiSrc("**/*.route.ts")],
+        rules: restrict([deepImport, globalImport, role("repo")]),
+      },
+      {
+        files: [apiSrc("**/*.service.ts")],
+        rules: restrict([deepImport, globalImport, role("route")]),
+      },
+      {
+        files: [apiSrc("**/*.repo.ts")],
+        rules: restrict([deepImport, globalImport, role("route", "service")]),
       },
     ],
   },

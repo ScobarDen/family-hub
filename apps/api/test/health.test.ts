@@ -1,5 +1,5 @@
 import { expect, test } from "vite-plus/test";
-import { startWorker } from "../../test/worker-harness.ts";
+import { startWorker } from "./worker-harness.ts";
 
 test("health check reports ok once the database answers", async () => {
   const worker = startWorker();

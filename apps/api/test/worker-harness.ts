@@ -8,8 +8,6 @@ const origin = "https://api.family-hub.test";
 
 type IncomingRequest = Request<unknown, IncomingRequestCfProperties>;
 
-export type TestWorker = ReturnType<typeof startWorker>;
-
 export function startWorker({ now = "2026-10-04T09:00:00Z" }: { now?: string } = {}) {
   const clock = createFakeClock(now);
   const bot = createFakeBotApi();

@@ -2,6 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "family-hub-api",
   "main": "src/index.ts",
+  "tsconfig": "tsconfig.worker.json",
   "compatibility_date": "2026-10-01",
   "d1_databases": [
     {

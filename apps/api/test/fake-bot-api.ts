@@ -10,11 +10,9 @@ import {
 type ChatId = number | string;
 type BotCall = { [M in BotMethod]: { method: M; params: BotParams<M> } }[BotMethod];
 
-export type FakeBotApi = ReturnType<typeof createFakeBotApi>;
-
 export function createFakeBotApi() {
   const calls: BotCall[] = [];
-  const blockedChats = new Set<ChatId>();
+  const blockedChats = new Set<string>();
   let pendingRetryAfterSeconds: number | undefined;
   let lastMessageId = 0;
 
@@ -37,7 +35,7 @@ export function createFakeBotApi() {
         throw new BotApiError(429, `Too Many Requests: retry after ${retryAfter}`, retryAfter);
       }
       const chatId = (params as { chat_id?: ChatId } | undefined)?.chat_id;
-      if (chatId !== undefined && blockedChats.has(chatId)) {
+      if (chatId !== undefined && blockedChats.has(String(chatId))) {
         throw new BotApiError(403, "Forbidden: bot was blocked by the user");
       }
       const call = { method, params } as BotCall;
@@ -51,11 +49,10 @@ export function createFakeBotApi() {
 
   return {
     api,
-    calls,
     sentMessages: () => paramsOf("sendMessage"),
     editedMessages: () => paramsOf("editMessageText"),
     blockChat(chatId: ChatId) {
-      blockedChats.add(chatId);
+      blockedChats.add(String(chatId));
     },
     rateLimitNextCall(retryAfterSeconds: number) {
       pendingRetryAfterSeconds = retryAfterSeconds;

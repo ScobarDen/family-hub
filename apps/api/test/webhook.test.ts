@@ -1,6 +1,6 @@
 import type { Update } from "@grammyjs/types";
 import { expect, test } from "vite-plus/test";
-import { startWorker } from "../../test/worker-harness.ts";
+import { startWorker } from "./worker-harness.ts";
 
 const update: Update = { update_id: 1 };
 

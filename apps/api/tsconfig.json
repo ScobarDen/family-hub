@@ -1,25 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "es2024",
-    "lib": ["es2024"],
-    "types": ["./worker-configuration.d.ts", "node"],
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "moduleDetection": "force",
-    "paths": {
-      "@/*": ["./src/*"]
-    },
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "erasableSyntaxOnly": true,
-    "noEmit": true,
-    "allowImportingTsExtensions": true,
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true,
-    "skipLibCheck": true
-  },
-  "include": ["src", "test", "vite.config.ts", "drizzle.config.ts"]
+  "files": [],
+  "references": [{ "path": "./tsconfig.worker.json" }, { "path": "./tsconfig.node.json" }]
 }

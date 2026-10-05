@@ -9,6 +9,7 @@
   },
   "devDependencies": {
     "@feod/analyzer": "catalog:",
+    "@types/node": "catalog:",
     "vite-plus": "catalog:"
   },
   "devEngines": {

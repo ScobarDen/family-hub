@@ -1,1 +1,1 @@
-export { systemClock, type Clock } from "./clock.ts";
+export { systemClock, type Clock } from "./clock.lib.ts";
