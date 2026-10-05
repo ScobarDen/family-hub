@@ -19,7 +19,8 @@ Toolchain is [Vite+](https://viteplus.dev) on pnpm; Node from `.node-version`.
 
 ```sh
 vp install
-vp check                       # format, lint (FEOD role matrix), typecheck
+vp check                       # format, lint (readability rules, FEOD role matrix), typecheck
+vp run fix                     # autofix: two passes of vp check --fix; the pre-commit hook runs it on staged files
 vp run feod                    # FEOD levels and deep imports
 vp run -r test
 vp run @family-hub/web#dev

@@ -1,9 +1,13 @@
 import { Hono } from "hono";
+
 import type { AppEnv } from "./app.types.ts";
 
-export const webhookRoute = new Hono<AppEnv>().post("/bot/webhook", (c) => {
-  if (c.req.header("x-telegram-bot-api-secret-token") !== c.env.WEBHOOK_SECRET) {
-    return c.body(null, 401);
+const unauthorizedStatus = 401;
+
+export const webhookRoute = new Hono<AppEnv>().post("/bot/webhook", (context) => {
+  if (context.req.header("x-telegram-bot-api-secret-token") !== context.env.WEBHOOK_SECRET) {
+    return context.body(null, unauthorizedStatus);
   }
-  return c.body(null, 200);
+
+  return context.body(null);
 });

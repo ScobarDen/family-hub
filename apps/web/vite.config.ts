@@ -1,5 +1,6 @@
 import { copyFile } from "node:fs/promises";
 import { join } from "node:path";
+
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite-plus";
 
@@ -9,7 +10,10 @@ function pagesSpaFallback(): Plugin {
     name: "pages-spa-fallback",
     apply: "build",
     async writeBundle({ dir }) {
-      if (!dir) return;
+      if (dir === undefined) {
+        return;
+      }
+
       await copyFile(join(dir, "index.html"), join(dir, "404.html"));
     },
   };

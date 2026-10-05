@@ -3,11 +3,14 @@ import type { ApiMethods } from "@grammyjs/types";
 type Methods = ApiMethods<Blob>;
 
 export type BotMethod = keyof Methods;
-export type BotParams<M extends BotMethod> = Parameters<Methods[M]>[0];
-export type BotResult<M extends BotMethod> = ReturnType<Methods[M]>;
+export type BotParams<Method extends BotMethod> = Parameters<Methods[Method]>[0];
+export type BotResult<Method extends BotMethod> = ReturnType<Methods[Method]>;
 
 export type BotApi = {
-  call<M extends BotMethod>(method: M, params: BotParams<M>): Promise<BotResult<M>>;
+  call<Method extends BotMethod>(
+    method: Method,
+    params: BotParams<Method>,
+  ): Promise<BotResult<Method>>;
 };
 
 export class BotApiError extends Error {
@@ -22,8 +25,8 @@ export class BotApiError extends Error {
   }
 }
 
-type BotApiResponse =
-  | { ok: true; result: unknown }
+type BotApiResponse<Result> =
+  | { ok: true; result: Result }
   | {
       ok: false;
       error_code: number;
@@ -39,11 +42,13 @@ export function createHttpBotApi(token: string): BotApi {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(params ?? {}),
       });
-      const body = (await response.json()) as BotApiResponse;
+      const body = await response.json<BotApiResponse<BotResult<typeof method>>>();
+
       if (!body.ok) {
         throw new BotApiError(body.error_code, body.description, body.parameters?.retry_after);
       }
-      return body.result as BotResult<typeof method>;
+
+      return body.result;
     },
   };
 }
