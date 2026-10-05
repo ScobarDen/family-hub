@@ -1,6 +1,6 @@
 # Family Hub
 
-Telegram Mini App for one family: feed, plans, calendar, pet, savings goals and albums. Domain glossary lives in [CONTEXT.md](CONTEXT.md), decisions in [docs/adr](docs/adr).
+Telegram Mini App for one family: feed, plans, calendar, pet, savings goals, recipes and albums. Domain glossary lives in [CONTEXT.md](CONTEXT.md), decisions in [docs/adr](docs/adr).
 
 ## Layout
 

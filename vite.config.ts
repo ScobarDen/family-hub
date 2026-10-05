@@ -42,6 +42,26 @@ function apiSource(glob: string): string {
 }
 
 const generated = ["apps/api/worker-configuration.d.ts", "apps/api/migrations/**"];
+const vendoredSkills = [".claude/skills/**", "skills-lock.json"];
+
+function isVendoredSkill(file: string): boolean {
+  const path = file.replaceAll("\\", "/");
+
+  return path.includes("/.claude/skills/") || path.endsWith("/skills-lock.json");
+}
+
+// Windows runs `vp` through a .cmd shim capped at 8191 characters, which a skills update overflows.
+function checkStagedFiles(files: readonly string[]): string[] {
+  const checked = files.filter((file) => !isVendoredSkill(file));
+
+  if (checked.length === 0) {
+    return [];
+  }
+
+  const command = `vp check --fix ${checked.map((file) => JSON.stringify(file)).join(" ")}`;
+
+  return [command, command];
+}
 
 const tests = ["**/*.test.{ts,tsx}"];
 const testCode = [...tests, "apps/*/test/**"];
@@ -63,7 +83,7 @@ const testSizeLimits: SizeLimits = {
 
 export default defineConfig({
   fmt: {
-    ignorePatterns: [...generated, "docs/research/**"],
+    ignorePatterns: [...generated, ...vendoredSkills, "docs/research/**"],
     sortImports: {
       groups: [
         "builtin",
@@ -79,10 +99,10 @@ export default defineConfig({
     },
   },
   staged: {
-    "*.{js,mjs,cjs,ts,tsx,json,jsonc,md,yaml,yml}": ["vp check --fix", "vp check --fix"],
+    "*.{js,mjs,cjs,ts,tsx,json,jsonc,md,yaml,yml}": checkStagedFiles,
   },
   lint: {
-    ignorePatterns: generated,
+    ignorePatterns: [...generated, ...vendoredSkills],
     plugins: ["eslint", "typescript", "unicorn", "oxc", "import"],
     categories: { correctness: "error", suspicious: "error" },
     jsPlugins: [
