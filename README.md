@@ -37,3 +37,7 @@ vp run ready                   # everything CI runs
 The in-memory database is Node's built-in `node:sqlite` behind a small D1-compatible binding (`sqlite-d1.ts`), so the Worker gets `env.DB` exactly as in production and no native module has to be built. `sqlite-d1.test.ts` pins the D1 behaviour Drizzle relies on.
 
 Worker code is typechecked without Node types (`tsconfig.worker.json`); tests and configs get them (`tsconfig.node.json`).
+
+## Deploy
+
+Merging into `main` deploys: D1 migrations, the Worker, bot registration, a health check, then the Mini App on GitHub Pages. Pipeline, one-time setup and the production bot rules are in [docs/deploy.md](docs/deploy.md); the manual smoke run for cron and bot changes is [docs/smoke.md](docs/smoke.md).

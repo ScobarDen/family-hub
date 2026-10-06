@@ -1,0 +1,50 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "schedule:weekly"],
+  "timezone": "UTC",
+  "packageRules": [
+    {
+      "groupName": "vite-plus",
+      "matchPackageNames": ["vite", "vitest", "vite-plus", "@voidzero-dev/**"]
+    },
+    {
+      "groupName": "reatom",
+      "matchPackageNames": ["@reatom/**"]
+    },
+    {
+      "groupName": "cloudflare",
+      "matchPackageNames": ["@cloudflare/**", "wrangler"]
+    },
+    {
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "Catalog entries lose their dependency type, so dev tools are named explicitly",
+      "matchDepTypes": ["pnpm.catalog.default"],
+      "matchPackageNames": [
+        "@feod/analyzer",
+        "@grammyjs/types",
+        "@stylistic/eslint-plugin",
+        "@types/**",
+        "@vitejs/**",
+        "drizzle-kit",
+        "eslint-plugin-unicorn",
+        "typescript",
+        "vite",
+        "vite-plus",
+        "@voidzero-dev/**",
+        "wrangler"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "Before 1.0 a minor release may break, so it waits for a human",
+      "matchCurrentVersion": "<1.0.0",
+      "matchUpdateTypes": ["minor"],
+      "automerge": false
+    }
+  ]
+}
