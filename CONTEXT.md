@@ -168,6 +168,12 @@ _Avoid_: Notification, alert, push
 A Member a Reminder is delivered to.
 _Avoid_: Subscriber, target
 
+### Commands
+
+**Command Draft**:
+A record the app assembled from what a Member said or typed, shown for confirmation; nothing is created until the Member confirms it.
+_Avoid_: Intent, suggestion, AI draft, voice command
+
 ### Visibility
 
 **Shared**:
