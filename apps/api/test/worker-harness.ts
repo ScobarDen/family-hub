@@ -5,6 +5,7 @@ import { createWorker } from "@/app/worker.ts";
 
 import { createFakeBotApi } from "./fake-bot-api.ts";
 import { createFakeClock } from "./fake-clock.ts";
+import { createFamilyFixtures } from "./family-fixtures.ts";
 import { createMigratedSqliteD1 } from "./sqlite-d1.ts";
 
 const origin = "https://api.family-hub.test";
@@ -36,6 +37,7 @@ function createTestEnv(): Env {
     JWT_SECRET: "test-jwt-secret",
     WEBHOOK_SECRET: "test-webhook-secret",
     OPERATOR_TELEGRAM_ID: "1000",
+    ALLOWED_ORIGINS: "https://scobarden.github.io,http://localhost:5173",
   };
 }
 
@@ -56,6 +58,7 @@ export function startWorker({ now = "2026-10-04T09:00:00Z" }: { now?: string } =
     clock,
     bot,
     request,
+    ...createFamilyFixtures(env.DB, clock),
     webhook: (update: Update, { secret = env.WEBHOOK_SECRET }: { secret?: string } = {}) =>
       request("/bot/webhook", {
         method: "POST",

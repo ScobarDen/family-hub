@@ -11,6 +11,9 @@
       "migrations_dir": "migrations",
     },
   ],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://scobarden.github.io",
+  },
   "secrets": {
     "required": ["BOT_TOKEN", "JWT_SECRET", "WEBHOOK_SECRET", "OPERATOR_TELEGRAM_ID"],
   },

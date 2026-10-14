@@ -1,2 +1,9 @@
-// oxlint-disable-next-line unicorn/require-module-specifiers -- placeholder until the first contract type lands
-export {};
+export { apiError, errorCode, type ApiError, type ErrorCode } from "./error.ts";
+export {
+  currentMember,
+  sessionRequest,
+  sessionResponse,
+  type CurrentMember,
+  type SessionRequest,
+  type SessionResponse,
+} from "./session.ts";

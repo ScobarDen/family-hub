@@ -7,6 +7,7 @@ catalogMode: prefer
 catalog:
   "@feod/analyzer": 0.1.1
   "@grammyjs/types": ^5.0.0
+  "@hono/standard-validator": ^0.4.0
   "@stylistic/eslint-plugin": ^5.10.0
   "@types/node": ^24
   "@types/react": ^19.3.0
@@ -22,6 +23,7 @@ catalog:
   vite: npm:@voidzero-dev/vite-plus-core@1.0.0
   vite-plus: 1.0.0
   wrangler: ^4.147.0
+  zod: ^4.6.7
 
 overrides:
   vite@*: "catalog:"

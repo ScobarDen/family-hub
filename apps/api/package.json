@@ -8,11 +8,14 @@
     "build": "wrangler deploy --dry-run --outdir dist",
     "test": "vp test",
     "db:generate": "drizzle-kit generate",
-    "cf-typegen": "wrangler types"
+    "cf-typegen": "wrangler types --strict-vars=false"
   },
   "dependencies": {
+    "@family-hub/contract": "workspace:*",
+    "@hono/standard-validator": "catalog:",
     "drizzle-orm": "catalog:",
-    "hono": "catalog:"
+    "hono": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@grammyjs/types": "catalog:",
