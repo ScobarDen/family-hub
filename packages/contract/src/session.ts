@@ -4,8 +4,6 @@ export const sessionRequest = z.object({
   initData: z.string().min(1),
 });
 
-export type SessionRequest = z.infer<typeof sessionRequest>;
-
 export const sessionResponse = z.discriminatedUnion("status", [
   z.object({ status: z.literal("member"), token: z.string() }),
   z.object({ status: z.literal("stranger") }),

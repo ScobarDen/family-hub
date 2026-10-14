@@ -4,6 +4,5 @@ export {
   sessionRequest,
   sessionResponse,
   type CurrentMember,
-  type SessionRequest,
   type SessionResponse,
 } from "./session.ts";

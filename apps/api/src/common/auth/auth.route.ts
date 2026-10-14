@@ -7,9 +7,9 @@ import type { Membership } from "./auth.types.ts";
 
 const bearerPrefix = "Bearer ";
 
-export type MemberEnv = {
-  Variables: { auth: AuthService; membership: Membership };
-};
+export type AuthEnv = { Variables: { auth: AuthService } };
+
+export type MemberEnv = { Variables: AuthEnv["Variables"] & { membership: Membership } };
 
 export const requireMember = createMiddleware<MemberEnv>(async (context, next) => {
   const header = context.req.header("authorization") ?? "";

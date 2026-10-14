@@ -7,4 +7,4 @@ Signs the Member in when the Mini App launches and decides the first screen: a g
 - `api` — `createSessionApi(httpClient)`: exchanges raw `initData` for the session token (kept by the HTTP client in memory) and loads the current Member.
 - `telegram` — `initData` and `showAlert` from `common/telegram`.
 
-`app/main.tsx` builds the model with `reatomSession({ api, telegram })`, calls `signIn()` and renders `<Session model={…} />`.
+`session.model.ts` holds the sign-in itself as a Reatom async action (`withAsyncData`); the ViewModel turns its data, its error and the HTTP client's `isSessionLost` into one screen. `app/main.tsx` builds the model with `reatomSession({ api, telegram })`, calls `signIn()` and renders `<Session model={…} />`.

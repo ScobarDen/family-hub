@@ -1,4 +1,3 @@
-import { effect } from "@reatom/core";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -21,16 +20,12 @@ const httpClient = createHttpClient({
 });
 const session = reatomSession({ api: createSessionApi(httpClient), telegram });
 
-effect(() => {
-  document.documentElement.classList.toggle("dark", telegram.theme().colorScheme === "dark");
-}, "app.colorScheme");
-
 telegram.launch();
+telegram.followColorScheme(document.documentElement);
+session.signIn();
 
 createRoot(root).render(
   <StrictMode>
     <App session={session} />
   </StrictMode>,
 );
-
-await session.signIn();

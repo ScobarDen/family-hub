@@ -3,12 +3,10 @@ import { Hono } from "hono";
 
 import { sessionRequest, type CurrentMember, type SessionResponse } from "@family-hub/contract";
 
-import { requireMember, type AuthService } from "@/common/auth";
+import { requireMember, type AuthEnv } from "@/common/auth";
 import { apiError, httpStatus } from "@/common/errors";
 
-type SessionEnv = { Variables: { auth: AuthService } };
-
-export const sessionRoute = new Hono<SessionEnv>()
+export const sessionRoute = new Hono<AuthEnv>()
   .post(
     "/api/session",
     sValidator("json", sessionRequest, (result, context) =>
@@ -29,12 +27,4 @@ export const sessionRoute = new Hono<SessionEnv>()
       return context.json<SessionResponse>(result);
     },
   )
-  .get("/api/me", requireMember, (context) => {
-    const { memberId, memberName, familyId, familyName, isFamilyOwner } = context.var.membership;
-
-    return context.json<CurrentMember>({
-      member: { id: memberId, name: memberName },
-      family: { id: familyId, name: familyName },
-      isFamilyOwner,
-    });
-  });
+  .get("/api/me", requireMember, (context) => context.json<CurrentMember>(context.var.membership));

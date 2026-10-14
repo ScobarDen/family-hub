@@ -3,7 +3,7 @@ import type { Clock } from "@/common/clock";
 import type { MembershipRepo } from "./auth.repo.ts";
 import type { Membership } from "./auth.types.ts";
 import { verifyInitData } from "./lib/init-data.lib.ts";
-import { readSessionToken, signSessionToken } from "./lib/session-token.lib.ts";
+import { createSessionTokens } from "./lib/session-token.lib.ts";
 
 export type SignInResult =
   | { status: "member"; token: string }
@@ -23,6 +23,8 @@ export function createAuthService({
   botToken,
   jwtSecret,
 }: AuthServiceDependencies) {
+  const sessionTokens = createSessionTokens(jwtSecret);
+
   return {
     async signIn(initData: string): Promise<SignInResult> {
       const user = await verifyInitData({ initData, botToken, now: clock.now() });
@@ -37,17 +39,14 @@ export function createAuthService({
         return { status: "stranger" };
       }
 
-      const token = await signSessionToken({
-        memberId: membership.memberId,
-        secret: jwtSecret,
-        now: clock.now(),
-      });
-
-      return { status: "member", token };
+      return {
+        status: "member",
+        token: await sessionTokens.sign(membership.member.id, clock.now()),
+      };
     },
 
     async authenticate(token: string): Promise<Membership | undefined> {
-      const memberId = await readSessionToken({ token, secret: jwtSecret, now: clock.now() });
+      const memberId = await sessionTokens.read(token, clock.now());
 
       return memberId === undefined ? undefined : memberships.findByMemberId(memberId);
     },

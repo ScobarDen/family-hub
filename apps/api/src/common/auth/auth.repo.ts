@@ -25,9 +25,11 @@ export function createMembershipRepo(db: Db) {
       return undefined;
     }
 
-    const { ownerMemberId, ...membership } = row;
-
-    return { ...membership, isFamilyOwner: ownerMemberId === row.memberId };
+    return {
+      member: { id: row.memberId, name: row.memberName },
+      family: { id: row.familyId, name: row.familyName },
+      isFamilyOwner: row.ownerMemberId === row.memberId,
+    };
   }
 
   return {

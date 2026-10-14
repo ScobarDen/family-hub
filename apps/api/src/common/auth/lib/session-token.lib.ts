@@ -1,28 +1,8 @@
 import { sign, verify } from "hono/jwt";
 
-const lifetimeMs = 86_400_000;
-const msPerSecond = 1000;
+import { msPerSecond, sessionLifetimeMs } from "../auth.config.ts";
+
 const algorithm = "HS256";
-
-type SignSessionTokenOptions = {
-  memberId: string;
-  secret: string;
-  now: number;
-};
-
-type ReadSessionTokenOptions = {
-  token: string;
-  secret: string;
-  now: number;
-};
-
-export async function signSessionToken({
-  memberId,
-  secret,
-  now,
-}: SignSessionTokenOptions): Promise<string> {
-  return sign({ memberId, exp: Math.floor((now + lifetimeMs) / msPerSecond) }, secret, algorithm);
-}
 
 async function verifiedPayload(token: string, secret: string) {
   // hono/jwt checks `exp` against the system clock; the injected Clock is checked below instead.
@@ -31,16 +11,24 @@ async function verifiedPayload(token: string, secret: string) {
   );
 }
 
-export async function readSessionToken({
-  token,
-  secret,
-  now,
-}: ReadSessionTokenOptions): Promise<string | undefined> {
-  const payload = await verifiedPayload(token, secret);
+export function createSessionTokens(secret: string) {
+  return {
+    async sign(memberId: string, now: number): Promise<string> {
+      return sign(
+        { memberId, exp: Math.floor((now + sessionLifetimeMs) / msPerSecond) },
+        secret,
+        algorithm,
+      );
+    },
 
-  if (typeof payload?.exp !== "number" || payload.exp * msPerSecond < now) {
-    return undefined;
-  }
+    async read(token: string, now: number): Promise<string | undefined> {
+      const payload = await verifiedPayload(token, secret);
 
-  return typeof payload.memberId === "string" ? payload.memberId : undefined;
+      if (typeof payload?.exp !== "number" || payload.exp * msPerSecond < now) {
+        return undefined;
+      }
+
+      return typeof payload.memberId === "string" ? payload.memberId : undefined;
+    },
+  };
 }

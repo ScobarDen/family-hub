@@ -1,4 +1,4 @@
-import { action, atom, withConnectHook, wrap } from "@reatom/core";
+import { action, atom, effect, withConnectHook, wrap } from "@reatom/core";
 
 import type {
   ColorScheme,
@@ -33,15 +33,8 @@ function reatomWebAppState<State>(
   );
 }
 
-export function reatomTelegram(webApp: TelegramWebApp) {
+function reatomLayout(webApp: TelegramWebApp) {
   return {
-    initData: webApp.initData,
-    platform: webApp.platform,
-    theme: reatomWebAppState<Theme>(webApp, {
-      name: "telegram.theme",
-      event: "themeChanged",
-      read: () => ({ colorScheme: webApp.colorScheme, params: { ...webApp.themeParams } }),
-    }),
     viewport: reatomWebAppState<Viewport>(webApp, {
       name: "telegram.viewport",
       event: "viewportChanged",
@@ -61,13 +54,33 @@ export function reatomTelegram(webApp: TelegramWebApp) {
       event: "contentSafeAreaChanged",
       read: () => ({ ...noInset, ...webApp.contentSafeAreaInset }),
     }),
+  };
+}
+
+export function reatomTelegram(webApp: TelegramWebApp) {
+  const theme = reatomWebAppState<Theme>(webApp, {
+    name: "telegram.theme",
+    event: "themeChanged",
+    read: () => ({ colorScheme: webApp.colorScheme, params: { ...webApp.themeParams } }),
+  });
+
+  return {
+    initData: webApp.initData,
+    platform: atom(webApp.platform, "telegram.platform"),
+    theme,
+    ...reatomLayout(webApp),
     launch: action(() => {
       webApp.ready();
       webApp.expand();
     }, "telegram.launch"),
-    showAlert(message: string) {
+    showAlert: action((message: string) => {
       webApp.showAlert(message);
-    },
+    }, "telegram.showAlert"),
+    // Colours themselves arrive as --tg-theme-* variables; only Tailwind's dark: variant needs the class.
+    followColorScheme: (element: HTMLElement) =>
+      effect(() => {
+        element.classList.toggle("dark", theme().colorScheme === "dark");
+      }, "telegram.followColorScheme"),
   };
 }
 

@@ -104,6 +104,14 @@ describe("signing in with initData", () => {
     expect(response.status).toBe(200);
   });
 
+  test("initData dated in the future is rejected", async () => {
+    const { worker } = await startWithFamily();
+
+    const response = await postSession(worker, initDataFor(worker, denis, "2026-10-04T09:10:00Z"));
+
+    expect(response.status).toBe(401);
+  });
+
   test("a request without initData is rejected", async () => {
     const { worker } = await startWithFamily();
 

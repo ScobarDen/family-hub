@@ -1,8 +1,7 @@
-import { action, atom, computed, wrap } from "@reatom/core";
-
-import type { Telegram } from "@/common/telegram";
+import { action, computed, noop } from "@reatom/core";
 
 import type { SessionApi } from "../session.api.ts";
+import { reatomSignIn, type SignInOutcome } from "../session.model.ts";
 
 export type SessionScreen =
   | { kind: "signing-in" }
@@ -14,51 +13,39 @@ export type SessionScreen =
 
 type SessionDependencies = {
   api: SessionApi;
-  telegram: Pick<Telegram, "initData" | "showAlert">;
+  telegram: { initData: string; showAlert: (message: string) => void };
 };
 
-const restart: SessionScreen = { kind: "restart" };
-const failed: SessionScreen = { kind: "failed" };
-
-async function screenAfterSignIn(api: SessionApi, initData: string): Promise<SessionScreen> {
-  const session = await wrap(api.signIn(initData));
-
-  if (session.status === "stranger") {
-    return { kind: "stranger" };
+function screenOf(outcome: SignInOutcome | undefined): SessionScreen {
+  if (outcome === undefined) {
+    return { kind: "signing-in" };
   }
 
-  const { member, family } = await wrap(api.currentMember());
+  if (outcome.status === "member") {
+    const { member, family } = outcome.member;
 
-  return { kind: "member", memberName: member.name, familyName: family.name };
+    return { kind: "member", memberName: member.name, familyName: family.name };
+  }
+
+  return { kind: outcome.status };
 }
 
 export function reatomSession({ api, telegram }: SessionDependencies) {
-  const state = atom<SessionScreen>({ kind: "signing-in" }, "session.state");
-
-  const signIn = action(async () => {
-    if (telegram.initData === "") {
-      state.set({ kind: "outside-telegram" });
-
-      return;
-    }
-
-    state.set({ kind: "signing-in" });
-
-    try {
-      state.set(await wrap(screenAfterSignIn(api, telegram.initData)));
-    } catch {
-      state.set(failed);
-    }
-  }, "session.signIn");
+  const signIn = reatomSignIn({ api, initData: telegram.initData });
 
   return {
-    screen: computed(() => (api.isSessionLost() ? restart : state()), "session.screen"),
+    screen: computed((): SessionScreen => {
+      if (api.isSessionLost()) {
+        return { kind: "restart" };
+      }
 
-    signIn,
+      return signIn.error() === undefined ? screenOf(signIn.data()) : { kind: "failed" };
+    }, "session.screen"),
 
-    retry: action(() => {
-      signIn().catch(() => state.set(failed));
-    }, "session.retry"),
+    signIn: action(() => {
+      // A failure stays in signIn.error() and shows the «failed» screen.
+      signIn().catch(noop);
+    }, "session.start"),
 
     showInviteHelp: action(() => {
       telegram.showAlert("Откройте ссылку-приглашение, которую вам прислал кто-то из семьи.");

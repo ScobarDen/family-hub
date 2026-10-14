@@ -1,5 +1,5 @@
 import { context } from "@reatom/core";
-import { beforeEach, describe, expect, test } from "vite-plus/test";
+import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { CurrentMember, SessionResponse } from "@family-hub/contract";
 
@@ -65,6 +65,13 @@ function startSession(backend: ReturnType<typeof fakeBackend>, telegram = fakeTe
   return reatomSession({ api: createSessionApi(client), telegram });
 }
 
+async function signIn(session: ReturnType<typeof startSession>) {
+  session.signIn();
+  await vi.waitFor(() => {
+    expect(session.screen()).not.toEqual({ kind: "signing-in" });
+  });
+}
+
 beforeEach(() => {
   context.reset();
 });
@@ -79,7 +86,7 @@ describe("signing in", () => {
   test("greets a Member by name with their Family", async () => {
     const session = startSession(fakeBackend({ session: { status: "member", token } }));
 
-    await session.signIn();
+    await signIn(session);
 
     expect(session.screen()).toEqual({
       kind: "member",
@@ -91,7 +98,7 @@ describe("signing in", () => {
   test("shows the stranger screen to a Telegram user without a Family", async () => {
     const session = startSession(fakeBackend({ session: { status: "stranger" } }));
 
-    await session.signIn();
+    await signIn(session);
 
     expect(session.screen()).toEqual({ kind: "stranger" });
   });
@@ -100,7 +107,7 @@ describe("signing in", () => {
     const backend = fakeBackend({ session: { status: "member", token } });
     const session = startSession(backend, fakeTelegram(""));
 
-    await session.signIn();
+    await signIn(session);
 
     expect(session.screen()).toEqual({ kind: "outside-telegram" });
     expect(backend.requests).toEqual([]);
@@ -109,17 +116,28 @@ describe("signing in", () => {
   test("offers to try again when the backend cannot be reached", async () => {
     const session = startSession(fakeBackend({ session: new TypeError("Failed to fetch") }));
 
-    await session.signIn();
+    await signIn(session);
 
     expect(session.screen()).toEqual({ kind: "failed" });
   });
+});
+
+test("signs in on retry once the backend is back", async () => {
+  const replies: { session: Reply } = { session: new TypeError("Failed to fetch") };
+  const session = startSession(fakeBackend(replies));
+
+  await signIn(session);
+  replies.session = { status: "member", token };
+  await signIn(session);
+
+  expect(session.screen()).toEqual({ kind: "member", memberName: "Денис", familyName: "Гущины" });
 });
 
 describe("a lost session", () => {
   test("asks to restart the app when initData is rejected", async () => {
     const session = startSession(fakeBackend({ session: 401 }));
 
-    await session.signIn();
+    await signIn(session);
 
     expect(session.screen()).toEqual({ kind: "restart" });
   });
@@ -127,7 +145,7 @@ describe("a lost session", () => {
   test("asks to restart the app when a later request gets 401", async () => {
     const session = startSession(fakeBackend({ session: { status: "member", token }, me: 401 }));
 
-    await session.signIn();
+    await signIn(session);
 
     expect(session.screen()).toEqual({ kind: "restart" });
   });

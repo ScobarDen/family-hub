@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-const maxAgeMs = 3_600_000;
-const msPerSecond = 1000;
+import { initDataClockSkewMs, initDataMaxAgeMs, msPerSecond } from "../auth.config.ts";
+
 const hexPair = /^(?:[\da-f]{2})+$/;
 
 const telegramUser = z.object({ id: z.number().int() });
@@ -52,8 +52,9 @@ async function isSignedByBot(fields: URLSearchParams, botToken: string): Promise
 
 function isFresh(fields: URLSearchParams, now: number): boolean {
   const authDate = Number(fields.get("auth_date"));
+  const ageMs = now - authDate * msPerSecond;
 
-  return Number.isInteger(authDate) && now - authDate * msPerSecond <= maxAgeMs;
+  return Number.isInteger(authDate) && ageMs <= initDataMaxAgeMs && ageMs >= -initDataClockSkewMs;
 }
 
 function parseUser(raw: string | null): TelegramUser | undefined {

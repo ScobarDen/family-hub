@@ -36,7 +36,7 @@ export const Session = reatomComponent(({ model }: SessionProps) => {
   if (screen.kind === "failed") {
     return (
       <Notice title="Не получилось войти" description="Проверьте соединение и попробуйте ещё раз.">
-        <Button size="lg" onClick={model.retry}>
+        <Button size="lg" onClick={model.signIn}>
           Повторить
         </Button>
       </Notice>

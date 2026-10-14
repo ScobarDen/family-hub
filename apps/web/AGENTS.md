@@ -5,7 +5,7 @@ The Telegram Mini App: React 19 and Reatom v1001, shadcn on Base UI with Tailwin
 ## Shape
 
 - MVVM on FEOD levels, as in the `frontend-mvvm` skill: a ViewModel `*.vm.ts` per screen, a passive `*.view.tsx` built with `reatomComponent`, data in `*.api.ts` / `*.model.ts`, a module's public API in `index.ts`, a README in every module that has a ViewModel. The role matrix in `vite.config.ts` decides who imports whom.
-- `src/app/main.tsx` is the composition root: it builds the real Telegram wrapper, HTTP client and models and hands them down. Nothing imports `global` (`@feod/analyzer` forbids it even from `main.tsx`): `index.html` links `global/styles.css`, and `global/*.d.ts` only augments ambient types.
+- `src/app/main.tsx` is the composition root: it builds the real Telegram wrapper, HTTP client and models and hands them down. Nothing imports `global` (`@feod/analyzer` forbids it even from `main.tsx`): `index.html` links `global/styles.css`, and `global/*.d.ts` augments Vite's ambient types. A browser global owned by a common entity is declared beside that entity's types (`window.Telegram` in `common/telegram/telegram.types.ts`), because `global` may not import from `common`.
 - `common/` holds the shared entities: `telegram` (the Mini App wrapper, `telegram-mini-app` skill), `http-client`, `ui` (shadcn components), `icons`, `format-date`, `format-money`.
 
 ## Rules
@@ -22,4 +22,4 @@ The Telegram Mini App: React 19 and Reatom v1001, shadcn on Base UI with Tailwin
 
 ## Tests
 
-ViewModels and models are unit-tested with Vitest, isolated per test through the Reatom context (`reatom-testing` skill), with a fake API client typed by `@family-hub/contract` and a fake `common/telegram`. Assert what the View receives: screen state, optimistic updates and rollbacks, 401 handling. Component tests and Storybook are out of scope for now.
+ViewModels and models are unit-tested with Vitest, isolated per test through the Reatom context (`reatom-testing` skill), with a fake transport and a fake `common/telegram`: the real `common/http-client` and module `.api` run over a fake `fetch` that answers with shapes typed by `@family-hub/contract`, so the token, schema parsing and 401 handling are covered too. Wait for an async outcome with `vi.waitFor` on what the View reads, not with sleeps. Assert what the View receives: screen state, optimistic updates and rollbacks, 401 handling. Component tests and Storybook are out of scope for now.

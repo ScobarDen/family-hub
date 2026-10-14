@@ -1,7 +1,5 @@
 export type Membership = {
-  memberId: string;
-  memberName: string;
-  familyId: string;
-  familyName: string;
+  member: { id: string; name: string };
+  family: { id: string; name: string };
   isFamilyOwner: boolean;
 };
