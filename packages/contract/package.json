@@ -6,6 +6,9 @@
   "exports": {
     ".": "./src/index.ts"
   },
+  "dependencies": {
+    "zod": "catalog:"
+  },
   "devDependencies": {
     "typescript": "catalog:",
     "vite-plus": "catalog:"
