@@ -4,32 +4,22 @@ The Worker harness covers behaviour; it cannot reach real bindings, real cron de
 
 ## Setup
 
-1. `apps/api/.dev.vars` holds the dev bot's `BOT_TOKEN`, a `WEBHOOK_SECRET`, a `JWT_SECRET` and your `OPERATOR_TELEGRAM_ID`.
-2. `vp exec wrangler d1 migrations apply family-hub --local` in `apps/api`.
-3. `vp exec wrangler dev --test-scheduled` in `apps/api`.
-4. `cloudflared tunnel --url http://localhost:8787` and note the `https://….trycloudflare.com` URL.
-5. Point the dev bot at the tunnel:
-
-   ```sh
-   curl -fsS "https://api.telegram.org/bot$BOT_TOKEN/setWebhook" \
-     -d url="$TUNNEL_URL/bot/webhook" -d secret_token="$WEBHOOK_SECRET"
-   ```
-
-6. `vp run @family-hub/web#dev` for the Mini App, opened through the dev bot.
-
-A cron tick is fired by hand: `curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"`.
+Bring up the Worker, the Mini App and the tunnel on the dev bot as in [docs/dev.md](dev.md), with the webhook and the menu button pointed at the tunnel. A cron tick is fired by hand: `curl "http://localhost:8787/__scheduled?cron=*+*+*+*+*"`.
 
 ## Checklist
 
 ### Worker
 
 - [ ] `GET $TUNNEL_URL/api/health` answers `{"status":"ok"}`.
+- [ ] `OPTIONS $TUNNEL_URL/api/session` with `Origin: https://evil.example` gets no `Access-Control-Allow-Origin`.
 - [ ] `POST $TUNNEL_URL/bot/webhook` without the `X-Telegram-Bot-Api-Secret-Token` header answers 401.
 
 ### Bot
 
 - [ ] `/start` gets an answer from the bot.
-- [ ] The menu button and «Открыть» open the Mini App and it signs in.
+- [ ] The menu button and «Открыть» open the Mini App and it signs in a Member.
+- [ ] A Telegram account that is not a Member sees «Family Hub работает по приглашениям», and `members` stays empty for it.
+- [ ] Colours follow the Telegram theme, light and dark.
 - [ ] `getWebhookInfo` shows no `last_error_message` after the steps above.
 
 ### Cron

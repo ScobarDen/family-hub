@@ -10,7 +10,8 @@ One Cloudflare Worker serving `/api/*`, `/bot/webhook` and the per-minute cron. 
   - `*.service.ts` — use-cases and policies (Private / Shared visibility, Family Owner rights); receives its repositories as constructor arguments.
   - `*.repo.ts` — the only code that touches the database.
 - Shared infrastructure lives in `src/common/` (`db`, `clock`, `telegram`, then `auth`, `errors`); cron jobs in `src/jobs/`.
-- Routes are chained (`new Hono().get(…).post(…)`) and mounted with `.route()` so the app type carries every route for the Hono RPC client `hc` in `apps/web`, which imports the type without building the Worker.
+- Routes are chained (`new Hono().get(…).post(…)`) and mounted with `.route()`. Request and response shapes live in `@family-hub/contract`; `apps/web` parses responses with those schemas instead of importing the app type.
+- Authenticated routes put `requireMember` from `common/auth` in front; it reads the bearer token and the Member's Family membership from D1 and exposes it as `context.var.membership`.
 
 ## Rules
 

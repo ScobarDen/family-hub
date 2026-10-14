@@ -30,6 +30,8 @@ vp run @family-hub/api#cf-typegen
 vp run ready                   # everything CI runs
 ```
 
+Local Worker, Mini App, dev bot and tunnel: [docs/dev.md](docs/dev.md).
+
 ## Worker tests
 
 `apps/api/test/worker-harness.ts` runs the whole Worker in Node: HTTP requests, bot webhook updates and cron ticks go through the real routes and Drizzle on in-memory SQLite with the production migrations. Only the Telegram Bot API (`fake-bot-api.ts`) and the clock (`fake-clock.ts`) are fakes.

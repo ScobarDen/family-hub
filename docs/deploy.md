@@ -8,7 +8,7 @@ A merge into `main` releases Family Hub through `.github/workflows/deploy.yml`. 
    3. `wrangler deploy --secrets-file …` — the secrets ride with the new version.
    4. Bot registration, idempotent: `setWebhook` with the secret token, `setMyCommands`, `setChatMenuButton`.
    5. Smoke check: `GET $API_URL/api/health` must answer `{"status":"ok"}`.
-2. **`deploy-web`** — builds `apps/web` and publishes it to GitHub Pages.
+2. **`deploy-web`** — builds `apps/web` with `VITE_API_URL` set to `API_URL` and publishes it to GitHub Pages.
 
 Any failing step stops the chain. A failed configuration check, migration or `wrangler deploy` leaves the previous Worker live, and the Mini App is published only after the Worker passed its smoke check. A failure in bot registration or the smoke check comes **after** the new Worker went live: production then runs the new Worker with the previous Mini App, and rolling back is a manual decision.
 
@@ -31,6 +31,7 @@ There is no automatic rollback. To roll back the Worker: `vp exec wrangler rollb
 - Environment **`production`**:
   - secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `JWT_SECRET`, `WEBHOOK_SECRET`, `OPERATOR_TELEGRAM_ID`;
   - variables `API_URL` (the Worker origin, no trailing slash) and `MINI_APP_URL` (`https://scobarden.github.io/family-hub/`).
+  - The Worker answers CORS only for `ALLOWED_ORIGINS` in `apps/api/wrangler.jsonc`; keep it equal to the origin of `MINI_APP_URL`.
   - `WEBHOOK_SECRET` may contain only `A-Z`, `a-z`, `0-9`, `_` and `-` (Telegram's rule), e.g. `openssl rand -hex 32`.
 - Settings → Pages → Source: **GitHub Actions**.
 - Branch protection on `main`: require the `check` job of the CI workflow and **require branches to be up to date**, so that what lands on `main` is exactly what CI checked.

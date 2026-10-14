@@ -55,8 +55,6 @@ function createApp({ clock, createBotApi }: WorkerDependencies) {
     .route("/", sessionRoute);
 }
 
-export type App = ReturnType<typeof createApp>;
-
 export function createWorker(dependencies: WorkerDependencies): Worker {
   return {
     fetch: createApp(dependencies).fetch,
