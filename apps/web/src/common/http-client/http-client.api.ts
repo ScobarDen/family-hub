@@ -2,6 +2,8 @@ import { atom, wrap } from "@reatom/core";
 import type { z } from "zod";
 
 const unauthorizedStatus = 401;
+// Telegram WebViews on a bad network can leave a request pending indefinitely.
+const defaultTimeoutMs = 15_000;
 
 export class HttpError extends Error {
   readonly status: number;
@@ -18,6 +20,7 @@ type Fetch = (input: URL, init: RequestInit) => Promise<Response>;
 type HttpClientOptions = {
   baseUrl: string;
   fetch: Fetch;
+  timeoutMs?: number;
 };
 
 type RequestOptions<Schema extends z.ZodType> = {
@@ -26,7 +29,11 @@ type RequestOptions<Schema extends z.ZodType> = {
   body?: unknown;
 };
 
-export function createHttpClient({ baseUrl, fetch }: HttpClientOptions) {
+export function createHttpClient({
+  baseUrl,
+  fetch,
+  timeoutMs = defaultTimeoutMs,
+}: HttpClientOptions) {
   const token = atom<string | undefined>(undefined, "httpClient.token");
   const isSessionLost = atom(false, "httpClient.isSessionLost");
 
@@ -54,6 +61,7 @@ export function createHttpClient({ baseUrl, fetch }: HttpClientOptions) {
         method,
         headers: headersFor(body),
         body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
       }),
     );
 

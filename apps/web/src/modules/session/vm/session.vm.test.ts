@@ -17,9 +17,19 @@ const denis: CurrentMember = {
   isFamilyOwner: true,
 };
 
-type Reply = SessionResponse | CurrentMember | number | Error;
+const silence = Symbol("silence");
 
-function respond(reply: Reply): Response {
+type Reply = SessionResponse | CurrentMember | number | Error | typeof silence;
+
+async function respond(reply: Reply, signal: AbortSignal | null | undefined): Promise<Response> {
+  if (reply === silence) {
+    return new Promise((_resolve, reject) => {
+      signal?.addEventListener("abort", () => {
+        reject(new DOMException("The operation timed out.", "TimeoutError"));
+      });
+    });
+  }
+
   if (reply instanceof Error) {
     throw reply;
   }
@@ -36,12 +46,12 @@ function fakeBackend(replies: { session: Reply; me?: Reply }) {
     requests.push(url.pathname);
 
     if (url.pathname === "/api/session") {
-      return respond(replies.session);
+      return respond(replies.session, init.signal);
     }
 
     const isAuthorized = new Headers(init.headers).get("authorization") === `Bearer ${token}`;
 
-    return respond(isAuthorized ? (replies.me ?? denis) : 401);
+    return respond(isAuthorized ? (replies.me ?? denis) : 401, init.signal);
   }
 
   return { fetch, requests };
@@ -60,7 +70,11 @@ function fakeTelegram(launchInitData = initData) {
 }
 
 function startSession(backend: ReturnType<typeof fakeBackend>, telegram = fakeTelegram()) {
-  const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
+  const client = createHttpClient({
+    baseUrl: "https://api.family-hub.test",
+    fetch: backend.fetch,
+    timeoutMs: 50,
+  });
 
   return reatomSession({ api: createSessionApi(client), telegram });
 }
@@ -120,6 +134,14 @@ describe("signing in", () => {
 
     expect(session.screen()).toEqual({ kind: "failed" });
   });
+});
+
+test("offers to try again when the backend does not answer", async () => {
+  const session = startSession(fakeBackend({ session: silence }));
+
+  await signIn(session);
+
+  expect(session.screen()).toEqual({ kind: "failed" });
 });
 
 test("signs in on retry once the backend is back", async () => {
