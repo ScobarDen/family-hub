@@ -14,6 +14,7 @@ export type Theme = { colorScheme: ColorScheme; params: ThemeParams };
 
 const noInset: SafeAreaInset = { top: 0, bottom: 0, left: 0, right: 0 };
 const writeAccessVersion = "6.9";
+const shareMessageVersion = "8.0";
 
 function reatomWebAppState<State>(
   webApp: TelegramWebApp,
@@ -58,22 +59,8 @@ function reatomLayout(webApp: TelegramWebApp) {
   };
 }
 
-export function reatomTelegram(webApp: TelegramWebApp) {
-  const theme = reatomWebAppState<Theme>(webApp, {
-    name: "telegram.theme",
-    event: "themeChanged",
-    read: () => ({ colorScheme: webApp.colorScheme, params: { ...webApp.themeParams } }),
-  });
-
+function reatomPrompts(webApp: TelegramWebApp) {
   return {
-    initData: webApp.initData,
-    platform: atom(webApp.platform, "telegram.platform"),
-    theme,
-    ...reatomLayout(webApp),
-    launch: action(() => {
-      webApp.ready();
-      webApp.expand();
-    }, "telegram.launch"),
     showAlert: action((message: string) => {
       webApp.showAlert(message);
     }, "telegram.showAlert"),
@@ -88,6 +75,41 @@ export function reatomTelegram(webApp: TelegramWebApp) {
         }),
       );
     }, "telegram.requestWriteAccess"),
+    shareMessage: action(
+      async (preparedMessageId: string): Promise<boolean> =>
+        wrap(
+          new Promise<boolean>((resolve) => {
+            webApp.shareMessage(preparedMessageId, resolve);
+          }),
+        ),
+      "telegram.shareMessage",
+    ),
+    openTelegramLink: action((url: string) => {
+      webApp.openTelegramLink(url);
+    }, "telegram.openTelegramLink"),
+  };
+}
+
+export function reatomTelegram(webApp: TelegramWebApp) {
+  const theme = reatomWebAppState<Theme>(webApp, {
+    name: "telegram.theme",
+    event: "themeChanged",
+    read: () => ({ colorScheme: webApp.colorScheme, params: { ...webApp.themeParams } }),
+  });
+
+  return {
+    initData: webApp.initData,
+    // Display-only like the rest of initDataUnsafe: the server reads the signed initData.
+    startParam: webApp.initDataUnsafe.start_param,
+    canShareMessage: webApp.isVersionAtLeast(shareMessageVersion),
+    platform: atom(webApp.platform, "telegram.platform"),
+    theme,
+    ...reatomLayout(webApp),
+    launch: action(() => {
+      webApp.ready();
+      webApp.expand();
+    }, "telegram.launch"),
+    ...reatomPrompts(webApp),
     // Colours themselves arrive as --tg-theme-* variables; only Tailwind's dark: variant needs the class.
     followColorScheme: (element: HTMLElement) =>
       effect(() => {

@@ -42,6 +42,7 @@ declare global {
 
 export type TelegramWebApp = {
   initData: string;
+  initDataUnsafe: { start_param?: string };
   platform: string;
   colorScheme: ColorScheme;
   themeParams: ThemeParams;
@@ -55,6 +56,8 @@ export type TelegramWebApp = {
   showAlert(message: string, callback?: () => void): void;
   isVersionAtLeast(version: string): boolean;
   requestWriteAccess(callback?: (isAllowed: boolean) => void): void;
+  shareMessage(preparedMessageId: string, callback?: (isSent: boolean) => void): void;
+  openTelegramLink(url: string): void;
   onEvent(event: WebAppEvent, handler: () => void): void;
   offEvent(event: WebAppEvent, handler: () => void): void;
 };

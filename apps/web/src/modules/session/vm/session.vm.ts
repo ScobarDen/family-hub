@@ -10,6 +10,7 @@ export type SessionScreen =
   | { kind: "outside-telegram" }
   | { kind: "stranger" }
   | { kind: "family-request" }
+  | { kind: "join-family" }
   | { kind: "member"; memberName: string; familyName: string }
   | { kind: "restart" }
   | { kind: "failed" };
@@ -17,6 +18,7 @@ export type SessionScreen =
 type SessionDependencies = {
   api: SessionApi;
   telegram: { initData: string; showAlert: (message: string) => void };
+  isJoiningFamily: () => boolean;
 };
 
 function screenOf(outcome: SignInOutcome | undefined): SessionScreen {
@@ -37,7 +39,40 @@ function screenOf(outcome: SignInOutcome | undefined): SessionScreen {
   return { kind: outcome.status };
 }
 
-export function reatomSession({ api, telegram }: SessionDependencies) {
+type ScreenSources = Pick<SessionDependencies, "api" | "isJoiningFamily"> & {
+  signIn: ReturnType<typeof reatomSignIn>;
+  isRequestingFamily: () => boolean;
+};
+
+function currentScreen({
+  api,
+  signIn,
+  isJoiningFamily,
+  isRequestingFamily,
+}: ScreenSources): SessionScreen {
+  if (api.isSessionLost()) {
+    return { kind: "restart" };
+  }
+
+  if (isJoiningFamily()) {
+    return { kind: "join-family" };
+  }
+
+  if (signIn.error() !== undefined) {
+    return { kind: "failed" };
+  }
+
+  // A repeated sign-in after joining a Family must not flash the stranger screen.
+  if (!signIn.ready()) {
+    return { kind: "signing-in" };
+  }
+
+  const screen = screenOf(signIn.data());
+
+  return screen.kind === "stranger" && isRequestingFamily() ? { kind: "family-request" } : screen;
+}
+
+export function reatomSession({ api, telegram, isJoiningFamily }: SessionDependencies) {
   const signIn = reatomSignIn({ api, initData: telegram.initData });
   const isRequestingFamily = atom(false, "session.isRequestingFamily");
   const familyRequestStatus = computed((): FamilyRequestStatus | undefined => {
@@ -49,21 +84,10 @@ export function reatomSession({ api, telegram }: SessionDependencies) {
   return {
     familyRequestStatus,
 
-    screen: computed((): SessionScreen => {
-      if (api.isSessionLost()) {
-        return { kind: "restart" };
-      }
-
-      if (signIn.error() !== undefined) {
-        return { kind: "failed" };
-      }
-
-      const screen = screenOf(signIn.data());
-
-      return screen.kind === "stranger" && isRequestingFamily()
-        ? { kind: "family-request" }
-        : screen;
-    }, "session.screen"),
+    screen: computed(
+      () => currentScreen({ api, signIn, isJoiningFamily, isRequestingFamily }),
+      "session.screen",
+    ),
 
     signIn: action(() => {
       // A failure stays in signIn.error() and shows the «failed» screen.

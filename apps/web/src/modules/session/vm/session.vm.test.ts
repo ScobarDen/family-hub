@@ -1,4 +1,4 @@
-import { context } from "@reatom/core";
+import { atom, context } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { CurrentMember, SessionResponse } from "@family-hub/contract";
@@ -69,14 +69,18 @@ function fakeTelegram(launchInitData = initData) {
   };
 }
 
-function startSession(backend: ReturnType<typeof fakeBackend>, telegram = fakeTelegram()) {
+function startSession(
+  backend: ReturnType<typeof fakeBackend>,
+  telegram = fakeTelegram(),
+  isJoiningFamily = atom(false, "test.isJoiningFamily"),
+) {
   const client = createHttpClient({
     baseUrl: "https://api.family-hub.test",
     fetch: backend.fetch,
     timeoutMs: 50,
   });
 
-  return reatomSession({ api: createSessionApi(client), telegram });
+  return reatomSession({ api: createSessionApi(client), telegram, isJoiningFamily });
 }
 
 async function signIn(session: ReturnType<typeof startSession>) {
@@ -249,6 +253,62 @@ describe("the stranger screen", () => {
         memberName: "Денис",
         familyName: "Гущины",
       });
+    });
+  });
+});
+
+describe("opening the app from an Invite", () => {
+  test("shows the invitation instead of the stranger screen", async () => {
+    const session = startSession(
+      fakeBackend({ session: { status: "stranger", familyRequest: "none" } }),
+      fakeTelegram(),
+      atom(true, "test.isJoiningFamily"),
+    );
+
+    await vi.waitFor(() => {
+      expect(session.screen()).toEqual({ kind: "join-family" });
+    });
+  });
+
+  test("shows the invitation while signing in is still going", () => {
+    const session = startSession(
+      fakeBackend({ session: silence }),
+      fakeTelegram(),
+      atom(true, "test.isJoiningFamily"),
+    );
+
+    session.signIn();
+
+    expect(session.screen()).toEqual({ kind: "join-family" });
+  });
+
+  test("still asks to restart the app when the session is lost", async () => {
+    const session = startSession(
+      fakeBackend({ session: 401 }),
+      fakeTelegram(),
+      atom(true, "test.isJoiningFamily"),
+    );
+
+    session.signIn();
+
+    await vi.waitFor(() => {
+      expect(session.screen()).toEqual({ kind: "restart" });
+    });
+  });
+
+  test("signs in again once the person has joined, without flashing the stranger screen", async () => {
+    const replies: { session: Reply } = { session: { status: "stranger", familyRequest: "none" } };
+    const isJoiningFamily = atom(true, "test.isJoiningFamily");
+    const session = startSession(fakeBackend(replies), fakeTelegram(), isJoiningFamily);
+
+    await signIn(session);
+    replies.session = { status: "member", token };
+    isJoiningFamily.set(false);
+    session.signIn();
+
+    expect(session.screen()).toEqual({ kind: "signing-in" });
+    await vi.waitFor(() => {
+      expect(session.screen()).toMatchObject({ kind: "member", familyName: "Гущины" });
     });
   });
 });
