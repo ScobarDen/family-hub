@@ -1,8 +1,6 @@
 import { Mail, Plus } from "lucide-react";
 
-import { Button } from "@/common/ui";
-
-import { Notice } from "./notice.view.tsx";
+import { Button, Notice } from "@/common/ui";
 
 type StrangerProps = {
   onInviteHelp: () => void;

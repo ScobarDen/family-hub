@@ -110,7 +110,9 @@ describe("signing in", () => {
   });
 
   test("shows the stranger screen to a Telegram user without a Family", async () => {
-    const session = startSession(fakeBackend({ session: { status: "stranger" } }));
+    const session = startSession(
+      fakeBackend({ session: { status: "stranger", familyRequest: "none" } }),
+    );
 
     await signIn(session);
 
@@ -176,7 +178,10 @@ describe("a lost session", () => {
 describe("the stranger screen", () => {
   test("explains how to join by invitation", () => {
     const telegram = fakeTelegram();
-    const session = startSession(fakeBackend({ session: { status: "stranger" } }), telegram);
+    const session = startSession(
+      fakeBackend({ session: { status: "stranger", familyRequest: "none" } }),
+      telegram,
+    );
 
     session.showInviteHelp();
 
@@ -185,12 +190,65 @@ describe("the stranger screen", () => {
     ]);
   });
 
-  test("tells that creating a Family is coming soon", () => {
-    const telegram = fakeTelegram();
-    const session = startSession(fakeBackend({ session: { status: "stranger" } }), telegram);
+  test("opens the Family Request form", async () => {
+    const session = startSession(
+      fakeBackend({ session: { status: "stranger", familyRequest: "none" } }),
+    );
 
+    await signIn(session);
     session.requestFamily();
 
-    expect(telegram.alerts).toEqual(["Скоро здесь можно будет попросить создать свою семью."]);
+    expect(session.screen()).toEqual({ kind: "family-request" });
+  });
+
+  test("goes straight to a Family Request that is still waiting for approval", async () => {
+    const session = startSession(
+      fakeBackend({ session: { status: "stranger", familyRequest: "pending" } }),
+    );
+
+    await signIn(session);
+
+    expect(session.screen()).toEqual({ kind: "family-request" });
+    expect(session.familyRequestStatus()).toBe("pending");
+  });
+
+  test("keeps the stranger screen during the cooldown, where an invitation still works", async () => {
+    const session = startSession(
+      fakeBackend({ session: { status: "stranger", familyRequest: "cooldown" } }),
+    );
+
+    await signIn(session);
+
+    expect(session.screen()).toEqual({ kind: "stranger" });
+  });
+
+  test("goes back from the Family Request form", async () => {
+    const session = startSession(
+      fakeBackend({ session: { status: "stranger", familyRequest: "none" } }),
+    );
+
+    await signIn(session);
+    session.requestFamily();
+    session.closeFamilyRequest();
+
+    expect(session.screen()).toEqual({ kind: "stranger" });
+  });
+
+  test("lets a requester whose Family was created in", async () => {
+    const replies: { session: Reply } = { session: { status: "stranger", familyRequest: "none" } };
+    const session = startSession(fakeBackend(replies));
+
+    await signIn(session);
+    session.requestFamily();
+    replies.session = { status: "member", token };
+    session.signIn();
+
+    await vi.waitFor(() => {
+      expect(session.screen()).toEqual({
+        kind: "member",
+        memberName: "Денис",
+        familyName: "Гущины",
+      });
+    });
   });
 });

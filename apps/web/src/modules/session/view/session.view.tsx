@@ -1,12 +1,12 @@
 import { reatomComponent } from "@reatom/react";
+import type { ReactNode } from "react";
 
-import { Button } from "@/common/ui";
+import { Button, Notice } from "@/common/ui";
 
 import type { SessionModel, SessionScreen } from "../vm/session.vm.ts";
-import { Notice } from "./notice.view.tsx";
 import { Stranger } from "./stranger.view.tsx";
 
-export type SessionProps = { model: SessionModel };
+export type SessionProps = { model: SessionModel; familyRequest: ReactNode };
 
 type PlainNotice = Extract<SessionScreen, { kind: "signing-in" | "outside-telegram" | "restart" }>;
 
@@ -22,8 +22,12 @@ const plainNotices: Record<PlainNotice["kind"], { title: string; description?: s
   },
 };
 
-export const Session = reatomComponent(({ model }: SessionProps) => {
+export const Session = reatomComponent(({ model, familyRequest }: SessionProps) => {
   const screen = model.screen();
+
+  if (screen.kind === "family-request") {
+    return familyRequest;
+  }
 
   if (screen.kind === "stranger") {
     return <Stranger onInviteHelp={model.showInviteHelp} onRequestFamily={model.requestFamily} />;

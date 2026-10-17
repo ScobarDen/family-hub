@@ -1,5 +1,7 @@
-import { atom, wrap } from "@reatom/core";
+import { atom, noop, wrap } from "@reatom/core";
 import type { z } from "zod";
+
+import { apiError, type ErrorCode } from "@family-hub/contract";
 
 const unauthorizedStatus = 401;
 // Telegram WebViews on a bad network can leave a request pending indefinitely.
@@ -7,12 +9,20 @@ const defaultTimeoutMs = 15_000;
 
 export class HttpError extends Error {
   readonly status: number;
+  readonly code: ErrorCode | undefined;
 
-  constructor(status: number) {
+  constructor(status: number, code?: ErrorCode) {
     super(`Request failed with status ${status}`);
     this.name = "HttpError";
     this.status = status;
+    this.code = code;
   }
+}
+
+async function errorCodeOf(response: Response): Promise<ErrorCode | undefined> {
+  const body: unknown = await wrap(response.json().catch(noop));
+
+  return apiError.safeParse(body).data?.code;
 }
 
 type Fetch = (input: URL, init: RequestInit) => Promise<Response>;
@@ -70,7 +80,7 @@ export function createHttpClient({
     }
 
     if (!response.ok) {
-      throw new HttpError(response.status);
+      throw new HttpError(response.status, await wrap(errorCodeOf(response)));
     }
 
     return schema.parse(await wrap(response.json()));

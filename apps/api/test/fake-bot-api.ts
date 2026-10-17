@@ -78,8 +78,12 @@ export function createFakeBotApi() {
     api,
     sentMessages: () => paramsOf("sendMessage"),
     editedMessages: () => paramsOf("editMessageText"),
+    answeredCallbacks: () => paramsOf("answerCallbackQuery"),
     blockChat(chatId: ChatId) {
       state.blockedChats.add(String(chatId));
+    },
+    unblockChat(chatId: ChatId) {
+      state.blockedChats.delete(String(chatId));
     },
     rateLimitNextCall(retryAfterSeconds: number) {
       state.pendingRetryAfterSeconds = retryAfterSeconds;

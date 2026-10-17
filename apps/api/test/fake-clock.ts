@@ -2,6 +2,7 @@ import type { Clock } from "@/common/clock";
 
 export type FakeClock = Clock & {
   set(iso: string): void;
+  iso(): string;
 };
 
 export function createFakeClock(iso: string): FakeClock {
@@ -12,5 +13,6 @@ export function createFakeClock(iso: string): FakeClock {
     set(next) {
       current = Date.parse(next);
     },
+    iso: () => new Date(current).toISOString(),
   };
 }

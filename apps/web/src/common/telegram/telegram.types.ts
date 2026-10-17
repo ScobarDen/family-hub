@@ -53,6 +53,8 @@ export type TelegramWebApp = {
   ready(): void;
   expand(): void;
   showAlert(message: string, callback?: () => void): void;
+  isVersionAtLeast(version: string): boolean;
+  requestWriteAccess(callback?: (isAllowed: boolean) => void): void;
   onEvent(event: WebAppEvent, handler: () => void): void;
   offEvent(event: WebAppEvent, handler: () => void): void;
 };

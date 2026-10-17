@@ -131,7 +131,7 @@ describe("a stranger", () => {
 
     const response = await postSession(worker, initDataFor(worker, asya));
 
-    expect(await response.json()).toEqual({ status: "stranger" });
+    expect(await response.json()).toEqual({ status: "stranger", familyRequest: "none" });
   });
 
   test("leaves nothing behind in the database", async () => {
@@ -150,7 +150,7 @@ describe("a stranger", () => {
 
     const response = await postSession(worker, initDataFor(worker, asya));
 
-    expect(await response.json()).toEqual({ status: "stranger" });
+    expect(await response.json()).toEqual({ status: "stranger", familyRequest: "none" });
   });
 });
 

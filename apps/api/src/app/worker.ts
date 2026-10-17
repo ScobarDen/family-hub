@@ -5,6 +5,11 @@ import { createAuthService, createMembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import { createDb } from "@/common/db";
 import type { BotApi } from "@/common/telegram";
+import {
+  createFamilyRequestRepo,
+  createFamilyRequestService,
+  familyRequestRoute,
+} from "@/modules/family-request";
 import { sessionRoute } from "@/modules/session";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -18,41 +23,63 @@ export type WorkerDependencies = {
 
 export type Worker = Required<Pick<ExportedHandler<Env>, "fetch" | "scheduled">>;
 
+function operatorTelegramIdOf(env: Env): number {
+  const id = Number(env.OPERATOR_TELEGRAM_ID);
+
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error("OPERATOR_TELEGRAM_ID must be the Operator's Telegram user id");
+  }
+
+  return id;
+}
+
 function allowedOrigin(origin: string, env: Env): string | null {
   return env.ALLOWED_ORIGINS.split(",").includes(origin) ? origin : null;
 }
 
-function createApp({ clock, createBotApi }: WorkerDependencies) {
-  function servicesFor(env: Env): AppServices {
-    const db = createDb(env.DB);
+function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): AppServices {
+  const db = createDb(env.DB);
+  const bot = createBotApi(env.BOT_TOKEN);
+  const memberships = createMembershipRepo(db);
 
-    return {
-      db,
+  return {
+    db,
+    clock,
+    bot,
+    auth: createAuthService({
+      memberships,
       clock,
-      bot: createBotApi(env.BOT_TOKEN),
-      auth: createAuthService({
-        memberships: createMembershipRepo(db),
-        clock,
-        botToken: env.BOT_TOKEN,
-        jwtSecret: env.JWT_SECRET,
-      }),
-    };
-  }
+      botToken: env.BOT_TOKEN,
+      jwtSecret: env.JWT_SECRET,
+    }),
+    familyRequests: createFamilyRequestService({
+      requests: createFamilyRequestRepo(db),
+      memberships,
+      bot,
+      clock,
+      operatorTelegramId: operatorTelegramIdOf(env),
+      miniAppUrl: env.MINI_APP_URL,
+    }),
+  };
+}
 
+function createApp(dependencies: WorkerDependencies) {
   return new Hono<AppEnv>()
     .use("/api/*", cors({ origin: (origin, context) => allowedOrigin(origin, context.env) }))
     .use(async (context, next) => {
-      const services = servicesFor(context.env);
+      const services = servicesFor(context.env, dependencies);
 
       context.set("db", services.db);
       context.set("clock", services.clock);
       context.set("bot", services.bot);
       context.set("auth", services.auth);
+      context.set("familyRequests", services.familyRequests);
       await next();
     })
     .route("/", healthRoute)
     .route("/", webhookRoute)
-    .route("/", sessionRoute);
+    .route("/", sessionRoute)
+    .route("/", familyRequestRoute);
 }
 
 export function createWorker(dependencies: WorkerDependencies): Worker {

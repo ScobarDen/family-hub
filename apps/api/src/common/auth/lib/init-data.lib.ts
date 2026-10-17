@@ -4,7 +4,12 @@ import { initDataClockSkewMs, initDataMaxAgeMs, msPerSecond } from "../auth.conf
 
 const hexPair = /^(?:[\da-f]{2})+$/;
 
-const telegramUser = z.object({ id: z.number().int() });
+const telegramUser = z.object({
+  id: z.number().int(),
+  first_name: z.string(),
+  last_name: z.string().optional(),
+  username: z.string().optional(),
+});
 
 export type TelegramUser = z.infer<typeof telegramUser>;
 

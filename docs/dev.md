@@ -14,6 +14,7 @@ The Mini App and the Worker run on your machine against a local D1, and a separa
    | `WEBHOOK_SECRET`       | `A-Z`, `a-z`, `0-9`, `_`, `-` only, e.g. `openssl rand -hex 32` |
    | `OPERATOR_TELEGRAM_ID` | your own Telegram user id                                       |
    | `ALLOWED_ORIGINS`      | `http://localhost:5173`, the CORS origin of the local Mini App  |
+   | `MINI_APP_URL`         | `$TUNNEL_URL/family-hub/`, opened by buttons in bot messages    |
 
 3. Install `cloudflared` (no Cloudflare account needed for quick tunnels).
 4. Apply migrations to the local D1: `vp exec wrangler d1 migrations apply family-hub --local` in `apps/api`. Repeat after pulling a new migration.
@@ -26,7 +27,7 @@ Three terminals:
 2. **Mini App** — `vp run @family-hub/web#dev` (port 5173). The Vite dev server proxies `/api` and `/bot` to the Worker, so the Mini App and the bot webhook share one origin and one tunnel.
 3. **Tunnel** — `cloudflared tunnel --url http://localhost:5173`; note the `https://….trycloudflare.com` URL as `TUNNEL_URL`.
 
-A quick tunnel gets a new URL on every start, so point the dev bot at it each time:
+A quick tunnel gets a new URL on every start, so set `MINI_APP_URL` in `.dev.vars` to `$TUNNEL_URL/family-hub/` (restart `wrangler dev` to pick it up) and point the dev bot at it each time:
 
 ```sh
 curl -fsS "https://api.telegram.org/bot$BOT_TOKEN/setWebhook" \
@@ -41,13 +42,12 @@ Open the dev bot and press the menu button. Opened in a plain browser at `http:/
 
 ## Signing in
 
-The Mini App sends `Telegram.WebApp.initData` to `POST /api/session`. A Telegram user who is a Member gets a session; anyone else sees «Family Hub работает по приглашениям». Until Family Requests and Invites land, add yourself to a Family by hand in the local D1:
+The Mini App sends `Telegram.WebApp.initData` to `POST /api/session`. A Telegram user who is a Member gets a session; anyone else sees «Family Hub работает по приглашениям».
+
+To get a Family, press «Создать свою семью» and send a Family Request. With `OPERATOR_TELEGRAM_ID` set to your own id, the dev bot brings the request to you with ✅ / ❌; ✅ makes you the Family Owner, and «Открыть Family Hub» under the bot's reply opens the Mini App at `MINI_APP_URL`. A rejected request can be repeated after 7 days; to start over sooner, clear it in the local D1:
 
 ```sh
-vp exec wrangler d1 execute family-hub --local --command "
-  insert into members values ('m1', <your telegram id>, 'Денис', 0, 0);
-  insert into families values ('f1', 'Гущины', 'm1', 0, 'm1', 0);
-  insert into family_members values ('f1', 'm1', 0, 'm1', 0);"
+vp exec wrangler d1 execute family-hub --local --command "delete from family_requests"
 ```
 
 initData older than an hour is refused, and the session lives 24 hours in memory; either way the Mini App asks to be restarted.
