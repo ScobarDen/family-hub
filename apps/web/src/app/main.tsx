@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import { createHttpClient } from "@/common/http-client";
 import { reatomTelegram } from "@/common/telegram";
+import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
 import { createSessionApi, reatomSession } from "@/modules/session";
 
 import { App } from "./app.view.tsx";
@@ -19,6 +20,12 @@ const httpClient = createHttpClient({
   fetch: async (input, init) => fetch(input, init),
 });
 const session = reatomSession({ api: createSessionApi(httpClient), telegram });
+const familyRequest = reatomFamilyRequest({
+  api: createFamilyRequestApi(httpClient),
+  telegram,
+  onBack: session.closeFamilyRequest,
+  onCheck: session.signIn,
+});
 
 telegram.launch();
 telegram.followColorScheme(document.documentElement);
@@ -26,6 +33,6 @@ session.signIn();
 
 createRoot(root).render(
   <StrictMode>
-    <App session={session} />
+    <App session={session} familyRequest={familyRequest} />
   </StrictMode>,
 );

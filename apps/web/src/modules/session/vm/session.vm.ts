@@ -1,4 +1,4 @@
-import { action, computed, noop } from "@reatom/core";
+import { action, atom, computed, noop } from "@reatom/core";
 
 import type { SessionApi } from "../session.api.ts";
 import { reatomSignIn, type SignInOutcome } from "../session.model.ts";
@@ -7,6 +7,7 @@ export type SessionScreen =
   | { kind: "signing-in" }
   | { kind: "outside-telegram" }
   | { kind: "stranger" }
+  | { kind: "family-request" }
   | { kind: "member"; memberName: string; familyName: string }
   | { kind: "restart" }
   | { kind: "failed" };
@@ -32,6 +33,7 @@ function screenOf(outcome: SignInOutcome | undefined): SessionScreen {
 
 export function reatomSession({ api, telegram }: SessionDependencies) {
   const signIn = reatomSignIn({ api, initData: telegram.initData });
+  const isRequestingFamily = atom(false, "session.isRequestingFamily");
 
   return {
     screen: computed((): SessionScreen => {
@@ -39,7 +41,15 @@ export function reatomSession({ api, telegram }: SessionDependencies) {
         return { kind: "restart" };
       }
 
-      return signIn.error() === undefined ? screenOf(signIn.data()) : { kind: "failed" };
+      if (signIn.error() !== undefined) {
+        return { kind: "failed" };
+      }
+
+      const screen = screenOf(signIn.data());
+
+      return screen.kind === "stranger" && isRequestingFamily()
+        ? { kind: "family-request" }
+        : screen;
     }, "session.screen"),
 
     signIn: action(() => {
@@ -52,8 +62,12 @@ export function reatomSession({ api, telegram }: SessionDependencies) {
     }, "session.showInviteHelp"),
 
     requestFamily: action(() => {
-      telegram.showAlert("Скоро здесь можно будет попросить создать свою семью.");
+      isRequestingFamily.set(true);
     }, "session.requestFamily"),
+
+    closeFamilyRequest: action(() => {
+      isRequestingFamily.set(false);
+    }, "session.closeFamilyRequest"),
   };
 }
 

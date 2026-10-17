@@ -1,6 +1,14 @@
 import { z } from "zod";
 
-export const errorCode = z.enum(["INVALID_REQUEST", "INIT_DATA_INVALID", "UNAUTHENTICATED"]);
+export const errorCode = z.enum([
+  "INVALID_REQUEST",
+  "INIT_DATA_INVALID",
+  "UNAUTHENTICATED",
+  "ALREADY_MEMBER",
+  "FAMILY_REQUEST_PENDING",
+  "FAMILY_REQUEST_COOLDOWN",
+  "OPERATOR_UNAVAILABLE",
+]);
 
 export type ErrorCode = z.infer<typeof errorCode>;
 

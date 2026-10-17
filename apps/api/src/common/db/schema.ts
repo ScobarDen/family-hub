@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const members = sqliteTable("members", {
@@ -39,5 +40,25 @@ export const familyMembers = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.familyId, table.memberId] }),
     uniqueIndex("family_members_member_id_unique").on(table.memberId),
+  ],
+);
+
+export const familyRequests = sqliteTable(
+  "family_requests",
+  {
+    id: text("id").primaryKey(),
+    telegramId: integer("telegram_id").notNull(),
+    familyName: text("family_name").notNull(),
+    requesterName: text("requester_name").notNull(),
+    requesterUsername: text("requester_username"),
+    status: text("status", { enum: ["pending", "approved", "rejected", "stale"] }).notNull(),
+    createdAt: integer("created_at").notNull(),
+    decidedAt: integer("decided_at"),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    uniqueIndex("family_requests_pending_telegram_id_unique")
+      .on(table.telegramId)
+      .where(sql`${table.status} = 'pending'`),
   ],
 );

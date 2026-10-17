@@ -13,6 +13,7 @@ type WebAppEvent = Parameters<TelegramWebApp["onEvent"]>[0];
 export type Theme = { colorScheme: ColorScheme; params: ThemeParams };
 
 const noInset: SafeAreaInset = { top: 0, bottom: 0, left: 0, right: 0 };
+const writeAccessVersion = "6.9";
 
 function reatomWebAppState<State>(
   webApp: TelegramWebApp,
@@ -76,6 +77,17 @@ export function reatomTelegram(webApp: TelegramWebApp) {
     showAlert: action((message: string) => {
       webApp.showAlert(message);
     }, "telegram.showAlert"),
+    requestWriteAccess: action(async (): Promise<boolean> => {
+      if (!webApp.isVersionAtLeast(writeAccessVersion)) {
+        return false;
+      }
+
+      return wrap(
+        new Promise<boolean>((resolve) => {
+          webApp.requestWriteAccess(resolve);
+        }),
+      );
+    }, "telegram.requestWriteAccess"),
     // Colours themselves arrive as --tg-theme-* variables; only Tailwind's dark: variant needs the class.
     followColorScheme: (element: HTMLElement) =>
       effect(() => {

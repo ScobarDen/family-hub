@@ -2,7 +2,7 @@ import type { Clock } from "@/common/clock";
 
 import type { MembershipRepo } from "./auth.repo.ts";
 import type { Membership } from "./auth.types.ts";
-import { verifyInitData } from "./lib/init-data.lib.ts";
+import { verifyInitData, type TelegramUser } from "./lib/init-data.lib.ts";
 import { createSessionTokens } from "./lib/session-token.lib.ts";
 
 export type SignInResult =
@@ -25,9 +25,15 @@ export function createAuthService({
 }: AuthServiceDependencies) {
   const sessionTokens = createSessionTokens(jwtSecret);
 
+  async function identify(initData: string): Promise<TelegramUser | undefined> {
+    return verifyInitData({ initData, botToken, now: clock.now() });
+  }
+
   return {
+    identify,
+
     async signIn(initData: string): Promise<SignInResult> {
-      const user = await verifyInitData({ initData, botToken, now: clock.now() });
+      const user = await identify(initData);
 
       if (!user) {
         return { status: "invalid" };
