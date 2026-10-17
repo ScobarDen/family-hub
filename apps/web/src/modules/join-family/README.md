@@ -1,6 +1,6 @@
 # join-family
 
-The screen of a person who opened the Mini App from an Invite link (`start_param` `inv_<token>`, read with the contract's deep-link codec): «Денис зовёт вас в семью «Гущины»» with «Вступить», which asks Telegram for write access and joins the Family. A used, expired or revoked Invite shows «Приглашение не действует»; a Member of another Family is told to leave it first; a Member of the inviting Family goes straight home. «Продолжить» closes the screen and leaves the person on whatever the session shows.
+The screen of a person who opened the Mini App from an Invite link (`start_param` `inv_<token>`, read with the contract's deep-link codec): «Ася зовёт вас в семью «Гущины»» with «Вступить», which asks Telegram for write access and joins the Family. A used, expired, revoked or mangled Invite shows «Приглашение не действует»; a Member of another Family is told to leave it first; a Member of the inviting Family goes straight home. «Продолжить» closes the screen and leaves the person on whatever the session shows.
 
 ## Injected
 

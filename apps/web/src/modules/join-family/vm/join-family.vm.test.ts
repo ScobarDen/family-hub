@@ -125,6 +125,14 @@ describe("opening the app from an Invite", () => {
     expect(model.isOpen()).toBe(false);
   });
 
+  test("says a mangled Invite link does not work without asking the server", async () => {
+    const backend = fakeBackend({ preview: open });
+    const { model } = startJoinFamily(backend, fakeTelegram("inv_short"));
+
+    expect(model.screen()).toEqual({ kind: "unavailable" });
+    expect(backend.requests).toEqual([]);
+  });
+
   test("says a used, expired or revoked Invite no longer works", async () => {
     const { model } = startJoinFamily(fakeBackend({ preview: { status: "unavailable" } }));
 

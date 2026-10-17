@@ -1,6 +1,6 @@
 # invites
 
-A Member's Invites on the home screen: «Пригласить в семью» creates a single-use Invite that lives 7 days and opens Telegram's share sheet with the card the bot prepared («Денис зовёт вас в семью «Гущины»» with a «Вступить» button), or with the bare link where `shareMessage` is unavailable (Telegram before 8.0) or the bot could not prepare the card. Below it, the Member's own open Invites with the day each stops working and «Отозвать».
+A Member's Invites on the home screen: «Пригласить в семью» creates a single-use Invite that lives 7 days and opens Telegram's share sheet with the card the bot prepared («Ася зовёт вас в семью «Гущины»» with a «Вступить» button), or with the bare link where `shareMessage` is unavailable (Telegram before 8.0) or the bot could not prepare the card. Below it, the Member's own open Invites with the day each stops working and «Отозвать».
 
 ## Injected
 

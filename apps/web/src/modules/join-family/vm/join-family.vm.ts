@@ -1,6 +1,6 @@
 import { action, atom, computed, noop, withAsync, withAsyncData, wrap } from "@reatom/core";
 
-import { parseDeepLink, type InvitePreview } from "@family-hub/contract";
+import { inviteTokenPattern, parseDeepLink, type InvitePreview } from "@family-hub/contract";
 
 import type { AcceptOutcome, JoinFamilyApi } from "../join-family.api.ts";
 
@@ -22,10 +22,16 @@ type JoinFamilyDependencies = {
   onJoined: () => void;
 };
 
-function inviteTokenOf(startParameter: string | undefined): string | undefined {
+type InviteLink = { kind: "none" } | { kind: "broken" } | { kind: "token"; token: string };
+
+function inviteLinkOf(startParameter: string | undefined): InviteLink {
   const link = parseDeepLink(startParameter);
 
-  return link?.kind === "inv" ? link.id : undefined;
+  if (link?.kind !== "inv") {
+    return { kind: "none" };
+  }
+
+  return inviteTokenPattern.test(link.id) ? { kind: "token", token: link.id } : { kind: "broken" };
 }
 
 function screenOf(preview: InvitePreview | undefined, hasFailed: boolean): JoinFamilyScreen {
@@ -68,16 +74,17 @@ function reatomAccept({ api, telegram, onJoined, preview, isClosed }: AcceptSour
 }
 
 export function reatomJoinFamily({ api, telegram, onJoined }: JoinFamilyDependencies) {
-  const token = inviteTokenOf(telegram.startParam);
-  const isClosed = atom(token === undefined, "joinFamily.isClosed");
+  const link = inviteLinkOf(telegram.startParam);
+  const token = link.kind === "token" ? link.token : undefined;
+  const isClosed = atom(link.kind === "none", "joinFamily.isClosed");
   const preview = action(
     async (inviteToken: string) => wrap(api.preview(telegram.initData, inviteToken)),
     "joinFamily.preview",
   ).extend(withAsyncData());
   const accept = reatomAccept({ api, telegram, onJoined, preview, isClosed });
   const screen = computed((): JoinFamilyScreen => {
-    if (isClosed()) {
-      return { kind: "none" };
+    if (isClosed() || link.kind === "broken") {
+      return { kind: isClosed() ? "none" : "unavailable" };
     }
 
     return screenOf(preview.data(), preview.error() !== undefined && preview.ready());

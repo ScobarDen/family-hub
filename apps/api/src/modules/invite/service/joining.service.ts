@@ -57,7 +57,7 @@ async function joinClaimed(
       now,
     });
   } catch (error) {
-    await invites.release(claimed.id, now);
+    await invites.release(claimed, now);
 
     // Joining another Family in parallel meets the one-Family-per-Member index.
     if (await memberships.findByTelegramId(user.id)) {

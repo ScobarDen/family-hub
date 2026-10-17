@@ -30,7 +30,7 @@ async function memberIdOf(db: Db, { telegramId, newMemberId }: Joiner): Promise<
   return member?.id ?? newMemberId;
 }
 
-// The invited person belongs to no Family yet, so the token, not a familyId, finds the Invite.
+// The invited person belongs to no Family yet, so findByToken and claim go by the token, not a familyId.
 async function findByToken(db: Db, token: string): Promise<FoundInvite | undefined> {
   return db
     .select({ invite: invites, inviterName: members.name, familyName: families.name })
@@ -63,7 +63,10 @@ async function join(db: Db, { invite, joiner, now }: Joining): Promise<void> {
       .values({ ...member, createdAt: now, updatedAt: now })
       .onConflictDoNothing(),
     db.insert(familyMembers).values({ familyId: invite.familyId, memberId, ...audit }),
-    db.update(invites).set({ usedBy: memberId }).where(eq(invites.id, invite.id)),
+    db
+      .update(invites)
+      .set({ usedBy: memberId, updatedAt: now })
+      .where(and(eq(invites.id, invite.id), eq(invites.familyId, invite.familyId))),
   ]);
 }
 
@@ -105,11 +108,11 @@ export function createInviteRepo(db: Db) {
     findByToken: async (token: string) => findByToken(db, token),
     claim: async (token: string, now: number) => claim(db, token, now),
 
-    async release(inviteId: string, now: number): Promise<void> {
+    async release(invite: InviteRow, now: number): Promise<void> {
       await db
         .update(invites)
         .set({ usedAt: null, usedBy: null, updatedAt: now })
-        .where(eq(invites.id, inviteId));
+        .where(and(eq(invites.id, invite.id), eq(invites.familyId, invite.familyId)));
     },
 
     join: async (joining: Joining) => join(db, joining),
