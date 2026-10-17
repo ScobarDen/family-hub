@@ -6,5 +6,6 @@ A Member's Invites on the home screen: «Пригласить в семью» cr
 
 - `api` — `createInvitesApi(httpClient)`: lists, creates and revokes the session Member's Invites; an Invite already gone on the server counts as revoked.
 - `telegram` — `canShareMessage`, `shareMessage` and `openTelegramLink` from `common/telegram`.
+- `timeZone` — the viewer's zone the expiry day is shown in; the device's, until a Member's own zone exists.
 
-The list is an async computed (`withAsyncData`) that loads when the View subscribes, so it waits for the session token. A new Invite joins the list from the create response; a revoke removes it at once and puts it back if the server call fails. `app/main.tsx` builds the model with `reatomInvites({ api, telegram })`, and `app.view.tsx` hands `<Invites model={…} />` to the session's Member screen.
+The list is an async computed (`withAsyncData`) that loads when the View subscribes, so it waits for the session token. A new Invite joins the list from the create response; a revoke removes it at once and puts it back if the server call fails. `app/main.tsx` builds the model with `reatomInvites({ api, telegram, timeZone })`, and `app.view.tsx` hands `<Invites model={…} />` to the session's Member screen.

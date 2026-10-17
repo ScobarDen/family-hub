@@ -2,6 +2,8 @@ import { action, atom, computed, noop, withAsync, withAsyncData, wrap } from "@r
 
 import type { Invite, InviteCreated } from "@family-hub/contract";
 
+import { formatDay } from "@/common/format-date";
+
 import type { InvitesApi } from "../invites.api.ts";
 
 export type InviteItem = { id: string; expiresOn: string };
@@ -13,10 +15,10 @@ type InvitesDependencies = {
     shareMessage: (preparedMessageId: string) => Promise<boolean>;
     openTelegramLink: (url: string) => void;
   };
+  timeZone: string;
 };
 
 const shareText = "Присоединяйтесь к нашей семье в Family Hub";
-const dayFormat = new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long" });
 
 function shareUrl(link: string): string {
   return `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(shareText)}`;
@@ -26,8 +28,8 @@ function newestFirst(invites: Invite[]): Invite[] {
   return invites.toSorted((left, right) => right.expiresAt - left.expiresAt);
 }
 
-function toItem(invite: Invite): InviteItem {
-  return { id: invite.id, expiresOn: `до ${dayFormat.format(invite.expiresAt)}` };
+function toItem(invite: Invite, timeZone: string): InviteItem {
+  return { id: invite.id, expiresOn: `до ${formatDay(invite.expiresAt, timeZone)}` };
 }
 
 function reatomList(api: InvitesApi) {
@@ -89,7 +91,10 @@ export function reatomInvites(dependencies: InvitesDependencies) {
   const revoke = reatomRevoke({ ...dependencies, list, failure });
 
   return {
-    invites: computed(() => (list.data() ?? []).map(toItem), "invites.items"),
+    invites: computed(
+      () => (list.data() ?? []).map((invite) => toItem(invite, dependencies.timeZone)),
+      "invites.items",
+    ),
     isLoading: computed(
       () => list.data() === undefined && list.error() === undefined,
       "invites.isLoading",

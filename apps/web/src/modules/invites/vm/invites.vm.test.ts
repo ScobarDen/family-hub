@@ -65,7 +65,11 @@ function fakeTelegram({ canShareMessage = true } = {}) {
 
 function startInvites(backend = fakeBackend(), telegram = fakeTelegram()) {
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
-  const model = reatomInvites({ api: createInvitesApi(client), telegram });
+  const model = reatomInvites({
+    api: createInvitesApi(client),
+    telegram,
+    timeZone: "Europe/Moscow",
+  });
 
   model.invites.subscribe(noop);
 

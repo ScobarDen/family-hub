@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { deviceTimeZone } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { reatomTelegram } from "@/common/telegram";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
@@ -31,7 +32,11 @@ const joinFamily = reatomJoinFamily({
   telegram,
   onJoined: session.signIn,
 });
-const invites = reatomInvites({ api: createInvitesApi(httpClient), telegram });
+const invites = reatomInvites({
+  api: createInvitesApi(httpClient),
+  telegram,
+  timeZone: deviceTimeZone(),
+});
 const familyRequest = reatomFamilyRequest({
   api: createFamilyRequestApi(httpClient),
   telegram,
