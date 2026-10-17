@@ -37,36 +37,37 @@ function allowedOrigin(origin: string, env: Env): string | null {
   return env.ALLOWED_ORIGINS.split(",").includes(origin) ? origin : null;
 }
 
-function createApp({ clock, createBotApi }: WorkerDependencies) {
-  function servicesFor(env: Env): AppServices {
-    const db = createDb(env.DB);
-    const bot = createBotApi(env.BOT_TOKEN);
-    const memberships = createMembershipRepo(db);
+function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): AppServices {
+  const db = createDb(env.DB);
+  const bot = createBotApi(env.BOT_TOKEN);
+  const memberships = createMembershipRepo(db);
 
-    return {
-      db,
+  return {
+    db,
+    clock,
+    bot,
+    auth: createAuthService({
+      memberships,
       clock,
+      botToken: env.BOT_TOKEN,
+      jwtSecret: env.JWT_SECRET,
+    }),
+    familyRequests: createFamilyRequestService({
+      requests: createFamilyRequestRepo(db),
+      memberships,
       bot,
-      auth: createAuthService({
-        memberships,
-        clock,
-        botToken: env.BOT_TOKEN,
-        jwtSecret: env.JWT_SECRET,
-      }),
-      familyRequests: createFamilyRequestService({
-        requests: createFamilyRequestRepo(db),
-        memberships,
-        bot,
-        clock,
-        operatorTelegramId: operatorTelegramIdOf(env),
-      }),
-    };
-  }
+      clock,
+      operatorTelegramId: operatorTelegramIdOf(env),
+      miniAppUrl: env.MINI_APP_URL,
+    }),
+  };
+}
 
+function createApp(dependencies: WorkerDependencies) {
   return new Hono<AppEnv>()
     .use("/api/*", cors({ origin: (origin, context) => allowedOrigin(origin, context.env) }))
     .use(async (context, next) => {
-      const services = servicesFor(context.env);
+      const services = servicesFor(context.env, dependencies);
 
       context.set("db", services.db);
       context.set("clock", services.clock);

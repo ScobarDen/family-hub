@@ -13,6 +13,7 @@
   ],
   "vars": {
     "ALLOWED_ORIGINS": "https://scobarden.github.io",
+    "MINI_APP_URL": "https://scobarden.github.io/family-hub/",
   },
   "secrets": {
     "required": ["BOT_TOKEN", "JWT_SECRET", "WEBHOOK_SECRET", "OPERATOR_TELEGRAM_ID"],

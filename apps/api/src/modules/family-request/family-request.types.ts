@@ -10,4 +10,5 @@ export type FamilyRequestDependencies = {
   bot: BotApi;
   clock: Clock;
   operatorTelegramId: number;
+  miniAppUrl: string;
 };

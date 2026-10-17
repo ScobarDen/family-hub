@@ -9,6 +9,10 @@ export const familyRequestBody = z.object({
 
 export type FamilyRequestBody = z.infer<typeof familyRequestBody>;
 
+export const familyRequestStatus = z.enum(["none", "pending", "cooldown"]);
+
+export type FamilyRequestStatus = z.infer<typeof familyRequestStatus>;
+
 export const familyRequestCreated = z.object({ status: z.literal("pending") });
 
 export type FamilyRequestCreated = z.infer<typeof familyRequestCreated>;

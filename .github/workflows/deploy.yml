@@ -72,7 +72,8 @@ jobs:
 
       # Secrets ride with the new version, so a failed deploy leaves the live one untouched.
       - name: Deploy Worker
-        run: vp exec wrangler deploy --secrets-file "$RUNNER_TEMP/secrets.json"
+        run: |
+          vp exec wrangler deploy --secrets-file "$RUNNER_TEMP/secrets.json"             --var "MINI_APP_URL:$MINI_APP_URL"
 
       - name: Register bot webhook, commands and menu button
         env:

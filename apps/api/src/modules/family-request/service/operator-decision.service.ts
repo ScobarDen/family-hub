@@ -2,10 +2,10 @@ import type { CallbackQuery } from "@grammyjs/types";
 
 import { uuidv7 } from "@family-hub/contract";
 
-import { ignoringBotErrors } from "@/common/telegram";
+import { ignoringBotErrors, type BotParams } from "@/common/telegram";
 
 import {
-  approvedText,
+  approvedMessage,
   outcomeNote,
   parseCallback,
   rejectedText,
@@ -20,9 +20,9 @@ type Outcome = DecidedOutcome | "already-decided";
 async function notifyRequester(
   { bot }: FamilyRequestDependencies,
   request: FamilyRequest,
-  text: string,
+  message: Omit<BotParams<"sendMessage">, "chat_id">,
 ) {
-  await ignoringBotErrors(bot.call("sendMessage", { chat_id: request.telegramId, text }));
+  await ignoringBotErrors(bot.call("sendMessage", { chat_id: request.telegramId, ...message }));
 }
 
 async function createFamilyFor(
@@ -56,7 +56,7 @@ async function approve(
   }
 
   await createFamilyFor(dependencies, request, now);
-  await notifyRequester(dependencies, request, approvedText(request));
+  await notifyRequester(dependencies, request, approvedMessage(request, dependencies.miniAppUrl));
 
   return "approved";
 }
@@ -75,7 +75,7 @@ async function reject(
     return "already-decided";
   }
 
-  await notifyRequester(dependencies, request, rejectedText(request));
+  await notifyRequester(dependencies, request, { text: rejectedText(request) });
 
   return "rejected";
 }
@@ -138,7 +138,7 @@ export async function handleCallback(
   }
 
   if (query.from.id !== dependencies.operatorTelegramId) {
-    await answer(dependencies, query, "Это может сделать только Operator");
+    await answer(dependencies, query, "Это может сделать только администратор");
 
     return;
   }

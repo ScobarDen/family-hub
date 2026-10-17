@@ -3,8 +3,10 @@ export {
   familyNameMaxLength,
   familyRequestBody,
   familyRequestCreated,
+  familyRequestStatus,
   type FamilyRequestBody,
   type FamilyRequestCreated,
+  type FamilyRequestStatus,
 } from "./family-request.ts";
 export {
   currentMember,

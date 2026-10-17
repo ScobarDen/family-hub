@@ -16,7 +16,7 @@ const waitingNotices: Record<Waiting, { title: string; description: string }> = 
   },
   "already-pending": {
     title: "Заявка уже на рассмотрении",
-    description: "Бот пришлёт сообщение, как только Operator её рассмотрит.",
+    description: "Бот пришлёт сообщение, как только администратор её рассмотрит.",
   },
 };
 

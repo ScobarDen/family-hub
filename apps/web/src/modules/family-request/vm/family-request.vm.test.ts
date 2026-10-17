@@ -1,7 +1,7 @@
-import { context } from "@reatom/core";
+import { atom, context } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { ApiError, FamilyRequestCreated } from "@family-hub/contract";
+import type { ApiError, FamilyRequestCreated, FamilyRequestStatus } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 
@@ -51,17 +51,30 @@ function fakeTelegram({ allowsWriteAccess = true } = {}) {
   };
 }
 
-function startFamilyRequest(backend: ReturnType<typeof fakeBackend>, telegram = fakeTelegram()) {
+type StartOptions = {
+  telegram?: ReturnType<typeof fakeTelegram>;
+  knownStatus?: FamilyRequestStatus;
+};
+
+function startFamilyRequest(
+  backend: ReturnType<typeof fakeBackend>,
+  { telegram = fakeTelegram(), knownStatus = "none" }: StartOptions = {},
+) {
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const navigation = { back: vi.fn<() => void>(), check: vi.fn<() => void>() };
+  const familyRequestStatus = atom<FamilyRequestStatus | undefined>(
+    knownStatus,
+    "test.familyRequestStatus",
+  );
   const model = reatomFamilyRequest({
     api: createFamilyRequestApi(client),
     telegram,
+    familyRequestStatus,
     onBack: navigation.back,
     onCheck: navigation.check,
   });
 
-  return { model, navigation };
+  return { model, navigation, familyRequestStatus };
 }
 
 async function submit(model: ReturnType<typeof startFamilyRequest>["model"], familyName: string) {
@@ -86,7 +99,7 @@ describe("submitting a Family Request", () => {
   test("asks Telegram for write access before sending the request", async () => {
     const backend = fakeBackend({ status: "pending" });
     const telegram = fakeTelegram();
-    const { model } = startFamilyRequest(backend, telegram);
+    const { model } = startFamilyRequest(backend, { telegram });
 
     await submit(model, "  Гущины ");
 
@@ -99,7 +112,9 @@ describe("submitting a Family Request", () => {
 
   test("sends the request even when write access is denied", async () => {
     const backend = fakeBackend({ status: "pending" });
-    const { model } = startFamilyRequest(backend, fakeTelegram({ allowsWriteAccess: false }));
+    const { model } = startFamilyRequest(backend, {
+      telegram: fakeTelegram({ allowsWriteAccess: false }),
+    });
 
     await submit(model, "Гущины");
 
@@ -174,6 +189,42 @@ describe("a refused Family Request", () => {
     const { model } = startFamilyRequest(fakeBackend({ status: "pending" }));
 
     expect(model.failure()).toBeUndefined();
+  });
+});
+
+describe("a Family Request the server already knows about", () => {
+  test("opens on the waiting screen while the request is pending", () => {
+    const { model } = startFamilyRequest(fakeBackend({ status: "pending" }), {
+      knownStatus: "pending",
+    });
+
+    expect(model.screen()).toEqual({ kind: "already-pending" });
+  });
+
+  test("opens on the cooldown instead of a form that would be refused", () => {
+    const { model } = startFamilyRequest(fakeBackend({ status: "pending" }), {
+      knownStatus: "cooldown",
+    });
+
+    expect(model.screen()).toEqual({ kind: "cooldown" });
+  });
+
+  test("keeps saying the request was sent while it waits", async () => {
+    const { model, familyRequestStatus } = startFamilyRequest(fakeBackend({ status: "pending" }));
+
+    await submit(model, "Гущины");
+    familyRequestStatus.set("pending");
+
+    expect(model.screen()).toEqual({ kind: "sent" });
+  });
+
+  test("shows the cooldown once a check finds the request rejected", async () => {
+    const { model, familyRequestStatus } = startFamilyRequest(fakeBackend({ status: "pending" }));
+
+    await submit(model, "Гущины");
+    familyRequestStatus.set("cooldown");
+
+    expect(model.screen()).toEqual({ kind: "cooldown" });
   });
 });
 

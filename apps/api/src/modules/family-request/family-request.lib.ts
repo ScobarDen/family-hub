@@ -50,8 +50,13 @@ export const outcomeNote = {
   stale: "⚪ Уже неактуально",
 } as const;
 
-export function approvedText(request: FamilyRequest): string {
-  return `Семья «${request.familyName}» создана 🎉\n\nОткройте Family Hub — вы её Family Owner.`;
+export function approvedMessage(request: FamilyRequest, miniAppUrl: string) {
+  return {
+    text: `Семья «${request.familyName}» создана 🎉\n\nВы — её владелец. Заходите в Family Hub.`,
+    reply_markup: {
+      inline_keyboard: [[{ text: "Открыть Family Hub", web_app: { url: miniAppUrl } }]],
+    },
+  };
 }
 
 export function rejectedText(request: FamilyRequest): string {

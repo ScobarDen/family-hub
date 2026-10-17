@@ -1,3 +1,5 @@
+import type { FamilyRequestStatus } from "@family-hub/contract";
+
 import type { TelegramUser } from "@/common/auth";
 
 import { familyRequestCooldownMs } from "../family-request.config.ts";
@@ -12,25 +14,38 @@ export type SubmitResult =
   | { status: "cooldown" }
   | { status: "operator-unavailable" };
 
-async function refusal(
-  { memberships, requests, clock }: FamilyRequestDependencies,
+export async function statusOf(
+  { requests, clock }: FamilyRequestDependencies,
   telegramId: number,
-): Promise<SubmitResult | undefined> {
-  if (await memberships.findByTelegramId(telegramId)) {
-    return { status: "already-member" };
-  }
-
+): Promise<FamilyRequestStatus> {
   const latest = await requests.findLatest(telegramId);
 
   if (latest?.status === "pending") {
-    return { status: "already-pending" };
+    return "pending";
   }
 
   const isCoolingDown =
     latest?.status === "rejected" &&
     clock.now() < (latest.decidedAt ?? 0) + familyRequestCooldownMs;
 
-  return isCoolingDown ? { status: "cooldown" } : undefined;
+  return isCoolingDown ? "cooldown" : "none";
+}
+
+const refusals = {
+  pending: { status: "already-pending" },
+  cooldown: { status: "cooldown" },
+  none: undefined,
+} as const satisfies Record<FamilyRequestStatus, SubmitResult | undefined>;
+
+async function refusal(
+  dependencies: FamilyRequestDependencies,
+  telegramId: number,
+): Promise<SubmitResult | undefined> {
+  if (await dependencies.memberships.findByTelegramId(telegramId)) {
+    return { status: "already-member" };
+  }
+
+  return refusals[await statusOf(dependencies, telegramId)];
 }
 
 async function sendToOperator(

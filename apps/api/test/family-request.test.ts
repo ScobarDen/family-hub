@@ -118,7 +118,7 @@ describe("submitting a Family Request", () => {
     await submitRequest(worker, denis);
 
     expect(await worker.rowCounts()).toEqual({ members: 0, families: 0, familyMembers: 0 });
-    expect(await signIn(worker, denis)).toEqual({ status: "stranger" });
+    expect(await signIn(worker, denis)).toEqual({ status: "stranger", familyRequest: "pending" });
   });
 
   test("is refused while another request from the same account is pending", async () => {
@@ -207,8 +207,28 @@ describe("the Operator approves", () => {
     await press(worker, "✅ Одобрить");
 
     expect(messagesTo(worker, denis.id)).toEqual([
-      "Семья «Гущины» создана 🎉\n\nОткройте Family Hub — вы её Family Owner.",
+      "Семья «Гущины» создана 🎉\n\nВы — её владелец. Заходите в Family Hub.",
     ]);
+  });
+
+  test("lets the requester open the Mini App right from the message", async () => {
+    const worker = startWorker({ now });
+
+    await submitRequest(worker, denis);
+    await press(worker, "✅ Одобрить");
+
+    const created = worker.bot.sentMessages().find((message) => message.chat_id === denis.id);
+
+    expect(created?.reply_markup).toEqual({
+      inline_keyboard: [
+        [
+          {
+            text: "Открыть Family Hub",
+            web_app: { url: "https://scobarden.github.io/family-hub/" },
+          },
+        ],
+      ],
+    });
   });
 
   test("marks the request decided in the Operator's chat and answers the button", async () => {
@@ -246,6 +266,7 @@ describe("the Operator approves", () => {
 
     expect(await signIn(worker, { id: operatorId, first_name: "Operator" })).toEqual({
       status: "stranger",
+      familyRequest: "none",
     });
     expect(await worker.rowCounts()).toEqual({ members: 1, families: 1, familyMembers: 1 });
   });
@@ -353,6 +374,31 @@ test("a rate-limited bot does not undo the Operator's decision", async () => {
   expect(await signIn(worker, denis)).toMatchObject({ status: "member" });
 });
 
+describe("a stranger's session tells where their Family Request stands", () => {
+  test("waiting while the Operator decides", async () => {
+    const worker = startWorker({ now });
+
+    await submitRequest(worker, denis);
+
+    expect(await signIn(worker, denis)).toMatchObject({ familyRequest: "pending" });
+  });
+
+  test("cooling down for 7 days after a rejection", async () => {
+    const worker = startWorker({ now });
+
+    await submitRequest(worker, denis);
+    await press(worker, "❌ Отклонить");
+    worker.clock.set("2026-10-11T08:59:00Z");
+    const coolingDown = await signIn(worker, denis);
+
+    worker.clock.set("2026-10-11T09:00:00Z");
+    const free = await signIn(worker, denis);
+
+    expect(coolingDown).toMatchObject({ familyRequest: "cooldown" });
+    expect(free).toMatchObject({ familyRequest: "none" });
+  });
+});
+
 describe("a press by anyone but the Operator", () => {
   test("is refused and changes nothing", async () => {
     const worker = startWorker({ now });
@@ -365,8 +411,8 @@ describe("a press by anyone but the Operator", () => {
     expect(messagesTo(worker, denis.id)).toEqual([]);
     expect(worker.bot.editedMessages()).toEqual([]);
     expect(worker.bot.answeredCallbacks()).toEqual([
-      expect.objectContaining({ text: "Это может сделать только Operator" }),
-      expect.objectContaining({ text: "Это может сделать только Operator" }),
+      expect.objectContaining({ text: "Это может сделать только администратор" }),
+      expect.objectContaining({ text: "Это может сделать только администратор" }),
     ]);
   });
 

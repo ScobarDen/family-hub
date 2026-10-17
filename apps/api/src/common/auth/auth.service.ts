@@ -7,7 +7,7 @@ import { createSessionTokens } from "./lib/session-token.lib.ts";
 
 export type SignInResult =
   | { status: "member"; token: string }
-  | { status: "stranger" }
+  | { status: "stranger"; telegramId: number }
   | { status: "invalid" };
 
 type AuthServiceDependencies = {
@@ -42,7 +42,7 @@ export function createAuthService({
       const membership = await memberships.findByTelegramId(user.id);
 
       if (!membership) {
-        return { status: "stranger" };
+        return { status: "stranger", telegramId: user.id };
       }
 
       return {

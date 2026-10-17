@@ -18,7 +18,7 @@ export const FamilyRequestForm = reatomComponent(({ model }: FamilyRequestFormPr
   return (
     <Notice
       title="Своя семья"
-      description="Operator рассмотрит заявку, а бот пришлёт ответ в Telegram."
+      description="Администратор рассмотрит заявку, а бот пришлёт ответ в Telegram."
     >
       <form className="flex w-full max-w-xs flex-col gap-3 text-left" onSubmit={submit}>
         <TextField

@@ -23,6 +23,7 @@ const session = reatomSession({ api: createSessionApi(httpClient), telegram });
 const familyRequest = reatomFamilyRequest({
   api: createFamilyRequestApi(httpClient),
   telegram,
+  familyRequestStatus: session.familyRequestStatus,
   onBack: session.closeFamilyRequest,
   onCheck: session.signIn,
 });

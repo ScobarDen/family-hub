@@ -32,6 +32,7 @@ There is no automatic rollback. To roll back the Worker: `vp exec wrangler rollb
   - secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `JWT_SECRET`, `WEBHOOK_SECRET`, `OPERATOR_TELEGRAM_ID`;
   - variables `API_URL` (the Worker origin, no trailing slash) and `MINI_APP_URL` (`https://scobarden.github.io/family-hub/`).
   - The Worker answers CORS only for `ALLOWED_ORIGINS` in `apps/api/wrangler.jsonc`; keep it equal to the origin of `MINI_APP_URL`.
+  - The deploy hands `MINI_APP_URL` to the Worker too, for the «Открыть Family Hub» button in bot messages; the value in `wrangler.jsonc` is only the fallback.
   - `WEBHOOK_SECRET` may contain only `A-Z`, `a-z`, `0-9`, `_` and `-` (Telegram's rule), e.g. `openssl rand -hex 32`.
 - Settings → Pages → Source: **GitHub Actions**.
 - Branch protection on `main`: require the `check` job of the CI workflow and **require branches to be up to date**, so that what lands on `main` is exactly what CI checked.

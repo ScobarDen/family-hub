@@ -1,6 +1,6 @@
 # session
 
-Signs the Member in when the Mini App launches and decides the first screen: a greeting for a Member, «Family Hub работает по приглашениям» for a stranger (or the Family Request form, passed in as `familyRequest`, once they choose «Создать свою семью»), «Перезапустите приложение» once any request gets a 401.
+Signs the Member in when the Mini App launches and decides the first screen: a greeting for a Member, «Family Hub работает по приглашениям» for a stranger (or the Family Request screen, passed in as `familyRequest`, once they choose «Создать свою семью» or while their request is pending), «Перезапустите приложение» once any request gets a 401.
 
 ## Injected
 

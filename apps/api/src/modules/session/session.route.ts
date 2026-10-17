@@ -1,12 +1,24 @@
 import { sValidator } from "@hono/standard-validator";
 import { Hono } from "hono";
 
-import { sessionRequest, type CurrentMember, type SessionResponse } from "@family-hub/contract";
+import {
+  sessionRequest,
+  type CurrentMember,
+  type FamilyRequestStatus,
+  type SessionResponse,
+} from "@family-hub/contract";
 
 import { requireMember, type AuthEnv } from "@/common/auth";
 import { apiError, httpStatus } from "@/common/errors";
 
-export const sessionRoute = new Hono<AuthEnv>()
+// Wired by the app to the family-request module, which modules may not import directly.
+type SessionEnv = {
+  Variables: AuthEnv["Variables"] & {
+    familyRequests: { statusOf(telegramId: number): Promise<FamilyRequestStatus> };
+  };
+};
+
+export const sessionRoute = new Hono<SessionEnv>()
   .post(
     "/api/session",
     sValidator("json", sessionRequest, (result, context) =>
@@ -22,6 +34,13 @@ export const sessionRoute = new Hono<AuthEnv>()
           apiError("INIT_DATA_INVALID", "initData is forged or expired"),
           httpStatus.unauthorized,
         );
+      }
+
+      if (result.status === "stranger") {
+        return context.json<SessionResponse>({
+          status: "stranger",
+          familyRequest: await context.var.familyRequests.statusOf(result.telegramId),
+        });
       }
 
       return context.json<SessionResponse>(result);
