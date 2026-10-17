@@ -331,6 +331,28 @@ describe("the Operator rejects", () => {
   });
 });
 
+test("approving after a rejection creates no Family", async () => {
+  const worker = startWorker({ now });
+
+  await submitRequest(worker, denis);
+  await press(worker, "❌ Отклонить");
+  await press(worker, "✅ Одобрить");
+
+  expect(await worker.rowCounts()).toEqual({ members: 0, families: 0, familyMembers: 0 });
+  expect(messagesTo(worker, denis.id)).toHaveLength(1);
+});
+
+test("a rate-limited bot does not undo the Operator's decision", async () => {
+  const worker = startWorker({ now });
+
+  await submitRequest(worker, denis);
+  worker.bot.rateLimitNextCall(5);
+  const response = await press(worker, "✅ Одобрить");
+
+  expect(response.status).toBe(200);
+  expect(await signIn(worker, denis)).toMatchObject({ status: "member" });
+});
+
 describe("a press by anyone but the Operator", () => {
   test("is refused and changes nothing", async () => {
     const worker = startWorker({ now });

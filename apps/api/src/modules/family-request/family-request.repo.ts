@@ -4,9 +4,9 @@ import { families, familyMembers, familyRequests, members, type Db } from "@/com
 
 export type FamilyRequest = typeof familyRequests.$inferSelect;
 
-type Decision = "rejected" | "stale";
+type ClosedStatus = Exclude<FamilyRequest["status"], "pending">;
 
-type Approval = { request: FamilyRequest; familyId: string; newMemberId: string; now: number };
+type NewFamily = { request: FamilyRequest; familyId: string; newMemberId: string; now: number };
 
 function isPending(id: string) {
   return and(eq(familyRequests.id, id), eq(familyRequests.status, "pending"));
@@ -23,7 +23,10 @@ async function existingMemberId(db: Db, telegramId: number): Promise<string | un
 }
 
 // The requester may be a Member who once left a Family; they keep their Member row.
-async function approve(db: Db, { request, familyId, newMemberId, now }: Approval): Promise<void> {
+async function createFamily(
+  db: Db,
+  { request, familyId, newMemberId, now }: NewFamily,
+): Promise<void> {
   const memberId = (await existingMemberId(db, request.telegramId)) ?? newMemberId;
   const audit = { createdAt: now, createdBy: memberId, updatedAt: now };
   const member = {
@@ -40,10 +43,6 @@ async function approve(db: Db, { request, familyId, newMemberId, now }: Approval
       .insert(families)
       .values({ id: familyId, name: request.familyName, ownerMemberId: memberId, ...audit }),
     db.insert(familyMembers).values({ familyId, memberId, ...audit }),
-    db
-      .update(familyRequests)
-      .set({ status: "approved", decidedAt: now, updatedAt: now })
-      .where(isPending(request.id)),
   ]);
 }
 
@@ -69,16 +68,23 @@ export function createFamilyRequestRepo(db: Db) {
       await db.delete(familyRequests).where(eq(familyRequests.id, id));
     },
 
-    async decide(id: string, status: Decision, now: number): Promise<FamilyRequest | undefined> {
-      const [decided] = await db
+    async close(id: string, status: ClosedStatus, now: number): Promise<FamilyRequest | undefined> {
+      const [closed] = await db
         .update(familyRequests)
         .set({ status, decidedAt: now, updatedAt: now })
         .where(isPending(id))
         .returning();
 
-      return decided;
+      return closed;
     },
-    approve: async (approval: Approval) => approve(db, approval),
+
+    async reopen(id: string, now: number): Promise<void> {
+      await db
+        .update(familyRequests)
+        .set({ status: "pending", decidedAt: null, updatedAt: now })
+        .where(eq(familyRequests.id, id));
+    },
+    createFamily: async (family: NewFamily) => createFamily(db, family),
   };
 }
 

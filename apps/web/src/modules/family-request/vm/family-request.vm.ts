@@ -65,7 +65,6 @@ export function reatomFamilyRequest({ api, telegram, onBack, onCheck }: FamilyRe
     }, "familyRequest.failure"),
 
     submit: action(() => {
-      // A failure stays in form.submit.error() and shows up as `failure`.
       form.submit().catch(noop);
     }, "familyRequest.submit"),
     back: action(onBack, "familyRequest.back"),

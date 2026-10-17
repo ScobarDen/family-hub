@@ -23,6 +23,16 @@ export type WorkerDependencies = {
 
 export type Worker = Required<Pick<ExportedHandler<Env>, "fetch" | "scheduled">>;
 
+function operatorTelegramIdOf(env: Env): number {
+  const id = Number(env.OPERATOR_TELEGRAM_ID);
+
+  if (!Number.isSafeInteger(id) || id <= 0) {
+    throw new Error("OPERATOR_TELEGRAM_ID must be the Operator's Telegram user id");
+  }
+
+  return id;
+}
+
 function allowedOrigin(origin: string, env: Env): string | null {
   return env.ALLOWED_ORIGINS.split(",").includes(origin) ? origin : null;
 }
@@ -48,7 +58,7 @@ function createApp({ clock, createBotApi }: WorkerDependencies) {
         memberships,
         bot,
         clock,
-        operatorTelegramId: Number(env.OPERATOR_TELEGRAM_ID),
+        operatorTelegramId: operatorTelegramIdOf(env),
       }),
     };
   }

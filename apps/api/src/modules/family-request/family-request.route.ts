@@ -6,7 +6,7 @@ import { familyRequestBody, type ErrorCode, type FamilyRequestCreated } from "@f
 import type { AuthEnv } from "@/common/auth";
 import { apiError, httpStatus } from "@/common/errors";
 
-import type { FamilyRequestService, SubmitResult } from "./family-request.service.ts";
+import type { FamilyRequestService, SubmitResult } from "./service/family-request.service.ts";
 
 export type FamilyRequestEnv = {
   Variables: AuthEnv["Variables"] & { familyRequests: FamilyRequestService };

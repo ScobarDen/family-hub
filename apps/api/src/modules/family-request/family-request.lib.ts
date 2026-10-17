@@ -1,17 +1,19 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
+import { uuidv7 } from "@family-hub/contract";
+
 import type { TelegramUser } from "@/common/auth";
 
 import { callbackPrefix } from "./family-request.config.ts";
 import type { FamilyRequest } from "./family-request.repo.ts";
 
-export type Decision = "approve" | "reject";
+export type OperatorChoice = "approve" | "reject";
 
-type Callback = { decision: Decision; requestId: string };
+type Callback = { choice: OperatorChoice; requestId: string };
 
 const callbackPattern = new RegExp(`^${callbackPrefix}:(approve|reject):(.+)$`);
 
-export function displayName(user: TelegramUser): string {
+function displayName(user: TelegramUser): string {
   return [user.first_name, user.last_name].filter(Boolean).join(" ");
 }
 
@@ -39,7 +41,7 @@ export function parseCallback(data: string | undefined): Callback | undefined {
     return undefined;
   }
 
-  return { decision: match[1] === "approve" ? "approve" : "reject", requestId: match[2] };
+  return { choice: match[1] === "approve" ? "approve" : "reject", requestId: match[2] };
 }
 
 export const outcomeNote = {
@@ -54,4 +56,18 @@ export function approvedText(request: FamilyRequest): string {
 
 export function rejectedText(request: FamilyRequest): string {
   return `К сожалению, заявку на семью «${request.familyName}» не одобрили.\n\nОтправить новую можно через 7 дней.`;
+}
+
+export function newRequest(user: TelegramUser, familyName: string, now: number): FamilyRequest {
+  return {
+    id: uuidv7(now),
+    telegramId: user.id,
+    familyName,
+    requesterName: displayName(user),
+    requesterUsername: user.username ?? null,
+    status: "pending",
+    createdAt: now,
+    decidedAt: null,
+    updatedAt: now,
+  };
 }

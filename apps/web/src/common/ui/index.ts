@@ -5,4 +5,5 @@ export { Field } from "./field.view.tsx";
 export { Input } from "./input.view.tsx";
 export { Label } from "./label.view.tsx";
 export { Notice } from "./notice.view.tsx";
+export { TextField } from "./text-field.view.tsx";
 export { cn } from "./ui.lib.ts";

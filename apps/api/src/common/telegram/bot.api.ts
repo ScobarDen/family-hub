@@ -25,6 +25,17 @@ export class BotApiError extends Error {
   }
 }
 
+// For messages sent after a decision is committed: a blocked chat or a rate limit must not undo it.
+export async function ignoringBotErrors(call: Promise<unknown>): Promise<void> {
+  try {
+    await call;
+  } catch (error) {
+    if (!(error instanceof BotApiError)) {
+      throw error;
+    }
+  }
+}
+
 type BotApiResponse<Result> =
   | { ok: true; result: Result }
   | {
