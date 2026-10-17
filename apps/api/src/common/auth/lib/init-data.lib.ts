@@ -13,6 +13,10 @@ const telegramUser = z.object({
 
 export type TelegramUser = z.infer<typeof telegramUser>;
 
+export function displayNameOf(user: TelegramUser): string {
+  return [user.first_name, user.last_name].filter(Boolean).join(" ");
+}
+
 type VerifyInitDataOptions = {
   initData: string;
   botToken: string;

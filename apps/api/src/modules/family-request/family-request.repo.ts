@@ -46,6 +46,13 @@ async function createFamily(
   ]);
 }
 
+async function cancelPendingOf(db: Db, telegramId: number, now: number): Promise<void> {
+  await db
+    .update(familyRequests)
+    .set({ status: "stale", decidedAt: now, updatedAt: now })
+    .where(and(eq(familyRequests.telegramId, telegramId), eq(familyRequests.status, "pending")));
+}
+
 // Family Requests come before any Family exists, so none of these queries can be scoped by familyId.
 export function createFamilyRequestRepo(db: Db) {
   return {
@@ -77,6 +84,9 @@ export function createFamilyRequestRepo(db: Db) {
 
       return closed;
     },
+
+    cancelPendingOf: async (telegramId: number, now: number) =>
+      cancelPendingOf(db, telegramId, now),
 
     async reopen(id: string, now: number): Promise<void> {
       await db

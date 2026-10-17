@@ -34,6 +34,10 @@ function rejectUndeliverable(state: FakeBotState, params: unknown): void {
 }
 
 function respond(state: FakeBotState, call: BotCall): unknown {
+  if (call.method === "savePreparedInlineMessage") {
+    return { id: `prepared-${state.calls.length}`, expiration_date: 0 };
+  }
+
   if (call.method !== "sendMessage") {
     return true;
   }
@@ -79,6 +83,7 @@ export function createFakeBotApi() {
     sentMessages: () => paramsOf("sendMessage"),
     editedMessages: () => paramsOf("editMessageText"),
     answeredCallbacks: () => paramsOf("answerCallbackQuery"),
+    preparedMessages: () => paramsOf("savePreparedInlineMessage"),
     blockChat(chatId: ChatId) {
       state.blockedChats.add(String(chatId));
     },

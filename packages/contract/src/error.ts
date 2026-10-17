@@ -8,6 +8,8 @@ export const errorCode = z.enum([
   "FAMILY_REQUEST_PENDING",
   "FAMILY_REQUEST_COOLDOWN",
   "OPERATOR_UNAVAILABLE",
+  "INVITE_UNAVAILABLE",
+  "INVITE_NOT_FOUND",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

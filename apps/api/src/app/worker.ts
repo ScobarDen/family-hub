@@ -10,6 +10,7 @@ import {
   createFamilyRequestService,
   familyRequestRoute,
 } from "@/modules/family-request";
+import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
 import { sessionRoute } from "@/modules/session";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -33,6 +34,14 @@ function operatorTelegramIdOf(env: Env): number {
   return id;
 }
 
+function miniAppLinkOf(env: Env): string {
+  if (!URL.canParse(env.MINI_APP_LINK)) {
+    throw new Error("MINI_APP_LINK must be the Mini App's direct link https://t.me/<bot>/<app>");
+  }
+
+  return env.MINI_APP_LINK;
+}
+
 function allowedOrigin(origin: string, env: Env): string | null {
   return env.ALLOWED_ORIGINS.split(",").includes(origin) ? origin : null;
 }
@@ -41,6 +50,14 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
   const db = createDb(env.DB);
   const bot = createBotApi(env.BOT_TOKEN);
   const memberships = createMembershipRepo(db);
+  const familyRequests = createFamilyRequestService({
+    requests: createFamilyRequestRepo(db),
+    memberships,
+    bot,
+    clock,
+    operatorTelegramId: operatorTelegramIdOf(env),
+    miniAppUrl: env.MINI_APP_URL,
+  });
 
   return {
     db,
@@ -52,13 +69,14 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       botToken: env.BOT_TOKEN,
       jwtSecret: env.JWT_SECRET,
     }),
-    familyRequests: createFamilyRequestService({
-      requests: createFamilyRequestRepo(db),
+    familyRequests,
+    invites: createInviteService({
+      invites: createInviteRepo(db),
       memberships,
+      familyRequests,
       bot,
       clock,
-      operatorTelegramId: operatorTelegramIdOf(env),
-      miniAppUrl: env.MINI_APP_URL,
+      miniAppLink: miniAppLinkOf(env),
     }),
   };
 }
@@ -74,12 +92,14 @@ function createApp(dependencies: WorkerDependencies) {
       context.set("bot", services.bot);
       context.set("auth", services.auth);
       context.set("familyRequests", services.familyRequests);
+      context.set("invites", services.invites);
       await next();
     })
     .route("/", healthRoute)
     .route("/", webhookRoute)
     .route("/", sessionRoute)
-    .route("/", familyRequestRoute);
+    .route("/", familyRequestRoute)
+    .route("/", inviteRoute);
 }
 
 export function createWorker(dependencies: WorkerDependencies): Worker {

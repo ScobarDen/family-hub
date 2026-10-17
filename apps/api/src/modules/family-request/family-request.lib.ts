@@ -2,7 +2,7 @@ import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
 import { uuidv7 } from "@family-hub/contract";
 
-import type { TelegramUser } from "@/common/auth";
+import { displayNameOf, type TelegramUser } from "@/common/auth";
 
 import { callbackPrefix } from "./family-request.config.ts";
 import type { FamilyRequest } from "./family-request.repo.ts";
@@ -12,10 +12,6 @@ export type OperatorChoice = "approve" | "reject";
 type Callback = { choice: OperatorChoice; requestId: string };
 
 const callbackPattern = new RegExp(`^${callbackPrefix}:(approve|reject):(.+)$`);
-
-function displayName(user: TelegramUser): string {
-  return [user.first_name, user.last_name].filter(Boolean).join(" ");
-}
 
 export function operatorText(request: FamilyRequest): string {
   const username = request.requesterUsername === null ? "" : ` (@${request.requesterUsername})`;
@@ -68,7 +64,7 @@ export function newRequest(user: TelegramUser, familyName: string, now: number):
     id: uuidv7(now),
     telegramId: user.id,
     familyName,
-    requesterName: displayName(user),
+    requesterName: displayNameOf(user),
     requesterUsername: user.username ?? null,
     status: "pending",
     createdAt: now,

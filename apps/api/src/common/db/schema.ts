@@ -1,5 +1,12 @@
 import { sql } from "drizzle-orm";
-import { integer, primaryKey, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import {
+  index,
+  integer,
+  primaryKey,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 export const members = sqliteTable("members", {
   id: text("id").primaryKey(),
@@ -61,4 +68,25 @@ export const familyRequests = sqliteTable(
       .on(table.telegramId)
       .where(sql`${table.status} = 'pending'`),
   ],
+);
+
+export const invites = sqliteTable(
+  "invites",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    expiresAt: integer("expires_at").notNull(),
+    usedAt: integer("used_at"),
+    usedBy: text("used_by").references(() => members.id),
+    revokedAt: integer("revoked_at"),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("invites_family_id_created_by_idx").on(table.familyId, table.createdBy)],
 );

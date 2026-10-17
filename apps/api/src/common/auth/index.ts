@@ -2,4 +2,4 @@ export { createMembershipRepo, type MembershipRepo } from "./auth.repo.ts";
 export { requireMember, type AuthEnv, type MemberEnv } from "./auth.route.ts";
 export { createAuthService, type AuthService, type SignInResult } from "./auth.service.ts";
 export type { Membership } from "./auth.types.ts";
-export type { TelegramUser } from "./lib/init-data.lib.ts";
+export { displayNameOf, type TelegramUser } from "./lib/init-data.lib.ts";
