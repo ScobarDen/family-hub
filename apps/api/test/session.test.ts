@@ -55,6 +55,11 @@ describe("signing in with initData", () => {
       member: { id: ownerId, name: "Денис" },
       family: { id: familyId, name: "Гущины" },
       isFamilyOwner: true,
+      settings: {
+        tabBar: ["feed", "plans", "calendar", "pet"],
+        timeZone: null,
+        canMessage: true,
+      },
     });
   });
 

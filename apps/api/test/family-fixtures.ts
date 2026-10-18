@@ -59,6 +59,10 @@ export function createFamilyFixtures(d1: D1Database, clock: FakeClock) {
 
       return memberId;
     },
+    // What a 403 from the bot will leave behind once Reminders are delivered.
+    async markUnreachable(memberId: string) {
+      await db.update(members).set({ canMessage: false }).where(eq(members.id, memberId));
+    },
     async leaveFamily(memberId: string) {
       await db.delete(familyMembers).where(eq(familyMembers.memberId, memberId));
     },

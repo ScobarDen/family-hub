@@ -27,6 +27,22 @@ export {
   type InviteRevoked,
 } from "./invite.ts";
 export {
+  appModule,
+  defaultTabBar,
+  familyMemberList,
+  memberSettings,
+  tabBar,
+  tabBarMaxModules,
+  tabBarMinModules,
+  tabBarSettings,
+  timeZoneSettings,
+  type AppModule,
+  type FamilyMemberList,
+  type MemberSettings,
+  type TabBarSettings,
+  type TimeZoneSettings,
+} from "./member.ts";
+export {
   currentMember,
   sessionRequest,
   sessionResponse,

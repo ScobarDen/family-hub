@@ -9,6 +9,7 @@ const telegramUser = z.object({
   first_name: z.string(),
   last_name: z.string().optional(),
   username: z.string().optional(),
+  allows_write_to_pm: z.boolean().optional(),
 });
 
 export type TelegramUser = z.infer<typeof telegramUser>;

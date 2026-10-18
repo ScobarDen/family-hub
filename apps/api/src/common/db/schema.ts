@@ -8,10 +8,17 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
+import type { AppModule } from "@family-hub/contract";
+
 export const members = sqliteTable("members", {
   id: text("id").primaryKey(),
   telegramId: integer("telegram_id").notNull().unique(),
   name: text("name").notNull(),
+  // NULL until the Member customises it, so a changed default reaches everyone who never did.
+  tabBar: text("tab_bar", { mode: "json" }).$type<AppModule[]>(),
+  timeZone: text("time_zone"),
+  isTimeZoneAuto: integer("is_time_zone_auto", { mode: "boolean" }).notNull().default(true),
+  canMessage: integer("can_message", { mode: "boolean" }).notNull().default(true),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
