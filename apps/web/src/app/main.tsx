@@ -1,9 +1,12 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { deviceTimeZone } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { reatomTelegram } from "@/common/telegram";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
+import { createInvitesApi, reatomInvites } from "@/modules/invites";
+import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import { createSessionApi, reatomSession } from "@/modules/session";
 
 import { App } from "./app.view.tsx";
@@ -19,7 +22,21 @@ const httpClient = createHttpClient({
   baseUrl: import.meta.env.VITE_API_URL ?? window.location.origin,
   fetch: async (input, init) => fetch(input, init),
 });
-const session = reatomSession({ api: createSessionApi(httpClient), telegram });
+const session = reatomSession({
+  api: createSessionApi(httpClient),
+  telegram,
+  isJoiningFamily: () => joinFamily.isOpen(),
+});
+const joinFamily = reatomJoinFamily({
+  api: createJoinFamilyApi(httpClient),
+  telegram,
+  onJoined: session.signIn,
+});
+const invites = reatomInvites({
+  api: createInvitesApi(httpClient),
+  telegram,
+  timeZone: deviceTimeZone(),
+});
 const familyRequest = reatomFamilyRequest({
   api: createFamilyRequestApi(httpClient),
   telegram,
@@ -31,9 +48,15 @@ const familyRequest = reatomFamilyRequest({
 telegram.launch();
 telegram.followColorScheme(document.documentElement);
 session.signIn();
+joinFamily.load();
 
 createRoot(root).render(
   <StrictMode>
-    <App session={session} familyRequest={familyRequest} />
+    <App
+      session={session}
+      familyRequest={familyRequest}
+      joinFamily={joinFamily}
+      invites={invites}
+    />
   </StrictMode>,
 );

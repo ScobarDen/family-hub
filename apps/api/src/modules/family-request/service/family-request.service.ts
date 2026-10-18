@@ -14,6 +14,8 @@ export function createFamilyRequestService(dependencies: FamilyRequestDependenci
       submit(dependencies, user, familyName),
     handleCallback: async (query: CallbackQuery) => handleCallback(dependencies, query),
     statusOf: async (telegramId: number) => statusOf(dependencies, telegramId),
+    cancelPending: async (telegramId: number) =>
+      dependencies.requests.cancelPendingOf(telegramId, dependencies.clock.now()),
   };
 }
 

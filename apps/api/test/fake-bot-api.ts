@@ -14,16 +14,20 @@ type BotCall = { [Method in BotMethod]: { method: Method; params: BotParams<Meth
 type FakeBotState = {
   calls: BotCall[];
   blockedChats: Set<string>;
-  pendingRetryAfterSeconds: number | undefined;
+  pendingRateLimit: { retryAfterSeconds: number; method: BotMethod | undefined } | undefined;
   lastMessageId: number;
 };
 
-function rejectUndeliverable(state: FakeBotState, params: unknown): void {
-  if (state.pendingRetryAfterSeconds !== undefined) {
-    const retryAfter = state.pendingRetryAfterSeconds;
+function rejectUndeliverable(state: FakeBotState, method: BotMethod, params: unknown): void {
+  const limit = state.pendingRateLimit;
 
-    state.pendingRetryAfterSeconds = undefined;
-    throw new BotApiError(429, `Too Many Requests: retry after ${retryAfter}`, retryAfter);
+  if (limit !== undefined && (limit.method === undefined || limit.method === method)) {
+    state.pendingRateLimit = undefined;
+    throw new BotApiError(
+      429,
+      `Too Many Requests: retry after ${limit.retryAfterSeconds}`,
+      limit.retryAfterSeconds,
+    );
   }
 
   const chatId = (params as { chat_id?: ChatId } | undefined)?.chat_id;
@@ -34,6 +38,14 @@ function rejectUndeliverable(state: FakeBotState, params: unknown): void {
 }
 
 function respond(state: FakeBotState, call: BotCall): unknown {
+  if (call.method === "getMe") {
+    return { id: 1, is_bot: true, first_name: "Family Hub", username: "family_hub_test_bot" };
+  }
+
+  if (call.method === "savePreparedInlineMessage") {
+    return { id: `prepared-${state.calls.length}`, expiration_date: 0 };
+  }
+
   if (call.method !== "sendMessage") {
     return true;
   }
@@ -52,13 +64,13 @@ export function createFakeBotApi() {
   const state: FakeBotState = {
     calls: [],
     blockedChats: new Set(),
-    pendingRetryAfterSeconds: undefined,
+    pendingRateLimit: undefined,
     lastMessageId: 0,
   };
 
   const api: BotApi = {
     async call<Method extends BotMethod>(method: Method, params: BotParams<Method>) {
-      rejectUndeliverable(state, params);
+      rejectUndeliverable(state, method, params);
 
       const call = { method, params } as BotCall;
 
@@ -79,14 +91,15 @@ export function createFakeBotApi() {
     sentMessages: () => paramsOf("sendMessage"),
     editedMessages: () => paramsOf("editMessageText"),
     answeredCallbacks: () => paramsOf("answerCallbackQuery"),
+    preparedMessages: () => paramsOf("savePreparedInlineMessage"),
     blockChat(chatId: ChatId) {
       state.blockedChats.add(String(chatId));
     },
     unblockChat(chatId: ChatId) {
       state.blockedChats.delete(String(chatId));
     },
-    rateLimitNextCall(retryAfterSeconds: number) {
-      state.pendingRetryAfterSeconds = retryAfterSeconds;
+    rateLimitNextCall(retryAfterSeconds: number, method?: BotMethod) {
+      state.pendingRateLimit = { retryAfterSeconds, method };
     },
   };
 }

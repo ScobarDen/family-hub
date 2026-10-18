@@ -87,6 +87,11 @@ async function decide(
 ): Promise<Outcome> {
   const request = await dependencies.requests.findById(requestId);
 
+  // The requester joined a Family by Invite, which cancels the request before any decision.
+  if (request?.status === "stale") {
+    return "stale";
+  }
+
   if (request?.status !== "pending") {
     return "already-decided";
   }

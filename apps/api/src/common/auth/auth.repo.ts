@@ -11,6 +11,7 @@ export function createMembershipRepo(db: Db) {
       .select({
         memberId: members.id,
         memberName: members.name,
+        telegramId: members.telegramId,
         familyId: families.id,
         familyName: families.name,
         ownerMemberId: families.ownerMemberId,
@@ -26,7 +27,7 @@ export function createMembershipRepo(db: Db) {
     }
 
     return {
-      member: { id: row.memberId, name: row.memberName },
+      member: { id: row.memberId, name: row.memberName, telegramId: row.telegramId },
       family: { id: row.familyId, name: row.familyName },
       isFamilyOwner: row.ownerMemberId === row.memberId,
     };

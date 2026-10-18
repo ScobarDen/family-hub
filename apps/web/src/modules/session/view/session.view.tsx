@@ -6,7 +6,12 @@ import { Button, Notice } from "@/common/ui";
 import type { SessionModel, SessionScreen } from "../vm/session.vm.ts";
 import { Stranger } from "./stranger.view.tsx";
 
-export type SessionProps = { model: SessionModel; familyRequest: ReactNode };
+export type SessionProps = {
+  model: SessionModel;
+  familyRequest: ReactNode;
+  joinFamily: ReactNode;
+  invites: ReactNode;
+};
 
 type PlainNotice = Extract<SessionScreen, { kind: "signing-in" | "outside-telegram" | "restart" }>;
 
@@ -22,30 +27,44 @@ const plainNotices: Record<PlainNotice["kind"], { title: string; description?: s
   },
 };
 
-export const Session = reatomComponent(({ model, familyRequest }: SessionProps) => {
-  const screen = model.screen();
+export const Session = reatomComponent(
+  ({ model, familyRequest, joinFamily, invites }: SessionProps) => {
+    const screen = model.screen();
 
-  if (screen.kind === "family-request") {
-    return familyRequest;
-  }
+    if (screen.kind === "family-request") {
+      return familyRequest;
+    }
 
-  if (screen.kind === "stranger") {
-    return <Stranger onInviteHelp={model.showInviteHelp} onRequestFamily={model.requestFamily} />;
-  }
+    if (screen.kind === "join-family") {
+      return joinFamily;
+    }
 
-  if (screen.kind === "member") {
-    return <Notice title={`Привет, ${screen.memberName}`} description={screen.familyName} />;
-  }
+    if (screen.kind === "stranger") {
+      return <Stranger onInviteHelp={model.showInviteHelp} onRequestFamily={model.requestFamily} />;
+    }
 
-  if (screen.kind === "failed") {
-    return (
-      <Notice title="Не получилось войти" description="Проверьте соединение и попробуйте ещё раз.">
-        <Button size="lg" onClick={model.signIn}>
-          Повторить
-        </Button>
-      </Notice>
-    );
-  }
+    if (screen.kind === "member") {
+      return (
+        <Notice title={`Привет, ${screen.memberName}`} description={screen.familyName}>
+          {invites}
+        </Notice>
+      );
+    }
 
-  return <Notice {...plainNotices[screen.kind]} />;
-}, "Session");
+    if (screen.kind === "failed") {
+      return (
+        <Notice
+          title="Не получилось войти"
+          description="Проверьте соединение и попробуйте ещё раз."
+        >
+          <Button size="lg" onClick={model.signIn}>
+            Повторить
+          </Button>
+        </Notice>
+      );
+    }
+
+    return <Notice {...plainNotices[screen.kind]} />;
+  },
+  "Session",
+);

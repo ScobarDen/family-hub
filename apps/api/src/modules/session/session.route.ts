@@ -46,4 +46,12 @@ export const sessionRoute = new Hono<SessionEnv>()
       return context.json<SessionResponse>(result);
     },
   )
-  .get("/api/me", requireMember, (context) => context.json<CurrentMember>(context.var.membership));
+  .get("/api/me", requireMember, (context) => {
+    const { member, family, isFamilyOwner } = context.var.membership;
+
+    return context.json<CurrentMember>({
+      member: { id: member.id, name: member.name },
+      family,
+      isFamilyOwner,
+    });
+  });
