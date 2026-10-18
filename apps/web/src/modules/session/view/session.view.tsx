@@ -10,7 +10,7 @@ export type SessionProps = {
   model: SessionModel;
   familyRequest: ReactNode;
   joinFamily: ReactNode;
-  invites: ReactNode;
+  home: ReactNode;
 };
 
 type PlainNotice = Extract<SessionScreen, { kind: "signing-in" | "outside-telegram" | "restart" }>;
@@ -28,7 +28,7 @@ const plainNotices: Record<PlainNotice["kind"], { title: string; description?: s
 };
 
 export const Session = reatomComponent(
-  ({ model, familyRequest, joinFamily, invites }: SessionProps) => {
+  ({ model, familyRequest, joinFamily, home }: SessionProps) => {
     const screen = model.screen();
 
     if (screen.kind === "family-request") {
@@ -44,11 +44,7 @@ export const Session = reatomComponent(
     }
 
     if (screen.kind === "member") {
-      return (
-        <Notice title={`Привет, ${screen.memberName}`} description={screen.familyName}>
-          {invites}
-        </Notice>
-      );
+      return home;
     }
 
     if (screen.kind === "failed") {

@@ -1,9 +1,15 @@
 export { Button, buttonVariants } from "./button.view.tsx";
+export { Chip } from "./chip.view.tsx";
 export { FieldError } from "./field-error.view.tsx";
 export { FieldLabel } from "./field-label.view.tsx";
 export { Field } from "./field.view.tsx";
+export { IconBadge, type IconTone } from "./icon-badge.view.tsx";
 export { Input } from "./input.view.tsx";
 export { Label } from "./label.view.tsx";
 export { Notice } from "./notice.view.tsx";
+export { ScreenTitle } from "./screen-title.view.tsx";
+export { SectionItem } from "./section-item.view.tsx";
+export { Section } from "./section.view.tsx";
+export { Switch } from "./switch.view.tsx";
 export { TextField } from "./text-field.view.tsx";
 export { cn } from "./ui.lib.ts";

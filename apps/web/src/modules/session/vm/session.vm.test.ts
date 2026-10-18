@@ -15,6 +15,11 @@ const denis: CurrentMember = {
   member: { id: "member-1", name: "Денис" },
   family: { id: "family-1", name: "Гущины" },
   isFamilyOwner: true,
+  settings: {
+    tabBar: ["goals", "feed"],
+    timeZone: { timeZone: "Europe/Moscow", isAuto: true },
+    canMessage: true,
+  },
 };
 
 const silence = Symbol("silence");
@@ -111,6 +116,15 @@ describe("signing in", () => {
       memberName: "Денис",
       familyName: "Гущины",
     });
+  });
+
+  test("hands the signed-in Member's settings to the rest of the app", async () => {
+    const session = startSession(fakeBackend({ session: { status: "member", token } }));
+
+    expect(session.member()).toBeUndefined();
+    await signIn(session);
+
+    expect(session.member()?.settings.tabBar).toEqual(["goals", "feed"]);
   });
 
   test("shows the stranger screen to a Telegram user without a Family", async () => {

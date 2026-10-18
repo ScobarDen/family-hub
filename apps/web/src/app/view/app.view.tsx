@@ -1,22 +1,21 @@
 import { FamilyRequest, type FamilyRequestModel } from "@/modules/family-request";
-import { Invites, type InvitesModel } from "@/modules/invites";
 import { JoinFamily, type JoinFamilyModel } from "@/modules/join-family";
-import { Session, type SessionModel } from "@/modules/session";
+import { Session } from "@/modules/session";
 
-type AppProps = {
-  session: SessionModel;
+import { Home, type HomeProps } from "./home.view.tsx";
+
+type AppProps = HomeProps & {
   familyRequest: FamilyRequestModel;
   joinFamily: JoinFamilyModel;
-  invites: InvitesModel;
 };
 
-export function App({ session, familyRequest, joinFamily, invites }: AppProps) {
+export function App({ familyRequest, joinFamily, ...home }: AppProps) {
   return (
     <Session
-      model={session}
+      model={home.session}
       familyRequest={<FamilyRequest model={familyRequest} />}
       joinFamily={<JoinFamily model={joinFamily} />}
-      invites={<Invites model={invites} />}
+      home={<Home {...home} />}
     />
   );
 }

@@ -40,6 +40,13 @@ declare global {
 }
 /* oxlint-enable typescript/consistent-type-definitions */
 
+export type TelegramButton = {
+  show(): void;
+  hide(): void;
+  onClick(handler: () => void): void;
+  offClick(handler: () => void): void;
+};
+
 export type TelegramWebApp = {
   initData: string;
   initDataUnsafe: { start_param?: string };
@@ -58,6 +65,8 @@ export type TelegramWebApp = {
   requestWriteAccess(callback?: (isAllowed: boolean) => void): void;
   shareMessage(preparedMessageId: string, callback?: (isSent: boolean) => void): void;
   openTelegramLink(url: string): void;
+  BackButton: TelegramButton;
+  SettingsButton: TelegramButton;
   onEvent(event: WebAppEvent, handler: () => void): void;
   offEvent(event: WebAppEvent, handler: () => void): void;
 };

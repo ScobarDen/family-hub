@@ -1,6 +1,6 @@
 import { action, atom, computed, noop } from "@reatom/core";
 
-import type { FamilyRequestStatus } from "@family-hub/contract";
+import type { CurrentMember, FamilyRequestStatus } from "@family-hub/contract";
 
 import type { SessionApi } from "../session.api.ts";
 import { reatomSignIn, type SignInOutcome } from "../session.model.ts";
@@ -83,6 +83,12 @@ export function reatomSession({ api, telegram, isJoiningFamily }: SessionDepende
 
   return {
     familyRequestStatus,
+
+    member: computed((): CurrentMember | undefined => {
+      const outcome = signIn.data();
+
+      return outcome?.status === "member" ? outcome.member : undefined;
+    }, "session.member"),
 
     screen: computed(
       () => currentScreen({ api, signIn, isJoiningFamily, isRequestingFamily }),

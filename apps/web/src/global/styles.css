@@ -2,6 +2,9 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+/* data-platform comes from common/telegram: Android gets the floating pill, iOS the glass. */
+@custom-variant ios (&:is([data-platform="ios"] *));
+@custom-variant android (&:is([data-platform="android"] *));
 
 /* telegram-web-app.js keeps the --tg-* variables in sync with themeParams; fallbacks cover older clients and a plain browser. */
 :root {
@@ -62,6 +65,7 @@
   --color-link: var(--link);
   --spacing-safe-top: var(--safe-area-top);
   --spacing-safe-bottom: var(--safe-area-bottom);
+  --font-sans: -apple-system, system-ui, "Roboto", "Segoe UI", sans-serif;
 }
 
 @layer base {
@@ -70,6 +74,6 @@
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background font-sans text-foreground antialiased;
   }
 }
