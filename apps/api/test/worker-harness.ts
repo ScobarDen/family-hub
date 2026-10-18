@@ -39,7 +39,6 @@ function createTestEnv(): Env {
     OPERATOR_TELEGRAM_ID: "1000",
     ALLOWED_ORIGINS: "https://scobarden.github.io,http://localhost:5173",
     MINI_APP_URL: "https://scobarden.github.io/family-hub/",
-    MINI_APP_LINK: "https://t.me/family_hub_test_bot/app",
   };
 }
 

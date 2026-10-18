@@ -30,7 +30,7 @@ There is no automatic rollback. To roll back the Worker: `vp exec wrangler rollb
 
 - Environment **`production`**:
   - secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `JWT_SECRET`, `WEBHOOK_SECRET`, `OPERATOR_TELEGRAM_ID`;
-  - variables `API_URL` (the Worker origin, no trailing slash), `MINI_APP_URL` (`https://scobarden.github.io/family-hub/`) and `MINI_APP_LINK`, the Mini App's direct link `https://t.me/<bot>/<app>` that Invite links are built on.
+  - variables `API_URL` (the Worker origin, no trailing slash) and `MINI_APP_URL` (`https://scobarden.github.io/family-hub/`).
   - The Worker answers CORS only for `ALLOWED_ORIGINS` in `apps/api/wrangler.jsonc`; keep it equal to the origin of `MINI_APP_URL`.
   - The deploy hands `MINI_APP_URL` to the Worker too, for the «Открыть Family Hub» button in bot messages; the value in `wrangler.jsonc` is only the fallback.
   - `WEBHOOK_SECRET` may contain only `A-Z`, `a-z`, `0-9`, `_` and `-` (Telegram's rule), e.g. `openssl rand -hex 32`.
@@ -41,6 +41,5 @@ There is no automatic rollback. To roll back the Worker: `vp exec wrangler rollb
 ### Production bot
 
 - In BotFather: **Bot Settings → Configure Mini App → Enable Mini App** with `MINI_APP_URL`, so the bot gets the «Открыть» button in the chat list (Main Mini App). Repeat for the dev bot with its own URL.
-- In BotFather: `/newapp` with the same `MINI_APP_URL` and a short name; `https://t.me/<bot>/<short name>` is `MINI_APP_LINK`. Repeat for the dev bot.
 - **Never recreate the production bot.** Photos live in Family channels where this bot is an admin, and every `file_id` is bound to it; a new bot loses access to all of them. If the token leaks, `/revoke` it in BotFather, put the new token into the `BOT_TOKEN` secret and re-run the deploy workflow (Actions → Deploy → Run workflow).
 - Commands, the menu button and the webhook are owned by the deploy workflow; changes made by hand in BotFather are overwritten by the next deploy.

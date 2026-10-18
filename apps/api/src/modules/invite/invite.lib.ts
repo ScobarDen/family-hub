@@ -13,8 +13,9 @@ export function newInviteToken(): string {
     .replace(/=+$/, "");
 }
 
-export function inviteLink(miniAppLink: string, token: string): string {
-  const link = new URL(miniAppLink);
+// The bot's Main Mini App opens from t.me/<bot>, so no app short name is needed.
+export function inviteLink(botUsername: string, token: string): string {
+  const link = new URL(`https://t.me/${botUsername}`);
 
   link.searchParams.set("startapp", encodeDeepLink({ kind: "inv", id: token }));
 

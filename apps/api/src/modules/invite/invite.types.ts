@@ -11,5 +11,4 @@ export type InviteDependencies = {
   familyRequests: { cancelPending(telegramId: number): Promise<void> };
   bot: BotApi;
   clock: Clock;
-  miniAppLink: string;
 };

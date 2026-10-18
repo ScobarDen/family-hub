@@ -175,7 +175,7 @@ describe("creating an Invite", () => {
 
     expect(response.status).toBe(201);
     expect(created.link).toMatch(
-      /^https:\/\/t\.me\/family_hub_test_bot\/app\?startapp=inv_[A-Za-z0-9_-]{22}$/,
+      /^https:\/\/t\.me\/family_hub_test_bot\?startapp=inv_[A-Za-z0-9_-]{22}$/,
     );
     expect(created.expiresAt).toBe(Date.parse("2026-10-11T09:00:00Z"));
   });
@@ -197,7 +197,7 @@ describe("creating an Invite", () => {
   test("still gives the link when Telegram cannot prepare the message", async () => {
     const { worker } = await startWithFamily();
 
-    worker.bot.rateLimitNextCall(5);
+    worker.bot.rateLimitNextCall(5, "savePreparedInlineMessage");
     const response = await postInvite(worker, denis);
 
     expect(response.status).toBe(201);

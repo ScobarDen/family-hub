@@ -34,14 +34,6 @@ function operatorTelegramIdOf(env: Env): number {
   return id;
 }
 
-function miniAppLinkOf(env: Env): string {
-  if (!URL.canParse(env.MINI_APP_LINK)) {
-    throw new Error("MINI_APP_LINK must be the Mini App's direct link https://t.me/<bot>/<app>");
-  }
-
-  return env.MINI_APP_LINK;
-}
-
 function allowedOrigin(origin: string, env: Env): string | null {
   return env.ALLOWED_ORIGINS.split(",").includes(origin) ? origin : null;
 }
@@ -76,7 +68,6 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       familyRequests,
       bot,
       clock,
-      miniAppLink: miniAppLinkOf(env),
     }),
   };
 }

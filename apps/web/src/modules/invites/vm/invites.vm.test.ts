@@ -8,12 +8,12 @@ import { createHttpClient } from "@/common/http-client";
 import { createInvitesApi } from "../invites.api.ts";
 import { reatomInvites } from "./invites.vm.ts";
 
-const link = "https://t.me/family_hub_bot/app?startapp=inv_AbCdEfGhIjKlMnOpQrStUv";
+const link = "https://t.me/family_hub_bot?startapp=inv_AbCdEfGhIjKlMnOpQrStUv";
 const expiresAt = Date.parse("2026-10-11T09:00:00Z");
 
 const older: Invite = {
   id: "invite-1",
-  link: "https://t.me/family_hub_bot/app?startapp=inv_ZyXwVuTsRqPoNmLkJiHgFe",
+  link: "https://t.me/family_hub_bot?startapp=inv_ZyXwVuTsRqPoNmLkJiHgFe",
   expiresAt: Date.parse("2026-10-09T12:00:00Z"),
 };
 const created: InviteCreated = { id: "invite-2", link, expiresAt, preparedMessageId: "prepared-1" };
