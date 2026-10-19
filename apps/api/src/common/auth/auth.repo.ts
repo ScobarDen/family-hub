@@ -12,6 +12,7 @@ export function createMembershipRepo(db: Db) {
         memberId: members.id,
         memberName: members.name,
         telegramId: members.telegramId,
+        canMessage: members.canMessage,
         familyId: families.id,
         familyName: families.name,
         ownerMemberId: families.ownerMemberId,
@@ -27,7 +28,12 @@ export function createMembershipRepo(db: Db) {
     }
 
     return {
-      member: { id: row.memberId, name: row.memberName, telegramId: row.telegramId },
+      member: {
+        id: row.memberId,
+        name: row.memberName,
+        telegramId: row.telegramId,
+        canMessage: row.canMessage,
+      },
       family: { id: row.familyId, name: row.familyName },
       isFamilyOwner: row.ownerMemberId === row.memberId,
     };
@@ -36,6 +42,10 @@ export function createMembershipRepo(db: Db) {
   return {
     findByMemberId: async (memberId: string) => findWhere(eq(members.id, memberId)),
     findByTelegramId: async (telegramId: number) => findWhere(eq(members.telegramId, telegramId)),
+
+    async setCanMessage(memberId: string, canMessage: boolean, now: number): Promise<void> {
+      await db.update(members).set({ canMessage, updatedAt: now }).where(eq(members.id, memberId));
+    },
   };
 }
 

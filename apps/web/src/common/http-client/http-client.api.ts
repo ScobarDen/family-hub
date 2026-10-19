@@ -35,7 +35,7 @@ type HttpClientOptions = {
 
 type RequestOptions<Schema extends z.ZodType> = {
   schema: Schema;
-  method?: "GET" | "POST" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
 };
 

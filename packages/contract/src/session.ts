@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { familyRequestStatus } from "./family-request.ts";
+import { memberSettings } from "./member.ts";
 
 export const sessionRequest = z.object({
   initData: z.string().min(1),
@@ -17,6 +18,7 @@ export const currentMember = z.object({
   member: z.object({ id: z.string(), name: z.string() }),
   family: z.object({ id: z.string(), name: z.string() }),
   isFamilyOwner: z.boolean(),
+  settings: memberSettings,
 });
 
 export type CurrentMember = z.infer<typeof currentMember>;

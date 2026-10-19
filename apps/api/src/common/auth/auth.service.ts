@@ -45,6 +45,11 @@ export function createAuthService({
         return { status: "stranger", telegramId: user.id };
       }
 
+      // Telegram omits the flag on some launches, so only a 403 from the bot turns it off.
+      if (user.allows_write_to_pm === true && !membership.member.canMessage) {
+        await memberships.setCanMessage(membership.member.id, true, clock.now());
+      }
+
       return {
         status: "member",
         token: await sessionTokens.sign(membership.member.id, clock.now()),

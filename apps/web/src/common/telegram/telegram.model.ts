@@ -1,8 +1,9 @@
-import { action, atom, effect, withConnectHook, wrap } from "@reatom/core";
+import { action, atom, effect, noop, withConnectHook, wrap } from "@reatom/core";
 
 import type {
   ColorScheme,
   SafeAreaInset,
+  TelegramButton,
   TelegramWebApp,
   ThemeParams,
   Viewport,
@@ -15,6 +16,10 @@ export type Theme = { colorScheme: ColorScheme; params: ThemeParams };
 const noInset: SafeAreaInset = { top: 0, bottom: 0, left: 0, right: 0 };
 const writeAccessVersion = "6.9";
 const shareMessageVersion = "8.0";
+const backButtonVersion = "6.1";
+const settingsButtonVersion = "7.0";
+
+type PlatformLook = "ios" | "android";
 
 function reatomWebAppState<State>(
   webApp: TelegramWebApp,
@@ -90,6 +95,42 @@ function reatomPrompts(webApp: TelegramWebApp) {
   };
 }
 
+function reatomButton(
+  webApp: TelegramWebApp,
+  { button, version, name }: { button: TelegramButton; version: string; name: string },
+) {
+  const isAvailable = webApp.isVersionAtLeast(version);
+
+  return {
+    isAvailable,
+    follow(isVisible: () => boolean, onClick: () => void): () => void {
+      if (!isAvailable) {
+        return noop;
+      }
+
+      button.onClick(onClick);
+
+      const visibility = effect(() => {
+        if (isVisible()) {
+          button.show();
+        } else {
+          button.hide();
+        }
+      }, name);
+
+      return () => {
+        visibility.unsubscribe();
+        button.offClick(onClick);
+        button.hide();
+      };
+    },
+  };
+}
+
+function lookOf(platform: string): PlatformLook {
+  return platform === "ios" || platform === "macos" ? "ios" : "android";
+}
+
 export function reatomTelegram(webApp: TelegramWebApp) {
   const theme = reatomWebAppState<Theme>(webApp, {
     name: "telegram.theme",
@@ -103,6 +144,16 @@ export function reatomTelegram(webApp: TelegramWebApp) {
     startParam: webApp.initDataUnsafe.start_param,
     canShareMessage: webApp.isVersionAtLeast(shareMessageVersion),
     platform: atom(webApp.platform, "telegram.platform"),
+    backButton: reatomButton(webApp, {
+      button: webApp.BackButton,
+      version: backButtonVersion,
+      name: "telegram.backButton",
+    }),
+    settingsButton: reatomButton(webApp, {
+      button: webApp.SettingsButton,
+      version: settingsButtonVersion,
+      name: "telegram.settingsButton",
+    }),
     theme,
     ...reatomLayout(webApp),
     launch: action(() => {
@@ -115,6 +166,9 @@ export function reatomTelegram(webApp: TelegramWebApp) {
       effect(() => {
         element.classList.toggle("dark", theme().colorScheme === "dark");
       }, "telegram.followColorScheme"),
+    followPlatform: (element: HTMLElement) => {
+      element.dataset.platform = lookOf(webApp.platform);
+    },
   };
 }
 

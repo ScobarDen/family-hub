@@ -11,6 +11,7 @@ import {
   familyRequestRoute,
 } from "@/modules/family-request";
 import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
+import { createMemberRepo, createMemberService, memberRoute } from "@/modules/member";
 import { sessionRoute } from "@/modules/session";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -69,6 +70,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       bot,
       clock,
     }),
+    members: createMemberService({ members: createMemberRepo(db), clock }),
   };
 }
 
@@ -84,13 +86,15 @@ function createApp(dependencies: WorkerDependencies) {
       context.set("auth", services.auth);
       context.set("familyRequests", services.familyRequests);
       context.set("invites", services.invites);
+      context.set("members", services.members);
       await next();
     })
     .route("/", healthRoute)
     .route("/", webhookRoute)
     .route("/", sessionRoute)
     .route("/", familyRequestRoute)
-    .route("/", inviteRoute);
+    .route("/", inviteRoute)
+    .route("/", memberRoute);
 }
 
 export function createWorker(dependencies: WorkerDependencies): Worker {
