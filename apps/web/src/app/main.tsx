@@ -81,7 +81,16 @@ const home = {
     telegram,
   }),
   timeZone,
-  family: reatomFamily({ api: createFamilyApi(httpClient) }),
+  family: reatomFamily({
+    api: createFamilyApi(httpClient),
+    telegram,
+    self: () => {
+      const current = session.member();
+
+      return current && { memberId: current.member.id, familyName: current.family.name };
+    },
+    onLeft: session.signIn,
+  }),
   invites: reatomInvites({
     api: createInvitesApi(httpClient),
     telegram,

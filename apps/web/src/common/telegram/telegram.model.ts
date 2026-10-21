@@ -2,6 +2,7 @@ import { action, atom, effect, noop, withConnectHook, wrap } from "@reatom/core"
 
 import type {
   ColorScheme,
+  PopupParams,
   SafeAreaInset,
   TelegramButton,
   TelegramWebApp,
@@ -64,11 +65,28 @@ function reatomLayout(webApp: TelegramWebApp) {
   };
 }
 
-function reatomPrompts(webApp: TelegramWebApp) {
+function reatomDialogs(webApp: TelegramWebApp) {
   return {
     showAlert: action((message: string) => {
       webApp.showAlert(message);
     }, "telegram.showAlert"),
+    // Resolves with the pressed button's id, or undefined when the popup is dismissed.
+    showPopup: action(
+      async (params: PopupParams): Promise<string | undefined> =>
+        wrap(
+          new Promise<string | undefined>((resolve) => {
+            webApp.showPopup(params, (buttonId) => {
+              resolve(buttonId === null || buttonId === "" ? undefined : buttonId);
+            });
+          }),
+        ),
+      "telegram.showPopup",
+    ),
+  };
+}
+
+function reatomPrompts(webApp: TelegramWebApp) {
+  return {
     requestWriteAccess: action(async (): Promise<boolean> => {
       if (!webApp.isVersionAtLeast(writeAccessVersion)) {
         return false;
@@ -160,6 +178,7 @@ export function reatomTelegram(webApp: TelegramWebApp) {
       webApp.ready();
       webApp.expand();
     }, "telegram.launch"),
+    ...reatomDialogs(webApp),
     ...reatomPrompts(webApp),
     // Colours themselves arrive as --tg-theme-* variables; only Tailwind's dark: variant needs the class.
     followColorScheme: (element: HTMLElement) =>

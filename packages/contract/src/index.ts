@@ -1,5 +1,19 @@
 export { apiError, errorCode, type ApiError, type ErrorCode } from "./error.ts";
 export {
+  familyDeleted,
+  familyDeletion,
+  familyLeft,
+  familyOwnerChange,
+  familyOwnerChanged,
+  memberRemoved,
+  type FamilyDeleted,
+  type FamilyDeletion,
+  type FamilyLeft,
+  type FamilyOwnerChange,
+  type FamilyOwnerChanged,
+  type MemberRemoved,
+} from "./family.ts";
+export {
   familyNameMaxLength,
   familyRequestBody,
   familyRequestCreated,
@@ -29,6 +43,7 @@ export {
 export {
   appModule,
   defaultTabBar,
+  familyMember,
   familyMemberList,
   memberSettings,
   tabBar,
@@ -37,6 +52,7 @@ export {
   tabBarSettings,
   timeZoneSettings,
   type AppModule,
+  type FamilyMember,
   type FamilyMemberList,
   type MemberSettings,
   type TabBarSettings,

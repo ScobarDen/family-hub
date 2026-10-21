@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { createDb, families, familyMembers, members, type Db } from "@/common/db";
+import { createDb, families, familyMembers, invites, members, type Db } from "@/common/db";
 
 import type { FakeClock } from "./fake-clock.ts";
 
@@ -66,6 +66,7 @@ export function createFamilyFixtures(d1: D1Database, clock: FakeClock) {
     async leaveFamily(memberId: string) {
       await db.delete(familyMembers).where(eq(familyMembers.memberId, memberId));
     },
+    countInvites: async () => db.$count(invites),
     async rowCounts() {
       return {
         members: await db.$count(members),

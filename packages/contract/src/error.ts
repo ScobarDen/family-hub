@@ -10,6 +10,10 @@ export const errorCode = z.enum([
   "OPERATOR_UNAVAILABLE",
   "INVITE_UNAVAILABLE",
   "INVITE_NOT_FOUND",
+  "NOT_FAMILY_OWNER",
+  "OWNER_MUST_HAND_OVER",
+  "MEMBER_NOT_FOUND",
+  "FAMILY_NAME_MISMATCH",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

@@ -1,7 +1,7 @@
 import { PanelBottom } from "lucide-react";
 
 import { ScreenTitle, Section, SectionItem } from "@/common/ui";
-import { Family, type FamilyModel } from "@/modules/family";
+import { Family, FamilyExit, type FamilyModel } from "@/modules/family";
 import { Invites, type InvitesModel } from "@/modules/invites";
 import { NotificationsSetting, type NotificationsModel } from "@/modules/notifications";
 import { HiddenModules, type TabBarModel } from "@/modules/tab-bar";
@@ -50,6 +50,7 @@ export function ProfilePage({
         <Family model={family} />
       </Section>
       <Invites model={invites} />
+      <FamilyExit model={family} />
     </>
   );
 }
