@@ -150,7 +150,6 @@ function startCalendar({
   const backend = fakeBackend(plans);
   const opened: string[] = [];
   const openedPlans: string[] = [];
-  const savedDrafts: string[] = [];
   const pending = [...choices];
   const model = reatomCalendar({
     api: createCalendarApi(
@@ -166,9 +165,6 @@ function startCalendar({
       openedPlans.push(planId);
     },
     self: () => "member-1",
-    onDraftSaved: (draftId) => {
-      savedDrafts.push(draftId);
-    },
   });
 
   model.grid.subscribe(noop);
@@ -176,7 +172,7 @@ function startCalendar({
   model.dayItems.subscribe(noop);
   model.reminderForm.recipients.subscribe(noop);
 
-  return { model, backend, opened, openedPlans, savedDrafts };
+  return { model, backend, opened, openedPlans };
 }
 
 type Model = ReturnType<typeof startCalendar>["model"];
@@ -423,8 +419,8 @@ describe("a standalone Reminder", () => {
 });
 
 describe("a Command Draft opened by «Изменить»", () => {
-  test("fills the Reminder form and settles the draft once saved", async () => {
-    const { model, backend, savedDrafts } = startCalendar();
+  test("fills the Reminder form and saves what it shows", async () => {
+    const { model, backend } = startCalendar();
 
     await loaded(model);
     model.openReminderDraft({
@@ -452,7 +448,7 @@ describe("a Command Draft opened by «Изменить»", () => {
     model.reminderForm.save();
 
     await vi.waitFor(() => {
-      expect(savedDrafts).toEqual(["draft-1"]);
+      expect(model.screen()).toEqual({ kind: "calendar" });
     });
     expect(backend.requests.at(-1)?.body).toMatchObject({
       start: { date: "2026-10-16", time: "19:00" },
@@ -462,8 +458,8 @@ describe("a Command Draft opened by «Изменить»", () => {
 });
 
 describe("an Event draft opened by «Изменить»", () => {
-  test("fills the Event form, all day with its Reminders, and settles the draft once saved", async () => {
-    const { model, backend, savedDrafts } = startCalendar();
+  test("fills the Event form, all day with its Reminders, and saves what it shows", async () => {
+    const { model, backend } = startCalendar();
 
     await loaded(model);
     model.openEventDraft({
@@ -494,7 +490,7 @@ describe("an Event draft opened by «Изменить»", () => {
     model.form.save();
 
     await vi.waitFor(() => {
-      expect(savedDrafts).toEqual(["draft-2"]);
+      expect(model.screen()).toEqual({ kind: "event" });
     });
     expect(backend.requests.at(-1)?.body).toMatchObject({
       title: "День рождения мамы",

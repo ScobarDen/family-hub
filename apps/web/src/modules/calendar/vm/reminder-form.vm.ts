@@ -8,7 +8,7 @@ import {
   type ReminderChange,
 } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { reatomEditableRecord } from "@/common/form";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
@@ -49,7 +49,6 @@ const schema = z.object({
   visibility: z.string(),
 });
 
-// A Reminder fires at its time in the zone it was set in; a new one takes its creator's zone.
 function changeOf(
   values: ReminderValues,
   { timeZone, recipientIds }: { timeZone: string; recipientIds: string[] | null },
@@ -94,7 +93,7 @@ function valuesOfDraft({
   };
 }
 
-type Editing = Atom<Reminder | undefined>;
+type Editing = () => Reminder | undefined;
 
 // No choice means everyone in the Family.
 function reatomRecipients(dependencies: ReminderFormDependencies, chosen: Atom<string[]>) {
@@ -144,11 +143,10 @@ function reatomRemove(dependencies: ReminderFormDependencies, edited: Editing) {
   }, "calendar.reminderForm.remove");
 }
 
-type ReminderForm = ReturnType<typeof reatomForm<ReminderValues>>;
+type ReminderRecord = ReturnType<typeof reatomReminderRecord>;
 
-function reatomFlags(form: ReminderForm, edited: Editing) {
+function reatomFlags({ form, edited }: ReminderRecord) {
   return {
-    isCreating: computed(() => edited() === undefined, "calendar.reminderForm.isCreating"),
     isPrivate: computed(
       () => form.fields.visibility() === "private",
       "calendar.reminderForm.isPrivate",
@@ -162,91 +160,66 @@ function reatomFlags(form: ReminderForm, edited: Editing) {
       () => edited()?.visibility !== "shared",
       "calendar.reminderForm.canChooseVisibility",
     ),
-    isSaving: computed(() => !form.submit.ready(), "calendar.reminderForm.isSaving"),
-    failure: reatomSubmitFailure(form, {
-      message: "Не получилось сохранить напоминание. Попробуйте ещё раз.",
-      name: "calendar.reminderForm.failure",
-    }),
   };
 }
 
-function reatomStarts(
-  form: ReminderForm,
-  {
-    edited,
-    chosen,
-    fromDraft,
-  }: { edited: Editing; chosen: Atom<string[]>; fromDraft: Atom<string | undefined> },
-) {
+function reatomStarts(record: ReminderRecord, chosen: Atom<string[]>) {
   return {
     startCreating: action((date: string) => {
-      edited.set(undefined);
       chosen.set([]);
-      fromDraft.set(undefined);
-      fillForm(form, { ...emptyReminder, date });
+      record.startCreating({ ...emptyReminder, date });
     }, "calendar.reminderForm.startCreating"),
-    startFromDraft: action(({ draftId, draft }: ReminderDraftOpening) => {
-      edited.set(undefined);
-      chosen.set(draft.visibility === "private" ? [] : (draft.recipientIds ?? []));
-      fromDraft.set(draftId);
-      fillForm(form, valuesOfDraft(draft));
+    startFromDraft: action((opening: ReminderDraftOpening) => {
+      const { visibility, recipientIds } = opening.draft;
+
+      chosen.set(visibility === "private" ? [] : (recipientIds ?? []));
+      record.startFromDraft(opening);
     }, "calendar.reminderForm.startFromDraft"),
     startEditing: action((reminder: Reminder) => {
-      edited.set(reminder);
-      fromDraft.set(undefined);
       chosen.set(reminder.isForEveryone ? [] : reminder.recipients.map(({ id }) => id));
-      fillForm(form, valuesOf(reminder));
+      record.startEditing(reminder);
     }, "calendar.reminderForm.startEditing"),
   };
 }
 
-function settleDraft(
-  { onDraftSaved }: ReminderFormDependencies,
-  fromDraft: Atom<string | undefined>,
-): void {
-  const draftId = fromDraft();
-
-  if (draftId !== undefined) {
-    fromDraft.set(undefined);
-    onDraftSaved?.(draftId);
+// A Reminder fires at its time in the zone it was set in; a new one takes its creator's zone.
+function reatomReminderRecord(dependencies: ReminderFormDependencies, chosen: Atom<string[]>) {
+  function changeFor(values: ReminderValues, timeZone: string): ReminderChange {
+    return changeOf(values, {
+      timeZone,
+      recipientIds: chosen().length === 0 ? null : chosen(),
+    });
   }
+
+  return reatomEditableRecord({
+    name: "calendar.reminderRecord",
+    form: (onSubmit) =>
+      reatomForm(emptyReminder, { name: "calendar.reminderForm", schema, onSubmit }),
+    failureMessage: "Не получилось сохранить напоминание. Попробуйте ещё раз.",
+    valuesOf,
+    valuesOfDraft,
+    create: async (values) =>
+      dependencies.api.createReminder(changeFor(values, dependencies.timeZone())),
+    update: async (reminder: Reminder, values) =>
+      dependencies.api.updateReminder(reminder.id, changeFor(values, reminder.start.timeZone)),
+    onSaved: (saved) => {
+      dependencies.data.keepReminder(saved);
+      dependencies.onClosed();
+    },
+    onDraftSaved: dependencies.onDraftSaved,
+  });
 }
 
 export function reatomReminderForm(dependencies: ReminderFormDependencies) {
-  const edited: Editing = atom<Reminder | undefined>(undefined, "calendar.reminderForm.edited");
   const chosen = atom<string[]>([], "calendar.reminderForm.chosen");
-  const fromDraft = atom<string | undefined>(undefined, "calendar.reminderForm.fromDraft");
-  const form = reatomForm(emptyReminder, {
-    name: "calendar.reminderForm",
-    schema,
-    onSubmit: async (values: ReminderValues) => {
-      const reminder = edited();
-      const change = changeOf(values, {
-        timeZone: reminder?.start.timeZone ?? dependencies.timeZone(),
-        recipientIds: chosen().length === 0 ? null : chosen(),
-      });
-      const saved = await wrap(
-        reminder === undefined
-          ? dependencies.api.createReminder(change)
-          : dependencies.api.updateReminder(reminder.id, change),
-      );
-
-      dependencies.data.keepReminder(saved);
-      settleDraft(dependencies, fromDraft);
-      dependencies.onClosed();
-    },
-  });
-  const remove = reatomRemove(dependencies, edited);
+  const record = reatomReminderRecord(dependencies, chosen);
+  const remove = reatomRemove(dependencies, record.edited);
 
   return {
-    form,
+    ...record,
     ...reatomRecipients(dependencies, chosen),
-    ...reatomFlags(form, edited),
-
-    ...reatomStarts(form, { edited, chosen, fromDraft }),
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "calendar.reminderForm.save"),
+    ...reatomFlags(record),
+    ...reatomStarts(record, chosen),
     removeReminder: action(() => {
       remove().catch(noop);
     }, "calendar.reminderForm.removeReminder"),

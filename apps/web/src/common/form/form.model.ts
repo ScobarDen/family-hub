@@ -1,4 +1,4 @@
-import { computed } from "@reatom/core";
+import { action, atom, computed, noop, wrap, type Atom } from "@reatom/core";
 
 type Fillable<Values> = {
   init: (values: Values) => void;
@@ -30,4 +30,99 @@ export function reatomSubmitFailure(
 
     return isRejectedByServer ? message : undefined;
   }, name);
+}
+
+type Mode<Edited> =
+  | { kind: "creating" }
+  | { kind: "editing"; edited: Edited }
+  | { kind: "drafting"; draftId: string };
+
+export type DraftOpening<Draft> = { draftId: string; draft: Draft };
+
+type RecordForm<Values> = Fillable<Values> &
+  Submittable & { submit: (() => Promise<unknown>) & { ready: () => boolean } };
+
+export type EditableRecordOptions<Values, Form extends RecordForm<Values>, Edited, Draft, Saved> = {
+  name: string;
+  // The module builds its own reatomForm around this submit, so its fields keep their types.
+  form: (onSubmit: (values: Values) => Promise<void>) => Form;
+  failureMessage: string;
+  valuesOf: (edited: Edited) => Values;
+  valuesOfDraft: (draft: Draft) => Values;
+  create: (values: Values) => Promise<Saved>;
+  update: (edited: Edited, values: Values) => Promise<Saved>;
+  onSaved: (saved: Saved) => void;
+  // A record saved from a draft settles that draft, once.
+  onDraftSaved?: (draftId: string) => void;
+};
+
+function submitWith<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(
+  options: EditableRecordOptions<Values, Form, Edited, Draft, Saved>,
+  mode: Atom<Mode<Edited>>,
+) {
+  return async (values: Values): Promise<void> => {
+    const current = mode();
+    const saved = await wrap(
+      current.kind === "editing" ? options.update(current.edited, values) : options.create(values),
+    );
+
+    if (current.kind === "drafting") {
+      mode.set({ kind: "creating" });
+      options.onDraftSaved?.(current.draftId);
+    }
+
+    options.onSaved(saved);
+  };
+}
+
+function reatomStarts<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(
+  options: EditableRecordOptions<Values, Form, Edited, Draft, Saved>,
+  { mode, form }: { mode: Atom<Mode<Edited>>; form: Form },
+) {
+  const { name } = options;
+
+  function start(next: Mode<Edited>, values: Values): void {
+    mode.set(next);
+    fillForm(form, values);
+  }
+
+  return {
+    startCreating: action((values: Values) => {
+      start({ kind: "creating" }, values);
+    }, `${name}.startCreating`),
+    startEditing: action((edited: Edited) => {
+      start({ kind: "editing", edited }, options.valuesOf(edited));
+    }, `${name}.startEditing`),
+    startFromDraft: action(({ draftId, draft }: DraftOpening<Draft>) => {
+      start({ kind: "drafting", draftId }, options.valuesOfDraft(draft));
+    }, `${name}.startFromDraft`),
+  };
+}
+
+// One form that creates a record, edits one, or creates one from a draft.
+export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(
+  options: EditableRecordOptions<Values, Form, Edited, Draft, Saved>,
+) {
+  const { name } = options;
+  const mode = atom<Mode<Edited>>({ kind: "creating" }, `${name}.mode`);
+  const form = options.form(submitWith(options, mode));
+
+  return {
+    form,
+    edited: computed(() => {
+      const current = mode();
+
+      return current.kind === "editing" ? current.edited : undefined;
+    }, `${name}.edited`),
+    isCreating: computed(() => mode().kind !== "editing", `${name}.isCreating`),
+    isSaving: computed(() => !form.submit.ready(), `${name}.isSaving`),
+    failure: reatomSubmitFailure(form, {
+      message: options.failureMessage,
+      name: `${name}.failure`,
+    }),
+    ...reatomStarts(options, { mode, form }),
+    save: action(() => {
+      form.submit().catch(noop);
+    }, `${name}.save`),
+  };
 }

@@ -1,15 +1,16 @@
-import { action, atom, computed, noop, reatomForm, wrap, type Atom } from "@reatom/core";
+import { action, computed, reatomForm } from "@reatom/core";
 import { z } from "zod";
 
 import {
   careEntryChange,
   careKind,
   type CareEntry,
+  type CareEntryChange,
   type CareEntryDraft,
   type CareKind,
 } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { reatomEditableRecord } from "@/common/form";
 import type { PhotoAttachmentsModel } from "@/common/photo-attachments";
 
 import type { CareApi } from "../care.api.ts";
@@ -82,102 +83,73 @@ const schema = fields.superRefine((values, issues) => {
   }
 });
 
-type EntryForm = ReturnType<typeof reatomForm<EntryValues>>;
+type CareRecord = ReturnType<typeof reatomCareRecord>;
 
-type Editing = {
-  form: EntryForm;
-  editedId: Atom<string | undefined>;
-  fromDraft: Atom<string | undefined>;
-};
-
-function reatomStarts(dependencies: CareFormDependencies, { form, editedId, fromDraft }: Editing) {
+function reatomStarts({ now, timeZone, photos }: CareFormDependencies, record: CareRecord) {
   return {
     startCreating: action((kind: CareKind) => {
-      editedId.set(undefined);
-      fromDraft.set(undefined);
-      dependencies.photos.reset([]);
-      fillForm(form, { ...emptyEntry, kind, occurredAt: dependencies.now() });
+      photos.reset([]);
+      record.startCreating({ ...emptyEntry, kind, occurredAt: now() });
     }, "care.form.startCreating"),
     // A due vaccination, treatment or visit is closed by recording the next one of the same name.
     startFollowUp: action((entry: CareEntry) => {
-      const { kind, name } = valuesOf(entry, dependencies.timeZone());
+      const { kind, name } = valuesOf(entry, timeZone());
 
-      editedId.set(undefined);
-      fromDraft.set(undefined);
-      dependencies.photos.reset([]);
-      fillForm(form, { ...emptyEntry, kind, name, occurredAt: dependencies.now() });
+      photos.reset([]);
+      record.startCreating({ ...emptyEntry, kind, name, occurredAt: now() });
     }, "care.form.startFollowUp"),
     // Photos never come by voice; the form is where they are added.
-    startFromDraft: action(({ draftId, draft }: CareEntryDraftOpening) => {
-      editedId.set(undefined);
-      fromDraft.set(draftId);
-      dependencies.photos.reset([]);
-      fillForm(form, valuesOfDraft(draft, dependencies.now()));
+    startFromDraft: action((opening: CareEntryDraftOpening) => {
+      photos.reset([]);
+      record.startFromDraft(opening);
     }, "care.form.startFromDraft"),
     startEditing: action((entry: CareEntry) => {
-      editedId.set(entry.id);
-      fromDraft.set(undefined);
-      dependencies.photos.reset(entry.photos);
-      fillForm(form, valuesOf(entry, dependencies.timeZone()));
+      photos.reset(entry.photos);
+      record.startEditing(entry);
     }, "care.form.startEditing"),
   };
 }
 
-function settleDraft(
-  { onDraftSaved }: CareFormDependencies,
-  fromDraft: Atom<string | undefined>,
-): void {
-  const draftId = fromDraft();
+function reatomCareRecord(dependencies: CareFormDependencies) {
+  const { api, petId, timeZone, photos } = dependencies;
 
-  if (draftId !== undefined) {
-    fromDraft.set(undefined);
-    onDraftSaved?.(draftId);
+  function changeFor(values: EntryValues): CareEntryChange {
+    return { ...changeOf(values, timeZone()), photoIds: photos.photoIds() };
   }
+
+  return reatomEditableRecord({
+    name: "care.record",
+    form: (onSubmit) => reatomForm(emptyEntry, { name: "care.form", schema, onSubmit }),
+    failureMessage: "Не получилось сохранить запись. Попробуйте ещё раз.",
+    valuesOf: (entry: CareEntry) => valuesOf(entry, timeZone()),
+    valuesOfDraft: (draft: CareEntryDraft) => valuesOfDraft(draft, dependencies.now()),
+    create: async (values) => {
+      const pet = petId();
+
+      if (pet === undefined) {
+        throw new Error("No Pet is open to write the Care Entry to");
+      }
+
+      return api.create(pet, changeFor(values));
+    },
+    update: async (entry: CareEntry, values) => api.update(entry.id, changeFor(values)),
+    onSaved: dependencies.onSaved,
+    onDraftSaved: dependencies.onDraftSaved,
+  });
 }
 
 export function reatomCareForm(dependencies: CareFormDependencies) {
-  const editedId = atom<string | undefined>(undefined, "care.form.editedId");
-  const fromDraft = atom<string | undefined>(undefined, "care.form.fromDraft");
-  const form = reatomForm(emptyEntry, {
-    name: "care.form",
-    schema,
-    onSubmit: async (values: EntryValues) => {
-      const change = {
-        ...changeOf(values, dependencies.timeZone()),
-        photoIds: dependencies.photos.photoIds(),
-      };
-      const entryId = editedId();
-      const petId = dependencies.petId();
-
-      if (entryId !== undefined) {
-        await wrap(dependencies.api.update(entryId, change));
-      } else if (petId !== undefined) {
-        await wrap(dependencies.api.create(petId, change));
-        settleDraft(dependencies, fromDraft);
-      }
-
-      dependencies.onSaved();
-    },
-  });
+  const record = reatomCareRecord(dependencies);
 
   return {
-    form,
-    editedId: computed(() => editedId(), "care.form.editedIdNow"),
-    kind: computed(() => careKind.parse(form.fields.kind()), "care.form.kind"),
+    ...record,
+    editedId: computed(() => record.edited()?.id, "care.form.editedId"),
+    kind: computed(() => careKind.parse(record.form.fields.kind()), "care.form.kind"),
     isSaving: computed(
-      () => !form.submit.ready() || dependencies.photos.isUploading(),
+      () => record.isSaving() || dependencies.photos.isUploading(),
       "care.form.isSaving",
     ),
-    failure: reatomSubmitFailure(form, {
-      message: "Не получилось сохранить запись. Попробуйте ещё раз.",
-      name: "care.form.failure",
-    }),
-
-    ...reatomStarts(dependencies, { form, editedId, fromDraft }),
-
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "care.form.save"),
+    ...reatomStarts(dependencies, record),
   };
 }
 

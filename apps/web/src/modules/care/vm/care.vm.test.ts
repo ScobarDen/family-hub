@@ -130,7 +130,6 @@ const connectedStorage: string | undefined = undefined;
 function startCare(choices: string[] = []) {
   const backend = fakeBackend();
   const avatars: string[] = [];
-  const savedDrafts: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const pending = [...choices];
   const openedPet = atom<string | undefined>("pet-1", "test.openedPet");
@@ -157,16 +156,13 @@ function startCare(choices: string[] = []) {
     onOpenPet: (petId) => {
       openedPet.set(petId);
     },
-    onDraftSaved: (draftId) => {
-      savedDrafts.push(draftId);
-    },
   });
 
   model.journal.subscribe(noop);
   model.month.subscribe(noop);
   model.weight.subscribe(noop);
 
-  return { model, backend, avatars, savedDrafts, openedPet, isArchived };
+  return { model, backend, avatars, openedPet, isArchived };
 }
 
 type Model = ReturnType<typeof startCare>["model"];
@@ -347,8 +343,8 @@ describe("a Care Entry's photos", () => {
 });
 
 describe("a Care Entry draft opened by «Изменить»", () => {
-  test("fills the form from yesterday at the current time and settles the draft once saved", async () => {
-    const { model, backend, savedDrafts } = startCare();
+  test("fills the form from yesterday at the current time and saves it for the open Pet", async () => {
+    const { model, backend } = startCare();
 
     await loaded(model);
     model.editDraft({
@@ -380,11 +376,40 @@ describe("a Care Entry draft opened by «Изменить»", () => {
     model.form.save();
 
     await vi.waitFor(() => {
-      expect(savedDrafts).toEqual(["draft-3"]);
+      expect(
+        backend.requests.find(({ request }) => request === "POST /api/pets/pet-1/care-entries")
+          ?.body,
+      ).toMatchObject({ details: { kind: "vaccination", vaccine: "Бешенство" }, photoIds: [] });
     });
-    expect(
-      backend.requests.find(({ request }) => request === "POST /api/pets/pet-1/care-entries")?.body,
-    ).toMatchObject({ details: { kind: "vaccination", vaccine: "Бешенство" }, photoIds: [] });
+  });
+
+  test("says it could not save while no Pet is open, and saves nothing", async () => {
+    const { model, backend, openedPet } = startCare();
+
+    await loaded(model);
+    model.editDraft({
+      draftId: "draft-4",
+      draft: {
+        kind: "care_entry",
+        petId: null,
+        date: null,
+        time: null,
+        note: null,
+        details: { kind: "weight", weightKg: 31.5 },
+        missing: ["pet"],
+        ambiguities: [],
+      },
+    });
+    openedPet.set(undefined);
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(model.form.failure()).toBe("Не получилось сохранить запись. Попробуйте ещё раз.");
+    });
+    expect(model.screen()).toEqual({ kind: "form", isCreating: true });
+    expect(backend.requests.map(({ request }) => request)).not.toContain(
+      "POST /api/pets/pet-1/care-entries",
+    );
   });
 });
 
