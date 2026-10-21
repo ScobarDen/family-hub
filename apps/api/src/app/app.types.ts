@@ -4,6 +4,7 @@ import type { Db } from "@/common/db";
 import type { BotApi } from "@/common/telegram";
 import type { AlbumService } from "@/modules/album";
 import type { CareEntryService } from "@/modules/care-entry";
+import type { CommandService } from "@/modules/command";
 import type { EventService } from "@/modules/event";
 import type { FamilyService } from "@/modules/family";
 import type { FamilyRequestService } from "@/modules/family-request";
@@ -25,6 +26,7 @@ export type AppServices = {
   auth: AuthService;
   albums: AlbumService;
   careEntries: CareEntryService;
+  commands: CommandService;
   events: EventService;
   families: FamilyService;
   feed: FeedService;

@@ -11,9 +11,15 @@
       "migrations_dir": "migrations",
     },
   ],
+  "ai": {
+    "binding": "AI",
+  },
   "vars": {
     "ALLOWED_ORIGINS": "https://scobarden.github.io",
     "MINI_APP_URL": "https://scobarden.github.io/family-hub/",
+    "AI_COMMAND_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "AI_COMMAND_MODEL_FALLBACK": "@cf/meta/llama-4-scout-17b-16e-instruct",
+    "AI_COMMANDS_PER_FAMILY_DAY": "30",
   },
   "secrets": {
     "required": ["BOT_TOKEN", "JWT_SECRET", "WEBHOOK_SECRET", "OPERATOR_TELEGRAM_ID"],

@@ -1,6 +1,7 @@
-import type { CallbackQuery, Update } from "@grammyjs/types";
+import type { CallbackQuery, Message, Update } from "@grammyjs/types";
 import { Hono } from "hono";
 
+import { commandCallbackPrefix } from "@/modules/command";
 import { reminderCallbackPrefix } from "@/modules/reminder";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -17,12 +18,32 @@ async function readUpdate(request: Request): Promise<Update | undefined> {
 }
 
 async function handleCallback(services: AppServices, query: CallbackQuery): Promise<void> {
+  if (query.data?.startsWith(`${commandCallbackPrefix}:`) === true) {
+    await services.commands.handleCallback(query);
+
+    return;
+  }
+
   await (query.data?.startsWith(`${reminderCallbackPrefix}:`) === true
     ? services.reminders.handleCallback(query)
     : services.familyRequests.handleCallback(query));
 }
 
-async function handleUpdate(services: AppServices, update: Update): Promise<void> {
+// Any plain message in a private chat is a command; the AI work outlasts Telegram's patience.
+function isCommand(message: Message | undefined): message is Message & { text: string } {
+  return (
+    message?.chat.type === "private" && message.text !== undefined && !message.text.startsWith("/")
+  );
+}
+
+async function handleUpdate(
+  services: AppServices,
+  { update, waitUntil }: { update: Update; waitUntil: (work: Promise<unknown>) => void },
+): Promise<void> {
+  if (isCommand(update.message)) {
+    waitUntil(services.commands.handleText(update.message));
+  }
+
   if (update.callback_query) {
     await handleCallback(services, update.callback_query);
   }
@@ -45,7 +66,12 @@ export const webhookRoute = new Hono<AppEnv>().post("/bot/webhook", async (conte
   const update = await readUpdate(context.req.raw);
 
   if (update !== undefined) {
-    await handleUpdate(context.var, update);
+    await handleUpdate(context.var, {
+      update,
+      waitUntil: (work) => {
+        context.executionCtx.waitUntil(work);
+      },
+    });
   }
 
   return context.body(null);

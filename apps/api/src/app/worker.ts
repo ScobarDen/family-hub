@@ -13,6 +13,7 @@ import {
   createCareEntryService,
   type CareEntryService,
 } from "@/modules/care-entry";
+import { createCommandRepo, createCommandService } from "@/modules/command";
 import { createEventRepo, createEventService, eventRoute } from "@/modules/event";
 import { createFamilyRepo, createFamilyService, familyRoute } from "@/modules/family";
 import {
@@ -167,6 +168,44 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
   };
 }
 
+const defaultCommandsPerFamilyDay = 30;
+
+// Workers AI's typed catalogue knows each model by name; ours come from configuration.
+function workersAiModel(ai: Ai) {
+  const run: (model: string, input: Record<string, unknown>) => Promise<unknown> = ai.run.bind(ai);
+
+  return { run };
+}
+
+function commandServiceOf(
+  env: Env,
+  { db, shared, reminders }: { db: Db; shared: Shared; reminders: AppServices["reminders"] },
+) {
+  const perDay = Number(env.AI_COMMANDS_PER_FAMILY_DAY);
+
+  return createCommandService({
+    drafts: createCommandRepo(db),
+    ...shared,
+    model: workersAiModel(env.AI),
+    models: { primary: env.AI_COMMAND_MODEL, fallback: env.AI_COMMAND_MODEL_FALLBACK },
+    commandsPerFamilyDay:
+      Number.isFinite(perDay) && perDay > 0 ? perDay : defaultCommandsPerFamilyDay,
+    reminders,
+  });
+}
+
+function authServiceOf(
+  env: Env,
+  { memberships, clock }: { memberships: MembershipRepo; clock: Clock },
+) {
+  return createAuthService({
+    memberships,
+    clock,
+    botToken: env.BOT_TOKEN,
+    jwtSecret: env.JWT_SECRET,
+  });
+}
+
 function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): AppServices {
   const db = createDb(env.DB);
   const bot = createBotApi(env.BOT_TOKEN);
@@ -189,12 +228,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
     db,
     clock,
     bot,
-    auth: createAuthService({
-      memberships,
-      clock,
-      botToken: env.BOT_TOKEN,
-      jwtSecret: env.JWT_SECRET,
-    }),
+    auth: authServiceOf(env, { memberships, clock }),
     ...records,
     families: createFamilyService({ families: createFamilyRepo(db), bot, clock }),
     familyRequests,
@@ -206,6 +240,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       clock,
     }),
     photoStorage: createPhotoStorageService({ storage: createPhotoStorageRepo(db), ...shared }),
+    commands: commandServiceOf(env, { db, shared, reminders: records.reminders }),
   };
 }
 
@@ -214,6 +249,7 @@ function exposeInfrastructure(context: Context<AppEnv>, services: AppServices): 
   context.set("clock", services.clock);
   context.set("bot", services.bot);
   context.set("auth", services.auth);
+  context.set("commands", services.commands);
 }
 
 function exposeRecords(context: Context<AppEnv>, services: AppServices): void {
@@ -272,6 +308,7 @@ async function runScheduled(env: Env, dependencies: WorkerDependencies): Promise
   if (isMaintenanceMinute(dependencies.clock.now())) {
     await services.invites.sweep();
     await services.familyRequests.sweep();
+    await services.commands.sweep();
   }
 }
 

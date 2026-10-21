@@ -13,6 +13,7 @@ import {
 import type {
   AppModule,
   CareDetails,
+  CommandDraft,
   CareKind,
   EventReminderOffset,
   ExpenseCategory,
@@ -564,4 +565,32 @@ export const recipeCooks = sqliteTable(
       .references(() => members.id),
   },
   (table) => [index("recipe_cooks_recipe_id_idx").on(table.recipeId)],
+);
+
+export type CommandSource = "bot_text" | "bot_voice" | "mini_app";
+
+export type CommandStatus = "pending" | "created" | "dismissed" | "failed";
+
+// One row per command handled, failed ones included: it is also the Family's daily count.
+export const commandDrafts = sqliteTable(
+  "command_drafts",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id),
+    kind: text("kind").$type<CommandDraft["kind"]>(),
+    payload: text("payload", { mode: "json" }).$type<CommandDraft>(),
+    source: text("source").$type<CommandSource>().notNull(),
+    chatId: integer("chat_id"),
+    messageId: integer("message_id"),
+    status: text("status").$type<CommandStatus>().notNull(),
+    expiresAt: integer("expires_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("command_drafts_family_created_idx").on(table.familyId, table.createdAt)],
 );
