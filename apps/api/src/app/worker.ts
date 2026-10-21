@@ -188,6 +188,7 @@ function commandServiceOf(
     ...shared,
     model: workersAiModel(env.AI),
     models: { primary: env.AI_COMMAND_MODEL, fallback: env.AI_COMMAND_MODEL_FALLBACK },
+    speechModel: env.AI_SPEECH_MODEL,
     commandsPerFamilyDay:
       Number.isFinite(perDay) && perDay > 0 ? perDay : defaultCommandsPerFamilyDay,
     reminders,

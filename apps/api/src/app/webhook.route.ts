@@ -1,4 +1,4 @@
-import type { CallbackQuery, Message, Update } from "@grammyjs/types";
+import type { CallbackQuery, Message, Update, Voice } from "@grammyjs/types";
 import { Hono } from "hono";
 
 import { commandCallbackPrefix } from "@/modules/command";
@@ -36,12 +36,20 @@ function isCommand(message: Message | undefined): message is Message & { text: s
   );
 }
 
+function isVoiceCommand(message: Message | undefined): message is Message & { voice: Voice } {
+  return message?.chat.type === "private" && message.voice !== undefined;
+}
+
 async function handleUpdate(
   services: AppServices,
   { update, waitUntil }: { update: Update; waitUntil: (work: Promise<unknown>) => void },
 ): Promise<void> {
   if (isCommand(update.message)) {
     waitUntil(services.commands.handleText(update.message));
+  }
+
+  if (isVoiceCommand(update.message)) {
+    waitUntil(services.commands.handleVoice(update.message));
   }
 
   if (update.callback_query) {

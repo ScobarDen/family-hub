@@ -24,6 +24,9 @@ export function createFakeAi() {
     answer(...next: unknown[]) {
       answers.push(...next);
     },
+    hear(...phrases: string[]) {
+      answers.push(...phrases.map((text) => ({ text })));
+    },
     runOutOfNeurons() {
       answers.push(
         new Error("4006: you have used up your daily free allocation of 10,000 neurons"),

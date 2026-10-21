@@ -76,6 +76,26 @@ async function say(worker: Worker, user: TelegramUserFixture, text: string) {
   return worker.webhook(update);
 }
 
+async function speak(worker: Worker, user: TelegramUserFixture, { duration = 4 } = {}) {
+  updateId += 1;
+
+  return worker.webhook({
+    update_id: updateId,
+    message: {
+      message_id: updateId,
+      date: 0,
+      chat: { id: user.id, type: "private", first_name: user.first_name },
+      from: { ...user, is_bot: false },
+      voice: {
+        file_id: `voice-${updateId}`,
+        file_unique_id: `unique-${updateId}`,
+        duration,
+        mime_type: "audio/ogg",
+      },
+    },
+  });
+}
+
 function lastTo(worker: Worker, user: TelegramUserFixture) {
   return worker.bot.sentMessages().findLast(({ chat_id: chatId }) => chatId === user.id);
 }
@@ -269,5 +289,94 @@ describe("a text command to the bot", () => {
 
     expect(worker.bot.answeredCallbacks().at(-1)?.text).toBe("Черновик устарел");
     expect(await reminders(worker, denis)).toEqual([]);
+  });
+});
+
+describe("a voice command to the bot", () => {
+  test("streams the voice into Whisper and previews the draft under the heard phrase", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.hear("напомни в пятницу в 19:00 оплатить интернет");
+    worker.ai.answer({ response: internet });
+
+    const response = await speak(worker, denis);
+    const [speech, command] = worker.ai.calls;
+    const audio = speech?.input.audio as { body: ReadableStream; contentType: string };
+    const preview = lastTo(worker, denis);
+
+    expect(response.status).toBe(200);
+    expect(speech?.model).toBe("speech-model");
+    expect(speech?.input.language).toBe("ru");
+    expect(audio.contentType).toBe("audio/ogg");
+    expect(await new Response(audio.body).text()).toMatch(/^ogg:voice\/voice-\d+\.oga$/u);
+    expect(JSON.stringify(command?.input.messages)).toContain(
+      "напомни в пятницу в 19:00 оплатить интернет",
+    );
+    expect(preview?.text).toBe(
+      "🎙 «напомни в пятницу в 19:00 оплатить интернет»\n\n" +
+        "⏰ Оплатить интернет · пт 16 окт, 19:00 · каждый месяц · Денис, Ася",
+    );
+
+    await press(worker, denis, dataOf(preview, "Создать"));
+
+    expect(await reminders(worker, denis)).toMatchObject([{ text: "Оплатить интернет" }]);
+  });
+
+  test("turns down a voice longer than 30 seconds without downloading it or counting it", async () => {
+    const worker = await startWithFamily();
+
+    await speak(worker, denis, { duration: 31 });
+
+    expect(lastTo(worker, denis)?.text).toBe("Слишком длинно — уложитесь в 30 секунд.");
+    expect(worker.bot.downloadedFiles()).toEqual([]);
+    expect(worker.ai.calls).toEqual([]);
+
+    for (const phrase of ["раз", "два", "три"]) {
+      worker.ai.hear(phrase);
+      worker.ai.answer({ response: internet });
+      await speak(worker, denis);
+    }
+
+    expect(lastTo(worker, denis)?.text).toMatch(/^🎙 «три»/u);
+  });
+
+  test("asks again on silence or a Whisper failure and counts both towards the limit", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.hear("  ");
+    await speak(worker, denis);
+
+    expect(lastTo(worker, denis)?.text).toBe("Не расслышал, попробуйте ещё раз.");
+
+    worker.ai.answer(new Error("3010: invalid audio"));
+    await speak(worker, denis);
+
+    expect(lastTo(worker, denis)?.text).toBe("Не расслышал, попробуйте ещё раз.");
+
+    worker.ai.hear("напомни");
+    worker.ai.answer({ response: internet });
+    await speak(worker, denis);
+    await speak(worker, denis);
+
+    expect(lastTo(worker, denis)?.text).toMatch(/^На сегодня команды кончились/u);
+    expect(worker.bot.downloadedFiles()).toHaveLength(3);
+  });
+
+  test("says commands are over when Whisper runs out of Neurons", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.runOutOfNeurons();
+    await speak(worker, denis);
+
+    expect(lastTo(worker, denis)?.text).toMatch(/^На сегодня команды кончились/u);
+  });
+
+  test("tells a stranger the bot works by invitation without listening", async () => {
+    const worker = await startWithFamily();
+
+    await speak(worker, stranger);
+
+    expect(lastTo(worker, stranger)?.text).toMatch(/работает по приглашениям/u);
+    expect(worker.bot.downloadedFiles()).toEqual([]);
   });
 });

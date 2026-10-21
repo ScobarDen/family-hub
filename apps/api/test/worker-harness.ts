@@ -43,6 +43,7 @@ function createTestEnv(ai: FakeAi): Env {
     AI: ai.binding,
     AI_COMMAND_MODEL: "primary-model",
     AI_COMMAND_MODEL_FALLBACK: "fallback-model",
+    AI_SPEECH_MODEL: "speech-model",
     AI_COMMANDS_PER_FAMILY_DAY: "3",
   };
 }

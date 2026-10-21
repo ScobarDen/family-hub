@@ -19,6 +19,7 @@ export type CommandDependencies = {
   clock: Clock;
   model: CommandModel;
   models: CommandModels;
+  speechModel: string;
   commandsPerFamilyDay: number;
   reminders: ReminderCreation;
 };

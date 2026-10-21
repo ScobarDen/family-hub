@@ -46,6 +46,9 @@ Run on the dev bot with the real `AI` binding (`wrangler dev --remote`), since t
 - [ ] «напомни мне завтра в 9 позвонить врачу» makes a Private Reminder for the speaker only.
 - [ ] A phrase without a time shows «Не хватает: время» and no «Создать»; nonsense answers «Не понял» with examples; «удали все напоминания» is refused.
 - [ ] After `AI_COMMANDS_PER_FAMILY_DAY` commands the bot says commands are over for today, without calling the model.
+- [ ] A voice message from a phone, «напомни в пятницу в семь вечера оплатить интернет», answers with «🎙 «…»» over the same preview, and «Создать» creates the Reminder.
+- [ ] A voice message over 30 seconds is turned down at once; a silent one answers «Не расслышал».
+- [ ] `wrangler tail` shows the voice command's CPU time within 10 ms.
 
 Items for features that are not built yet are skipped until they land.
 

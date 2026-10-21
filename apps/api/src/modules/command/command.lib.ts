@@ -26,6 +26,9 @@ export const unrecognizedText = [
   "• каждый месяц 5-го в 10:00 напоминай про квартплату",
 ].join("\n");
 export const unsupportedText = "Такое голосом и текстом не умею — только создать напоминание.";
+export const voiceMaxSeconds = 30;
+export const tooLongText = "Слишком длинно — уложитесь в 30 секунд.";
+export const unheardText = "Не расслышал, попробуйте ещё раз.";
 export const notYoursText = "Это не ваш черновик";
 export const staleText = "Черновик устарел";
 export const createdText = "✅ Создано";
@@ -46,6 +49,10 @@ const dayFormat = new Intl.DateTimeFormat("ru-RU", {
   month: "short",
   timeZone: "UTC",
 });
+
+export function heardText(phrase: string): string {
+  return `🎙 «${phrase}»`;
+}
 
 export function parseCallback(data: string | undefined) {
   const match = callbackPattern.exec(data ?? "");
