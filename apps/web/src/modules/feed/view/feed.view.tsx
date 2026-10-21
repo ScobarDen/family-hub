@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Circle,
   CircleCheck,
+  CookingPot,
   Images,
   ListTodo,
   NotebookPen,
@@ -33,6 +34,7 @@ const icons: Record<FeedRow["kind"], LucideIcon> = {
   care: PawPrint,
   goal: PiggyBank,
   upload: Images,
+  cooked: CookingPot,
   done: CircleCheck,
   joined: UserPlus,
 };
@@ -46,6 +48,7 @@ const tones: Record<FeedRow["kind"], IconTone> = {
   care: "orange",
   goal: "teal",
   upload: "violet",
+  cooked: "pink",
   done: "green",
   joined: "blue",
 };

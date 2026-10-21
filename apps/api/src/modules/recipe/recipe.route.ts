@@ -2,6 +2,7 @@ import { sValidator } from "@hono/standard-validator";
 import { Hono, type Context } from "hono";
 
 import {
+  cookedChange,
   recipeChange,
   recipeFavorite,
   recipeTagChange,
@@ -41,6 +42,16 @@ const refusals = {
     message: "Attach photos uploaded to the Family, at most ten",
     status: httpStatus.badRequest,
   },
+  "cooked-not-found": {
+    code: "COOKED_NOT_FOUND",
+    message: "No such «Приготовили» on this Recipe",
+    status: httpStatus.notFound,
+  },
+  "cooked-in-future": {
+    code: "COOKED_IN_FUTURE",
+    message: "A Recipe is marked cooked for a moment gone by",
+    status: httpStatus.badRequest,
+  },
 } as const satisfies Record<RecipeRefusal, { code: ErrorCode; message: string; status: number }>;
 
 function refuse(context: Context<RecipeEnv>, refusal: RecipeRefusal) {
@@ -56,7 +67,11 @@ function reply(context: Context<RecipeEnv>, result: RecipeResult) {
 }
 
 function bodyOf<
-  Schema extends typeof recipeChange | typeof recipeFavorite | typeof recipeTagChange,
+  Schema extends
+    | typeof recipeChange
+    | typeof recipeFavorite
+    | typeof recipeTagChange
+    | typeof cookedChange,
 >(schema: Schema) {
   return sValidator("json", schema, (result, context) =>
     result.success
@@ -109,6 +124,7 @@ export const recipeRoute = new Hono<RecipeEnv>()
         text: context.req.query("q"),
         tagId: context.req.query("tag"),
         isFavorite: context.req.query("favorite") === "true",
+        sort: context.req.query("sort") === "forgotten" ? "forgotten" : "title",
       }),
     ),
   )
@@ -150,6 +166,26 @@ export const recipeRoute = new Hono<RecipeEnv>()
         context.var.membership,
         context.req.param("id"),
         context.req.valid("json").isFavorite,
+      ),
+    ),
+  )
+  .post("/api/recipes/:id/cooked", bodyOf(cookedChange), async (context) =>
+    reply(
+      context,
+      await context.var.recipes.cook(
+        context.var.membership,
+        context.req.param("id"),
+        context.req.valid("json").cookedAt,
+      ),
+    ),
+  )
+  .delete("/api/recipes/:id/cooked/:cookId", async (context) =>
+    reply(
+      context,
+      await context.var.recipes.uncook(
+        context.var.membership,
+        context.req.param("id"),
+        context.req.param("cookId"),
       ),
     ),
   )

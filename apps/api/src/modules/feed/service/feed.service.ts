@@ -16,7 +16,7 @@ import {
   visibleTrees,
 } from "../feed.lib.ts";
 import type { FeedRepo } from "../feed.repo.ts";
-import { carePreviews, uploadActivity } from "./photo-activity.service.ts";
+import { carePreviews, cookedActivity, uploadActivity } from "./photo-activity.service.ts";
 import {
   birthdayUpcoming,
   dueDeadlines,
@@ -93,6 +93,7 @@ async function activityPage(
     [
       ...careActivity(care, { petNames, previews }),
       ...(await uploadActivity(dependencies, membership)),
+      ...(await cookedActivity(dependencies, membership)),
       ...planActivity(visibleTrees(plans, member.id)),
       ...goalActivity({ goals, movements }, member.id),
       ...joinActivity(joins),

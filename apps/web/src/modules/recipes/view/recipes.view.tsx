@@ -9,15 +9,26 @@ import { RecipeForm } from "./recipe-form.view.tsx";
 import { RecipeList } from "./recipe-list.view.tsx";
 import { RecipeTags } from "./recipe-tags.view.tsx";
 
-export type RecipesProps = { model: RecipesScreenModel; photoHint: string | undefined };
+export type RecipesProps = {
+  model: RecipesScreenModel;
+  photoHint: string | undefined;
+  timeZone: string;
+};
 
-function contentOf({ model, photoHint }: RecipesProps, screen: RecipesScreen): ReactNode {
+function contentOf({ model, photoHint, timeZone }: RecipesProps, screen: RecipesScreen): ReactNode {
   if (screen.kind === "list") {
     return <RecipeList model={model} recipes={screen.recipes} tags={screen.tags} />;
   }
 
   if (screen.kind === "recipe") {
-    return <RecipeDetails model={model} recipe={screen.recipe} checked={screen.checked} />;
+    return (
+      <RecipeDetails
+        model={model}
+        recipe={screen.recipe}
+        checked={screen.checked}
+        timeZone={timeZone}
+      />
+    );
   }
 
   if (screen.kind === "form") {

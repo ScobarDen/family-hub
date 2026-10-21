@@ -29,6 +29,20 @@ export const recipeTagChange = z.object({
   name: z.string().trim().min(1).max(recipeTagNameMaxLength),
 });
 
+// «🍳 Приготовили»: who cooked it and when, possibly a while ago.
+export const cooked = z.object({
+  id: z.string(),
+  at: z.number(),
+  memberName: z.string(),
+  isOwn: z.boolean(),
+});
+
+export type Cooked = z.infer<typeof cooked>;
+
+export const cookedChange = z.object({
+  cookedAt: z.number().int().positive().nullable().default(null),
+});
+
 export const recipe = z.object({
   id: z.string(),
   title: z.string(),
@@ -39,6 +53,9 @@ export const recipe = z.object({
   isFavorite: z.boolean(),
   canDelete: z.boolean(),
   createdAt: z.number(),
+  cookedCount: z.number(),
+  lastCookedAt: z.number().nullable(),
+  cooks: z.array(cooked),
 });
 
 export type Recipe = z.infer<typeof recipe>;

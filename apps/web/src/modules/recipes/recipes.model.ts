@@ -8,16 +8,20 @@ export function reatomRecipesData({ api }: { api: RecipesApi }) {
   const text = atom("", "recipes.text");
   const tagId = atom<string | undefined>(undefined, "recipes.tagId");
   const isFavorite = atom(false, "recipes.isFavorite");
+  const ordering = atom<"title" | "forgotten">("title", "recipes.sort");
 
   return {
     version: computed(() => version(), "recipes.changes"),
     text,
     tagId,
     isFavorite,
+    ordering,
     list: computed(async () => {
       version();
 
-      return wrap(api.list({ text: text(), tagId: tagId(), isFavorite: isFavorite() }));
+      return wrap(
+        api.list({ text: text(), tagId: tagId(), isFavorite: isFavorite(), sort: ordering() }),
+      );
     }, "recipes.list").extend(withAsyncData()),
     tags: computed(async () => {
       version();

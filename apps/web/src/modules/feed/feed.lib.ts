@@ -3,7 +3,7 @@ import { dateInZone, dayBefore, timeInZone } from "@family-hub/recurrence";
 
 import { formatDate } from "@/common/format-date";
 
-export type FeedFilter = "all" | "plans" | "calendar" | "pet" | "goals" | "albums";
+export type FeedFilter = "all" | "plans" | "calendar" | "pet" | "goals" | "albums" | "recipes";
 
 export type FeedItem = FeedUpcoming | FeedActivity;
 
@@ -38,6 +38,7 @@ const modules: Record<FeedItem["kind"], FeedFilter> = {
   care: "pet",
   goal: "goals",
   upload: "albums",
+  cooked: "recipes",
   joined: "all",
 };
 
@@ -66,13 +67,17 @@ function titleOf(item: FeedActivity): string {
     return `${item.memberName} теперь в семье`;
   }
 
+  if (item.kind === "cooked") {
+    return `${item.memberName} приготовил(а) ${item.title}`;
+  }
+
   return item.kind === "upload"
     ? `${item.memberName} добавил(а) ${item.photoCount} фото в «${item.albumTitle}»`
     : item.title;
 }
 
 function photosOf(item: FeedActivity): Pick<FeedRow, "photos" | "morePhotos"> {
-  return item.kind === "care" || item.kind === "upload"
+  return item.kind === "care" || item.kind === "upload" || item.kind === "cooked"
     ? { photos: item.photos, morePhotos: item.photoCount - item.photos.length }
     : { photos: [], morePhotos: 0 };
 }
@@ -85,7 +90,9 @@ function activityRow(item: FeedActivity, timeZone: string): FeedRow {
     kind: item.kind === "plan" ? "done" : item.kind,
     title: titleOf(item),
     subtitle:
-      item.kind === "joined" || item.kind === "upload" ? time : `${item.memberName} · ${time}`,
+      item.kind === "joined" || item.kind === "upload" || item.kind === "cooked"
+        ? time
+        : `${item.memberName} · ${time}`,
     isOverdue: false,
     canComplete: false,
     canRecord: false,

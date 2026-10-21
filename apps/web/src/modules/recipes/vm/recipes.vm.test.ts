@@ -18,6 +18,9 @@ const lasagna: Recipe = {
   isFavorite: false,
   canDelete: true,
   createdAt: 0,
+  cookedCount: 0,
+  lastCookedAt: null,
+  cooks: [],
 };
 
 const borscht: Recipe = { ...lasagna, id: "recipe-2", title: "Борщ", tags: [] };
@@ -55,6 +58,8 @@ function startRecipes() {
     telegram: { showPopup: async () => "delete" },
     preparePhoto: async (file) => ({ file, takenAt: null }),
     photoHint: () => "Загрузка фото выключена",
+    today: () => "2026-10-21",
+    timeZone: () => "Europe/Moscow",
   });
 
   model.screen.subscribe(noop);
@@ -141,5 +146,41 @@ describe("the Recipes", () => {
       tagIds: ["tag-1"],
       photoIds: [],
     });
+  });
+});
+
+describe("cooking a Recipe", () => {
+  test("lists what was cooked longest ago once asked", async () => {
+    const { model, requests } = startRecipes();
+
+    await listed(model);
+    model.toggleForgotten();
+    await vi.waitFor(() => {
+      expect(requests.map(({ request }) => request)).toContain("GET /api/recipes?sort=forgotten");
+    });
+
+    expect(model.ordering()).toBe("forgotten");
+  });
+
+  test("marks today as now and an earlier day at its midday", async () => {
+    const { model, requests } = startRecipes();
+
+    await listed(model);
+    model.open("recipe-1");
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("recipe");
+    });
+    model.cook("2026-10-21");
+    await vi.waitFor(() => {
+      expect(model.isCooking()).toBe(false);
+    });
+    model.cook("2026-10-18");
+    await vi.waitFor(() => {
+      expect(requests.filter(({ request }) => request.endsWith("/cooked"))).toHaveLength(2);
+    });
+
+    expect(
+      requests.filter(({ request }) => request.endsWith("/cooked")).map(({ body }) => body),
+    ).toEqual([{ cookedAt: null }, { cookedAt: Date.parse("2026-10-18T09:00:00Z") }]);
   });
 });

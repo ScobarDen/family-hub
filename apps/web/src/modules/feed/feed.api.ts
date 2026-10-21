@@ -10,7 +10,7 @@ function resolvedPage(client: HttpClient, page: FeedPage): FeedPage {
   return {
     ...page,
     activity: page.activity.map((item) =>
-      item.kind === "care" || item.kind === "upload"
+      item.kind === "care" || item.kind === "upload" || item.kind === "cooked"
         ? { ...item, photos: item.photos.map((each) => resolvedPhoto(each, client.url)) }
         : item,
     ),

@@ -546,3 +546,22 @@ export const recipeFavorites = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.recipeId, table.memberId] })],
 );
+
+export const recipeCooks = sqliteTable(
+  "recipe_cooks",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    recipeId: text("recipe_id")
+      .notNull()
+      .references(() => recipes.id, { onDelete: "cascade" }),
+    cookedAt: integer("cooked_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+  },
+  (table) => [index("recipe_cooks_recipe_id_idx").on(table.recipeId)],
+);

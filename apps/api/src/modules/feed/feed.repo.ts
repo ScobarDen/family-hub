@@ -13,6 +13,9 @@ import {
   pets,
   photos,
   plans,
+  recipeCooks,
+  recipePhotos,
+  recipes,
   reminders,
   type Db,
 } from "@/common/db";
@@ -44,6 +47,14 @@ export type FeedUploadRow = {
   addedAt: number;
   photo: FeedPhotoRow;
 };
+export type FeedCookRow = {
+  id: string;
+  recipeId: string;
+  title: string;
+  cookedAt: number;
+  memberName: string;
+};
+export type FeedRecipePhotoRow = { recipeId: string; photo: FeedPhotoRow };
 export type FeedJoinRow = { memberId: string; memberName: string; createdAt: number };
 
 type Viewer = { familyId: string; memberId: string };
@@ -182,6 +193,32 @@ async function uploadsOf(db: Db, familyId: string): Promise<FeedUploadRow[]> {
     .all();
 }
 
+async function cooksOf(db: Db, familyId: string): Promise<FeedCookRow[]> {
+  return db
+    .select({
+      id: recipeCooks.id,
+      recipeId: recipeCooks.recipeId,
+      title: recipes.title,
+      cookedAt: recipeCooks.cookedAt,
+      memberName: members.name,
+    })
+    .from(recipeCooks)
+    .innerJoin(recipes, eq(recipes.id, recipeCooks.recipeId))
+    .innerJoin(members, eq(members.id, recipeCooks.createdBy))
+    .where(eq(recipeCooks.familyId, familyId))
+    .all();
+}
+
+async function recipePhotosOf(db: Db, familyId: string): Promise<FeedRecipePhotoRow[]> {
+  return db
+    .select({ recipeId: recipePhotos.recipeId, photo: photos })
+    .from(recipePhotos)
+    .innerJoin(photos, eq(photos.id, recipePhotos.photoId))
+    .where(eq(recipePhotos.familyId, familyId))
+    .orderBy(asc(recipePhotos.position))
+    .all();
+}
+
 export function createFeedRepo(db: Db) {
   return {
     events: async (viewer: Viewer) =>
@@ -205,6 +242,8 @@ export function createFeedRepo(db: Db) {
     entryPhotosOf: async (familyId: string, entryIds: string[]) =>
       entryPhotosOf(db, familyId, entryIds),
     uploadsOf: async (familyId: string) => uploadsOf(db, familyId),
+    cooksOf: async (familyId: string) => cooksOf(db, familyId),
+    recipePhotosOf: async (familyId: string) => recipePhotosOf(db, familyId),
     movements: async (familyId: string) => movementsOf(db, familyId),
 
     async timeZoneOf(memberId: string): Promise<string | null> {

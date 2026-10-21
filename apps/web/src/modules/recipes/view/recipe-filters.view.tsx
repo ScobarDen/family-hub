@@ -23,6 +23,9 @@ export const RecipeFilters = reatomComponent(
         <Chip isSelected={model.isFavorite()} onClick={model.toggleFavorites}>
           <Star className="size-4" /> Избранное
         </Chip>
+        <Chip isSelected={model.ordering() === "forgotten"} onClick={model.toggleForgotten}>
+          Давно не готовили
+        </Chip>
         {tags.map((tag) => (
           <Chip
             key={tag.id}

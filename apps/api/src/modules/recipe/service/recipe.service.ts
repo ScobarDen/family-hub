@@ -3,6 +3,7 @@ import type { RecipeChange } from "@family-hub/contract";
 import type { Membership } from "@/common/auth";
 
 import type { RecipeDependencies, RecipeQuery } from "../recipe.types.ts";
+import { cook, uncook } from "./cooked.service.ts";
 import { list } from "./recipe-read.service.ts";
 import { create, current, remove, setFavorite, update } from "./recipe-write.service.ts";
 import { addTag, removeTag, renameTag, tags } from "./tag.service.ts";
@@ -21,6 +22,10 @@ export function createRecipeService(dependencies: RecipeDependencies) {
       remove(dependencies, membership, recipeId),
     setFavorite: async (membership: Membership, recipeId: string, isFavorite: boolean) =>
       setFavorite(dependencies, membership, { recipeId, isFavorite }),
+    cook: async (membership: Membership, recipeId: string, cookedAt: number | null) =>
+      cook(dependencies, membership, { recipeId, cookedAt }),
+    uncook: async (membership: Membership, recipeId: string, cookId: string) =>
+      uncook(dependencies, membership, { recipeId, cookId }),
     tags: async (membership: Membership) => tags(dependencies, membership),
     addTag: async (membership: Membership, name: string) => addTag(dependencies, membership, name),
     renameTag: async (membership: Membership, tagId: string, name: string) =>

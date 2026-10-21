@@ -17,6 +17,7 @@ import type { PopupParams } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import { reatomRecipesData, type RecipesData } from "../recipes.model.ts";
+import { reatomRecipeCooks } from "./recipe-cooks.vm.ts";
 import { reatomRecipeForm } from "./recipe-form.vm.ts";
 import { reatomTagEditing } from "./recipe-tags.vm.ts";
 
@@ -33,6 +34,8 @@ type RecipesDependencies = {
   telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
+  today: () => string;
+  timeZone: () => string;
 };
 
 type Navigation = {
@@ -228,6 +231,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     ...reatomFilters(data),
     ...reatomRecipeActions(dependencies, { data, navigation, opened }),
     ...reatomTagEditing(dependencies, data),
+    ...reatomRecipeCooks(dependencies, { data, opened: () => opened.data() }),
     ...reatomMoves({ navigation, opened, form }),
   };
 }

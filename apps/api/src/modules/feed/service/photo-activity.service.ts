@@ -62,3 +62,33 @@ export async function uploadActivity(
     })),
   );
 }
+
+// «Ася приготовила лазанью» comes with the Recipe's first photo; Recipes are always Shared.
+export async function cookedActivity(
+  { feed, links }: PhotoDependencies,
+  membership: Membership,
+): Promise<FeedActivity[]> {
+  const [cooks, pictured] = await Promise.all([
+    feed.cooksOf(membership.family.id),
+    feed.recipePhotosOf(membership.family.id),
+  ]);
+
+  return Promise.all(
+    cooks.map(async (cook) => {
+      const photos = pictured
+        .filter(({ recipeId }) => recipeId === cook.recipeId)
+        .map(({ photo }) => photo)
+        .slice(0, 1);
+
+      return {
+        kind: "cooked" as const,
+        key: `cooked-${cook.id}`,
+        at: cook.cookedAt,
+        memberName: cook.memberName,
+        title: cook.title,
+        recipeId: cook.recipeId,
+        ...(await previewOf(links, { photos, membership })),
+      };
+    }),
+  );
+}

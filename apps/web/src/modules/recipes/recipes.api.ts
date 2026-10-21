@@ -13,13 +13,18 @@ import {
 import type { HttpClient } from "@/common/http-client";
 import { resolvedPhoto, type PreparedPhoto } from "@/common/photo";
 
-export type RecipeQuery = { text: string; tagId: string | undefined; isFavorite: boolean };
+export type RecipeQuery = {
+  text: string;
+  tagId: string | undefined;
+  isFavorite: boolean;
+  sort: "title" | "forgotten";
+};
 
 function resolved(client: HttpClient, saved: Recipe): Recipe {
   return { ...saved, photos: saved.photos.map((each) => resolvedPhoto(each, client.url)) };
 }
 
-function queryOf({ text, tagId, isFavorite }: RecipeQuery): string {
+function queryOf({ text, tagId, isFavorite, sort }: RecipeQuery): string {
   const params = new URLSearchParams();
 
   if (text.trim() !== "") {
@@ -32,6 +37,10 @@ function queryOf({ text, tagId, isFavorite }: RecipeQuery): string {
 
   if (isFavorite) {
     params.set("favorite", "true");
+  }
+
+  if (sort === "forgotten") {
+    params.set("sort", "forgotten");
   }
 
   const query = params.toString();
@@ -80,7 +89,10 @@ function photoCalls(client: HttpClient) {
 }
 
 export function createRecipesApi(client: HttpClient) {
-  async function one(path: string, init: { method?: "GET" | "POST" | "PUT"; body?: unknown }) {
+  async function one(
+    path: string,
+    init: { method?: "GET" | "POST" | "PUT" | "DELETE"; body?: unknown },
+  ) {
     const saved = await client.request(path, { ...init, schema: recipe });
 
     return resolved(client, saved);
@@ -100,6 +112,10 @@ export function createRecipesApi(client: HttpClient) {
       client.request(`/api/recipes/${recipeId}`, { method: "DELETE", schema: recipeDeleted }),
     setFavorite: async (recipeId: string, isFavorite: boolean) =>
       one(`/api/recipes/${recipeId}/favorite`, { method: "PUT", body: { isFavorite } }),
+    cook: async (recipeId: string, cookedAt: number | null) =>
+      one(`/api/recipes/${recipeId}/cooked`, { method: "POST", body: { cookedAt } }),
+    uncook: async (recipeId: string, cookId: string) =>
+      one(`/api/recipes/${recipeId}/cooked/${cookId}`, { method: "DELETE" }),
     ...tagCalls(client),
     ...photoCalls(client),
   };

@@ -87,6 +87,8 @@ const albums = reatomAlbumsScreen({
 const recipes = reatomRecipesScreen({
   api: createRecipesApi(httpClient),
   telegram,
+  today: () => today(deviceTimeZone()),
+  timeZone: deviceTimeZone,
   preparePhoto: async (file) => preparePhoto(file, deviceTimeZone()),
   photoHint: photoStorage.uploadHint,
 });
@@ -183,6 +185,9 @@ function openFromFeed(target: FeedTarget) {
   } else if (target.kind === "album") {
     navigation.openModule("albums");
     albums.open(target.albumId);
+  } else if (target.kind === "recipe") {
+    navigation.openModule("recipes");
+    recipes.open(target.recipeId);
   } else {
     navigation.openModule("calendar");
 

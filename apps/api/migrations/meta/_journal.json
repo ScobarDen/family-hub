@@ -141,6 +141,13 @@
       "when": 1792586776353,
       "tag": "0019_recipes",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1792587755151,
+      "tag": "0020_recipe_cooks",
+      "breakpoints": true
     }
   ]
 }

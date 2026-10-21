@@ -7,7 +7,13 @@ import type { RecipeRepo } from "./recipe.repo.ts";
 
 export type RecipeDependencies = { recipes: RecipeRepo; links: PhotoLinks; clock: Clock };
 
-export type RecipeRefusal = "not-found" | "not-author" | "tag-not-found" | "photo-not-found";
+export type RecipeRefusal =
+  | "not-found"
+  | "not-author"
+  | "tag-not-found"
+  | "photo-not-found"
+  | "cooked-not-found"
+  | "cooked-in-future";
 
 export type RecipeResult = { status: "ok"; recipe: Recipe } | { status: RecipeRefusal };
 
@@ -17,4 +23,6 @@ export type RecipeQuery = {
   text: string | undefined;
   tagId: string | undefined;
   isFavorite: boolean;
+  // «Давно не готовили»: never cooked first, then the longest ago.
+  sort: "title" | "forgotten";
 };

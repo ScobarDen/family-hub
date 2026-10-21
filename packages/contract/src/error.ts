@@ -45,6 +45,9 @@ export const errorCode = z.enum([
   "RECIPE_NOT_FOUND",
   "NOT_RECIPE_AUTHOR",
   "RECIPE_TAG_NOT_FOUND",
+  "COOKED_NOT_FOUND",
+  "NOT_COOKED_AUTHOR",
+  "COOKED_IN_FUTURE",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

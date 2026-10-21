@@ -1,7 +1,9 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 
 import {
+  members,
   photos,
+  recipeCooks,
   recipeFavorites,
   recipePhotos,
   recipeTagLinks,
@@ -109,12 +111,45 @@ async function knownIds(
   return rows.map(({ id }) => id);
 }
 
+export type CookRow = typeof recipeCooks.$inferSelect & { memberName: string };
+
+async function cooksOf(db: Db, familyId: string): Promise<CookRow[]> {
+  const rows = await db
+    .select({ cook: recipeCooks, memberName: members.name })
+    .from(recipeCooks)
+    .innerJoin(members, eq(members.id, recipeCooks.createdBy))
+    .where(eq(recipeCooks.familyId, familyId))
+    .all();
+
+  return rows.map(({ cook, memberName }) => ({ ...cook, memberName }));
+}
+
+function ofCook({ familyId, cookId }: { familyId: string; cookId: string }) {
+  return and(eq(recipeCooks.familyId, familyId), eq(recipeCooks.id, cookId));
+}
+
+// «🍳 Приготовили» marks, each with the Member who made it.
+function cookCalls(db: Db) {
+  return {
+    cooksOf: async (familyId: string) => cooksOf(db, familyId),
+    findCook: async (target: { familyId: string; cookId: string }) =>
+      db.select().from(recipeCooks).where(ofCook(target)).get(),
+    async addCook(row: typeof recipeCooks.$inferInsert): Promise<void> {
+      await db.insert(recipeCooks).values(row);
+    },
+    async deleteCook(target: { familyId: string; cookId: string }): Promise<void> {
+      await db.delete(recipeCooks).where(ofCook(target));
+    },
+  };
+}
+
 export function createRecipeRepo(db: Db) {
   return {
     recipesOf: async (familyId: string) =>
       db.select().from(recipes).where(eq(recipes.familyId, familyId)).all(),
     linksOf: async (familyId: string) => linksOf(db, familyId),
     favoritesOf: async (viewer: { familyId: string; memberId: string }) => favoritesOf(db, viewer),
+    ...cookCalls(db),
     tagsOf: async (familyId: string) =>
       db.select().from(recipeTags).where(eq(recipeTags.familyId, familyId)).all(),
     find: async (target: RecipeTarget) => db.select().from(recipes).where(ofRecipe(target)).get(),

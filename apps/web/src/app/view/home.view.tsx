@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { AppModule } from "@family-hub/contract";
 
+import { deviceTimeZone } from "@/common/format-date";
 import { Albums, type AlbumsScreenModel } from "@/modules/albums";
 import { Calendar, type CalendarModel } from "@/modules/calendar";
 import { Care, ExpensesBlock, JournalBlock, PhotosBlock, type CareModel } from "@/modules/care";
@@ -85,7 +86,13 @@ function contentOf(
   if (module === "recipes") {
     return {
       title: recipes.title(),
-      content: <Recipes model={recipes} photoHint={photoStorage.uploadHint()} />,
+      content: (
+        <Recipes
+          model={recipes}
+          photoHint={photoStorage.uploadHint()}
+          timeZone={deviceTimeZone()}
+        />
+      ),
     };
   }
 

@@ -16,6 +16,7 @@ export {
   pets,
   photos,
   plans,
+  recipeCooks,
   recipeFavorites,
   recipePhotos,
   recipeTagLinks,
