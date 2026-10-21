@@ -26,6 +26,25 @@ const buick: Pet = {
 
 const kesha: Pet = { ...buick, id: "pet-2", name: "Кеша", species: "bird", breed: null };
 
+function savedReply(request: string, body: unknown): Response {
+  if (request.startsWith("DELETE")) {
+    return Response.json({ status: "deleted" });
+  }
+
+  if (request.endsWith("/memo")) {
+    return Response.json({
+      ...buick,
+      memo: {
+        ...petMemoChange.parse(body),
+        updatedAt: Date.parse("2026-10-05T18:30:00Z"),
+        updatedBy: "Ася",
+      },
+    });
+  }
+
+  return Response.json({ ...buick, ...petProfile.parse(body), id: "pet-new" });
+}
+
 function fakeBackend(list: PetList | Error = [buick], { failSaving = false } = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
 
@@ -47,30 +66,19 @@ function fakeBackend(list: PetList | Error = [buick], { failSaving = false } = {
       return Response.json({ code: "INVALID_REQUEST", message: "" }, { status: 503 });
     }
 
-    if (request.endsWith("/memo")) {
-      return Response.json({
-        ...buick,
-        memo: {
-          ...petMemoChange.parse(body),
-          updatedAt: Date.parse("2026-10-05T18:30:00Z"),
-          updatedBy: "Ася",
-        },
-      });
-    }
-
-    return Response.json({ ...buick, ...petProfile.parse(body), id: "pet-new" });
+    return savedReply(request, body);
   }
 
   return { fetch, requests };
 }
 
-const soonPlans = [
-  { id: "plan-2", title: "К ветеринару", dueDate: null },
-  { id: "plan-1", title: "Груминг", dueDate: "2026-10-20" },
-  { id: "plan-3", title: "Купить корм", dueDate: "2026-10-01" },
+const soon = [
+  { id: "plan-2", title: "К ветеринару", dueDate: null, kind: "plan" as const },
+  { id: "plan-1", title: "Груминг", dueDate: "2026-10-20", kind: "plan" as const },
+  { id: "entry-1", title: "Прививка: Бешенство", dueDate: "2026-10-01", kind: "due" as const },
 ];
 
-function startPets(backend = fakeBackend()) {
+function startPets(backend = fakeBackend(), { isFamilyOwner = true } = {}) {
   const opened: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const api = createPetsApi(client);
@@ -79,10 +87,11 @@ function startPets(backend = fakeBackend()) {
     api,
     pets,
     viewer: () => ({ today: "2026-10-11", timeZone: "Europe/Moscow" }),
+    isFamilyOwner: () => isFamilyOwner,
     photoHint: () => "Загрузка фото выключена",
-    soonPlans: (petId) => (petId === "pet-1" ? soonPlans : []),
-    onOpenPlan: (planId) => {
-      opened.push(`plan ${planId}`);
+    soon: (petId) => (petId === "pet-1" ? soon : []),
+    onOpenSoon: ({ id, kind }) => {
+      opened.push(`${kind} ${id}`);
     },
     onPlan: (petId) => {
       opened.push(`new plan for ${petId}`);
@@ -120,6 +129,8 @@ describe("the pet tab", () => {
 
     expect(model.screen()).toEqual({
       kind: "card",
+      canDelete: false,
+      archivedCount: 0,
       card: {
         id: "pet-1",
         name: "Бьюик",
@@ -131,19 +142,28 @@ describe("the pet tab", () => {
         memo: { food: undefined, clinic: undefined, important: undefined, updated: undefined },
         soon: [
           {
-            id: "plan-3",
-            title: "Купить корм",
+            id: "entry-1",
+            kind: "due",
+            title: "Прививка: Бешенство",
             subtitle: "просрочено · 1 октября 2026 г.",
             isOverdue: true,
           },
           {
             id: "plan-1",
+            kind: "plan",
             title: "Груминг",
             subtitle: "20 октября 2026 г.",
             isOverdue: false,
           },
-          { id: "plan-2", title: "К ветеринару", subtitle: undefined, isOverdue: false },
+          {
+            id: "plan-2",
+            kind: "plan",
+            title: "К ветеринару",
+            subtitle: undefined,
+            isOverdue: false,
+          },
         ],
+        isArchived: false,
       },
     });
     expect(model.title()).toBe("Бьюик");
@@ -161,6 +181,7 @@ describe("the pet tab", () => {
         { id: "pet-1", name: "Бьюик", subtitle: "Собака · Бигль · 4 года" },
         { id: "pet-2", name: "Кеша", subtitle: "Птица · 4 года" },
       ],
+      archived: [],
     });
     expect(model.title()).toBe("Питомцы");
 
@@ -179,7 +200,7 @@ describe("the pet tab", () => {
 
     await loaded(model);
 
-    expect(model.screen()).toEqual({ kind: "empty" });
+    expect(model.screen()).toEqual({ kind: "empty", archived: [] });
   });
 
   test("leaves archived Pets out", async () => {
@@ -375,9 +396,66 @@ describe("«Скоро» on the card", () => {
     const { model, opened } = startPets();
 
     await loaded(model);
-    model.openPlan("plan-1");
+    model.openSoon({ id: "plan-1", kind: "plan" });
     model.plan("pet-1");
 
     expect(opened).toEqual(["plan plan-1", "new plan for pet-1"]);
+  });
+});
+
+describe("the archive", () => {
+  test("keeps archived Pets in their own part of the list, read only", async () => {
+    const { model } = startPets(fakeBackend([buick, { ...kesha, archivedAt: 1 }]));
+
+    await loaded(model);
+
+    expect(model.screen()).toMatchObject({ kind: "card", archivedCount: 1 });
+
+    model.showAll();
+
+    expect(model.screen()).toMatchObject({
+      kind: "list",
+      pets: [{ id: "pet-1" }],
+      archived: [{ id: "pet-2", name: "Кеша" }],
+    });
+
+    model.open("pet-2");
+
+    expect(model.screen()).toMatchObject({ kind: "card", card: { isArchived: true } });
+    expect(model.isOpenedPetArchived()).toBe(true);
+  });
+
+  test("lets only the Family Owner delete an archived Pet, after typing its name", async () => {
+    const archivedKesha = { ...kesha, archivedAt: 1 };
+    const backend = fakeBackend([buick, archivedKesha]);
+    const { model } = startPets(backend);
+
+    await loaded(model);
+    model.open("pet-2");
+
+    expect(model.screen()).toMatchObject({ canDelete: true });
+
+    model.startDeleting();
+    model.deletion.fields.petName.set("Кеша");
+    model.deletePet();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ kind: "card", card: { name: "Бьюик" } });
+    });
+    expect(backend.requests.at(-1)).toEqual({
+      request: "DELETE /api/pets/pet-2",
+      body: { petName: "Кеша" },
+    });
+  });
+
+  test("offers no deletion to other Members", async () => {
+    const { model } = startPets(fakeBackend([buick, { ...kesha, archivedAt: 1 }]), {
+      isFamilyOwner: false,
+    });
+
+    await loaded(model);
+    model.open("pet-2");
+
+    expect(model.screen()).toMatchObject({ canDelete: false });
   });
 });

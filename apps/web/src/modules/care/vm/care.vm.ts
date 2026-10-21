@@ -7,7 +7,7 @@ import { formatRubles } from "@/common/format-money";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
-import { categoryTitles, type WeightRange } from "../care.config.ts";
+import { categoryTitles, kindTitles, type WeightRange } from "../care.config.ts";
 import {
   toExpensesView,
   toJournalItem,
@@ -31,7 +31,10 @@ type CareDependencies = {
   now: () => string;
   timeZone: () => string;
   telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  isReadOnly: () => boolean;
 };
+
+export type DueSource = { id: string; title: string; dueDate: string; kind: "due" };
 
 export type YearExpenses = ExpensesView & {
   entries: Array<{ id: string; title: string; subtitle: string; amount: string }>;
@@ -121,6 +124,14 @@ function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRa
       form.startCreating(kind);
       screen.set("form");
     }, "care.add"),
+    followUp: action((entryId: string) => {
+      const entry = data.entries.data()?.find(({ id }) => id === entryId);
+
+      if (entry !== undefined) {
+        form.startFollowUp(entry);
+        screen.set("form");
+      }
+    }, "care.followUp"),
     edit: action((entryId: string) => {
       const entry = data.entries.data()?.find(({ id }) => id === entryId);
 
@@ -153,6 +164,20 @@ function reatomTitle(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
   }, "care.title");
 }
 
+// The pet card shows the open Due Dates in «Скоро»; this module stays their only source.
+function reatomDueSources(data: CareData) {
+  return computed(
+    (): DueSource[] =>
+      (data.dueDates.data() ?? []).map(({ entryId, kind, title, dueDate }) => ({
+        id: entryId,
+        title: kind === "vet_visit" ? title : `${kindTitles[kind]}: ${title}`,
+        dueDate,
+        kind: "due",
+      })),
+    "care.dueSources",
+  );
+}
+
 export function reatomCare(dependencies: CareDependencies) {
   const data = reatomCareData(dependencies);
   const screen = atom<CareScreen["kind"]>("blocks", "care.screenKind");
@@ -181,6 +206,8 @@ export function reatomCare(dependencies: CareDependencies) {
     }, "care.screen"),
     title: reatomTitle(screen, form),
     canGoBack: computed(() => screen() !== "blocks", "care.canGoBack"),
+    isReadOnly: computed(() => dependencies.isReadOnly(), "care.isReadOnly"),
+    dueSources: reatomDueSources(data),
     failure: computed(() => sources.failure(), "care.visibleFailure"),
     form,
     ...reatomViews(sources, weightRange),

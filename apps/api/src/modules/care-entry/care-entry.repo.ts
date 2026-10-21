@@ -28,14 +28,34 @@ async function find(db: Db, familyId: string, entryId: string) {
   return row;
 }
 
-async function hasPet(db: Db, familyId: string, petId: string): Promise<boolean> {
-  const row = await db
-    .select({ id: pets.id })
+async function petOf(db: Db, familyId: string, petId: string) {
+  return db
+    .select({ id: pets.id, archivedAt: pets.archivedAt })
     .from(pets)
     .where(and(eq(pets.familyId, familyId), eq(pets.id, petId)))
     .get();
+}
 
-  return row !== undefined;
+async function dueCandidates(db: Db, familyId: string, petId: string) {
+  return selectWhere(
+    db,
+    and(
+      eq(careEntries.familyId, familyId),
+      eq(careEntries.petId, petId),
+      isNotNull(careEntries.dueKey),
+    ),
+  );
+}
+
+// A Member's own zone sits on their row, which belongs to no Family.
+async function timeZoneOf(db: Db, memberId: string): Promise<string | null> {
+  const row = await db
+    .select({ timeZone: members.timeZone })
+    .from(members)
+    .where(eq(members.id, memberId))
+    .get();
+
+  return row?.timeZone ?? null;
 }
 
 async function expenses(db: Db, { familyId, petId, from, to }: ExpenseQuery) {
@@ -56,7 +76,9 @@ export function createCareEntryRepo(db: Db) {
     list: async (familyId: string, petId: string) =>
       selectWhere(db, and(eq(careEntries.familyId, familyId), eq(careEntries.petId, petId))),
     find: async (familyId: string, entryId: string) => find(db, familyId, entryId),
-    hasPet: async (familyId: string, petId: string) => hasPet(db, familyId, petId),
+    petOf: async (familyId: string, petId: string) => petOf(db, familyId, petId),
+    dueCandidates: async (familyId: string, petId: string) => dueCandidates(db, familyId, petId),
+    timeZoneOf: async (memberId: string) => timeZoneOf(db, memberId),
     expenses: async (query: ExpenseQuery) => expenses(db, query),
 
     async add(entry: typeof careEntries.$inferInsert): Promise<void> {

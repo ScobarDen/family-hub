@@ -80,11 +80,24 @@ const pets = reatomPetsScreen({
   api: petsApi,
   pets: petsModel,
   viewer: () => ({ today: today(deviceTimeZone()), timeZone: deviceTimeZone() }),
+  isFamilyOwner: () => session.member()?.isFamilyOwner === true,
   photoHint: photoStorage.uploadHint,
-  soonPlans: plans.openPlansOf,
-  onOpenPlan: (planId) => {
-    navigation.openModule("plans");
-    plans.open(planId);
+  soon: (petId) => [
+    ...plans.openPlansOf(petId).map(({ id, title, dueDate }) => ({
+      id,
+      title,
+      dueDate,
+      kind: "plan" as const,
+    })),
+    ...care.dueSources(),
+  ],
+  onOpenSoon: ({ id, kind }) => {
+    if (kind === "due") {
+      care.followUp(id);
+    } else {
+      navigation.openModule("plans");
+      plans.open(id);
+    }
   },
   onPlan: (petId) => {
     navigation.openModule("plans");
@@ -98,6 +111,7 @@ const care = reatomCare({
   now: () => Temporal.Now.plainDateTimeISO(deviceTimeZone()).toString({ smallestUnit: "minute" }),
   timeZone: deviceTimeZone,
   telegram,
+  isReadOnly: () => pets.isOpenedPetArchived(),
 });
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,

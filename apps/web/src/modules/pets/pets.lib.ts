@@ -22,14 +22,18 @@ export type PetCard = {
   facts: PetFact[];
   memo: PetMemoView;
   soon: SoonItem[];
+  isArchived: boolean;
 };
 
 export type Viewer = { today: string; timeZone: string };
 
-export type SoonSource = { id: string; title: string; dueDate: string | null };
+export type SoonKind = "plan" | "due";
+
+export type SoonSource = { id: string; title: string; dueDate: string | null; kind: SoonKind };
 
 export type SoonItem = {
   id: string;
+  kind: SoonKind;
   title: string;
   subtitle: string | undefined;
   isOverdue: boolean;
@@ -48,11 +52,12 @@ function byDueDate(left: SoonSource, right: SoonSource): number {
 }
 
 export function toSoon(sources: SoonSource[], today: string): SoonItem[] {
-  return sources.toSorted(byDueDate).map(({ id, title, dueDate }) => {
+  return sources.toSorted(byDueDate).map(({ id, title, dueDate, kind }) => {
     const isOverdue = dueDate !== null && dueDate < today;
 
     return {
       id,
+      kind,
       title,
       subtitle:
         dueDate === null ? undefined : `${isOverdue ? "просрочено · " : ""}${formatDate(dueDate)}`,
@@ -106,5 +111,6 @@ export function toCard(pet: Pet, { today, timeZone }: Viewer, soonSources: SoonS
     facts: factsOf(pet),
     memo: memoOf(pet.memo, timeZone),
     soon: toSoon(soonSources, today),
+    isArchived: pet.archivedAt !== null,
   };
 }

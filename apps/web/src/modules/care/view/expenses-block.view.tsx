@@ -22,14 +22,16 @@ export const ExpensesBlock = reatomComponent(({ model }: CareBlockProps) => {
       {month?.rows.map((row) => (
         <SectionItem key={row.title} title={row.title} after={row.amount} />
       ))}
-      <SectionItem
-        icon={Plus}
-        tone="green"
-        title="Добавить трату"
-        onClick={() => {
-          model.add("expense");
-        }}
-      />
+      {!model.isReadOnly() && (
+        <SectionItem
+          icon={Plus}
+          tone="green"
+          title="Добавить трату"
+          onClick={() => {
+            model.add("expense");
+          }}
+        />
+      )}
     </Section>
   );
 }, "ExpensesBlock");

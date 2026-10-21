@@ -47,6 +47,18 @@ export function createPetRepo(db: Db) {
     list: async (familyId: string) => selectWhere(db, eq(pets.familyId, familyId)),
     find: async (familyId: string, petId: string) => find(db, { familyId, petId }),
 
+    setArchivedAt: async ({
+      familyId,
+      petId,
+      archivedAt,
+      now,
+    }: PetTarget & { archivedAt: number | null; now: number }) =>
+      update(db, { familyId, petId }, { archivedAt, updatedAt: now }),
+
+    async delete(familyId: string, petId: string): Promise<void> {
+      await db.delete(pets).where(and(eq(pets.familyId, familyId), eq(pets.id, petId)));
+    },
+
     async add(pet: typeof pets.$inferInsert): Promise<void> {
       await db.insert(pets).values(pet);
     },

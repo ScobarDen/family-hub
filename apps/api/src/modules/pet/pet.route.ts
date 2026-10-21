@@ -1,18 +1,60 @@
 import { sValidator } from "@hono/standard-validator";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 
-import { petMemoChange, petProfile, type Pet, type PetList } from "@family-hub/contract";
+import {
+  petDeletion,
+  petMemoChange,
+  petProfile,
+  type ErrorCode,
+  type Pet,
+  type PetDeleted,
+  type PetList,
+} from "@family-hub/contract";
 
-import { requireMember, type AuthEnv } from "@/common/auth";
+import { requireMember, type MemberEnv } from "@/common/auth";
 import { apiError, httpStatus } from "@/common/errors";
 
-import type { PetService } from "./pet.service.ts";
+import type { PetRefusal, PetResult } from "./pet.types.ts";
+import type { PetService } from "./service/pet.service.ts";
 
 export type PetEnv = {
-  Variables: AuthEnv["Variables"] & { pets: PetService };
+  Variables: MemberEnv["Variables"] & { pets: PetService };
 };
 
-function bodyOf<Schema extends typeof petProfile | typeof petMemoChange>(
+const refusals = {
+  "not-found": {
+    code: "PET_NOT_FOUND",
+    message: "No such Pet in the Family",
+    status: httpStatus.notFound,
+  },
+  archived: {
+    code: "PET_ARCHIVED",
+    message: "An archived Pet reads only; unarchive it first",
+    status: httpStatus.conflict,
+  },
+  "not-owner": {
+    code: "NOT_FAMILY_OWNER",
+    message: "Only the Family Owner deletes a Pet",
+    status: httpStatus.forbidden,
+  },
+  "name-mismatch": {
+    code: "PET_NAME_MISMATCH",
+    message: "The typed name is not the Pet's name",
+    status: httpStatus.badRequest,
+  },
+} as const satisfies Record<PetRefusal, { code: ErrorCode; message: string; status: number }>;
+
+function refuse(context: Context<PetEnv>, refusal: PetRefusal) {
+  const { code, message, status } = refusals[refusal];
+
+  return context.json(apiError(code, message), status);
+}
+
+function reply(context: Context<PetEnv>, result: PetResult) {
+  return result.status === "ok" ? context.json<Pet>(result.pet) : refuse(context, result.status);
+}
+
+function bodyOf<Schema extends typeof petProfile | typeof petMemoChange | typeof petDeletion>(
   schema: Schema,
   message: string,
 ) {
@@ -25,33 +67,60 @@ function bodyOf<Schema extends typeof petProfile | typeof petMemoChange>(
 
 const profileBody = bodyOf(petProfile, "A Pet needs a name and a species");
 const memoBody = bodyOf(petMemoChange, "The Pet Memo takes food, clinic and important notes");
-const petNotFound = apiError("PET_NOT_FOUND", "No such Pet in the Family");
+const deletionBody = bodyOf(petDeletion, "Deleting a Pet takes its name");
 
 export const petRoute = new Hono<PetEnv>()
-  .get("/api/pets", requireMember, async (context) =>
+  .use("/api/pets", requireMember)
+  .use("/api/pets/:id", requireMember)
+  .use("/api/pets/:id/memo", requireMember)
+  .use("/api/pets/:id/archive", requireMember)
+  .use("/api/pets/:id/unarchive", requireMember)
+  .get("/api/pets", async (context) =>
     context.json<PetList>(await context.var.pets.list(context.var.membership)),
   )
-  .post("/api/pets", requireMember, profileBody, async (context) =>
+  .post("/api/pets", profileBody, async (context) =>
     context.json<Pet>(
       await context.var.pets.create(context.var.membership, context.req.valid("json")),
       httpStatus.created,
     ),
   )
-  .put("/api/pets/:id", requireMember, profileBody, async (context) => {
-    const saved = await context.var.pets.saveProfile(
+  .put("/api/pets/:id", profileBody, async (context) =>
+    reply(
+      context,
+      await context.var.pets.saveProfile(
+        context.var.membership,
+        context.req.param("id"),
+        context.req.valid("json"),
+      ),
+    ),
+  )
+  .put("/api/pets/:id/memo", memoBody, async (context) =>
+    reply(
+      context,
+      await context.var.pets.saveMemo(
+        context.var.membership,
+        context.req.param("id"),
+        context.req.valid("json"),
+      ),
+    ),
+  )
+  .post("/api/pets/:id/archive", async (context) =>
+    reply(context, await context.var.pets.archive(context.var.membership, context.req.param("id"))),
+  )
+  .post("/api/pets/:id/unarchive", async (context) =>
+    reply(
+      context,
+      await context.var.pets.unarchive(context.var.membership, context.req.param("id")),
+    ),
+  )
+  .delete("/api/pets/:id", deletionBody, async (context) => {
+    const result = await context.var.pets.delete(
       context.var.membership,
       context.req.param("id"),
-      context.req.valid("json"),
+      context.req.valid("json").petName,
     );
 
-    return saved ? context.json<Pet>(saved) : context.json(petNotFound, httpStatus.notFound);
-  })
-  .put("/api/pets/:id/memo", requireMember, memoBody, async (context) => {
-    const saved = await context.var.pets.saveMemo(
-      context.var.membership,
-      context.req.param("id"),
-      context.req.valid("json"),
-    );
-
-    return saved ? context.json<Pet>(saved) : context.json(petNotFound, httpStatus.notFound);
+    return result.status === "deleted"
+      ? context.json<PetDeleted>({ status: "deleted" })
+      : refuse(context, result.status);
   });

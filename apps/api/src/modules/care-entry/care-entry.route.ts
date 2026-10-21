@@ -1,5 +1,5 @@
 import { sValidator } from "@hono/standard-validator";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 
 import {
   careEntryChange,
@@ -7,17 +7,43 @@ import {
   type CareEntry,
   type CareEntryDeleted,
   type CareEntryList,
+  type DueDateList,
+  type ErrorCode,
   type ExpenseSummary,
 } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
 import { apiError, httpStatus } from "@/common/errors";
 
-import type { CareEntryService } from "./care-entry.service.ts";
+import type { CareEntryService, CareRefusal } from "./care-entry.service.ts";
 
 export type CareEntryEnv = {
   Variables: MemberEnv["Variables"] & { careEntries: CareEntryService };
 };
+
+const refusals = {
+  "not-found": {
+    code: "CARE_ENTRY_NOT_FOUND",
+    message: "No such Care Entry in the Family",
+    status: httpStatus.notFound,
+  },
+  "pet-not-found": {
+    code: "PET_NOT_FOUND",
+    message: "No such Pet in the Family",
+    status: httpStatus.notFound,
+  },
+  archived: {
+    code: "PET_ARCHIVED",
+    message: "An archived Pet's journal reads only",
+    status: httpStatus.conflict,
+  },
+} as const satisfies Record<CareRefusal, { code: ErrorCode; message: string; status: number }>;
+
+function refuse(context: Context<CareEntryEnv>, refusal: CareRefusal) {
+  const { code, message, status } = refusals[refusal];
+
+  return context.json(apiError(code, message), status);
+}
 
 const invalidEntry = apiError(
   "INVALID_REQUEST",
@@ -31,12 +57,11 @@ const rangeQuery = sValidator("query", expenseRange, (result, context) =>
     ? undefined
     : context.json(apiError("INVALID_REQUEST", "from and to are epoch ms"), httpStatus.badRequest),
 );
-const petNotFound = apiError("PET_NOT_FOUND", "No such Pet in the Family");
-const entryNotFound = apiError("CARE_ENTRY_NOT_FOUND", "No such Care Entry in the Family");
 
 export const careEntryRoute = new Hono<CareEntryEnv>()
   .use("/api/pets/:petId/care-entries", requireMember)
   .use("/api/pets/:petId/expenses", requireMember)
+  .use("/api/pets/:petId/due-dates", requireMember)
   .use("/api/care-entries/*", requireMember)
   .get("/api/pets/:petId/care-entries", async (context) =>
     context.json<CareEntryList>(
@@ -44,16 +69,21 @@ export const careEntryRoute = new Hono<CareEntryEnv>()
     ),
   )
   .post("/api/pets/:petId/care-entries", entryBody, async (context) => {
-    const created = await context.var.careEntries.create(
+    const result = await context.var.careEntries.create(
       context.var.membership,
       context.req.param("petId"),
       context.req.valid("json"),
     );
 
-    return created
-      ? context.json<CareEntry>(created, httpStatus.created)
-      : context.json(petNotFound, httpStatus.notFound);
+    return result.status === "ok"
+      ? context.json<CareEntry>(result.entry, httpStatus.created)
+      : refuse(context, result.status);
   })
+  .get("/api/pets/:petId/due-dates", async (context) =>
+    context.json<DueDateList>(
+      await context.var.careEntries.dueDates(context.var.membership, context.req.param("petId")),
+    ),
+  )
   .get("/api/pets/:petId/expenses", rangeQuery, async (context) =>
     context.json<ExpenseSummary>(
       await context.var.careEntries.expenses(
@@ -64,15 +94,15 @@ export const careEntryRoute = new Hono<CareEntryEnv>()
     ),
   )
   .put("/api/care-entries/:id", entryBody, async (context) => {
-    const saved = await context.var.careEntries.update(
+    const result = await context.var.careEntries.update(
       context.var.membership,
       context.req.param("id"),
       context.req.valid("json"),
     );
 
-    return saved
-      ? context.json<CareEntry>(saved)
-      : context.json(entryNotFound, httpStatus.notFound);
+    return result.status === "ok"
+      ? context.json<CareEntry>(result.entry)
+      : refuse(context, result.status);
   })
   .delete("/api/care-entries/:id", async (context) => {
     const result = await context.var.careEntries.remove(
@@ -82,5 +112,5 @@ export const careEntryRoute = new Hono<CareEntryEnv>()
 
     return result.status === "deleted"
       ? context.json<CareEntryDeleted>(result)
-      : context.json(entryNotFound, httpStatus.notFound);
+      : refuse(context, result.status);
   });

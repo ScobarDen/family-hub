@@ -14,6 +14,10 @@ export function reatomPets({ api }: { api: PetsApi }) {
   return {
     list,
     active,
+    archived: computed(
+      () => (list.data() ?? []).filter((pet) => pet.archivedAt !== null),
+      "pets.archived",
+    ),
 
     // A single Pet names the tab; several share «Питомцы»; none keeps the module's own title.
     tabTitle: computed((): string | undefined => {
@@ -35,6 +39,9 @@ export function reatomPets({ api }: { api: PetsApi }) {
           : [...current, saved],
       );
     }, "pets.keep"),
+    drop: action((petId: string) => {
+      list.data.set(list.data()?.filter((pet) => pet.id !== petId));
+    }, "pets.drop"),
   };
 }
 

@@ -85,6 +85,7 @@ function startCare(choices: string[] = []) {
     now: () => "2026-10-11T18:30",
     timeZone: () => "Europe/Moscow",
     telegram: { showPopup: async () => pending.shift() },
+    isReadOnly: () => false,
   });
 
   model.journal.subscribe(noop);

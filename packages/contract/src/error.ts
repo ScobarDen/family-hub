@@ -15,6 +15,8 @@ export const errorCode = z.enum([
   "MEMBER_NOT_FOUND",
   "FAMILY_NAME_MISMATCH",
   "PET_NOT_FOUND",
+  "PET_ARCHIVED",
+  "PET_NAME_MISMATCH",
   "CARE_ENTRY_NOT_FOUND",
   "PLAN_NOT_FOUND",
   "NOT_PLAN_OWNER",

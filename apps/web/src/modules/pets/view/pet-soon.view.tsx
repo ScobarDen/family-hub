@@ -1,4 +1,4 @@
-import { CalendarClock, CalendarPlus, TriangleAlert } from "lucide-react";
+import { CalendarClock, CalendarPlus, Syringe, TriangleAlert } from "lucide-react";
 
 import { Section, SectionItem } from "@/common/ui";
 
@@ -6,11 +6,19 @@ import type { SoonItem } from "../pets.lib.ts";
 
 type PetSoonProps = {
   soon: SoonItem[];
-  onOpenPlan: (planId: string) => void;
-  onPlan: () => void;
+  onOpen: (item: SoonItem) => void;
+  onPlan: (() => void) | undefined;
 };
 
-export function PetSoon({ soon, onOpenPlan, onPlan }: PetSoonProps) {
+function iconOf(item: SoonItem) {
+  if (item.isOverdue) {
+    return TriangleAlert;
+  }
+
+  return item.kind === "due" ? Syringe : CalendarClock;
+}
+
+export function PetSoon({ soon, onOpen, onPlan }: PetSoonProps) {
   return (
     <Section title="Скоро">
       {soon.length === 0 && (
@@ -18,17 +26,19 @@ export function PetSoon({ soon, onOpenPlan, onPlan }: PetSoonProps) {
       )}
       {soon.map((item) => (
         <SectionItem
-          key={item.id}
-          icon={item.isOverdue ? TriangleAlert : CalendarClock}
+          key={`${item.kind}-${item.id}`}
+          icon={iconOf(item)}
           tone={item.isOverdue ? "red" : "blue"}
           title={item.title}
           subtitle={item.subtitle}
           onClick={() => {
-            onOpenPlan(item.id);
+            onOpen(item);
           }}
         />
       ))}
-      <SectionItem icon={CalendarPlus} tone="green" title="Запланировать" onClick={onPlan} />
+      {onPlan !== undefined && (
+        <SectionItem icon={CalendarPlus} tone="green" title="Запланировать" onClick={onPlan} />
+      )}
     </Section>
   );
 }

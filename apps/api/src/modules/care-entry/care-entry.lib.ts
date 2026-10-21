@@ -1,4 +1,10 @@
-import type { CareDetails, CareEntry, ExpenseCategory, ExpenseSummary } from "@family-hub/contract";
+import type {
+  CareDetails,
+  CareEntry,
+  DueDateItem,
+  ExpenseCategory,
+  ExpenseSummary,
+} from "@family-hub/contract";
 
 import type { CareEntryRow } from "./care-entry.repo.ts";
 
@@ -83,4 +89,61 @@ export function summaryOf(rows: CareEntryRow[]): ExpenseSummary {
       .toSorted((left, right) => right.amount - left.amount),
     entries,
   };
+}
+
+// A Due Date is a calendar day, overdue once the Member's own day has passed it.
+export function todayIn(timeZone: string | null, now: number): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: timeZone ?? "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
+function dueTitleOf(details: CareDetails): string {
+  if (details.kind === "vaccination") {
+    return details.vaccine;
+  }
+
+  return details.kind === "treatment" ? details.target : "Визит к ветеринару";
+}
+
+function dueItemOf(row: CareEntryRow, today: string): DueDateItem[] {
+  const { details, dueDate } = row;
+
+  if (
+    dueDate === null ||
+    details.kind === "weight" ||
+    details.kind === "expense" ||
+    details.kind === "note"
+  ) {
+    return [];
+  }
+
+  return [
+    {
+      entryId: row.id,
+      kind: details.kind,
+      title: dueTitleOf(details),
+      dueDate,
+      isOverdue: dueDate < today,
+    },
+  ];
+}
+
+// The newest entry of each due key holds its Due Date: a later vaccine of the same name closes
+// the earlier one, and a later entry without a date closes it for good.
+export function openDueDates(rows: CareEntryRow[], today: string): DueDateItem[] {
+  const newest = new Map<string, CareEntryRow>();
+
+  for (const row of rows) {
+    if (row.dueKey !== null && !newest.has(row.dueKey)) {
+      newest.set(row.dueKey, row);
+    }
+  }
+
+  return [...newest.values()]
+    .flatMap((row) => dueItemOf(row, today))
+    .toSorted((left, right) => (left.dueDate < right.dueDate ? -1 : 1));
 }

@@ -2,18 +2,25 @@ import {
   uuidv7,
   type CareEntry,
   type CareEntryChange,
+  type DueDateItem,
   type ExpenseSummary,
 } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 
-import { columnsOf, summaryOf, toCareEntry } from "./care-entry.lib.ts";
+import { columnsOf, openDueDates, summaryOf, toCareEntry, todayIn } from "./care-entry.lib.ts";
 import type { CareEntryRepo } from "./care-entry.repo.ts";
 
 type CareEntryDependencies = { entries: CareEntryRepo; clock: Clock };
 
 type Range = { from: number; to: number };
+
+export type CareRefusal = "not-found" | "pet-not-found" | "archived";
+
+export type CareResult = { status: "ok"; entry: CareEntry } | { status: CareRefusal };
+
+export type RemoveResult = { status: "deleted" } | { status: CareRefusal };
 
 function valuesOf(change: CareEntryChange) {
   return {
@@ -29,27 +36,52 @@ async function current(
   { entries }: CareEntryDependencies,
   { family }: Membership,
   entryId: string,
-): Promise<CareEntry | undefined> {
+): Promise<CareResult> {
   const row = await entries.find(family.id, entryId);
 
-  return row && toCareEntry(row);
+  return row ? { status: "ok", entry: toCareEntry(row) } : { status: "not-found" };
+}
+
+// An archived Pet keeps its journal to read; nothing is written to it until it is unarchived.
+async function writablePet(
+  { entries }: CareEntryDependencies,
+  { family }: Membership,
+  petId: string,
+): Promise<CareRefusal | undefined> {
+  const pet = await entries.petOf(family.id, petId);
+
+  if (!pet) {
+    return "pet-not-found";
+  }
+
+  return pet.archivedAt === null ? undefined : "archived";
+}
+
+async function writableEntry(
+  dependencies: CareEntryDependencies,
+  membership: Membership,
+  entryId: string,
+): Promise<CareRefusal | undefined> {
+  const entry = await dependencies.entries.find(membership.family.id, entryId);
+
+  return entry ? writablePet(dependencies, membership, entry.petId) : "not-found";
 }
 
 async function create(
   dependencies: CareEntryDependencies,
   membership: Membership,
   { petId, change }: { petId: string; change: CareEntryChange },
-): Promise<CareEntry | undefined> {
-  const { entries, clock } = dependencies;
+): Promise<CareResult> {
+  const refusal = await writablePet(dependencies, membership, petId);
 
-  if (!(await entries.hasPet(membership.family.id, petId))) {
-    return undefined;
+  if (refusal !== undefined) {
+    return { status: refusal };
   }
 
-  const now = clock.now();
+  const now = dependencies.clock.now();
   const id = uuidv7(now);
 
-  await entries.add({
+  await dependencies.entries.add({
     id,
     familyId: membership.family.id,
     petId,
@@ -67,9 +99,11 @@ async function update(
   dependencies: CareEntryDependencies,
   membership: Membership,
   { entryId, change }: { entryId: string; change: CareEntryChange },
-): Promise<CareEntry | undefined> {
-  if (!(await dependencies.entries.find(membership.family.id, entryId))) {
-    return undefined;
+): Promise<CareResult> {
+  const refusal = await writableEntry(dependencies, membership, entryId);
+
+  if (refusal !== undefined) {
+    return { status: refusal };
   }
 
   await dependencies.entries.update(membership.family.id, entryId, {
@@ -80,20 +114,31 @@ async function update(
   return current(dependencies, membership, entryId);
 }
 
-export type RemoveResult = { status: "deleted" } | { status: "not-found" };
-
 async function remove(
-  { entries }: CareEntryDependencies,
-  { family }: Membership,
+  dependencies: CareEntryDependencies,
+  membership: Membership,
   entryId: string,
 ): Promise<RemoveResult> {
-  if (!(await entries.find(family.id, entryId))) {
-    return { status: "not-found" };
+  const refusal = await writableEntry(dependencies, membership, entryId);
+
+  if (refusal !== undefined) {
+    return { status: refusal };
   }
 
-  await entries.delete(family.id, entryId);
+  await dependencies.entries.delete(membership.family.id, entryId);
 
   return { status: "deleted" };
+}
+
+async function dueDates(
+  { entries, clock }: CareEntryDependencies,
+  { family, member }: Membership,
+  petId: string,
+): Promise<DueDateItem[]> {
+  const rows = await entries.dueCandidates(family.id, petId);
+  const today = todayIn(await entries.timeZoneOf(member.id), clock.now());
+
+  return openDueDates(rows, today);
 }
 
 export function createCareEntryService(dependencies: CareEntryDependencies) {
@@ -111,6 +156,8 @@ export function createCareEntryService(dependencies: CareEntryDependencies) {
       update(dependencies, membership, { entryId, change }),
     remove: async (membership: Membership, entryId: string) =>
       remove(dependencies, membership, entryId),
+    dueDates: async (membership: Membership, petId: string) =>
+      dueDates(dependencies, membership, petId),
 
     async expenses({ family }: Membership, petId: string, range: Range): Promise<ExpenseSummary> {
       return summaryOf(await entries.expenses({ familyId: family.id, petId, ...range }));

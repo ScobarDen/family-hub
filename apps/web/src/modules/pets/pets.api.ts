@@ -1,4 +1,11 @@
-import { pet, petList, type PetMemoChange, type PetProfile } from "@family-hub/contract";
+import {
+  pet,
+  petDeleted,
+  petList,
+  type PetDeletion,
+  type PetMemoChange,
+  type PetProfile,
+} from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
 
@@ -14,6 +21,19 @@ export function createPetsApi(client: HttpClient) {
 
     saveMemo: async (petId: string, memo: PetMemoChange) =>
       client.request(`/api/pets/${petId}/memo`, { method: "PUT", body: memo, schema: pet }),
+
+    archive: async (petId: string) =>
+      client.request(`/api/pets/${petId}/archive`, { method: "POST", schema: pet }),
+
+    unarchive: async (petId: string) =>
+      client.request(`/api/pets/${petId}/unarchive`, { method: "POST", schema: pet }),
+
+    remove: async (petId: string, petName: string) =>
+      client.request(`/api/pets/${petId}`, {
+        method: "DELETE",
+        body: { petName } satisfies PetDeletion,
+        schema: petDeleted,
+      }),
   };
 }
 

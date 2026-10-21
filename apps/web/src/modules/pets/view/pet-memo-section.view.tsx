@@ -10,7 +10,7 @@ const memoRows = [
   ["important", "Важное"],
 ] as const;
 
-type PetMemoSectionProps = { memo: PetMemoView; onEdit: () => void };
+type PetMemoSectionProps = { memo: PetMemoView; onEdit: (() => void) | undefined };
 
 export function PetMemoSection({ memo, onEdit }: PetMemoSectionProps) {
   return (
@@ -18,7 +18,9 @@ export function PetMemoSection({ memo, onEdit }: PetMemoSectionProps) {
       {memoRows.map(([key, label]) => (
         <SectionItem key={key} title={memo[key] ?? "—"} subtitle={label} />
       ))}
-      <SectionItem icon={NotebookPen} tone="blue" title="Изменить памятку" onClick={onEdit} />
+      {onEdit !== undefined && (
+        <SectionItem icon={NotebookPen} tone="blue" title="Изменить памятку" onClick={onEdit} />
+      )}
     </Section>
   );
 }

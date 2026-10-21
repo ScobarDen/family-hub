@@ -23,6 +23,13 @@ export function reatomCareData({ api, petId, today, timeZone }: CareModelDepende
       return id === undefined ? [] : wrap(api.list(id));
     }, "care.entries").extend(withAsyncData()),
 
+    dueDates: computed(async () => {
+      version();
+      const id = petId();
+
+      return id === undefined ? [] : wrap(api.dueDates(id));
+    }, "care.dueDates").extend(withAsyncData()),
+
     month: computed(async () => {
       version();
       const id = petId();

@@ -52,3 +52,11 @@ export type Pet = z.infer<typeof pet>;
 export const petList = z.array(pet);
 
 export type PetList = z.infer<typeof petList>;
+
+export const petDeletion = z.object({ petName: z.string() });
+
+export type PetDeletion = z.infer<typeof petDeletion>;
+
+export const petDeleted = z.object({ status: z.literal("deleted") });
+
+export type PetDeleted = z.infer<typeof petDeleted>;

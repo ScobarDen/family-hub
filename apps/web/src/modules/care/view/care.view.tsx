@@ -34,9 +34,13 @@ const YearExpenses = reatomComponent(({ model }: CareProps) => {
             title={entry.title}
             subtitle={entry.subtitle}
             after={entry.amount}
-            onClick={() => {
-              model.edit(entry.id);
-            }}
+            onClick={
+              model.isReadOnly()
+                ? undefined
+                : () => {
+                    model.edit(entry.id);
+                  }
+            }
           />
         ))}
       </Section>

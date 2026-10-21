@@ -2,6 +2,7 @@ import {
   careEntry,
   careEntryDeleted,
   careEntryList,
+  dueDateList,
   expenseSummary,
   type CareEntryChange,
 } from "@family-hub/contract";
@@ -31,6 +32,8 @@ export function createCareApi(client: HttpClient) {
         method: "DELETE",
         schema: careEntryDeleted,
       }),
+    dueDates: async (petId: string) =>
+      client.request(`/api/pets/${petId}/due-dates`, { schema: dueDateList }),
     expenses: async (petId: string, { from, to }: Range) =>
       client.request(`/api/pets/${petId}/expenses?from=${from}&to=${to}`, {
         schema: expenseSummary,

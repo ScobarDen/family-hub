@@ -32,14 +32,16 @@ const WeightBlock = reatomComponent(({ model }: CareBlockProps) => {
       ) : (
         <SectionItem title="Для графика нужно хотя бы два взвешивания" />
       )}
-      <SectionItem
-        icon={Scale}
-        tone="teal"
-        title="Записать вес"
-        onClick={() => {
-          model.add("weight");
-        }}
-      />
+      {!model.isReadOnly() && (
+        <SectionItem
+          icon={Scale}
+          tone="teal"
+          title="Записать вес"
+          onClick={() => {
+            model.add("weight");
+          }}
+        />
+      )}
     </Section>
   );
 }, "WeightBlock");
@@ -49,14 +51,16 @@ export const JournalBlock = reatomComponent(
     <>
       <WeightBlock model={model} />
       <Section title="Журнал">
-        <SectionItem
-          icon={Plus}
-          tone="green"
-          title="Добавить запись"
-          onClick={() => {
-            model.add("vaccination");
-          }}
-        />
+        {!model.isReadOnly() && (
+          <SectionItem
+            icon={Plus}
+            tone="green"
+            title="Добавить запись"
+            onClick={() => {
+              model.add("vaccination");
+            }}
+          />
+        )}
         {model.journal().map((item) => (
           <SectionItem
             key={item.id}
@@ -64,9 +68,13 @@ export const JournalBlock = reatomComponent(
             tone="gray"
             title={item.title}
             subtitle={item.note === undefined ? item.subtitle : `${item.subtitle}\n${item.note}`}
-            onClick={() => {
-              model.edit(item.id);
-            }}
+            onClick={
+              model.isReadOnly()
+                ? undefined
+                : () => {
+                    model.edit(item.id);
+                  }
+            }
           />
         ))}
       </Section>

@@ -1,107 +1,29 @@
-import { action, atom, computed, type Atom } from "@reatom/core";
+import { action, atom, computed } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
-import type { PetsApi } from "../pets.api.ts";
-import {
-  toCard,
-  toListItem,
-  type PetCard,
-  type PetListItem,
-  type SoonSource,
-  type Viewer,
-} from "../pets.lib.ts";
-import type { PetsModel } from "../pets.model.ts";
+import type { SoonKind } from "../pets.lib.ts";
+import { reatomPetArchive } from "./pet-archive.vm.ts";
 import { reatomPetMemoForm } from "./pet-memo-form.vm.ts";
 import { reatomPetProfileForm } from "./pet-profile-form.vm.ts";
+import {
+  reatomScreen,
+  titleOf,
+  type Editing,
+  type Navigation,
+  type PetsDependencies,
+} from "./pets-screen.vm.ts";
 
-export type PetsScreen =
-  | { kind: "loading" }
-  | { kind: "failed" }
-  | { kind: "empty" }
-  | { kind: "list"; pets: PetListItem[] }
-  | { kind: "card"; card: PetCard }
-  | { kind: "profile-form"; isCreating: boolean }
-  | { kind: "memo-form" };
+export type { PetsScreen } from "./pets-screen.vm.ts";
 
-type Editing = "profile" | "memo";
-
-type PetsDependencies = {
-  api: PetsApi;
-  pets: PetsModel;
-  viewer: () => Viewer;
-  photoHint: () => string | undefined;
-  soonPlans: (petId: string) => SoonSource[];
-  onOpenPlan: (planId: string) => void;
-  onPlan: (petId: string) => void;
-};
-
-type Navigation = {
-  editing: Atom<Editing | undefined>;
-  openedPetId: Atom<string | undefined>;
-};
-
-function reatomOpenedPet({ pets }: PetsDependencies, { openedPetId }: Navigation) {
+// The only Pet in care opens straight on its card, unless the Member asked for the whole list.
+function reatomOpenedPet({ pets }: PetsDependencies, { openedPetId, isListShown }: Navigation) {
   return computed((): Pet | undefined => {
     const active = pets.active();
+    const opened = (pets.list.data() ?? []).find(({ id }) => id === openedPetId());
 
-    return active.length === 1 ? active[0] : active.find(({ id }) => id === openedPetId());
+    return opened ?? (active.length === 1 && !isListShown() ? active[0] : undefined);
   }, "pets.openedPet");
-}
-
-function reatomScreen(
-  { pets, viewer, soonPlans }: PetsDependencies,
-  { editing }: Navigation,
-  { openedPet, isCreating }: { openedPet: () => Pet | undefined; isCreating: () => boolean },
-) {
-  return computed((): PetsScreen => {
-    const current = editing();
-
-    if (current === "profile") {
-      return { kind: "profile-form", isCreating: isCreating() };
-    }
-
-    if (current === "memo") {
-      return { kind: "memo-form" };
-    }
-
-    if (pets.list.error() !== undefined) {
-      return { kind: "failed" };
-    }
-
-    if (pets.list.data() === undefined) {
-      return { kind: "loading" };
-    }
-
-    const pet = openedPet();
-
-    if (pet !== undefined) {
-      return { kind: "card", card: toCard(pet, viewer(), soonPlans(pet.id)) };
-    }
-
-    const active = pets.active();
-
-    return active.length === 0
-      ? { kind: "empty" }
-      : { kind: "list", pets: active.map((item) => toListItem(item, viewer())) };
-  }, "pets.screen");
-}
-
-const screenTitles: Partial<Record<PetsScreen["kind"], string>> = {
-  list: "Питомцы",
-  "memo-form": "Памятка",
-};
-
-function titleOf(screen: PetsScreen): string {
-  if (screen.kind === "card") {
-    return screen.card.name;
-  }
-
-  if (screen.kind === "profile-form") {
-    return screen.isCreating ? "Новый питомец" : "Питомец";
-  }
-
-  return screenTitles[screen.kind] ?? "Питомец";
 }
 
 function reatomForms(dependencies: PetsDependencies, { editing, openedPetId }: Navigation) {
@@ -122,41 +44,87 @@ function reatomForms(dependencies: PetsDependencies, { editing, openedPetId }: N
 
 type Forms = ReturnType<typeof reatomForms>;
 
-function reatomMoves(
-  { editing, openedPetId }: Navigation,
-  { profileForm, memoForm, openedPet }: Forms & { openedPet: () => Pet | undefined },
+type Sources = Forms & {
+  openedPet: () => Pet | undefined;
+  archive: ReturnType<typeof reatomPetArchive>;
+};
+
+function reatomEditing(
+  { editing }: Navigation,
+  { profileForm, memoForm, openedPet, archive }: Sources,
 ) {
+  function editWith(start: (pet: Pet) => void, target: Editing): void {
+    const pet = openedPet();
+
+    if (pet !== undefined) {
+      start(pet);
+      editing.set(target);
+    }
+  }
+
   return {
-    open: action((petId: string) => {
-      openedPetId.set(petId);
-    }, "pets.open"),
     add: action(() => {
       profileForm.startCreating();
       editing.set("profile");
     }, "pets.add"),
     editProfile: action(() => {
-      const pet = openedPet();
-
-      if (pet !== undefined) {
-        profileForm.startEditing(pet);
-        editing.set("profile");
-      }
+      editWith(profileForm.startEditing, "profile");
     }, "pets.editProfile"),
     editMemo: action(() => {
-      const pet = openedPet();
-
-      if (pet !== undefined) {
-        memoForm.startEditing(pet);
-        editing.set("memo");
-      }
+      editWith(memoForm.startEditing, "memo");
     }, "pets.editMemo"),
+    startDeleting: action(() => {
+      editWith(archive.resetDeletion, "delete");
+    }, "pets.startDeleting"),
+  };
+}
+
+function reatomBrowsing(
+  { pets }: PetsDependencies,
+  { editing, openedPetId, isListShown }: Navigation,
+) {
+  // Leaving the only Pet's card would show the same card again, so there is nothing to go back to.
+  const isOnlyPetOpened = computed(() => {
+    const active = pets.active();
+
+    return active.length === 1 && active[0]?.id === openedPetId();
+  }, "pets.isOnlyPetOpened");
+
+  return {
+    open: action((petId: string) => {
+      openedPetId.set(petId);
+    }, "pets.open"),
+    showAll: action(() => {
+      isListShown.set(true);
+    }, "pets.showAll"),
+    canGoBack: computed(
+      () =>
+        editing() !== undefined ||
+        isListShown() ||
+        (openedPetId() !== undefined && !isOnlyPetOpened()),
+      "pets.canGoBack",
+    ),
     back: action(() => {
-      if (editing() === undefined) {
-        openedPetId.set(undefined);
-      } else {
+      if (editing() !== undefined) {
         editing.set(undefined);
+      } else if (openedPetId() === undefined) {
+        isListShown.set(false);
+      } else {
+        openedPetId.set(undefined);
       }
     }, "pets.back"),
+  };
+}
+
+function reatomLinks(dependencies: PetsDependencies) {
+  return {
+    photoHint: computed(() => dependencies.photoHint(), "pets.photoHint"),
+    openSoon: action((item: { id: string; kind: SoonKind }) => {
+      dependencies.onOpenSoon(item);
+    }, "pets.openSoon"),
+    plan: action((petId: string) => {
+      dependencies.onPlan(petId);
+    }, "pets.plan"),
   };
 }
 
@@ -164,9 +132,18 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
   const navigation: Navigation = {
     editing: atom<Editing | undefined>(undefined, "pets.editing"),
     openedPetId: atom<string | undefined>(undefined, "pets.openedPetId"),
+    isListShown: atom(false, "pets.isListShown"),
   };
   const forms = reatomForms(dependencies, navigation);
   const openedPet = reatomOpenedPet(dependencies, navigation);
+  const archive = reatomPetArchive({
+    ...dependencies,
+    openedPet,
+    onDeleted: () => {
+      navigation.editing.set(undefined);
+      navigation.openedPetId.set(undefined);
+    },
+  });
   const screen = reatomScreen(dependencies, navigation, {
     openedPet,
     isCreating: forms.profileForm.isCreating,
@@ -175,26 +152,16 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "pets.title"),
-    openedPetId: computed(() => {
-      const current = screen();
-
-      return current.kind === "card" ? current.card.id : undefined;
-    }, "pets.openedPetId"),
-    photoHint: computed(() => dependencies.photoHint(), "pets.photoHint"),
-    openPlan: action((planId: string) => {
-      dependencies.onOpenPlan(planId);
-    }, "pets.openPlan"),
-    plan: action((petId: string) => {
-      dependencies.onPlan(petId);
-    }, "pets.plan"),
-    ...forms,
-    canGoBack: computed(
-      () =>
-        navigation.editing() !== undefined ||
-        (navigation.openedPetId() !== undefined && dependencies.pets.active().length > 1),
-      "pets.canGoBack",
+    openedPetId: computed(() => openedPet()?.id, "pets.openedPetId"),
+    isOpenedPetArchived: computed(
+      () => (openedPet()?.archivedAt ?? null) !== null,
+      "pets.isOpenedPetArchived",
     ),
-    ...reatomMoves(navigation, { ...forms, openedPet }),
+    ...forms,
+    ...archive,
+    ...reatomLinks(dependencies),
+    ...reatomBrowsing(dependencies, navigation),
+    ...reatomEditing(navigation, { ...forms, openedPet, archive }),
   };
 }
 
