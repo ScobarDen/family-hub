@@ -5,6 +5,7 @@ import type { Membership } from "@/common/auth";
 import { toPlan } from "../plan.lib.ts";
 import type { PlanDependencies, PlanResult } from "../plan.types.ts";
 import { currentPlan, isAssigneeAllowed, visibleTree } from "./access.service.ts";
+import { notifyAssignee } from "./assignment.service.ts";
 
 function byDueDate(left: Plan, right: Plan): number {
   if (left.dueDate === right.dueDate) {
@@ -54,6 +55,13 @@ export async function create(
     createdBy: ownerId,
     updatedAt: now,
   });
+  await notifyAssignee(dependencies, membership, {
+    planId: id,
+    title: change.title,
+    dueDate: change.dueDate,
+    assigneeId: change.assigneeId,
+    previousAssigneeId: null,
+  });
 
   return currentPlan(dependencies, membership, id);
 }
@@ -87,6 +95,13 @@ export async function update(
     assigneeMemberId: change.assigneeId,
     visibility: change.visibility,
     updatedAt: dependencies.clock.now(),
+  });
+  await notifyAssignee(dependencies, membership, {
+    planId,
+    title: change.title,
+    dueDate: change.dueDate,
+    assigneeId: change.assigneeId,
+    previousAssigneeId: tree.root.assigneeMemberId,
   });
 
   return currentPlan(dependencies, membership, planId);

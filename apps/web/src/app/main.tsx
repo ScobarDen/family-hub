@@ -1,6 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import { parseDeepLink } from "@family-hub/contract";
+
 import { deviceTimeZone, today } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { reatomTelegram } from "@/common/telegram";
@@ -134,6 +136,16 @@ telegram.launch();
 telegram.followColorScheme(document.documentElement);
 telegram.followPlatform(document.documentElement);
 navigation.start();
+
+// The navigation opens the module of a deep link; the module opens the record itself.
+const link = parseDeepLink(telegram.startParam);
+
+if (link?.kind === "plan") {
+  plans.open(link.id);
+} else if (link?.kind === "pet") {
+  pets.open(link.id);
+}
+
 timeZone.keepFollowingDevice();
 session.signIn();
 joinFamily.load();

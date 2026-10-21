@@ -83,7 +83,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
     members: createMemberService({ members: createMemberRepo(db), clock }),
     pets: createPetService({ pets: createPetRepo(db), clock }),
     photoStorage: createPhotoStorageService({ storage: createPhotoStorageRepo(db), ...shared }),
-    plans: createPlanService({ plans: createPlanRepo(db), clock }),
+    plans: createPlanService({ plans: createPlanRepo(db), ...shared }),
   };
 }
 

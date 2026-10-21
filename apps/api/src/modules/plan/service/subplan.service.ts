@@ -5,6 +5,7 @@ import type { Membership } from "@/common/auth";
 import type { PlanTree } from "../plan.repo.ts";
 import type { PlanDependencies, PlanResult } from "../plan.types.ts";
 import { currentPlan, hasSubplan, isAssigneeAllowed, visibleTree } from "./access.service.ts";
+import { notifyAssignee } from "./assignment.service.ts";
 import { settle } from "./completion.service.ts";
 
 type SubplanTarget = { planId: string; subplanId: string };
@@ -50,6 +51,13 @@ export async function addSubplan(
     updatedAt: now,
   });
   await settle(dependencies, membership, planId);
+  await notifyAssignee(dependencies, membership, {
+    planId,
+    title: change.title,
+    dueDate: change.dueDate,
+    assigneeId: change.assigneeId,
+    previousAssigneeId: null,
+  });
 
   return currentPlan(dependencies, membership, planId);
 }
@@ -74,6 +82,13 @@ export async function updateSubplan(
     dueDate: change.dueDate,
     assigneeMemberId: change.assigneeId,
     updatedAt: dependencies.clock.now(),
+  });
+  await notifyAssignee(dependencies, membership, {
+    planId,
+    title: change.title,
+    dueDate: change.dueDate,
+    assigneeId: change.assigneeId,
+    previousAssigneeId: tree.subplans.find(({ id }) => id === subplanId)?.assigneeMemberId ?? null,
   });
 
   return currentPlan(dependencies, membership, planId);
