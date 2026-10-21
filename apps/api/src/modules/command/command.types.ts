@@ -1,35 +1,21 @@
 import type { CommandModel, CommandModels } from "@family-hub/commands";
-import type { CareEntryChange, EventChange, ReminderChange } from "@family-hub/contract";
 
-import type { Membership, MembershipRepo } from "@/common/auth";
+import type { MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import type { MiniAppLinks } from "@/common/mini-app-link";
 import type { BotApi } from "@/common/telegram";
+import type { CareEntryService } from "@/modules/care-entry";
+import type { EventService } from "@/modules/event";
+import type { ReminderService } from "@/modules/reminder";
 
 import type { CommandRepo } from "./command.repo.ts";
 
-// «Создать» goes through the same use case as the Mini App form; the app wires the reminder module.
-export type ReminderCreation = {
-  create(
-    membership: Membership,
-    change: ReminderChange,
-  ): Promise<{ status: string; reminder?: { id: string } }>;
-};
+// «Создать» goes through the same use case as the Mini App form of the draft's kind.
+export type ReminderCreation = Pick<ReminderService, "create">;
 
-export type EventCreation = {
-  create(
-    membership: Membership,
-    change: EventChange,
-  ): Promise<{ status: string; event?: { id: string } }>;
-};
+export type EventCreation = Pick<EventService, "create">;
 
-export type CareEntryCreation = {
-  create(
-    membership: Membership,
-    petId: string,
-    change: CareEntryChange,
-  ): Promise<{ status: string; entry?: { id: string } }>;
-};
+export type CareEntryCreation = Pick<CareEntryService, "create">;
 
 export type CommandDependencies = {
   drafts: CommandRepo;

@@ -31,22 +31,18 @@ type DraftKind<Draft> = {
   create: (records: CommandRecords, confirmation: Confirmation<Draft>) => Promise<Creation>;
 };
 
-type Saved = { status: string; id: string | undefined };
+type Saved<Refusal extends string> = { status: "ok"; id: string } | { status: Refusal };
 
-type DraftKindParts<Draft, Change> = {
+type DraftKindParts<Draft, Change, Refusal extends string> = {
   emoji: (draft: Draft) => string;
   withCandidate?: (draft: Draft, chosenId: string) => Draft;
   changeOf: (draft: Draft, phrase: Phrase) => z.ZodSafeParseResult<Change>;
   save: (
     records: CommandRecords,
     request: { membership: Membership; change: Change },
-  ) => Promise<Saved>;
-};
-
-const refusalsByStatus: Partial<Record<string, DraftRefusal>> = {
-  "recipients-not-allowed": "RECIPIENTS_NOT_ALLOWED",
-  "pet-not-found": "PET_NOT_FOUND",
-  archived: "PET_ARCHIVED",
+  ) => Promise<Saved<Refusal>>;
+  // A status the use case no longer has fails to compile here; one not named is INVALID_REQUEST.
+  refusals: Partial<Record<NoInfer<Refusal>, DraftRefusal>>;
 };
 
 const careEmoji: Record<CareDetails["kind"], string> = {
@@ -62,7 +58,9 @@ const careEmoji: Record<CareDetails["kind"], string> = {
 const careEntryCreation = z.object({ petId: z.string(), change: careEntryChange });
 
 // «Создать» goes through the same use case as the Mini App form of the draft's kind.
-function draftKind<Draft, Change>(parts: DraftKindParts<Draft, Change>): DraftKind<Draft> {
+function draftKind<Draft, Change, Refusal extends string>(
+  parts: DraftKindParts<Draft, Change, Refusal>,
+): DraftKind<Draft> {
   return {
     emoji: parts.emoji,
     withCandidate: (draft, chosenId) => parts.withCandidate?.(draft, chosenId),
@@ -73,11 +71,11 @@ function draftKind<Draft, Change>(parts: DraftKindParts<Draft, Change>): DraftKi
         return { status: "refused", refusal: "INVALID_REQUEST" };
       }
 
-      const { status, id } = await parts.save(records, { membership, change: change.data });
+      const saved = await parts.save(records, { membership, change: change.data });
 
-      return status === "ok" && id !== undefined
-        ? { status: "created", id }
-        : { status: "refused", refusal: refusalsByStatus[status] ?? "INVALID_REQUEST" };
+      return "id" in saved
+        ? { status: "created", id: saved.id }
+        : { status: "refused", refusal: parts.refusals[saved.status] ?? "INVALID_REQUEST" };
     },
   };
 }
@@ -102,8 +100,9 @@ const draftKinds: { [Kind in CommandKind]: DraftKind<DraftOf<Kind>> } = {
     save: async ({ reminders }, { membership, change }) => {
       const result = await reminders.create(membership, change);
 
-      return { status: result.status, id: result.reminder?.id };
+      return result.status === "ok" ? { status: "ok", id: result.reminder.id } : result;
     },
+    refusals: { "recipients-not-allowed": "RECIPIENTS_NOT_ALLOWED" },
   }),
   event: draftKind({
     emoji: () => "📅",
@@ -125,8 +124,9 @@ const draftKinds: { [Kind in CommandKind]: DraftKind<DraftOf<Kind>> } = {
     save: async ({ events }, { membership, change }) => {
       const result = await events.create(membership, change);
 
-      return { status: result.status, id: result.event?.id };
+      return result.status === "ok" ? { status: "ok", id: result.event.id } : result;
     },
+    refusals: {},
   }),
   care_entry: draftKind({
     emoji: ({ details }) => (details === null ? "🐾" : careEmoji[details.kind]),
@@ -144,8 +144,9 @@ const draftKinds: { [Kind in CommandKind]: DraftKind<DraftOf<Kind>> } = {
     save: async ({ careEntries }, { membership, change: { petId, change } }) => {
       const result = await careEntries.create(membership, petId, change);
 
-      return { status: result.status, id: result.entry?.id };
+      return result.status === "ok" ? { status: "ok", id: result.entry.id } : result;
     },
+    refusals: { "pet-not-found": "PET_NOT_FOUND", archived: "PET_ARCHIVED" },
   }),
 };
 
