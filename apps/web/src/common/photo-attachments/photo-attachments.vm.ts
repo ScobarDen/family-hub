@@ -1,20 +1,20 @@
 import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
 
-import { careEntryPhotoMax, type Photo } from "@family-hub/contract";
+import type { Photo } from "@family-hub/contract";
 
 import { PhotoTooLargeError, type PreparedPhoto } from "@/common/photo";
-
-import type { CareApi } from "../care.api.ts";
 
 export type Attachment =
   | { key: string; status: "uploading" }
   | { key: string; status: "ready"; photo: Photo }
   | { key: string; status: "failed"; reason: string };
 
-export type EntryPhotosDependencies = {
-  api: Pick<CareApi, "uploadPhoto">;
+export type PhotoAttachmentsDependencies = {
+  api: { uploadPhoto: (prepared: PreparedPhoto) => Promise<Photo> };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   canUploadPhotos: () => boolean;
+  // How many photos the record takes: five for a Care Entry, ten for a Recipe.
+  max: number;
 };
 
 function reasonOf(error: unknown): string {
@@ -26,7 +26,7 @@ function reasonOf(error: unknown): string {
 let lastKey = 0;
 
 function reatomUpload(
-  { api, preparePhoto }: Pick<EntryPhotosDependencies, "api" | "preparePhoto">,
+  { api, preparePhoto }: Pick<PhotoAttachmentsDependencies, "api" | "preparePhoto">,
   items: Atom<Attachment[]>,
 ) {
   function settle(key: string, attachment: Attachment) {
@@ -48,42 +48,44 @@ function reatomUpload(
     } catch (error) {
       settle(key, { key, status: "failed", reason: reasonOf(error) });
     }
-  }, "care.photos.uploadOne").extend(withAsync());
+  }, "photoAttachments.uploadOne").extend(withAsync());
 }
 
-// Photos go up as soon as they are picked, so saving the entry only links what is already there.
-export function reatomEntryPhotos({ api, preparePhoto, canUploadPhotos }: EntryPhotosDependencies) {
-  const items = atom<Attachment[]>([], "care.photos.items");
+// Photos go up as soon as they are picked, so saving the record only links what is already there.
+export function reatomPhotoAttachments({
+  api,
+  preparePhoto,
+  canUploadPhotos,
+  max,
+}: PhotoAttachmentsDependencies) {
+  const items = atom<Attachment[]>([], "photoAttachments.items");
 
   const uploadOne = reatomUpload({ api, preparePhoto }, items);
 
   return {
-    items: computed(() => items(), "care.photos.list"),
+    items: computed(() => items(), "photoAttachments.list"),
     photoIds: computed(
       () => items().flatMap((item) => (item.status === "ready" ? [item.photo.id] : [])),
-      "care.photos.ids",
+      "photoAttachments.ids",
     ),
     isUploading: computed(
       () => items().some(({ status }) => status === "uploading"),
-      "care.photos.isUploading",
+      "photoAttachments.isUploading",
     ),
-    canAdd: computed(
-      () => canUploadPhotos() && items().length < careEntryPhotoMax,
-      "care.photos.canAdd",
-    ),
+    canAdd: computed(() => canUploadPhotos() && items().length < max, "photoAttachments.canAdd"),
 
     add: action((files: Blob[]) => {
-      for (const file of files.slice(0, careEntryPhotoMax - items().length)) {
+      for (const file of files.slice(0, max - items().length)) {
         uploadOne(file).catch(noop);
       }
-    }, "care.photos.add"),
+    }, "photoAttachments.add"),
     remove: action((key: string) => {
       items.set(items().filter((item) => item.key !== key));
-    }, "care.photos.remove"),
+    }, "photoAttachments.remove"),
     reset: action((photos: Photo[]) => {
       items.set(photos.map((photo): Attachment => ({ key: photo.id, status: "ready", photo })));
-    }, "care.photos.reset"),
+    }, "photoAttachments.reset"),
   };
 }
 
-export type EntryPhotosModel = ReturnType<typeof reatomEntryPhotos>;
+export type PhotoAttachmentsModel = ReturnType<typeof reatomPhotoAttachments>;

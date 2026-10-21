@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const appModule = z.enum(["feed", "plans", "calendar", "pet", "goals", "albums"]);
+export const appModule = z.enum(["feed", "plans", "calendar", "pet", "goals", "albums", "recipes"]);
 
 export type AppModule = z.infer<typeof appModule>;
 

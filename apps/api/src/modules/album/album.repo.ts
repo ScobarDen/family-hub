@@ -7,6 +7,7 @@ import {
   careEntryPhotos,
   pets,
   photos,
+  recipePhotos,
   type Db,
 } from "@/common/db";
 
@@ -114,6 +115,26 @@ async function deleteAlbum(db: Db, target: AlbumTarget, scope: AlbumDeletion): P
   await db.delete(albums).where(ofAlbum(target));
 }
 
+// A Recipe's photos belong to the Recipe and stay out of «Все фото».
+async function allPhotosOf(db: Db, familyId: string): Promise<PhotoRow[]> {
+  return db
+    .select()
+    .from(photos)
+    .where(
+      and(
+        eq(photos.familyId, familyId),
+        notInArray(
+          photos.id,
+          db
+            .select({ photoId: recipePhotos.photoId })
+            .from(recipePhotos)
+            .where(eq(recipePhotos.familyId, familyId)),
+        ),
+      ),
+    )
+    .all();
+}
+
 export function createAlbumRepo(db: Db) {
   return {
     albumsOf: async (familyId: string) =>
@@ -127,8 +148,7 @@ export function createAlbumRepo(db: Db) {
         .from(pets)
         .where(and(eq(pets.familyId, familyId), isNull(pets.archivedAt)))
         .all(),
-    allPhotos: async (familyId: string) =>
-      db.select().from(photos).where(eq(photos.familyId, familyId)).all(),
+    allPhotos: async (familyId: string) => allPhotosOf(db, familyId),
     knownPhotoIds: async (familyId: string, photoIds: string[]) =>
       knownPhotoIds(db, familyId, photoIds),
 

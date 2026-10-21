@@ -42,6 +42,9 @@ export const errorCode = z.enum([
   "NOT_ALBUM_OWNER",
   "PET_ALBUM_FIXED",
   "ALBUM_NOT_IN_FAMILY",
+  "RECIPE_NOT_FOUND",
+  "NOT_RECIPE_AUTHOR",
+  "RECIPE_TAG_NOT_FOUND",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

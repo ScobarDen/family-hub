@@ -1,15 +1,15 @@
 import { computed } from "@reatom/core";
 
-import type { Photo } from "@family-hub/contract";
+import { careEntryPhotoMax, type Photo } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
+import { reatomPhotoAttachments } from "@/common/photo-attachments";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import { petPhotosOf } from "../care.lib.ts";
 import type { CareData } from "../care.model.ts";
-import { reatomEntryPhotos } from "./entry-photos.vm.ts";
 
 type CarePhotosDependencies = {
   api: CareApi;
@@ -22,7 +22,8 @@ type CarePhotosDependencies = {
 
 export function reatomCarePhotos(dependencies: CarePhotosDependencies, data: CareData) {
   return {
-    attachments: reatomEntryPhotos({
+    attachments: reatomPhotoAttachments({
+      max: careEntryPhotoMax,
       ...dependencies,
       canUploadPhotos: () => dependencies.photoHint() === undefined,
     }),

@@ -4,9 +4,9 @@ import type { ChangeEvent } from "react";
 
 import { Button, Label } from "@/common/ui";
 
-import type { Attachment, EntryPhotosModel } from "../vm/entry-photos.vm.ts";
+import type { Attachment, PhotoAttachmentsModel } from "./photo-attachments.vm.ts";
 
-type AttachmentsProps = { model: EntryPhotosModel; hint: string | undefined };
+type AttachmentsProps = { model: PhotoAttachmentsModel; hint: string | undefined };
 
 function Tile({ item, onRemove }: { item: Attachment; onRemove: () => void }) {
   return (

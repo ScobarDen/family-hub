@@ -15,6 +15,7 @@ import { NotificationsBanner, type NotificationsModel } from "@/modules/notifica
 import { Pets, type PetsScreenModel } from "@/modules/pets";
 import type { PhotoStorageModel } from "@/modules/photo-storage";
 import { Plans, type PlansScreenModel } from "@/modules/plans";
+import { Recipes, type RecipesScreenModel } from "@/modules/recipes";
 import type { SessionModel } from "@/modules/session";
 import { TabBar, TabBarMenu, type TabBarMenuModel, type TabBarModel } from "@/modules/tab-bar";
 import type { TimeZoneModel } from "@/modules/time-zone";
@@ -39,6 +40,7 @@ export type HomeProps = {
   feed: FeedModel;
   goals: GoalsScreenModel;
   albums: AlbumsScreenModel;
+  recipes: RecipesScreenModel;
   plans: PlansScreenModel;
   photoStorage: PhotoStorageModel;
 };
@@ -77,9 +79,16 @@ function petContentOf(pets: PetsScreenModel, care: CareModel): ModuleContent {
 }
 
 function contentOf(
-  { pets, plans, care, calendar, feed, goals, albums }: HomeProps,
+  { pets, plans, care, calendar, feed, goals, albums, recipes, photoStorage }: HomeProps,
   module: AppModule,
 ): ModuleContent | undefined {
+  if (module === "recipes") {
+    return {
+      title: recipes.title(),
+      content: <Recipes model={recipes} photoHint={photoStorage.uploadHint()} />,
+    };
+  }
+
   if (module === "albums") {
     return { title: albums.title(), content: <Albums model={albums} /> };
   }

@@ -460,3 +460,89 @@ export const albumPhotos = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.albumId, table.photoId] })],
 );
+
+// Recipes are always Shared: any Member edits one, its author deletes it.
+export const recipes = sqliteTable(
+  "recipes",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    ingredients: text("ingredients").notNull(),
+    method: text("method"),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("recipes_family_id_idx").on(table.familyId)],
+);
+
+export const recipeTags = sqliteTable(
+  "recipe_tags",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("recipe_tags_family_id_idx").on(table.familyId)],
+);
+
+export const recipeTagLinks = sqliteTable(
+  "recipe_tag_links",
+  {
+    recipeId: text("recipe_id")
+      .notNull()
+      .references(() => recipes.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => recipeTags.id, { onDelete: "cascade" }),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.recipeId, table.tagId] })],
+);
+
+export const recipePhotos = sqliteTable(
+  "recipe_photos",
+  {
+    recipeId: text("recipe_id")
+      .notNull()
+      .references(() => recipes.id, { onDelete: "cascade" }),
+    photoId: text("photo_id")
+      .notNull()
+      .references(() => photos.id, { onDelete: "cascade" }),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.recipeId, table.photoId] })],
+);
+
+export const recipeFavorites = sqliteTable(
+  "recipe_favorites",
+  {
+    recipeId: text("recipe_id")
+      .notNull()
+      .references(() => recipes.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.recipeId, table.memberId] })],
+);

@@ -1,11 +1,11 @@
 import { reatomComponent } from "@reatom/react";
 import { Wallet } from "lucide-react";
 
+import { PhotoAttachments } from "@/common/photo-attachments";
 import { FieldError, Section, SectionItem } from "@/common/ui";
 
 import type { CareModel } from "../vm/care.vm.ts";
 import { CareForm } from "./care-form.view.tsx";
-import { PhotoAttachments } from "./photo-attachments.view.tsx";
 
 export type CareProps = { model: CareModel };
 

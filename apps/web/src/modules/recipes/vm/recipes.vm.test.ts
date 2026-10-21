@@ -1,0 +1,145 @@
+import { context, noop } from "@reatom/core";
+import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+
+import { recipeChange, type Recipe } from "@family-hub/contract";
+
+import { createHttpClient } from "@/common/http-client";
+
+import { createRecipesApi } from "../recipes.api.ts";
+import { reatomRecipesScreen } from "./recipes.vm.ts";
+
+const lasagna: Recipe = {
+  id: "recipe-1",
+  title: "Лазанья",
+  ingredients: ["Листы лазаньи", "Фарш", "Сыр"],
+  method: "Собрать слоями и запечь.",
+  photos: [],
+  tags: [{ id: "tag-1", name: "Паста" }],
+  isFavorite: false,
+  canDelete: true,
+  createdAt: 0,
+};
+
+const borscht: Recipe = { ...lasagna, id: "recipe-2", title: "Борщ", tags: [] };
+
+function replyOf(url: URL, method: string, body: unknown): unknown {
+  if (url.pathname === "/api/recipe-tags") {
+    return lasagna.tags;
+  }
+
+  if (url.pathname !== "/api/recipes") {
+    return lasagna;
+  }
+
+  if (method === "POST") {
+    return { ...lasagna, ...recipeChange.parse(body), id: "recipe-3", ingredients: ["Фарш"] };
+  }
+
+  return url.searchParams.has("q") ? [lasagna] : [borscht, lasagna];
+}
+
+function startRecipes() {
+  const requests: Array<{ request: string; body: unknown }> = [];
+
+  async function fetch(url: URL, init: RequestInit): Promise<Response> {
+    const request = `${init.method ?? "GET"} ${url.pathname}${url.search}`;
+    const body: unknown = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
+
+    requests.push({ request, body });
+
+    return Response.json(replyOf(url, init.method ?? "GET", body));
+  }
+
+  const model = reatomRecipesScreen({
+    api: createRecipesApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
+    telegram: { showPopup: async () => "delete" },
+    preparePhoto: async (file) => ({ file, takenAt: null }),
+    photoHint: () => "Загрузка фото выключена",
+  });
+
+  model.screen.subscribe(noop);
+
+  return { model, requests };
+}
+
+type Model = ReturnType<typeof startRecipes>["model"];
+
+async function listed(model: Model) {
+  await vi.waitFor(() => {
+    expect(model.screen().kind).toBe("list");
+  });
+}
+
+function titles(model: Model) {
+  const screen = model.screen();
+
+  return screen.kind === "list" ? screen.recipes.map(({ title }) => title) : [];
+}
+
+beforeEach(() => {
+  context.reset();
+});
+
+describe("the Recipes", () => {
+  test("are listed with the Family's tags and searched on the server", async () => {
+    const { model, requests } = startRecipes();
+
+    await listed(model);
+
+    expect(titles(model)).toEqual(["Борщ", "Лазанья"]);
+
+    model.search("сыр");
+    model.chooseTag("tag-1");
+    model.toggleFavorites();
+    await vi.waitFor(() => {
+      expect(titles(model)).toEqual(["Лазанья"]);
+    });
+
+    expect(requests.map(({ request }) => request)).toContain(
+      "GET /api/recipes?q=%D1%81%D1%8B%D1%80&tag=tag-1&favorite=true",
+    );
+  });
+
+  test("tick off ingredients on the screen alone", async () => {
+    const { model, requests } = startRecipes();
+
+    await listed(model);
+    model.open("recipe-1");
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("recipe");
+    });
+    model.toggleIngredient(1);
+    model.toggleIngredient(2);
+    model.toggleIngredient(1);
+
+    expect(model.screen()).toMatchObject({ kind: "recipe", checked: [2] });
+    expect(requests.some(({ request }) => request.startsWith("PUT"))).toBe(false);
+
+    model.back();
+    model.open("recipe-1");
+
+    expect(model.screen()).toMatchObject({ checked: [] });
+  });
+
+  test("are written with their tags and opened once saved", async () => {
+    const { model, requests } = startRecipes();
+
+    await listed(model);
+    model.add();
+    model.form.form.fields.title.set("Котлеты");
+    model.form.form.fields.ingredients.set("Фарш");
+    model.form.toggleTag("tag-1");
+    model.form.save();
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("recipe");
+    });
+
+    expect(requests.find(({ request }) => request === "POST /api/recipes")?.body).toEqual({
+      title: "Котлеты",
+      ingredients: "Фарш",
+      method: null,
+      tagIds: ["tag-1"],
+      photoIds: [],
+    });
+  });
+});

@@ -22,6 +22,7 @@ import { reatomNotifications } from "@/modules/notifications";
 import { createPetsApi, reatomPets, reatomPetsScreen } from "@/modules/pets";
 import { createPhotoStorageApi, reatomPhotoStorage } from "@/modules/photo-storage";
 import { createPlansApi, reatomPlans, reatomPlansScreen } from "@/modules/plans";
+import { createRecipesApi, reatomRecipesScreen } from "@/modules/recipes";
 import { createSessionApi, reatomSession } from "@/modules/session";
 import {
   createTabBarApi,
@@ -81,6 +82,12 @@ const albums = reatomAlbumsScreen({
     new Promise((resolve) => {
       setTimeout(resolve, ms);
     }),
+  photoHint: photoStorage.uploadHint,
+});
+const recipes = reatomRecipesScreen({
+  api: createRecipesApi(httpClient),
+  telegram,
+  preparePhoto: async (file) => preparePhoto(file, deviceTimeZone()),
   photoHint: photoStorage.uploadHint,
 });
 const plansApi = createPlansApi(httpClient);
@@ -217,6 +224,7 @@ const navigation = reatomNavigation({
     calendar,
     goals,
     albums,
+    recipes,
   },
 });
 const timeZone = reatomTimeZone({
@@ -271,6 +279,7 @@ const home = {
   feed,
   goals,
   albums,
+  recipes,
 };
 
 telegram.launch();

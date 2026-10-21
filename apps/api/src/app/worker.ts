@@ -37,6 +37,7 @@ import {
   photoStorageRoute,
 } from "@/modules/photo-storage";
 import { createPlanRepo, createPlanService, planRoute, type PlanService } from "@/modules/plan";
+import { createRecipeRepo, createRecipeService, recipeRoute } from "@/modules/recipe";
 import {
   createDispatchRepo,
   createReminderRepo,
@@ -156,6 +157,7 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
     feed,
     goals: createGoalService({ goals: createGoalRepo(db), clock }),
+    recipes: createRecipeService({ recipes: createRecipeRepo(db), links, clock }),
     photos: createPhotoService({
       photos: createPhotoRepo(db),
       files: createTelegramPhotoFiles(shared.bot),
@@ -228,6 +230,7 @@ function exposeRecords(context: Context<AppEnv>, services: AppServices): void {
   context.set("goals", services.goals);
   context.set("photos", services.photos);
   context.set("albums", services.albums);
+  context.set("recipes", services.recipes);
   context.set("reminders", services.reminders);
 }
 
@@ -254,6 +257,7 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", goalRoute)
     .route("/", photoRoute)
     .route("/", albumRoute)
+    .route("/", recipeRoute)
     .route("/", photoStorageRoute)
     .route("/", careEntryRoute)
     .route("/", eventRoute)

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { careEntryChange, careKind, type CareEntry, type CareKind } from "@family-hub/contract";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
+import type { PhotoAttachmentsModel } from "@/common/photo-attachments";
 
 import type { CareApi } from "../care.api.ts";
 import {
@@ -13,14 +14,13 @@ import {
   valuesOf,
   type EntryValues,
 } from "./care-form-values.vm.ts";
-import type { EntryPhotosModel } from "./entry-photos.vm.ts";
 
 type CareFormDependencies = {
   api: CareApi;
   petId: () => string | undefined;
   now: () => string;
   timeZone: () => string;
-  photos: EntryPhotosModel;
+  photos: PhotoAttachmentsModel;
   onSaved: () => void;
 };
 
