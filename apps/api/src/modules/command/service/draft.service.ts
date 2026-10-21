@@ -9,7 +9,7 @@ import type { CommandSource } from "@/common/db";
 import { ignoringBotErrors } from "@/common/telegram";
 
 import { previewText } from "../command-preview.lib.ts";
-import { editLink, failureTexts, heardText, previewButtons, strangerText } from "../command.lib.ts";
+import { failureTexts, heardText, previewButtons, strangerText } from "../command.lib.ts";
 import type { FamilyNames } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
 
@@ -64,11 +64,11 @@ export async function showTyping({ bot }: CommandDependencies, chatId: number): 
   await ignoringBotErrors(bot.call("sendChatAction", { chat_id: chatId, action: "typing" }));
 }
 
-export async function editLinkOf({ bot }: CommandDependencies, draftId: string): Promise<string> {
-  // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
-  const { username } = await bot.call("getMe", undefined);
-
-  return editLink(username, draftId);
+export async function editLinkOf(
+  { appLinks }: CommandDependencies,
+  draftId: string,
+): Promise<string> {
+  return appLinks.appLink({ kind: "cmd", id: draftId });
 }
 
 export async function namesOf(

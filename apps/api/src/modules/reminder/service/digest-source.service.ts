@@ -37,19 +37,12 @@ export function digestText(
   return blocks.filter((block) => block !== undefined).join("\n\n");
 }
 
-async function appUrlOf({ bot }: ReminderDependencies): Promise<string> {
-  // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
-  const { username } = await bot.call("getMe", undefined);
-
-  return `https://t.me/${username}?startapp`;
-}
-
 // One digest a day per Member, at the time they chose on their own clock.
 export async function digestSource(
   dependencies: ReminderDependencies,
   { memberId, familyId, settings }: { memberId: string; familyId: string; settings: DigestRow },
 ): Promise<Source> {
-  const appUrl = await appUrlOf(dependencies);
+  const appUrl = await dependencies.appLinks.appLink();
 
   return {
     kind: "digest",

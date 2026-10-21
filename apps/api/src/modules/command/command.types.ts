@@ -3,6 +3,7 @@ import type { CareEntryChange, EventChange, ReminderChange } from "@family-hub/c
 
 import type { Membership, MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
+import type { MiniAppLinks } from "@/common/mini-app-link";
 import type { BotApi } from "@/common/telegram";
 
 import type { CommandRepo } from "./command.repo.ts";
@@ -34,6 +35,7 @@ export type CommandDependencies = {
   drafts: CommandRepo;
   memberships: MembershipRepo;
   bot: BotApi;
+  appLinks: MiniAppLinks;
   clock: Clock;
   model: CommandModel;
   models: CommandModels;

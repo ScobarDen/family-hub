@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { createAuthService, createMembershipRepo, type MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import { createDb, type Db } from "@/common/db";
+import { createMiniAppLinks, type MiniAppLinks } from "@/common/mini-app-link";
 import { createPhotoLinks, type PhotoLinks } from "@/common/photo-link";
 import type { BotApi } from "@/common/telegram";
 import { albumRoute, createAlbumRepo, createAlbumService } from "@/modules/album";
@@ -84,7 +85,7 @@ function allowedOrigin(origin: string, env: Env): string | null {
   return env.ALLOWED_ORIGINS.split(",").includes(origin) ? origin : null;
 }
 
-type Shared = { memberships: MembershipRepo; bot: BotApi; clock: Clock };
+type Shared = { memberships: MembershipRepo; bot: BotApi; appLinks: MiniAppLinks; clock: Clock };
 
 type Records = Shared & { links: PhotoLinks };
 
@@ -243,7 +244,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
   const db = createDb(env.DB);
   const bot = createBotApi(env.BOT_TOKEN);
   const memberships = createMembershipRepo(db);
-  const shared = { memberships, bot, clock };
+  const shared = { memberships, bot, appLinks: createMiniAppLinks(bot), clock };
   const records = familyRecordServices(db, {
     ...shared,
     links: createPhotoLinks({ secret: env.JWT_SECRET, clock }),

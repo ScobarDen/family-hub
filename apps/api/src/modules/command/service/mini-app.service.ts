@@ -66,12 +66,7 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
   }
 
   return {
-    botChat: async () => {
-      // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
-      const { username } = await dependencies.bot.call("getMe", undefined);
-
-      return { url: `https://t.me/${username}` };
-    },
+    botChat: async () => ({ url: await dependencies.appLinks.chatLink() }),
     fromAudio: async (membership: Membership, audio: Audio) =>
       commandFromAudio(dependencies, membership, audio),
     open: async (membership: Membership, draftId: string) =>

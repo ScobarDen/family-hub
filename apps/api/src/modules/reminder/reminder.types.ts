@@ -5,6 +5,7 @@ import type { FeedUpcoming, Reminder } from "@family-hub/contract";
 import type { Membership, MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import type { DispatchSource } from "@/common/db";
+import type { MiniAppLinks } from "@/common/mini-app-link";
 import type { BotApi } from "@/common/telegram";
 
 import type { DispatchRepo } from "./repo/dispatch.repo.ts";
@@ -31,6 +32,7 @@ export type ReminderDependencies = {
   sources: SourceRepo;
   memberships: MembershipRepo;
   bot: BotApi;
+  appLinks: MiniAppLinks;
   clock: Clock;
 };
 

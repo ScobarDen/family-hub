@@ -1,11 +1,6 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import {
-  encodeDeepLink,
-  type CommandDraft,
-  type CommandFailure,
-  type DraftAmbiguity,
-} from "@family-hub/contract";
+import type { CommandDraft, CommandFailure, DraftAmbiguity } from "@family-hub/contract";
 
 import type { FamilyNames } from "./command.repo.ts";
 
@@ -61,15 +56,6 @@ export function parseCallback(data: string | undefined) {
   return action === undefined || draftId === undefined
     ? undefined
     : { action, draftId, index: index === undefined ? undefined : Number(index) };
-}
-
-// The bot's Main Mini App opens from t.me/<bot>, so the link needs no app short name.
-export function editLink(botUsername: string, draftId: string): string {
-  const link = new URL(`https://t.me/${botUsername}`);
-
-  link.searchParams.set("startapp", encodeDeepLink({ kind: "cmd", id: draftId }));
-
-  return link.toString();
 }
 
 function candidateNameOf({ field }: DraftAmbiguity, id: string, names: FamilyNames): string {

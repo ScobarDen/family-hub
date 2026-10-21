@@ -2,6 +2,7 @@ import type { Plan, Visibility } from "@family-hub/contract";
 
 import type { MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
+import type { MiniAppLinks } from "@/common/mini-app-link";
 import type { PhotoLinks } from "@/common/photo-link";
 import type { BotApi } from "@/common/telegram";
 
@@ -14,6 +15,7 @@ export type PlanDependencies = {
   plans: PlanRepo;
   memberships: MembershipRepo;
   bot: BotApi;
+  appLinks: MiniAppLinks;
   clock: Clock;
   schedule: PlanSchedule;
   links: PhotoLinks;

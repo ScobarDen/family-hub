@@ -1,5 +1,6 @@
 import type { MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
+import type { MiniAppLinks } from "@/common/mini-app-link";
 import type { BotApi } from "@/common/telegram";
 
 import type { InviteRepo } from "./invite.repo.ts";
@@ -14,5 +15,6 @@ export type InviteDependencies = {
   familyRequests: { cancelPending(telegramId: number): Promise<void> };
   schedule: InviteSchedule;
   bot: BotApi;
+  appLinks: MiniAppLinks;
   clock: Clock;
 };

@@ -1,4 +1,3 @@
-import { encodeDeepLink } from "@family-hub/contract";
 import { dayAfter, dueStepFrom, firstOccurrenceFrom, morningOf } from "@family-hub/recurrence";
 
 import {
@@ -81,22 +80,12 @@ function dueTitleOf({ details }: DueEntryRow): string {
     : dueTitles.vet_visit;
 }
 
-async function recordUrlOf({ bot }: ReminderDependencies, entryId: string): Promise<string> {
-  // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
-  const { username } = await bot.call("getMe", undefined);
-  const link = new URL(`https://t.me/${username}`);
-
-  link.searchParams.set("startapp", encodeDeepLink({ kind: "entry", id: entryId }));
-
-  return link.toString();
-}
-
 // A Due Date nudges a week ahead, on the day and then weekly while open, and is never skipped as late.
 export async function dueSource(
   dependencies: ReminderDependencies,
   { pet, entry }: { pet: PetRow; entry: DueEntryRow & { dueDate: string } },
 ): Promise<Source> {
-  const recordUrl = await recordUrlOf(dependencies, entry.id);
+  const recordUrl = await dependencies.appLinks.appLink({ kind: "entry", id: entry.id });
   const title = `${dueTitleOf(entry)} — ${pet.name}`;
 
   return {
