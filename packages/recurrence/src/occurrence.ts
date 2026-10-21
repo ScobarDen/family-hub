@@ -64,6 +64,10 @@ export function firstOccurrenceFrom(
     : occurrence;
 }
 
+export function daysAfter(date: string, days: number): string {
+  return Temporal.PlainDate.from(date).add({ days }).toString();
+}
+
 export function dayAfter(date: string): string {
   return Temporal.PlainDate.from(date).add({ days: 1 }).toString();
 }

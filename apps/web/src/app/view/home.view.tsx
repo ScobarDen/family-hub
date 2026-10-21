@@ -6,6 +6,7 @@ import type { AppModule } from "@family-hub/contract";
 import { Calendar, type CalendarModel } from "@/modules/calendar";
 import { Care, ExpensesBlock, JournalBlock, type CareModel } from "@/modules/care";
 import type { FamilyModel } from "@/modules/family";
+import { Feed, type FeedModel } from "@/modules/feed";
 import type { InvitesModel } from "@/modules/invites";
 import { NotificationsBanner, type NotificationsModel } from "@/modules/notifications";
 import { Pets, type PetsScreenModel } from "@/modules/pets";
@@ -31,6 +32,7 @@ export type HomeProps = {
   pets: PetsScreenModel;
   care: CareModel;
   calendar: CalendarModel;
+  feed: FeedModel;
   plans: PlansScreenModel;
   photoStorage: PhotoStorageModel;
 };
@@ -68,9 +70,13 @@ function petContentOf(pets: PetsScreenModel, care: CareModel): ModuleContent {
 }
 
 function contentOf(
-  { pets, plans, care, calendar }: HomeProps,
+  { pets, plans, care, calendar, feed }: HomeProps,
   module: AppModule,
 ): ModuleContent | undefined {
+  if (module === "feed") {
+    return { title: "Лента", content: <Feed model={feed} /> };
+  }
+
   if (module === "calendar") {
     return { title: calendar.title(), content: <Calendar model={calendar} /> };
   }

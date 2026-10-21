@@ -6,6 +6,7 @@ import type { CareEntryService } from "@/modules/care-entry";
 import type { EventService } from "@/modules/event";
 import type { FamilyService } from "@/modules/family";
 import type { FamilyRequestService } from "@/modules/family-request";
+import type { FeedService } from "@/modules/feed";
 import type { InviteService } from "@/modules/invite";
 import type { MemberService } from "@/modules/member";
 import type { PetService } from "@/modules/pet";
@@ -21,6 +22,7 @@ export type AppServices = {
   careEntries: CareEntryService;
   events: EventService;
   families: FamilyService;
+  feed: FeedService;
   familyRequests: FamilyRequestService;
   invites: InviteService;
   members: MemberService;

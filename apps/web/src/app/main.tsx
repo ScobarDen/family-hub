@@ -11,6 +11,7 @@ import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCareApi, reatomCare } from "@/modules/care";
 import { createFamilyApi, reatomFamily } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
+import { createFeedApi, reatomFeed, type FeedTarget } from "@/modules/feed";
 import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import { reatomNotifications } from "@/modules/notifications";
@@ -129,6 +130,34 @@ const calendar = reatomCalendar({
   },
   self: () => session.member()?.member.id,
 });
+
+function openFromFeed(target: FeedTarget) {
+  if (target.kind === "plan") {
+    navigation.openModule("plans");
+    plans.open(target.planId);
+  } else if (target.kind === "pet") {
+    navigation.openModule("pet");
+    pets.open(target.petId);
+  } else {
+    navigation.openModule("calendar");
+
+    if (target.kind === "event") {
+      calendar.openEvent(target.eventId);
+    }
+  }
+}
+
+const feed = reatomFeed({
+  api: createFeedApi(httpClient),
+  today: () => today(deviceTimeZone()),
+  timeZone: deviceTimeZone,
+  onOpen: openFromFeed,
+  onRecord: ({ petId, entryId }) => {
+    navigation.openModule("pet");
+    pets.open(petId);
+    care.followUp(entryId);
+  },
+});
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,
   tabBar: tabBarModules.modules,
@@ -194,6 +223,7 @@ const home = {
   photoStorage,
   care,
   calendar,
+  feed,
 };
 
 telegram.launch();

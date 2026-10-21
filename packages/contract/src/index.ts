@@ -190,3 +190,13 @@ export {
   type DeepLinkKind,
 } from "./deep-link.ts";
 export { uuidv7 } from "./uuid.ts";
+export {
+  feedActivity,
+  feedPage,
+  feedPageSize,
+  feedUpcoming,
+  feedUpcomingDays,
+  type FeedActivity,
+  type FeedPage,
+  type FeedUpcoming,
+} from "./feed.ts";
