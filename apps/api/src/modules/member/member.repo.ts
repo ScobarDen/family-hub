@@ -12,6 +12,14 @@ export type MemberSettingsRow = Pick<
 type TimeZoneChange = { timeZone: string; isAuto: boolean };
 
 // A Member's own row belongs to no Family, so it is addressed by the session's memberId alone.
+// /start comes from Telegram with the user's id, before any session exists.
+async function allowMessages(db: Db, telegramId: number, now: number): Promise<void> {
+  await db
+    .update(members)
+    .set({ canMessage: true, updatedAt: now })
+    .where(eq(members.telegramId, telegramId));
+}
+
 export function createMemberRepo(db: Db) {
   async function update(memberId: string, values: Partial<typeof members.$inferInsert>) {
     await db.update(members).set(values).where(eq(members.id, memberId));
@@ -29,6 +37,8 @@ export function createMemberRepo(db: Db) {
         .from(members)
         .where(eq(members.id, memberId))
         .get(),
+
+    allowMessages: async (telegramId: number, now: number) => allowMessages(db, telegramId, now),
 
     saveTabBar: async (memberId: string, tabBar: AppModule[], now: number) =>
       update(memberId, { tabBar, updatedAt: now }),

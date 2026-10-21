@@ -32,6 +32,42 @@ function lastDateOf(range: DateRange, recurrence: Recurrence): string {
     : range.to;
 }
 
+const unitOf = { weekly: "weeks", monthly: "months", yearly: "years" } as const;
+
+function startingIndex(start: string, frequency: Frequency, date: string): number {
+  const unit = unitOf[frequency];
+  const elapsed = Temporal.PlainDate.from(start).until(date, { largestUnit: unit })[unit];
+
+  return Math.max(0, elapsed - 1);
+}
+
+// The first date of a series on or after a given day, or undefined once the series has ended.
+export function firstOccurrenceFrom(
+  start: string,
+  recurrence: Recurrence | null,
+  date: string,
+): string | undefined {
+  if (recurrence === null) {
+    return isBefore(start, date) ? undefined : start;
+  }
+
+  let index = isBefore(start, date) ? startingIndex(start, recurrence.frequency, date) : 0;
+  let occurrence = nthOccurrence(start, recurrence.frequency, index);
+
+  while (isBefore(occurrence, date)) {
+    index += 1;
+    occurrence = nthOccurrence(start, recurrence.frequency, index);
+  }
+
+  return recurrence.until !== null && isBefore(recurrence.until, occurrence)
+    ? undefined
+    : occurrence;
+}
+
+export function dayAfter(date: string): string {
+  return Temporal.PlainDate.from(date).add({ days: 1 }).toString();
+}
+
 // The dates of a series inside a range of calendar days, both ends included, skipped dates left out.
 function singleDate(start: string, { range, skipped }: { range: DateRange; skipped: string[] }) {
   const isOutside = isBefore(start, range.from) || isBefore(range.to, start);

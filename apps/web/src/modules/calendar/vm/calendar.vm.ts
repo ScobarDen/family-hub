@@ -16,8 +16,13 @@ import {
 import { reatomCalendarData, type CalendarData } from "../calendar.model.ts";
 import { reatomEventDetails, type OpenedOccurrence } from "./event-details.vm.ts";
 import { reatomEventForm } from "./event-form.vm.ts";
+import { reatomReminderForm } from "./reminder-form.vm.ts";
 
-export type CalendarScreen = { kind: "calendar" } | { kind: "event" } | { kind: "event-form" };
+export type CalendarScreen =
+  | { kind: "calendar" }
+  | { kind: "event" }
+  | { kind: "event-form" }
+  | { kind: "reminder-form" };
 
 type CalendarDependencies = {
   api: CalendarApi;
@@ -25,6 +30,7 @@ type CalendarDependencies = {
   timeZone: () => string;
   telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
   onOpenPet: (petId: string) => void;
+  self: () => string | undefined;
 };
 
 const upcomingDays = 30;
@@ -41,6 +47,7 @@ function reatomItems(data: CalendarData, timeZone: () => string) {
     itemsIn(
       {
         events: data.events.data() ?? [],
+        reminders: data.reminders.data() ?? [],
         pets: data.pets.data() ?? [],
         dues: data.dues.data() ?? [],
       },
@@ -73,11 +80,44 @@ function reatomViews(
   };
 }
 
-function reatomMoves(
-  dependencies: CalendarDependencies,
-  { screen, month, selected, opened }: Navigation,
-  form: ReturnType<typeof reatomEventForm>,
-) {
+type Parts = {
+  data: CalendarData;
+  form: ReturnType<typeof reatomEventForm>;
+  reminderForm: ReturnType<typeof reatomReminderForm>;
+  details: ReturnType<typeof reatomEventDetails>;
+};
+
+type Sources = { dependencies: CalendarDependencies; navigation: Navigation; parts: Parts };
+
+function openItemWith({ dependencies, navigation, parts }: Sources, item: CalendarItem): void {
+  const { screen, opened } = navigation;
+  const { data, reminderForm } = parts;
+
+  if (item.kind === "event") {
+    opened.set({ eventId: item.eventId, occurrence: item.occurrence });
+    screen.set("event");
+
+    return;
+  }
+
+  if (item.kind !== "reminder") {
+    dependencies.onOpenPet(item.petId);
+
+    return;
+  }
+
+  const reminder = data.reminders.data()?.find(({ id }) => id === item.reminderId);
+
+  if (reminder !== undefined) {
+    reminderForm.startEditing(reminder);
+    screen.set("reminder-form");
+  }
+}
+
+function reatomMoves(dependencies: CalendarDependencies, navigation: Navigation, parts: Parts) {
+  const { screen, month, selected, opened } = navigation;
+  const { form, reminderForm } = parts;
+
   return {
     previousMonth: action(() => {
       month.set(shiftMonth(month(), -1));
@@ -89,12 +129,7 @@ function reatomMoves(
       selected.set(date);
     }, "calendar.select"),
     openItem: action((item: CalendarItem) => {
-      if (item.kind === "event") {
-        opened.set({ eventId: item.eventId, occurrence: item.occurrence });
-        screen.set("event");
-      } else {
-        dependencies.onOpenPet(item.petId);
-      }
+      openItemWith({ dependencies, navigation, parts }, item);
     }, "calendar.openItem"),
     // A deep link names the Event, not an Occurrence, so it opens on the series' first date.
     openEvent: action((eventId: string) => {
@@ -105,23 +140,26 @@ function reatomMoves(
       form.startCreating(selected());
       screen.set("event-form");
     }, "calendar.add"),
+    addReminder: action(() => {
+      reminderForm.startCreating(selected());
+      screen.set("reminder-form");
+    }, "calendar.addReminder"),
     back: action(() => {
       screen.set(screen() === "event-form" && opened() !== undefined ? "event" : "calendar");
     }, "calendar.back"),
   };
 }
 
-type Parts = {
-  form: ReturnType<typeof reatomEventForm>;
-  details: ReturnType<typeof reatomEventDetails>;
-};
-
-function reatomTitle(screen: Atom<CalendarScreen["kind"]>, { form, details }: Parts) {
+function reatomTitle(screen: Atom<CalendarScreen["kind"]>, { form, reminderForm, details }: Parts) {
   return computed(() => {
     const kind = screen();
 
     if (kind === "event-form") {
       return form.isCreating() ? "Новое событие" : "Событие";
+    }
+
+    if (kind === "reminder-form") {
+      return reminderForm.isCreating() ? "Новое напоминание" : "Напоминание";
     }
 
     return kind === "event" ? (details.details()?.title ?? "Событие") : "Календарь";
@@ -137,6 +175,41 @@ function editOpened(screen: Atom<CalendarScreen["kind"]>, { form, details }: Par
   }
 }
 
+function reatomParts(
+  dependencies: CalendarDependencies,
+  { data, navigation }: { data: CalendarData; navigation: Navigation },
+): Parts {
+  const { screen, opened } = navigation;
+
+  return {
+    data,
+    form: reatomEventForm({
+      ...dependencies,
+      data,
+      onSaved: (saved) => {
+        opened.set({ eventId: saved.id, occurrence: saved.start.date });
+        screen.set("event");
+      },
+    }),
+    reminderForm: reatomReminderForm({
+      ...dependencies,
+      data,
+      onClosed: () => {
+        screen.set("calendar");
+      },
+    }),
+    details: reatomEventDetails({
+      ...dependencies,
+      data,
+      opened,
+      onClosed: () => {
+        opened.set(undefined);
+        screen.set("calendar");
+      },
+    }),
+  };
+}
+
 export function reatomCalendar(dependencies: CalendarDependencies) {
   const data = reatomCalendarData(dependencies);
   const navigation: Navigation = {
@@ -145,35 +218,20 @@ export function reatomCalendar(dependencies: CalendarDependencies) {
     selected: atom(dependencies.today(), "calendar.selected"),
     opened: atom<OpenedOccurrence | undefined>(undefined, "calendar.opened"),
   };
-  const { screen, opened } = navigation;
-  const form = reatomEventForm({
-    ...dependencies,
-    data,
-    onSaved: (saved) => {
-      opened.set({ eventId: saved.id, occurrence: saved.start.date });
-      screen.set("event");
-    },
-  });
-  const details = reatomEventDetails({
-    ...dependencies,
-    data,
-    opened,
-    onClosed: () => {
-      opened.set(undefined);
-      screen.set("calendar");
-    },
-  });
+  const { screen } = navigation;
+  const parts = reatomParts(dependencies, { data, navigation });
 
   return {
     screen: computed((): CalendarScreen => ({ kind: screen() }), "calendar.screen"),
-    title: reatomTitle(screen, { form, details }),
+    title: reatomTitle(screen, parts),
     canGoBack: computed(() => screen() !== "calendar", "calendar.canGoBack"),
-    form,
-    details,
+    form: parts.form,
+    reminderForm: parts.reminderForm,
+    details: parts.details,
     ...reatomViews(dependencies, navigation, reatomItems(data, dependencies.timeZone)),
-    ...reatomMoves(dependencies, navigation, form),
+    ...reatomMoves(dependencies, navigation, parts),
     edit: action(() => {
-      editOpened(screen, { form, details });
+      editOpened(screen, parts);
     }, "calendar.edit"),
   };
 }

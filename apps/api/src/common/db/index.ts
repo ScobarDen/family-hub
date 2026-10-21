@@ -9,4 +9,7 @@ export {
   members,
   pets,
   plans,
+  reminderDispatch,
+  reminderRecipients,
+  reminders,
 } from "./schema.ts";

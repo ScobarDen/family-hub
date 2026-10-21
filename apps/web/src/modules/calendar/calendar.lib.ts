@@ -1,6 +1,6 @@
 import { Temporal } from "temporal-polyfill";
 
-import type { CalendarEvent, DueDateItem, Pet } from "@family-hub/contract";
+import type { CalendarEvent, DueDateItem, Pet, Reminder } from "@family-hub/contract";
 import {
   dateInZone,
   occurrenceDates,
@@ -23,6 +23,7 @@ export type CalendarItem =
       eventId: string;
       occurrence: string;
     }
+  | { kind: "reminder"; key: string; date: string; time: string; title: string; reminderId: string }
   | { kind: "birthday"; key: string; date: string; time: undefined; title: string; petId: string }
   | {
       kind: "due";
@@ -90,6 +91,27 @@ function eventItems(event: CalendarEvent, range: DateRange, viewerZone: string):
   });
 }
 
+function reminderItems(reminder: Reminder, range: DateRange, viewerZone: string): CalendarItem[] {
+  const { start } = reminder;
+
+  return occurrenceDates(start.date, reminder.recurrence, { range: widened(range) }).flatMap(
+    (occurrence) => {
+      const moment = occurrenceMoment(occurrence, start);
+      const date = dateInZone(moment, viewerZone);
+      const item: CalendarItem = {
+        kind: "reminder",
+        key: `reminder-${reminder.id}-${occurrence}`,
+        date,
+        time: timeInZone(moment, viewerZone),
+        title: reminder.text,
+        reminderId: reminder.id,
+      };
+
+      return isWithin(date, range) ? [item] : [];
+    },
+  );
+}
+
 function birthdayItems(pet: Pet, range: DateRange): CalendarItem[] {
   if (pet.birthDate === null || pet.archivedAt !== null) {
     return [];
@@ -122,11 +144,17 @@ function dueItems(dues: PetDue[], range: DateRange): CalendarItem[] {
 }
 
 export function itemsIn(
-  { events, pets, dues }: { events: CalendarEvent[]; pets: Pet[]; dues: PetDue[] },
+  {
+    events,
+    reminders,
+    pets,
+    dues,
+  }: { events: CalendarEvent[]; reminders: Reminder[]; pets: Pet[]; dues: PetDue[] },
   { range, timeZone }: { range: DateRange; timeZone: string },
 ): CalendarItem[] {
   return [
     ...events.flatMap((event) => eventItems(event, range, timeZone)),
+    ...reminders.flatMap((reminder) => reminderItems(reminder, range, timeZone)),
     ...pets.flatMap((pet) => birthdayItems(pet, range)),
     ...dueItems(dues, range),
   ].toSorted((left, right) =>

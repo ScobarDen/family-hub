@@ -1,9 +1,9 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 
-import { createAuthService, createMembershipRepo } from "@/common/auth";
+import { createAuthService, createMembershipRepo, type MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
-import { createDb } from "@/common/db";
+import { createDb, type Db } from "@/common/db";
 import type { BotApi } from "@/common/telegram";
 import { careEntryRoute, createCareEntryRepo, createCareEntryService } from "@/modules/care-entry";
 import { createEventRepo, createEventService, eventRoute } from "@/modules/event";
@@ -22,6 +22,12 @@ import {
   photoStorageRoute,
 } from "@/modules/photo-storage";
 import { createPlanRepo, createPlanService, planRoute } from "@/modules/plan";
+import {
+  createDispatchRepo,
+  createReminderRepo,
+  createReminderService,
+  reminderRoute,
+} from "@/modules/reminder";
 import { sessionRoute } from "@/modules/session";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -45,8 +51,36 @@ function operatorTelegramIdOf(env: Env): number {
   return id;
 }
 
+const maintenanceHourUtc = 3;
+
+// Housekeeping rides the same per-minute cron once a day, at 03:00 UTC.
+function isMaintenanceMinute(now: number): boolean {
+  const moment = new Date(now);
+
+  return moment.getUTCHours() === maintenanceHourUtc && moment.getUTCMinutes() === 0;
+}
+
 function allowedOrigin(origin: string, env: Env): string | null {
   return env.ALLOWED_ORIGINS.split(",").includes(origin) ? origin : null;
+}
+
+type Shared = { memberships: MembershipRepo; bot: BotApi; clock: Clock };
+
+// The services of what a Family keeps: its Pets, journal, Plans, Events and Reminders.
+function familyRecordServices(db: Db, shared: Shared) {
+  const { clock } = shared;
+
+  return {
+    careEntries: createCareEntryService({ entries: createCareEntryRepo(db), clock }),
+    events: createEventService({ events: createEventRepo(db), clock }),
+    pets: createPetService({ pets: createPetRepo(db), clock }),
+    plans: createPlanService({ plans: createPlanRepo(db), ...shared }),
+    reminders: createReminderService({
+      reminders: createReminderRepo(db),
+      dispatch: createDispatchRepo(db),
+      ...shared,
+    }),
+  };
 }
 
 function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): AppServices {
@@ -73,8 +107,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       botToken: env.BOT_TOKEN,
       jwtSecret: env.JWT_SECRET,
     }),
-    careEntries: createCareEntryService({ entries: createCareEntryRepo(db), clock }),
-    events: createEventService({ events: createEventRepo(db), clock }),
+    ...familyRecordServices(db, shared),
     families: createFamilyService({ families: createFamilyRepo(db), bot, clock }),
     familyRequests,
     invites: createInviteService({
@@ -85,10 +118,15 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       clock,
     }),
     members: createMemberService({ members: createMemberRepo(db), clock }),
-    pets: createPetService({ pets: createPetRepo(db), clock }),
     photoStorage: createPhotoStorageService({ storage: createPhotoStorageRepo(db), ...shared }),
-    plans: createPlanService({ plans: createPlanRepo(db), ...shared }),
   };
+}
+
+function exposeInfrastructure(context: Context<AppEnv>, services: AppServices): void {
+  context.set("db", services.db);
+  context.set("clock", services.clock);
+  context.set("bot", services.bot);
+  context.set("auth", services.auth);
 }
 
 function createApp(dependencies: WorkerDependencies) {
@@ -97,10 +135,7 @@ function createApp(dependencies: WorkerDependencies) {
     .use(async (context, next) => {
       const services = servicesFor(context.env, dependencies);
 
-      context.set("db", services.db);
-      context.set("clock", services.clock);
-      context.set("bot", services.bot);
-      context.set("auth", services.auth);
+      exposeInfrastructure(context, services);
       context.set("careEntries", services.careEntries);
       context.set("events", services.events);
       context.set("families", services.families);
@@ -110,6 +145,7 @@ function createApp(dependencies: WorkerDependencies) {
       context.set("pets", services.pets);
       context.set("photoStorage", services.photoStorage);
       context.set("plans", services.plans);
+      context.set("reminders", services.reminders);
       await next();
     })
     .route("/", healthRoute)
@@ -123,13 +159,24 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", planRoute)
     .route("/", photoStorageRoute)
     .route("/", careEntryRoute)
-    .route("/", eventRoute);
+    .route("/", eventRoute)
+    .route("/", reminderRoute);
+}
+
+async function runScheduled(env: Env, dependencies: WorkerDependencies): Promise<void> {
+  const services = servicesFor(env, dependencies);
+
+  await services.reminders.deliverDue();
+
+  if (isMaintenanceMinute(dependencies.clock.now())) {
+    await services.invites.sweep();
+    await services.familyRequests.sweep();
+  }
 }
 
 export function createWorker(dependencies: WorkerDependencies): Worker {
   return {
     fetch: createApp(dependencies).fetch,
-    // oxlint-disable-next-line no-empty-function -- cron jobs arrive with Reminders
-    async scheduled() {},
+    scheduled: async (_controller, env) => runScheduled(env, dependencies),
   };
 }

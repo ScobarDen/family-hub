@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import { Plus } from "lucide-react";
+import { BellPlus, Plus } from "lucide-react";
 
 import { formatDate } from "@/common/format-date";
 import { Section, SectionItem } from "@/common/ui";
@@ -9,6 +9,7 @@ import { Agenda } from "./agenda.view.tsx";
 import { EventDetails } from "./event-details.view.tsx";
 import { EventForm } from "./event-form.view.tsx";
 import { MonthGrid } from "./month-grid.view.tsx";
+import { ReminderForm } from "./reminder-form.view.tsx";
 
 export type CalendarProps = { model: CalendarModel };
 
@@ -23,6 +24,10 @@ export const Calendar = reatomComponent(({ model }: CalendarProps) => {
     return <EventForm model={model.form} onCancel={model.back} />;
   }
 
+  if (screen.kind === "reminder-form") {
+    return <ReminderForm model={model.reminderForm} onCancel={model.back} />;
+  }
+
   return (
     <>
       <MonthGrid model={model} />
@@ -35,6 +40,12 @@ export const Calendar = reatomComponent(({ model }: CalendarProps) => {
       />
       <Section>
         <SectionItem icon={Plus} tone="green" title="Новое событие" onClick={model.add} />
+        <SectionItem
+          icon={BellPlus}
+          tone="orange"
+          title="Новое напоминание"
+          onClick={model.addReminder}
+        />
       </Section>
       <Agenda
         title="Ближайшее"

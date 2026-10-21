@@ -1,6 +1,17 @@
 import { and, eq, exists, gt, isNull, sql } from "drizzle-orm";
 
-import { events, families, familyMembers, invites, members, plans, type Db } from "@/common/db";
+import {
+  events,
+  families,
+  familyMembers,
+  invites,
+  members,
+  plans,
+  reminderDispatch,
+  reminderRecipients,
+  reminders,
+  type Db,
+} from "@/common/db";
 
 export type FamilyMemberRow = { id: string; name: string; telegramId: number };
 
@@ -42,6 +53,34 @@ function departFromEvents(db: Db, { familyId, memberId, now }: Departure) {
   ] as const;
 }
 
+function departFromReminders(db: Db, { familyId, memberId, now }: Departure) {
+  const familyOwner = sql`(select ${families.ownerMemberId} from ${families} where ${families.id} = ${familyId})`;
+
+  return [
+    db
+      .delete(reminderDispatch)
+      .where(and(eq(reminderDispatch.familyId, familyId), eq(reminderDispatch.memberId, memberId))),
+    db
+      .delete(reminderRecipients)
+      .where(
+        and(eq(reminderRecipients.familyId, familyId), eq(reminderRecipients.memberId, memberId)),
+      ),
+    db
+      .delete(reminders)
+      .where(
+        and(
+          eq(reminders.familyId, familyId),
+          eq(reminders.ownerMemberId, memberId),
+          eq(reminders.visibility, "private"),
+        ),
+      ),
+    db
+      .update(reminders)
+      .set({ ownerMemberId: familyOwner, updatedAt: now })
+      .where(and(eq(reminders.familyId, familyId), eq(reminders.ownerMemberId, memberId))),
+  ] as const;
+}
+
 // Private records of the one who leaves go, their Shared ones pass to the Family Owner and their
 // reminder_dispatch rows go: every table with owner_member_id or a Recipient joins this batch.
 async function depart(db: Db, departure: Departure): Promise<void> {
@@ -50,6 +89,7 @@ async function depart(db: Db, departure: Departure): Promise<void> {
   await db.batch([
     ...departFromPlans(db, departure),
     ...departFromEvents(db, departure),
+    ...departFromReminders(db, departure),
     db
       .delete(familyMembers)
       .where(and(eq(familyMembers.familyId, familyId), eq(familyMembers.memberId, memberId))),

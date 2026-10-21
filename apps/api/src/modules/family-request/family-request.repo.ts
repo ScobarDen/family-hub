@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, lt, ne } from "drizzle-orm";
 
 import { families, familyMembers, familyRequests, members, type Db } from "@/common/db";
 
@@ -54,6 +54,12 @@ async function cancelPendingOf(db: Db, telegramId: number, now: number): Promise
 }
 
 // Family Requests come before any Family exists, so none of these queries can be scoped by familyId.
+async function sweepDecidedBefore(db: Db, moment: number): Promise<void> {
+  await db
+    .delete(familyRequests)
+    .where(and(ne(familyRequests.status, "pending"), lt(familyRequests.decidedAt, moment)));
+}
+
 export function createFamilyRequestRepo(db: Db) {
   return {
     findById: async (id: string) =>
@@ -87,6 +93,8 @@ export function createFamilyRequestRepo(db: Db) {
 
     cancelPendingOf: async (telegramId: number, now: number) =>
       cancelPendingOf(db, telegramId, now),
+
+    sweepDecidedBefore: async (moment: number) => sweepDecidedBefore(db, moment),
 
     async reopen(id: string, now: number): Promise<void> {
       await db

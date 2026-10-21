@@ -3,8 +3,13 @@ import {
   calendarEventList,
   dueDateList,
   eventDeleted,
+  familyMemberList,
   petList,
+  reminder,
+  reminderDeleted,
+  reminderList,
   type EventChange,
+  type ReminderChange,
 } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
@@ -32,6 +37,19 @@ export function createCalendarApi(client: HttpClient) {
       }),
     remove: async (eventId: string) =>
       client.request(`/api/events/${eventId}`, { method: "DELETE", schema: eventDeleted }),
+
+    members: async () => client.request("/api/family/members", { schema: familyMemberList }),
+    reminders: async () => client.request("/api/reminders", { schema: reminderList }),
+    createReminder: async (change: ReminderChange) =>
+      client.request("/api/reminders", { method: "POST", body: change, schema: reminder }),
+    updateReminder: async (reminderId: string, change: ReminderChange) =>
+      client.request(`/api/reminders/${reminderId}`, {
+        method: "PUT",
+        body: change,
+        schema: reminder,
+      }),
+    removeReminder: async (reminderId: string) =>
+      client.request(`/api/reminders/${reminderId}`, { method: "DELETE", schema: reminderDeleted }),
   };
 }
 

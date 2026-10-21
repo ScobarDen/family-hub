@@ -11,6 +11,7 @@ import type { MemberService } from "@/modules/member";
 import type { PetService } from "@/modules/pet";
 import type { PhotoStorageService } from "@/modules/photo-storage";
 import type { PlanService } from "@/modules/plan";
+import type { ReminderService } from "@/modules/reminder";
 
 export type AppServices = {
   db: Db;
@@ -26,6 +27,7 @@ export type AppServices = {
   pets: PetService;
   photoStorage: PhotoStorageService;
   plans: PlanService;
+  reminders: ReminderService;
 };
 
 export type AppEnv = {

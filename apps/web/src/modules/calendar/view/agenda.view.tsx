@@ -1,4 +1,4 @@
-import { Cake, CalendarDays, Syringe, TriangleAlert } from "lucide-react";
+import { Bell, Cake, CalendarDays, Syringe, TriangleAlert } from "lucide-react";
 
 import { formatDate } from "@/common/format-date";
 import { Section, SectionItem } from "@/common/ui";
@@ -13,11 +13,15 @@ type AgendaProps = {
   onOpen: (item: CalendarItem) => void;
 };
 
-const tones = { event: "red", birthday: "pink", due: "orange" } as const;
+const tones = { event: "red", reminder: "violet", birthday: "pink", due: "orange" } as const;
 
 function iconOf(item: CalendarItem) {
   if (item.kind === "birthday") {
     return Cake;
+  }
+
+  if (item.kind === "reminder") {
+    return Bell;
   }
 
   if (item.kind === "due") {

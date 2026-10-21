@@ -1,7 +1,14 @@
 import { context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { eventChange, type CalendarEvent, type DueDateItem, type Pet } from "@family-hub/contract";
+import {
+  eventChange,
+  reminderChange,
+  type CalendarEvent,
+  type DueDateItem,
+  type Pet,
+  type Reminder,
+} from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 
@@ -33,6 +40,20 @@ const buick: Pet = {
   memo: { food: null, clinic: null, important: null, updatedAt: null, updatedBy: null },
 };
 
+const internet: Reminder = {
+  id: "reminder-1",
+  text: "Оплатить интернет",
+  start: { date: "2026-10-16", time: "10:00", timeZone: "Europe/Moscow" },
+  recurrence: { frequency: "monthly", until: null },
+  visibility: "shared",
+  isOwn: true,
+  isForEveryone: true,
+  recipients: [
+    { id: "member-1", name: "Денис" },
+    { id: "member-2", name: "Ася" },
+  ],
+};
+
 const rabies: DueDateItem = {
   entryId: "entry-1",
   kind: "vaccination",
@@ -47,6 +68,18 @@ function fakeBackend() {
     "GET /api/events": () => [call],
     "GET /api/pets": () => [buick],
     "GET /api/pets/pet-1/due-dates": () => [rabies],
+    "GET /api/reminders": () => [internet],
+    "GET /api/family/members": () => [
+      { id: "member-1", name: "Денис", isFamilyOwner: true },
+      { id: "member-2", name: "Ася", isFamilyOwner: false },
+    ],
+    "POST /api/reminders": (body) => ({
+      ...internet,
+      ...reminderChange.parse(body),
+      id: "reminder-2",
+      isForEveryone: false,
+      recipients: [{ id: "member-2", name: "Ася" }],
+    }),
     "POST /api/events": (body) => ({
       ...call,
       ...eventChange.parse(body),
@@ -85,11 +118,13 @@ function startCalendar({ timeZone = "Europe/Moscow", choices = [] as string[] } 
     onOpenPet: (petId) => {
       opened.push(petId);
     },
+    self: () => "member-1",
   });
 
   model.grid.subscribe(noop);
   model.upcoming.subscribe(noop);
   model.dayItems.subscribe(noop);
+  model.reminderForm.recipients.subscribe(noop);
 
   return { model, backend, opened };
 }
@@ -130,6 +165,7 @@ describe("the month", () => {
     expect(grid.filter(({ hasItems }) => hasItems).map(({ date }) => date)).toEqual([
       "2026-10-01",
       "2026-10-15",
+      "2026-10-16",
       "2026-10-20",
       "2026-10-22",
       "2026-10-25",
@@ -154,6 +190,7 @@ describe("«Ближайшее»", () => {
 
     expect(model.upcoming().map(({ date, time, title }) => [date, time, title])).toEqual([
       ["2026-10-15", "19:00", "Созвон с родителями"],
+      ["2026-10-16", "10:00", "Оплатить интернет"],
       ["2026-10-20", undefined, "День рождения: Бьюик, 4 года"],
       ["2026-10-22", "19:00", "Созвон с родителями"],
       ["2026-10-25", undefined, "Прививка: Бьюик, Бешенство"],
@@ -175,7 +212,7 @@ describe("«Ближайшее»", () => {
     const { model, opened } = startCalendar();
 
     await loaded(model);
-    model.openItem(upcomingAt(model, 1));
+    model.openItem(upcomingAt(model, 2));
 
     expect(opened).toEqual(["pet-1"]);
   });
@@ -255,5 +292,46 @@ describe("an Event", () => {
     expect(model.screen()).toEqual({ kind: "event-form" });
     expect(model.form.canChooseVisibility()).toBe(false);
     expect(model.form.form.fields.time()).toBe("19:00");
+  });
+});
+
+describe("a standalone Reminder", () => {
+  test("is created for the chosen Recipients at the creator's time and zone", async () => {
+    const { model, backend } = startCalendar({ timeZone: "Asia/Tbilisi" });
+
+    await loaded(model);
+    model.select("2026-10-20");
+    model.addReminder();
+    model.reminderForm.form.fields.text.set("Купить корм");
+    model.reminderForm.form.fields.time.set("18:00");
+    await vi.waitFor(() => {
+      expect(model.reminderForm.recipients()).toHaveLength(2);
+    });
+    model.reminderForm.toggleRecipient("member-2");
+    model.reminderForm.save();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "calendar" });
+    });
+    expect(backend.requests.at(-1)?.body).toEqual({
+      text: "Купить корм",
+      start: { date: "2026-10-20", time: "18:00", timeZone: "Asia/Tbilisi" },
+      recurrence: null,
+      visibility: "shared",
+      recipientIds: ["member-2"],
+    });
+  });
+
+  test("goes to everyone when nobody is picked, and opens for editing from «Ближайшее»", async () => {
+    const { model } = startCalendar();
+
+    await loaded(model);
+    model.openItem(upcomingAt(model, 1));
+
+    expect(model.screen()).toEqual({ kind: "reminder-form" });
+    expect(model.title()).toBe("Напоминание");
+    expect(model.reminderForm.isForEveryone()).toBe(true);
+    expect(model.reminderForm.canDelete()).toBe(true);
+    expect(model.reminderForm.form.fields.frequency()).toBe("monthly");
   });
 });

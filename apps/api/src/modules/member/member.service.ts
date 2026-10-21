@@ -28,6 +28,8 @@ export function createMemberService({ members, clock }: MemberServiceDependencie
   return {
     settings: async ({ member }: Membership) => settingsFrom(await members.settingsOf(member.id)),
 
+    allowMessages: async (telegramId: number) => members.allowMessages(telegramId, clock.now()),
+
     async saveTabBar({ member }: Membership, tabBar: AppModule[]): Promise<AppModule[]> {
       await members.saveTabBar(member.id, tabBar, clock.now());
 

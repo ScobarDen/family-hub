@@ -233,3 +233,75 @@ export const events = sqliteTable(
   },
   (table) => [index("events_family_id_idx").on(table.familyId)],
 );
+
+export const reminders = sqliteTable(
+  "reminders",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    ownerMemberId: text("owner_member_id").references(() => members.id),
+    visibility: text("visibility").$type<Visibility>().notNull(),
+    text: text("text").notNull(),
+    startDate: text("start_date").notNull(),
+    startTime: text("start_time").notNull(),
+    timeZone: text("time_zone").notNull(),
+    frequency: text("frequency").$type<"weekly" | "monthly" | "yearly">(),
+    until: text("until"),
+    isForEveryone: integer("is_for_everyone", { mode: "boolean" }).notNull(),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("reminders_family_id_idx").on(table.familyId)],
+);
+
+export const reminderRecipients = sqliteTable(
+  "reminder_recipients",
+  {
+    reminderId: text("reminder_id")
+      .notNull()
+      .references(() => reminders.id, { onDelete: "cascade" }),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id),
+  },
+  (table) => [primaryKey({ columns: [table.reminderId, table.memberId] })],
+);
+
+// One row per source and Recipient: services set next_fire_at whenever the source changes; the
+// cron only takes due rows, sends and moves them on to the next Occurrence.
+export const reminderDispatch = sqliteTable(
+  "reminder_dispatch",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    source: text("source").$type<"reminder">().notNull(),
+    sourceId: text("source_id").notNull(),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id),
+    occurrence: text("occurrence"),
+    nextFireAt: integer("next_fire_at"),
+    sentOccurrence: text("sent_occurrence"),
+    chatId: integer("chat_id"),
+    messageId: integer("message_id"),
+    doneAt: integer("done_at"),
+    doneBy: text("done_by").references(() => members.id),
+    lockedUntil: integer("locked_until"),
+    createdAt: integer("created_at").notNull(),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    index("reminder_dispatch_next_fire_at_idx").on(table.nextFireAt),
+    index("reminder_dispatch_source_idx").on(table.source, table.sourceId),
+  ],
+);

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 
 import {
   dateInZone,
+  firstOccurrenceFrom,
   nthOccurrence,
   occurrenceDates,
   occurrenceMoment,
@@ -91,5 +92,49 @@ describe("moments in the creator's zone", () => {
 
     expect(dateInZone(moment, "Asia/Vladivostok")).toBe("2026-10-23");
     expect(timeInZone(moment, "Asia/Vladivostok")).toBe("02:00");
+  });
+});
+
+describe("the first Occurrence from a day", () => {
+  test.each([
+    ["is the start itself before it", "2026-10-05", null, "2026-10-01", "2026-10-05"],
+    ["is none once a single date has passed", "2026-10-05", null, "2026-10-06", undefined],
+    [
+      "is that very day when it falls on it",
+      "2026-01-05",
+      { frequency: "weekly", until: null },
+      "2026-10-12",
+      "2026-10-12",
+    ],
+    [
+      "is the next one after a gap",
+      "2026-01-05",
+      { frequency: "weekly", until: null },
+      "2026-10-13",
+      "2026-10-19",
+    ],
+    [
+      "keeps the last day of a short month",
+      "2026-01-31",
+      { frequency: "monthly", until: null },
+      "2026-02-01",
+      "2026-02-28",
+    ],
+    [
+      "is none after the series ends",
+      "2026-01-05",
+      { frequency: "weekly", until: "2026-03-01" },
+      "2026-03-02",
+      undefined,
+    ],
+    [
+      "finds years ahead quickly",
+      "2000-02-29",
+      { frequency: "yearly", until: null },
+      "2026-03-01",
+      "2027-02-28",
+    ],
+  ] as const)("%s", (...[, start, recurrence, date, first]) => {
+    expect(firstOccurrenceFrom(start, recurrence, date)).toBe(first);
   });
 });
