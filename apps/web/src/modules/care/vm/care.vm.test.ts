@@ -296,7 +296,7 @@ describe("a Care Entry's photos", () => {
     const { model, backend, avatars } = startCare(["delete"]);
 
     model.viewer.open([walk], "photo-1");
-    model.viewer.makeAvatar();
+    model.viewer.pick();
     model.viewer.remove();
     await vi.waitFor(() => {
       expect(model.viewer.current()).toBeUndefined();

@@ -415,3 +415,43 @@ export const careEntryPhotos = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.careEntryId, table.photoId] })],
 );
+
+// Albums are always Shared; a Pet's automatic Album is not stored but read from its Care Entries.
+export const albums = sqliteTable(
+  "albums",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    coverPhotoId: text("cover_photo_id").references(() => photos.id, { onDelete: "set null" }),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("albums_family_id_idx").on(table.familyId)],
+);
+
+export const albumPhotos = sqliteTable(
+  "album_photos",
+  {
+    albumId: text("album_id")
+      .notNull()
+      .references(() => albums.id, { onDelete: "cascade" }),
+    photoId: text("photo_id")
+      .notNull()
+      .references(() => photos.id, { onDelete: "cascade" }),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    addedAt: integer("added_at").notNull(),
+    addedBy: text("added_by")
+      .notNull()
+      .references(() => members.id),
+  },
+  (table) => [primaryKey({ columns: [table.albumId, table.photoId] })],
+);

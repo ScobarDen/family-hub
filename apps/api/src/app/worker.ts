@@ -6,7 +6,13 @@ import type { Clock } from "@/common/clock";
 import { createDb, type Db } from "@/common/db";
 import { createPhotoLinks, type PhotoLinks } from "@/common/photo-link";
 import type { BotApi } from "@/common/telegram";
-import { careEntryRoute, createCareEntryRepo, createCareEntryService } from "@/modules/care-entry";
+import { albumRoute, createAlbumRepo, createAlbumService } from "@/modules/album";
+import {
+  careEntryRoute,
+  createCareEntryRepo,
+  createCareEntryService,
+  type CareEntryService,
+} from "@/modules/care-entry";
 import { createEventRepo, createEventService, eventRoute } from "@/modules/event";
 import { createFamilyRepo, createFamilyService, familyRoute } from "@/modules/family";
 import {
@@ -78,6 +84,28 @@ type Shared = { memberships: MembershipRepo; bot: BotApi; clock: Clock };
 
 type Records = Shared & { links: PhotoLinks };
 
+// A photo added to a Pet's automatic Album lands in a Care Entry «Заметка» of that Pet.
+function albumServiceOf(
+  db: Db,
+  { careEntries, links, clock }: { careEntries: CareEntryService; links: PhotoLinks; clock: Clock },
+) {
+  return createAlbumService({
+    albums: createAlbumRepo(db),
+    links,
+    clock,
+    petNotes: {
+      addNote: async (membership, { petId, photoIds }) => {
+        await careEntries.create(membership, petId, {
+          occurredAt: clock.now(),
+          note: null,
+          details: { kind: "note" },
+          photoIds,
+        });
+      },
+    },
+  });
+}
+
 // The services of what a Family keeps: its Pets, journal, Plans, Events and Reminders.
 function familyRecordServices(db: Db, { links, ...shared }: Records) {
   const { clock } = shared;
@@ -90,16 +118,18 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     ...shared,
   });
   const plans = createPlanService({ plans: createPlanRepo(db), ...shared, schedule: reminders });
+  const careEntries = createCareEntryService({
+    entries: createCareEntryRepo(db),
+    clock,
+    schedule: reminders,
+    links,
+  });
 
   return {
     reminders,
     plans,
-    careEntries: createCareEntryService({
-      entries: createCareEntryRepo(db),
-      clock,
-      schedule: reminders,
-      links,
-    }),
+    careEntries,
+    albums: albumServiceOf(db, { careEntries, links, clock }),
     events: createEventService({ events: createEventRepo(db), clock, schedule: reminders }),
     pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders, links }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
@@ -176,6 +206,7 @@ function exposeRecords(context: Context<AppEnv>, services: AppServices): void {
   context.set("feed", services.feed);
   context.set("goals", services.goals);
   context.set("photos", services.photos);
+  context.set("albums", services.albums);
   context.set("reminders", services.reminders);
 }
 
@@ -201,6 +232,7 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", feedRoute)
     .route("/", goalRoute)
     .route("/", photoRoute)
+    .route("/", albumRoute)
     .route("/", photoStorageRoute)
     .route("/", careEntryRoute)
     .route("/", eventRoute)

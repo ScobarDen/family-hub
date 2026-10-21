@@ -3,13 +3,13 @@ import { computed } from "@reatom/core";
 import type { Photo } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
+import { reatomPhotoViewer } from "@/common/photo-viewer";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import { petPhotosOf } from "../care.lib.ts";
 import type { CareData } from "../care.model.ts";
 import { reatomEntryPhotos } from "./entry-photos.vm.ts";
-import { reatomPhotoViewer } from "./photo-viewer.vm.ts";
 
 type CarePhotosDependencies = {
   api: CareApi;
@@ -29,7 +29,7 @@ export function reatomCarePhotos(dependencies: CarePhotosDependencies, data: Car
     viewer: reatomPhotoViewer({
       ...dependencies,
       // An archived Pet's card reads only, its avatar included.
-      onMakeAvatar: (photoId) => {
+      onPick: (photoId) => {
         if (!dependencies.isReadOnly()) {
           dependencies.onMakeAvatar(photoId);
         }

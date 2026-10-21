@@ -4,12 +4,11 @@ import type { Photo } from "@family-hub/contract";
 
 import type { PopupParams } from "@/common/telegram";
 
-import type { CareApi } from "../care.api.ts";
-
 export type PhotoViewerDependencies = {
-  api: Pick<CareApi, "deletePhoto">;
+  api: { deletePhoto: (photoId: string) => Promise<unknown> };
   telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
-  onMakeAvatar: (photoId: string) => void;
+  // A module's own action on the photo shown, such as making it a Pet's avatar.
+  onPick?: (photoId: string) => void;
   onDeleted: () => void;
 };
 
@@ -17,7 +16,7 @@ type Opened = { photos: Photo[]; index: number };
 
 const deleteQuestion: PopupParams = {
   title: "Удалить фото?",
-  message: "Фото пропадёт из записи у всей семьи.",
+  message: "Фото пропадёт у всей семьи: из записей и альбомов.",
   buttons: [
     { id: "delete", type: "destructive", text: "Удалить" },
     { id: "cancel", type: "cancel" },
@@ -72,16 +71,16 @@ function reatomPhotoRemoval(
       dependencies.onDeleted();
       opened.set(without(current, photo.id));
     }
-  }, "care.viewer.remove").extend(withAsync());
+  }, "photoViewer.remove").extend(withAsync());
 }
 
 export function reatomPhotoViewer(dependencies: PhotoViewerDependencies) {
-  const opened = atom<Opened | undefined>(undefined, "care.viewer.opened");
+  const opened = atom<Opened | undefined>(undefined, "photoViewer.opened");
   const remove = reatomPhotoRemoval(dependencies, opened);
 
   return {
-    current: computed(() => currentOf(opened()), "care.viewer.current"),
-    isRemoving: computed(() => !remove.ready(), "care.viewer.isRemoving"),
+    current: computed(() => currentOf(opened()), "photoViewer.current"),
+    isRemoving: computed(() => !remove.ready(), "photoViewer.isRemoving"),
 
     open: action((photos: Photo[], photoId: string) => {
       opened.set({
@@ -91,26 +90,26 @@ export function reatomPhotoViewer(dependencies: PhotoViewerDependencies) {
           photos.findIndex(({ id }) => id === photoId),
         ),
       });
-    }, "care.viewer.open"),
+    }, "photoViewer.open"),
     close: action(() => {
       opened.set(undefined);
-    }, "care.viewer.close"),
+    }, "photoViewer.close"),
     next: action(() => {
       opened.set(stepped(opened(), 1));
-    }, "care.viewer.next"),
+    }, "photoViewer.next"),
     previous: action(() => {
       opened.set(stepped(opened(), -1));
-    }, "care.viewer.previous"),
-    makeAvatar: action(() => {
+    }, "photoViewer.previous"),
+    pick: action(() => {
       const photo = photoAt(opened());
 
       if (photo !== undefined) {
-        dependencies.onMakeAvatar(photo.id);
+        dependencies.onPick?.(photo.id);
       }
-    }, "care.viewer.makeAvatar"),
+    }, "photoViewer.pick"),
     remove: action(() => {
       remove().catch(noop);
-    }, "care.viewer.removePhoto"),
+    }, "photoViewer.removePhoto"),
   };
 }
 

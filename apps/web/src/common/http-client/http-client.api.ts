@@ -10,13 +10,22 @@ const defaultTimeoutMs = 15_000;
 export class HttpError extends Error {
   readonly status: number;
   readonly code: ErrorCode | undefined;
+  // How long the server asks to wait before trying again, from Retry-After.
+  readonly retryAfterSeconds: number | undefined;
 
-  constructor(status: number, code?: ErrorCode) {
+  constructor(status: number, code?: ErrorCode, retryAfterSeconds?: number) {
     super(`Request failed with status ${status}`);
     this.name = "HttpError";
     this.status = status;
     this.code = code;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+function retryAfterOf(response: Response): number | undefined {
+  const seconds = Number(response.headers.get("retry-after"));
+
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined;
 }
 
 async function errorCodeOf(response: Response): Promise<ErrorCode | undefined> {
@@ -80,7 +89,11 @@ export function createHttpClient({
     }
 
     if (!response.ok) {
-      throw new HttpError(response.status, await wrap(errorCodeOf(response)));
+      throw new HttpError(
+        response.status,
+        await wrap(errorCodeOf(response)),
+        retryAfterOf(response),
+      );
     }
 
     return schema.parse(await wrap(response.json()));

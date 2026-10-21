@@ -117,6 +117,15 @@ export const photoRoute = new Hono<PhotoEnv>()
       takenAt: Number.isFinite(takenAt) && takenAt > 0 ? takenAt : null,
     });
 
+    if (result.status === "rate-limited") {
+      context.header("retry-after", String(result.retryAfterSeconds));
+
+      return context.json(
+        apiError("PHOTO_RATE_LIMITED", "Telegram asks to wait before the next photo"),
+        httpStatus.tooManyRequests,
+      );
+    }
+
     return result.status === "ok"
       ? context.json<Photo>(result.photo, httpStatus.created)
       : refuse(context, result.status);

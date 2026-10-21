@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { AppModule } from "@family-hub/contract";
 
+import { Albums, type AlbumsScreenModel } from "@/modules/albums";
 import { Calendar, type CalendarModel } from "@/modules/calendar";
 import { Care, ExpensesBlock, JournalBlock, PhotosBlock, type CareModel } from "@/modules/care";
 import type { FamilyModel } from "@/modules/family";
@@ -35,6 +36,7 @@ export type HomeProps = {
   calendar: CalendarModel;
   feed: FeedModel;
   goals: GoalsScreenModel;
+  albums: AlbumsScreenModel;
   plans: PlansScreenModel;
   photoStorage: PhotoStorageModel;
 };
@@ -73,9 +75,13 @@ function petContentOf(pets: PetsScreenModel, care: CareModel): ModuleContent {
 }
 
 function contentOf(
-  { pets, plans, care, calendar, feed, goals }: HomeProps,
+  { pets, plans, care, calendar, feed, goals, albums }: HomeProps,
   module: AppModule,
 ): ModuleContent | undefined {
+  if (module === "albums") {
+    return { title: albums.title(), content: <Albums model={albums} /> };
+  }
+
   if (module === "goals") {
     return { title: goals.title(), content: <Goals model={goals} /> };
   }

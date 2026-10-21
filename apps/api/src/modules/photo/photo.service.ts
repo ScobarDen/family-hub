@@ -3,6 +3,7 @@ import { photoMaxBytes, uuidv7, type Photo, type PhotoVariant } from "@family-hu
 import type { Membership } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import type { PhotoLinks } from "@/common/photo-link";
+import { BotApiError } from "@/common/telegram";
 
 import type { PhotoFiles } from "./photo-file.repo.ts";
 import type { PhotoRepo } from "./photo.repo.ts";
@@ -16,7 +17,13 @@ export type PhotoDependencies = {
 
 export type PhotoRefusal = "storage-unavailable" | "too-large" | "not-found" | "not-uploader";
 
-export type UploadResult = { status: "ok"; photo: Photo } | { status: PhotoRefusal };
+export type UploadResult =
+  | { status: "ok"; photo: Photo }
+  | { status: "rate-limited"; retryAfterSeconds: number }
+  | { status: PhotoRefusal };
+
+const rateLimitedStatus = 429;
+const defaultRetryAfterSeconds = 3;
 
 export type DeleteResult = { status: "deleted" } | { status: PhotoRefusal };
 
@@ -31,6 +38,22 @@ export type ServedPhoto = { status: "ok"; body: Response } | { status: "forbidde
 
 function viewerOf({ member, isFamilyOwner }: Membership) {
   return { memberId: member.id, isFamilyOwner };
+}
+
+// A burst of uploads meets Telegram's per-channel limit; the Mini App waits as long as it is told.
+async function uploadedOrRateLimit(
+  { files }: PhotoDependencies,
+  { channelId, file }: { channelId: number; file: Blob },
+) {
+  try {
+    return await files.upload(channelId, file);
+  } catch (error) {
+    if (error instanceof BotApiError && error.errorCode === rateLimitedStatus) {
+      return { retryAfterSeconds: error.retryAfterSeconds ?? defaultRetryAfterSeconds };
+    }
+
+    throw error;
+  }
 }
 
 // The same picture uploaded twice is one photo: Telegram gives it the same file_unique_id.
@@ -50,7 +73,12 @@ async function upload(
     return { status: "too-large" };
   }
 
-  const uploaded = await dependencies.files.upload(channelId, file);
+  const uploaded = await uploadedOrRateLimit(dependencies, { channelId, file });
+
+  if ("retryAfterSeconds" in uploaded) {
+    return { status: "rate-limited", retryAfterSeconds: uploaded.retryAfterSeconds };
+  }
+
   const known = await dependencies.photos.findByUnique(familyId, uploaded.fileUniqueId);
   const now = dependencies.clock.now();
   const row = known ?? {

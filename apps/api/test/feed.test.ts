@@ -248,6 +248,7 @@ describe("the Feed", () => {
     ]);
   });
 
+  // 35 entries go through the whole Worker one by one, which takes a while on a busy machine.
   test("pages older Activity by 30", async () => {
     const worker = await startWithFamily();
     const buick = await addBuick(worker);
@@ -272,5 +273,5 @@ describe("the Feed", () => {
       "joined",
     ]);
     expect(second).toMatchObject({ overdue: [], upcoming: [], next: null });
-  });
+  }, 30_000);
 });

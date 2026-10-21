@@ -2,6 +2,7 @@ import type { AuthService } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import type { Db } from "@/common/db";
 import type { BotApi } from "@/common/telegram";
+import type { AlbumService } from "@/modules/album";
 import type { CareEntryService } from "@/modules/care-entry";
 import type { EventService } from "@/modules/event";
 import type { FamilyService } from "@/modules/family";
@@ -21,6 +22,7 @@ export type AppServices = {
   clock: Clock;
   bot: BotApi;
   auth: AuthService;
+  albums: AlbumService;
   careEntries: CareEntryService;
   events: EventService;
   families: FamilyService;

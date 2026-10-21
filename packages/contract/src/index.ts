@@ -239,3 +239,20 @@ export {
   type PhotoUrls,
   type PhotoVariant,
 } from "./photo.ts";
+export {
+  album,
+  albumBatchMax,
+  albumChange,
+  albumDeleted,
+  albumDescriptionMaxLength,
+  albumList,
+  albumPhotos,
+  albumSummary,
+  albumTitleMaxLength,
+  petAlbumPrefix,
+  photoList,
+  type Album,
+  type AlbumChange,
+  type AlbumPhotos,
+  type AlbumSummary,
+} from "./album.ts";

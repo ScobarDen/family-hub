@@ -8,6 +8,7 @@ import { deviceTimeZone, today } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { preparePhoto } from "@/common/photo";
 import { reatomTelegram } from "@/common/telegram";
+import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCareApi, reatomCare } from "@/modules/care";
 import { createFamilyApi, reatomFamily } from "@/modules/family";
@@ -69,6 +70,17 @@ const tabBarModules = reatomTabBarModules({
 const photoStorage = reatomPhotoStorage({
   api: createPhotoStorageApi(httpClient),
   isFamilyOwner: () => session.member()?.isFamilyOwner === true,
+});
+const albums = reatomAlbumsScreen({
+  api: createAlbumsApi(httpClient),
+  telegram,
+  timeZone: deviceTimeZone,
+  preparePhoto: async (file) => preparePhoto(file, deviceTimeZone()),
+  wait: async (ms) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    }),
+  photoHint: photoStorage.uploadHint,
 });
 const plansApi = createPlansApi(httpClient);
 const plans = reatomPlansScreen({
@@ -195,6 +207,7 @@ const navigation = reatomNavigation({
     plans,
     calendar,
     goals,
+    albums,
   },
 });
 const timeZone = reatomTimeZone({
@@ -244,6 +257,7 @@ const home = {
   calendar,
   feed,
   goals,
+  albums,
 };
 
 telegram.launch();

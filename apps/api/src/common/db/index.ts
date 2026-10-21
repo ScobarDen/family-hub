@@ -1,6 +1,8 @@
 export { createDb, type Db } from "./db.lib.ts";
 export type { DispatchSource, PhotoVariants } from "./schema.ts";
 export {
+  albumPhotos,
+  albums,
   careEntries,
   careEntryPhotos,
   events,

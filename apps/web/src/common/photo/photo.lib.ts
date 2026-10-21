@@ -1,4 +1,4 @@
-import { photoMaxBytes, photoMaxSide, type Photo } from "@family-hub/contract";
+import { photoMaxBytes, photoMaxSide, type Photo, type PhotoUrls } from "@family-hub/contract";
 
 import { readTakenAt } from "./exif.lib.ts";
 
@@ -39,13 +39,10 @@ export async function preparePhoto(file: Blob, timeZone: string): Promise<Prepar
 }
 
 // The Worker signs paths of its own; the browser loads them from the Worker's origin.
+export function resolvedUrls(urls: PhotoUrls, url: (path: string) => string): PhotoUrls {
+  return { thumb: url(urls.thumb), medium: url(urls.medium), full: url(urls.full) };
+}
+
 export function resolvedPhoto(photo: Photo, url: (path: string) => string): Photo {
-  return {
-    ...photo,
-    urls: {
-      thumb: url(photo.urls.thumb),
-      medium: url(photo.urls.medium),
-      full: url(photo.urls.full),
-    },
-  };
+  return { ...photo, urls: resolvedUrls(photo.urls, url) };
 }

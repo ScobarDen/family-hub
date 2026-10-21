@@ -3,5 +3,6 @@ export {
   preparePhoto,
   PhotoTooLargeError,
   resolvedPhoto,
+  resolvedUrls,
   type PreparedPhoto,
 } from "./photo.lib.ts";

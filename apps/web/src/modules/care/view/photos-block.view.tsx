@@ -1,11 +1,13 @@
 import { reatomComponent } from "@reatom/react";
-import { Images } from "lucide-react";
+import { Images, UserRound } from "lucide-react";
 
+import { PhotoViewer } from "@/common/photo-viewer";
 import { Section, SectionItem } from "@/common/ui";
 
 import type { CareBlockProps } from "./expenses-block.view.tsx";
 import { PhotoThumbs } from "./photo-thumbs.view.tsx";
-import { PhotoViewer } from "./photo-viewer.view.tsx";
+
+const avatarAction = { label: "Сделать аватаром", icon: UserRound };
 
 // The «Фото» block of the pet card: every photo of the Pet's entries, and the viewer over them.
 export const PhotosBlock = reatomComponent(({ model }: CareBlockProps) => {
@@ -27,7 +29,10 @@ export const PhotosBlock = reatomComponent(({ model }: CareBlockProps) => {
           </div>
         )}
       </Section>
-      <PhotoViewer model={model.viewer} canMakeAvatar={!model.isReadOnly()} />
+      <PhotoViewer
+        model={model.viewer}
+        pickAction={model.isReadOnly() ? undefined : avatarAction}
+      />
     </>
   );
 }, "PhotosBlock");
