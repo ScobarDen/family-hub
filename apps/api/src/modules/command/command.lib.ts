@@ -1,8 +1,7 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import type { CommandDraft, CommandFailure, DraftAmbiguity } from "@family-hub/contract";
-
-import type { FamilyNames } from "./command.repo.ts";
+import { previewOf, type FamilyNames } from "@family-hub/commands";
+import type { CommandDraft, CommandFailure } from "@family-hub/contract";
 
 export const commandCallbackPrefix = "cd";
 
@@ -57,28 +56,19 @@ export function parseCallback(data: string | undefined) {
     : { action, draftId, index: index === undefined ? undefined : Number(index) };
 }
 
-function candidateNameOf({ field }: DraftAmbiguity, id: string, names: FamilyNames): string {
-  const people = field === "pet" ? names.pets : names.members;
-
-  return people.find((person) => person.id === id)?.name ?? id;
-}
-
 export function previewButtons(
   { draft, draftId, editLink: link }: { draft: CommandDraft; draftId: string; editLink: string },
   names: FamilyNames,
 ): InlineKeyboardMarkup {
   const dismiss = { text: "×", callback_data: `${commandCallbackPrefix}:dismiss:${draftId}` };
   const change = { text: "Изменить", url: link };
-  const ambiguity = draft.ambiguities[0];
+  const { question, canCreate } = previewOf(draft, names);
 
-  if (ambiguity !== undefined) {
+  if (question !== undefined) {
     return {
       inline_keyboard: [
-        ...ambiguity.candidateIds.map((id, index) => [
-          {
-            text: candidateNameOf(ambiguity, id, names),
-            callback_data: `${commandCallbackPrefix}:pick:${draftId}:${index}`,
-          },
+        ...question.candidates.map(({ index, name }) => [
+          { text: name, callback_data: `${commandCallbackPrefix}:pick:${draftId}:${index}` },
         ]),
         [change, dismiss],
       ],
@@ -87,9 +77,7 @@ export function previewButtons(
 
   const create = { text: "Создать", callback_data: `${commandCallbackPrefix}:create:${draftId}` };
 
-  return {
-    inline_keyboard: [draft.missing.length > 0 ? [change, dismiss] : [create, change, dismiss]],
-  };
+  return { inline_keyboard: [canCreate ? [create, change, dismiss] : [change, dismiss]] };
 }
 
 // Picking a candidate settles one ambiguity: a Member joins the Recipients, a Pet becomes the one.

@@ -11,4 +11,12 @@ export {
   type CommandPerson,
   type CommandPet,
 } from "./prompt.ts";
+export {
+  previewOf,
+  type Candidate,
+  type DraftPreview,
+  type FamilyNames,
+  type FamilyPerson,
+} from "./preview.ts";
 export { draftRefusalTexts } from "./refusal.ts";
+export { offsetTitles } from "./wording.ts";

@@ -1,6 +1,7 @@
 import { action, atom, computed, noop, reatomForm, wrap, type Atom } from "@reatom/core";
 import { z } from "zod";
 
+import { offsetTitles } from "@family-hub/commands";
 import {
   eventChange,
   eventReminderMaxCount,
@@ -145,13 +146,11 @@ type EventForm = ReturnType<typeof reatomForm<EventValues>>;
 
 export type OffsetChoice = { offset: EventReminderOffset; title: string; isChosen: boolean };
 
-const offsetTitles: Record<EventReminderOffset, string> = {
-  "at-start": "В начале",
-  "15m": "За 15 минут",
-  "1h": "За час",
-  "1d": "За день",
-  "1w": "За неделю",
-};
+function chipTitleOf(offset: EventReminderOffset): string {
+  const title = offsetTitles[offset];
+
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
 
 // An all-day Event has no start time, so only the day-sized offsets apply to it.
 const allDayOffsets = new Set<EventReminderOffset>(["at-start", "1d", "1w"]);
@@ -172,7 +171,7 @@ function reatomOffsets(form: EventForm, chosen: Atom<EventReminderOffset[]>) {
       (): OffsetChoice[] =>
         offsetsFor(form.fields.timing() === "timed").map((offset) => ({
           offset,
-          title: offsetTitles[offset],
+          title: chipTitleOf(offset),
           isChosen: chosen().includes(offset),
         })),
       "calendar.form.offsets",

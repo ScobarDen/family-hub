@@ -157,7 +157,7 @@ describe("the preview sheet", () => {
       kind: "draft",
       heard,
       preview: {
-        text: "Оплатить интернет",
+        title: "Оплатить интернет",
         details: ["пт 16 окт, 19:00", "каждый месяц", "Денис, Ася, Ася"],
         missing: undefined,
         question: undefined,
@@ -320,7 +320,7 @@ describe("the preview sheet", () => {
       expect(model.sheet()).toMatchObject({
         kind: "draft",
         preview: {
-          text: "Груминг Бьюика",
+          title: "Груминг Бьюика",
           details: ["сб 17 окт, 12:00", "каждый месяц", "напомнить за час, за день", "только мне"],
           canCreate: true,
         },
@@ -363,7 +363,7 @@ describe("the preview sheet", () => {
       expect(model.sheet()).toMatchObject({
         kind: "draft",
         preview: {
-          text: "Прививка «Бешенство»",
+          title: "Прививка «Бешенство»",
           details: ["сейчас", expect.stringMatching(/^1\s800\s₽$/u), "следующий срок ср 13 окт"],
           question: {
             title: "Для какого питомца запись?",

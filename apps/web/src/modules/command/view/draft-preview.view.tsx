@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 
+import type { DraftPreview } from "@family-hub/commands";
+
 import { Button } from "@/common/ui";
 
-import type { DraftPreview } from "../command.lib.ts";
 import type { CommandSheetModel } from "../vm/command-sheet.vm.ts";
 
 function questionOf(model: CommandSheetModel, question: DraftPreview["question"]): ReactNode {
@@ -36,7 +37,7 @@ export function DraftPreviewBlock({
   return (
     <>
       <div className="flex flex-col gap-1">
-        <span className="text-lg font-semibold">{preview.text}</span>
+        <span className="text-lg font-semibold">{preview.title}</span>
         <span className="text-sm text-muted-foreground">{preview.details.join(" · ")}</span>
       </div>
       {preview.missing !== undefined && <p className="text-sm">{preview.missing}</p>}

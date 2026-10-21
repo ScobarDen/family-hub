@@ -362,7 +362,7 @@ describe("an Event", () => {
     model.add();
 
     expect(model.form.offsets().map(({ title }) => title)).toEqual([
-      "В начале",
+      "В момент начала",
       "За день",
       "За неделю",
     ]);

@@ -91,7 +91,7 @@ describe("a Care Entry command to the bot", () => {
     const preview = lastTo(worker, denis);
 
     expect(preview?.text).toMatch(
-      /^💉 Прививка «Бешенство» · Бьюик · сейчас · 1\s800 ₽ · следующий срок ср 13 окт/u,
+      /^💉 Прививка «Бешенство» · Бьюик · сейчас · 1\s800\s₽ · следующий срок ср 13 окт/u,
     );
     expect(preview?.text).toContain("Фото можно приложить в «Изменить».");
 
