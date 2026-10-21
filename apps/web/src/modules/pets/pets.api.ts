@@ -2,6 +2,7 @@ import {
   pet,
   petDeleted,
   petList,
+  type Pet,
   type PetDeletion,
   type PetMemoChange,
   type PetProfile,
@@ -9,24 +10,50 @@ import {
 
 import type { HttpClient } from "@/common/http-client";
 
-export function createPetsApi(client: HttpClient) {
-  return {
-    list: async () => client.request("/api/pets", { schema: petList }),
+// The avatar is a signed path of the Worker; the browser loads it from there.
+function resolvedOf(client: HttpClient, saved: Pet): Pet {
+  const { avatar } = saved;
 
-    create: async (profile: PetProfile) =>
-      client.request("/api/pets", { method: "POST", body: profile, schema: pet }),
+  return avatar === null
+    ? saved
+    : {
+        ...saved,
+        avatar: {
+          thumb: client.url(avatar.thumb),
+          medium: client.url(avatar.medium),
+          full: client.url(avatar.full),
+        },
+      };
+}
+
+export function createPetsApi(client: HttpClient) {
+  async function one(path: string, init: { method: "POST" | "PUT"; body?: unknown }) {
+    const saved = await client.request(path, { ...init, schema: pet });
+
+    return resolvedOf(client, saved);
+  }
+
+  return {
+    async list() {
+      const pets = await client.request("/api/pets", { schema: petList });
+
+      return pets.map((each) => resolvedOf(client, each));
+    },
+
+    create: async (profile: PetProfile) => one("/api/pets", { method: "POST", body: profile }),
 
     saveProfile: async (petId: string, profile: PetProfile) =>
-      client.request(`/api/pets/${petId}`, { method: "PUT", body: profile, schema: pet }),
+      one(`/api/pets/${petId}`, { method: "PUT", body: profile }),
 
     saveMemo: async (petId: string, memo: PetMemoChange) =>
-      client.request(`/api/pets/${petId}/memo`, { method: "PUT", body: memo, schema: pet }),
+      one(`/api/pets/${petId}/memo`, { method: "PUT", body: memo }),
 
-    archive: async (petId: string) =>
-      client.request(`/api/pets/${petId}/archive`, { method: "POST", schema: pet }),
+    setAvatar: async (petId: string, photoId: string | null) =>
+      one(`/api/pets/${petId}/avatar`, { method: "PUT", body: { photoId } }),
 
-    unarchive: async (petId: string) =>
-      client.request(`/api/pets/${petId}/unarchive`, { method: "POST", schema: pet }),
+    archive: async (petId: string) => one(`/api/pets/${petId}/archive`, { method: "POST" }),
+
+    unarchive: async (petId: string) => one(`/api/pets/${petId}/unarchive`, { method: "POST" }),
 
     remove: async (petId: string, petName: string) =>
       client.request(`/api/pets/${petId}`, {

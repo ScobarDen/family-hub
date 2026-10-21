@@ -13,12 +13,14 @@ import {
   valuesOf,
   type EntryValues,
 } from "./care-form-values.vm.ts";
+import type { EntryPhotosModel } from "./entry-photos.vm.ts";
 
 type CareFormDependencies = {
   api: CareApi;
   petId: () => string | undefined;
   now: () => string;
   timeZone: () => string;
+  photos: EntryPhotosModel;
   onSaved: () => void;
 };
 
@@ -78,6 +80,7 @@ function reatomStarts(
   return {
     startCreating: action((kind: CareKind) => {
       editedId.set(undefined);
+      dependencies.photos.reset([]);
       fillForm(form, { ...emptyEntry, kind, occurredAt: dependencies.now() });
     }, "care.form.startCreating"),
     // A due vaccination, treatment or visit is closed by recording the next one of the same name.
@@ -85,10 +88,12 @@ function reatomStarts(
       const { kind, name } = valuesOf(entry, dependencies.timeZone());
 
       editedId.set(undefined);
+      dependencies.photos.reset([]);
       fillForm(form, { ...emptyEntry, kind, name, occurredAt: dependencies.now() });
     }, "care.form.startFollowUp"),
     startEditing: action((entry: CareEntry) => {
       editedId.set(entry.id);
+      dependencies.photos.reset(entry.photos);
       fillForm(form, valuesOf(entry, dependencies.timeZone()));
     }, "care.form.startEditing"),
   };
@@ -100,7 +105,10 @@ export function reatomCareForm(dependencies: CareFormDependencies) {
     name: "care.form",
     schema,
     onSubmit: async (values: EntryValues) => {
-      const change = changeOf(values, dependencies.timeZone());
+      const change = {
+        ...changeOf(values, dependencies.timeZone()),
+        photoIds: dependencies.photos.photoIds(),
+      };
       const entryId = editedId();
       const petId = dependencies.petId();
 
@@ -118,7 +126,10 @@ export function reatomCareForm(dependencies: CareFormDependencies) {
     form,
     editedId: computed(() => editedId(), "care.form.editedIdNow"),
     kind: computed(() => careKind.parse(form.fields.kind()), "care.form.kind"),
-    isSaving: computed(() => !form.submit.ready(), "care.form.isSaving"),
+    isSaving: computed(
+      () => !form.submit.ready() || dependencies.photos.isUploading(),
+      "care.form.isSaving",
+    ),
     failure: reatomSubmitFailure(form, {
       message: "Не получилось сохранить запись. Попробуйте ещё раз.",
       name: "care.form.failure",

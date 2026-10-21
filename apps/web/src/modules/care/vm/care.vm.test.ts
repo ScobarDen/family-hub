@@ -1,9 +1,10 @@
 import { context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { CareEntry, ExpenseSummary } from "@family-hub/contract";
+import type { CareEntry, ExpenseSummary, Photo } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { PhotoTooLargeError } from "@/common/photo";
 
 import { createCareApi } from "../care.api.ts";
 import { reatomCare } from "./care.vm.ts";
@@ -16,6 +17,7 @@ const entries: CareEntry[] = [
     note: null,
     details: { kind: "weight", weightKg: 12.8 },
     author: "Ася",
+    photos: [],
   },
   {
     id: "entry-2",
@@ -29,6 +31,7 @@ const entries: CareEntry[] = [
       dueDate: null,
     },
     author: "Денис",
+    photos: [],
   },
   {
     id: "entry-1",
@@ -37,6 +40,7 @@ const entries: CareEntry[] = [
     note: null,
     details: { kind: "weight", weightKg: 12.1 },
     author: "Денис",
+    photos: [],
   },
 ];
 
@@ -47,6 +51,17 @@ const month: ExpenseSummary = {
     { category: "vet", amount: 2500 },
   ],
   entries: [],
+};
+
+const walk: Photo = {
+  id: "photo-1",
+  takenAt: null,
+  urls: {
+    thumb: "/photos/photo-1/thumb?exp=1&sig=a",
+    medium: "/photos/photo-1/medium?exp=1&sig=b",
+    full: "/photos/photo-1/full?exp=1&sig=c",
+  },
+  canDelete: true,
 };
 
 function fakeBackend() {
@@ -66,6 +81,10 @@ function fakeBackend() {
       return Response.json({ status: "deleted" });
     }
 
+    if (request === "POST /api/photos") {
+      return Response.json(walk, { status: 201 });
+    }
+
     return request === "GET /api/pets/pet-1/care-entries"
       ? Response.json(entries)
       : Response.json({ ...entries[0], details: { kind: "note" } }, { status: 201 });
@@ -74,8 +93,13 @@ function fakeBackend() {
   return { fetch, requests };
 }
 
+const tooLarge = new Blob(["too large"]);
+// A connected Photo Storage leaves nothing to explain.
+const connectedStorage: string | undefined = undefined;
+
 function startCare(choices: string[] = []) {
   const backend = fakeBackend();
+  const avatars: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const pending = [...choices];
   const model = reatomCare({
@@ -86,13 +110,24 @@ function startCare(choices: string[] = []) {
     timeZone: () => "Europe/Moscow",
     telegram: { showPopup: async () => pending.shift() },
     isReadOnly: () => false,
+    preparePhoto: async (file) => {
+      if (file === tooLarge) {
+        throw new PhotoTooLargeError();
+      }
+
+      return { file, takenAt: Date.parse("2026-08-01T12:00:00Z") };
+    },
+    photoHint: () => connectedStorage,
+    onMakeAvatar: (photoId) => {
+      avatars.push(photoId);
+    },
   });
 
   model.journal.subscribe(noop);
   model.month.subscribe(noop);
   model.weight.subscribe(noop);
 
-  return { model, backend };
+  return { model, backend, avatars };
 }
 
 type Model = ReturnType<typeof startCare>["model"];
@@ -119,6 +154,7 @@ describe("the journal", () => {
       title: "Ветеринар: Хромает",
       subtitle: "2 октября · Денис · 2 500 ₽",
       note: "Перенёс спокойно",
+      photos: [],
     });
   });
 });
@@ -178,6 +214,7 @@ describe("the entry form", () => {
       occurredAt: Date.parse("2026-10-11T15:30:00Z"),
       note: null,
       details: { kind: "weight", weightKg: 12.6 },
+      photoIds: [],
     });
   });
 
@@ -222,5 +259,50 @@ describe("the entry form", () => {
     expect(backend.requests.map(({ request }) => request)).toContain(
       "DELETE /api/care-entries/entry-2",
     );
+  });
+});
+
+describe("a Care Entry's photos", () => {
+  test("go up as they are picked and are linked on saving", async () => {
+    const { model, backend } = startCare();
+
+    await loaded(model);
+    model.add("note");
+    model.attachments.add([new Blob(["walk"]), tooLarge]);
+    await vi.waitFor(() => {
+      expect(model.attachments.isUploading()).toBe(false);
+    });
+
+    expect(model.attachments.items()).toMatchObject([
+      {
+        status: "ready",
+        photo: { urls: { thumb: "https://api.family-hub.test/photos/photo-1/thumb?exp=1&sig=a" } },
+      },
+      { status: "failed", reason: "Фото больше 10 МБ" },
+    ]);
+
+    model.form.form.fields.note.set("Гуляли в парке");
+    model.form.save();
+    await vi.waitFor(() => {
+      expect(model.canGoBack()).toBe(false);
+    });
+
+    expect(
+      backend.requests.find(({ request }) => request === "POST /api/pets/pet-1/care-entries")?.body,
+    ).toMatchObject({ photoIds: ["photo-1"] });
+  });
+
+  test("open full screen, become the avatar and are deleted after a confirmation", async () => {
+    const { model, backend, avatars } = startCare(["delete"]);
+
+    model.viewer.open([walk], "photo-1");
+    model.viewer.makeAvatar();
+    model.viewer.remove();
+    await vi.waitFor(() => {
+      expect(model.viewer.current()).toBeUndefined();
+    });
+
+    expect(avatars).toEqual(["photo-1"]);
+    expect(backend.requests.map(({ request }) => request)).toContain("DELETE /api/photos/photo-1");
   });
 });

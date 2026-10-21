@@ -40,6 +40,7 @@ const buick: Pet = {
   notes: null,
   archivedAt: null,
   memo: { food: null, clinic: null, important: null, updatedAt: null, updatedBy: null },
+  avatar: null,
 };
 
 const internet: Reminder = {

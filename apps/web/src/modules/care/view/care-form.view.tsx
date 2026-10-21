@@ -15,7 +15,12 @@ import {
 import { categoryTitles, kindTitles } from "../care.config.ts";
 import type { CareFormModel } from "../vm/care-form.vm.ts";
 
-type CareFormProps = { model: CareFormModel; onCancel: () => void; onRemove: () => void };
+type CareFormProps = {
+  model: CareFormModel;
+  photos: ReactNode;
+  onCancel: () => void;
+  onRemove: () => void;
+};
 
 type Fields = CareFormModel["form"]["fields"];
 
@@ -74,7 +79,7 @@ function kindFields(fields: Fields, kind: CareKind): ReactNode {
   return kind === "note" ? undefined : <MedicalFields fields={fields} kind={kind} />;
 }
 
-export const CareForm = reatomComponent(({ model, onCancel, onRemove }: CareFormProps) => {
+export const CareForm = reatomComponent(({ model, photos, onCancel, onRemove }: CareFormProps) => {
   const { fields } = model.form;
   const isSaving = model.isSaving();
 
@@ -89,6 +94,7 @@ export const CareForm = reatomComponent(({ model, onCancel, onRemove }: CareForm
       <TextField field={fields.occurredAt} id="care-time" label="Когда" type="datetime-local" />
       {kindFields(fields, model.kind())}
       <TextAreaField field={fields.note} id="care-note" label="Заметка" />
+      {photos}
       <FieldError>{model.failure()}</FieldError>
       <Button type="submit" size="lg" disabled={isSaving}>
         {isSaving ? "Сохраняем…" : "Сохранить"}

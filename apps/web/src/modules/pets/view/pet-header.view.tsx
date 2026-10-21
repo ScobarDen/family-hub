@@ -9,6 +9,9 @@ type PetHeaderProps = { card: PetCard; onEdit: (() => void) | undefined };
 export function PetHeader({ card, onEdit }: PetHeaderProps) {
   return (
     <Section>
+      {card.avatar !== undefined && (
+        <img src={card.avatar} alt={card.name} className="aspect-square w-full object-cover" />
+      )}
       <SectionItem
         icon={PawPrint}
         tone="orange"

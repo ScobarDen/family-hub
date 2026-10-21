@@ -85,6 +85,7 @@ function fakeBackend(
         notes: null,
         archivedAt: null,
         memo: { food: null, clinic: null, important: null, updatedAt: null, updatedBy: null },
+        avatar: null,
       },
     ],
     "POST /api/plans": (body) => ({ ...vacation, ...planChange.parse(body), id: "plan-new" }),

@@ -6,6 +6,7 @@ import { parseDeepLink } from "@family-hub/contract";
 
 import { deviceTimeZone, today } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
+import { preparePhoto } from "@/common/photo";
 import { reatomTelegram } from "@/common/telegram";
 import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCareApi, reatomCare } from "@/modules/care";
@@ -93,7 +94,6 @@ const pets = reatomPetsScreen({
   pets: petsModel,
   viewer: () => ({ today: today(deviceTimeZone()), timeZone: deviceTimeZone() }),
   isFamilyOwner: () => session.member()?.isFamilyOwner === true,
-  photoHint: photoStorage.uploadHint,
   soon: (petId) => [
     ...plans.openPlansOf(petId).map(({ id, title, dueDate }) => ({
       id,
@@ -124,6 +124,11 @@ const care = reatomCare({
   timeZone: deviceTimeZone,
   telegram,
   isReadOnly: () => pets.isOpenedPetArchived(),
+  preparePhoto: async (file) => preparePhoto(file, deviceTimeZone()),
+  photoHint: photoStorage.uploadHint,
+  onMakeAvatar: (photoId) => {
+    pets.makeAvatar(photoId);
+  },
 });
 const calendar = reatomCalendar({
   api: createCalendarApi(httpClient),

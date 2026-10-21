@@ -1,10 +1,12 @@
 import { reatomComponent } from "@reatom/react";
 import { NotebookPen, Plus, Scale } from "lucide-react";
+import { Fragment } from "react";
 
 import { Chip, Section, SectionItem } from "@/common/ui";
 
 import { weightRanges, type WeightRange } from "../care.config.ts";
 import type { CareBlockProps } from "./expenses-block.view.tsx";
+import { PhotoThumbs } from "./photo-thumbs.view.tsx";
 import { WeightChart } from "./weight-chart.view.tsx";
 
 const ranges: WeightRange[] = ["quarter", "year", "all"];
@@ -62,20 +64,27 @@ export const JournalBlock = reatomComponent(
           />
         )}
         {model.journal().map((item) => (
-          <SectionItem
-            key={item.id}
-            icon={NotebookPen}
-            tone="gray"
-            title={item.title}
-            subtitle={item.note === undefined ? item.subtitle : `${item.subtitle}\n${item.note}`}
-            onClick={
-              model.isReadOnly()
-                ? undefined
-                : () => {
-                    model.edit(item.id);
-                  }
-            }
-          />
+          <Fragment key={item.id}>
+            <SectionItem
+              icon={NotebookPen}
+              tone="gray"
+              title={item.title}
+              subtitle={item.note === undefined ? item.subtitle : `${item.subtitle}\n${item.note}`}
+              onClick={
+                model.isReadOnly()
+                  ? undefined
+                  : () => {
+                      model.edit(item.id);
+                    }
+              }
+            />
+            <PhotoThumbs
+              photos={item.photos}
+              onOpen={(photoId) => {
+                model.viewer.open(item.photos, photoId);
+              }}
+            />
+          </Fragment>
         ))}
       </Section>
     </>

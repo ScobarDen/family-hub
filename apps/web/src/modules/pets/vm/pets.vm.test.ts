@@ -22,6 +22,7 @@ const buick: Pet = {
   notes: null,
   archivedAt: null,
   memo: emptyMemo,
+  avatar: null,
 };
 
 const kesha: Pet = { ...buick, id: "pet-2", name: "Кеша", species: "bird", breed: null };
@@ -88,7 +89,6 @@ function startPets(backend = fakeBackend(), { isFamilyOwner = true } = {}) {
     pets,
     viewer: () => ({ today: "2026-10-11", timeZone: "Europe/Moscow" }),
     isFamilyOwner: () => isFamilyOwner,
-    photoHint: () => "Загрузка фото выключена",
     soon: (petId) => (petId === "pet-1" ? soon : []),
     onOpenSoon: ({ id, kind }) => {
       opened.push(`${kind} ${id}`);

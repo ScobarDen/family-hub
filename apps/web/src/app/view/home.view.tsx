@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { AppModule } from "@family-hub/contract";
 
 import { Calendar, type CalendarModel } from "@/modules/calendar";
-import { Care, ExpensesBlock, JournalBlock, type CareModel } from "@/modules/care";
+import { Care, ExpensesBlock, JournalBlock, PhotosBlock, type CareModel } from "@/modules/care";
 import type { FamilyModel } from "@/modules/family";
 import { Feed, type FeedModel } from "@/modules/feed";
 import { Goals, type GoalsScreenModel } from "@/modules/goals";
@@ -66,6 +66,7 @@ function petContentOf(pets: PetsScreenModel, care: CareModel): ModuleContent {
         model={pets}
         expenses={<ExpensesBlock model={care} />}
         journal={<JournalBlock model={care} />}
+        photos={<PhotosBlock model={care} />}
       />
     ),
   };

@@ -5,6 +5,7 @@ import { FieldError, Section, SectionItem } from "@/common/ui";
 
 import type { CareModel } from "../vm/care.vm.ts";
 import { CareForm } from "./care-form.view.tsx";
+import { PhotoAttachments } from "./photo-attachments.view.tsx";
 
 export type CareProps = { model: CareModel };
 
@@ -58,7 +59,12 @@ export const Care = reatomComponent(({ model }: CareProps) => {
 
   return (
     <>
-      <CareForm model={model.form} onCancel={model.back} onRemove={model.remove} />
+      <CareForm
+        model={model.form}
+        photos={<PhotoAttachments model={model.attachments} hint={model.photoHint()} />}
+        onCancel={model.back}
+        onRemove={model.remove}
+      />
       <div className="px-4">
         <FieldError>{model.failure()}</FieldError>
       </div>

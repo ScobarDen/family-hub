@@ -23,6 +23,7 @@ export type PetCard = {
   memo: PetMemoView;
   soon: SoonItem[];
   isArchived: boolean;
+  avatar: string | undefined;
 };
 
 export type Viewer = { today: string; timeZone: string };
@@ -112,5 +113,6 @@ export function toCard(pet: Pet, { today, timeZone }: Viewer, soonSources: SoonS
     memo: memoOf(pet.memo, timeZone),
     soon: toSoon(soonSources, today),
     isArchived: pet.archivedAt !== null,
+    avatar: pet.avatar?.medium,
   };
 }

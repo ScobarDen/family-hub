@@ -1,4 +1,4 @@
-import { action, atom, computed } from "@reatom/core";
+import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
@@ -118,13 +118,29 @@ function reatomBrowsing(
 
 function reatomLinks(dependencies: PetsDependencies) {
   return {
-    photoHint: computed(() => dependencies.photoHint(), "pets.photoHint"),
     openSoon: action((item: { id: string; kind: SoonKind }) => {
       dependencies.onOpenSoon(item);
     }, "pets.openSoon"),
     plan: action((petId: string) => {
       dependencies.onPlan(petId);
     }, "pets.plan"),
+  };
+}
+
+// The avatar is picked in the care module's photo viewer; the Pet's card only shows it.
+function reatomAvatar({ api, pets }: PetsDependencies, openedPet: () => Pet | undefined) {
+  const save = action(async (photoId: string) => {
+    const pet = openedPet();
+
+    if (pet !== undefined) {
+      pets.keep(await wrap(api.setAvatar(pet.id, photoId)));
+    }
+  }, "pets.saveAvatar").extend(withAsync());
+
+  return {
+    makeAvatar: action((photoId: string) => {
+      save(photoId).catch(noop);
+    }, "pets.makeAvatar"),
   };
 }
 
@@ -160,6 +176,7 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
     ...forms,
     ...archive,
     ...reatomLinks(dependencies),
+    ...reatomAvatar(dependencies, openedPet),
     ...reatomBrowsing(dependencies, navigation),
     ...reatomEditing(navigation, { ...forms, openedPet, archive }),
   };

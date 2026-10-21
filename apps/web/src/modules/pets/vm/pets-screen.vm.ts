@@ -21,7 +21,6 @@ export type PetsDependencies = {
   pets: PetsModel;
   viewer: () => Viewer;
   isFamilyOwner: () => boolean;
-  photoHint: () => string | undefined;
   soon: (petId: string) => SoonSource[];
   onOpenSoon: (item: { id: string; kind: SoonKind }) => void;
   onPlan: (petId: string) => void;

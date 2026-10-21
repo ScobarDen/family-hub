@@ -1,6 +1,6 @@
 import { Temporal } from "temporal-polyfill";
 
-import type { CareDetails, CareEntry, ExpenseSummary } from "@family-hub/contract";
+import type { CareDetails, CareEntry, ExpenseSummary, Photo } from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
@@ -8,7 +8,13 @@ import { formatRubles } from "@/common/format-money";
 import type { Range } from "./care.api.ts";
 import { categoryTitles, kindTitles, type WeightRange } from "./care.config.ts";
 
-export type JournalItem = { id: string; title: string; subtitle: string; note: string | undefined };
+export type JournalItem = {
+  id: string;
+  title: string;
+  subtitle: string;
+  note: string | undefined;
+  photos: Photo[];
+};
 
 export type ExpenseRow = { title: string; amount: string };
 
@@ -77,7 +83,23 @@ export function toJournalItem(entry: CareEntry, timeZone: string): JournalItem {
     title: titleOf(entry.details),
     subtitle: parts.filter((part) => part !== null && part !== undefined).join(" · "),
     note: entry.note ?? undefined,
+    photos: entry.photos,
   };
+}
+
+// The Pet's photos are those of its entries, newest entry first, each photo once.
+export function petPhotosOf(entries: CareEntry[]): Photo[] {
+  const seen = new Set<string>();
+
+  return entries.flatMap(({ photos }) =>
+    photos.filter(({ id }) => {
+      const isNew = !seen.has(id);
+
+      seen.add(id);
+
+      return isNew;
+    }),
+  );
 }
 
 export function toExpensesView(summary: ExpenseSummary): ExpensesView {

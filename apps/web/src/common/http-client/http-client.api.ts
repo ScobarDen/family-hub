@@ -39,6 +39,21 @@ type RequestOptions<Schema extends z.ZodType> = {
   body?: unknown;
 };
 
+// A FormData body sets its own multipart content type.
+function headersFor(body: unknown, token: string | undefined): Headers {
+  const headers = new Headers();
+
+  if (body !== undefined && !(body instanceof FormData)) {
+    headers.set("content-type", "application/json");
+  }
+
+  if (token !== undefined) {
+    headers.set("authorization", `Bearer ${token}`);
+  }
+
+  return headers;
+}
+
 export function createHttpClient({
   baseUrl,
   fetch,
@@ -47,21 +62,6 @@ export function createHttpClient({
   const token = atom<string | undefined>(undefined, "httpClient.token");
   const isSessionLost = atom(false, "httpClient.isSessionLost");
 
-  function headersFor(body: unknown): Headers {
-    const headers = new Headers();
-    const currentToken = token();
-
-    if (body !== undefined) {
-      headers.set("content-type", "application/json");
-    }
-
-    if (currentToken !== undefined) {
-      headers.set("authorization", `Bearer ${currentToken}`);
-    }
-
-    return headers;
-  }
-
   async function request<Schema extends z.ZodType>(
     path: string,
     { schema, method = "GET", body }: RequestOptions<Schema>,
@@ -69,8 +69,8 @@ export function createHttpClient({
     const response = await wrap(
       fetch(new URL(path, baseUrl), {
         method,
-        headers: headersFor(body),
-        body: body === undefined ? undefined : JSON.stringify(body),
+        headers: headersFor(body, token()),
+        body: body === undefined || body instanceof FormData ? body : JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs),
       }),
     );
@@ -86,7 +86,12 @@ export function createHttpClient({
     return schema.parse(await wrap(response.json()));
   }
 
-  return { request, token, isSessionLost };
+  // The Worker hands out its own paths, such as signed photo links; the browser needs them whole.
+  function url(path: string): string {
+    return new URL(path, baseUrl).toString();
+  }
+
+  return { request, url, token, isSessionLost };
 }
 
 export type HttpClient = ReturnType<typeof createHttpClient>;

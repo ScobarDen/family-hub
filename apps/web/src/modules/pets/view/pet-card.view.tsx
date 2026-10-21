@@ -1,8 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import { Images } from "lucide-react";
 import type { ReactNode } from "react";
-
-import { Section, SectionItem } from "@/common/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 import { PetArchiveSection } from "./pet-archive-section.view.tsx";
@@ -15,34 +12,36 @@ type PetCardProps = {
   model: PetsScreenModel;
   expenses: ReactNode;
   journal: ReactNode;
+  photos: ReactNode;
 };
 
 // An archived Pet's card reads only: no editing, no planning, its history and the way back out.
-export const PetCard = reatomComponent(({ screen, model, expenses, journal }: PetCardProps) => {
-  const { card } = screen;
-  const isEditable = !card.isArchived;
+export const PetCard = reatomComponent(
+  ({ screen, model, expenses, journal, photos }: PetCardProps) => {
+    const { card } = screen;
+    const isEditable = !card.isArchived;
 
-  return (
-    <>
-      <PetHeader card={card} onEdit={isEditable ? model.editProfile : undefined} />
-      <PetSoon
-        soon={card.soon}
-        onOpen={model.openSoon}
-        onPlan={
-          isEditable
-            ? () => {
-                model.plan(card.id);
-              }
-            : undefined
-        }
-      />
-      <PetMemoSection memo={card.memo} onEdit={isEditable ? model.editMemo : undefined} />
-      {expenses}
-      <Section title="Фото" footer={model.photoHint()}>
-        <SectionItem icon={Images} tone="violet" title="Фото пока нет" />
-      </Section>
-      {journal}
-      <PetArchiveSection screen={screen} model={model} />
-    </>
-  );
-}, "PetCard");
+    return (
+      <>
+        <PetHeader card={card} onEdit={isEditable ? model.editProfile : undefined} />
+        <PetSoon
+          soon={card.soon}
+          onOpen={model.openSoon}
+          onPlan={
+            isEditable
+              ? () => {
+                  model.plan(card.id);
+                }
+              : undefined
+          }
+        />
+        <PetMemoSection memo={card.memo} onEdit={isEditable ? model.editMemo : undefined} />
+        {expenses}
+        {photos}
+        {journal}
+        <PetArchiveSection screen={screen} model={model} />
+      </>
+    );
+  },
+  "PetCard",
+);

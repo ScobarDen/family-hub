@@ -11,11 +11,24 @@ import { PetMemoForm } from "./pet-memo-form.view.tsx";
 import { PetProfileForm } from "./pet-profile-form.view.tsx";
 
 // The journal, its expenses and weight belong to the care module; the page passes them in.
-export type PetsProps = { model: PetsScreenModel; expenses: ReactNode; journal: ReactNode };
+export type PetsProps = {
+  model: PetsScreenModel;
+  expenses: ReactNode;
+  journal: ReactNode;
+  photos: ReactNode;
+};
 
-function contentOf({ model, expenses, journal }: PetsProps, screen: PetsScreen): ReactNode {
+function contentOf({ model, expenses, journal, photos }: PetsProps, screen: PetsScreen): ReactNode {
   if (screen.kind === "card") {
-    return <PetCard screen={screen} model={model} expenses={expenses} journal={journal} />;
+    return (
+      <PetCard
+        screen={screen}
+        model={model}
+        expenses={expenses}
+        journal={journal}
+        photos={photos}
+      />
+    );
   }
 
   if (screen.kind === "profile-form") {

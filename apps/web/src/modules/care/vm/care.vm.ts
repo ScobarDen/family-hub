@@ -4,6 +4,7 @@ import type { CareKind } from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
+import type { PreparedPhoto } from "@/common/photo";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
@@ -18,6 +19,7 @@ import {
 } from "../care.lib.ts";
 import { reatomCareData, type CareData } from "../care.model.ts";
 import { reatomCareForm, type CareFormModel } from "./care-form.vm.ts";
+import { reatomCarePhotos } from "./care-photos.vm.ts";
 
 export type CareScreen =
   | { kind: "blocks" }
@@ -32,6 +34,10 @@ type CareDependencies = {
   timeZone: () => string;
   telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
   isReadOnly: () => boolean;
+  preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
+  // Why photos cannot be added now, from photo-storage; undefined when they can.
+  photoHint: () => string | undefined;
+  onMakeAvatar: (photoId: string) => void;
 };
 
 export type DueSource = { id: string; title: string; dueDate: string; kind: "due" };
@@ -181,8 +187,10 @@ function reatomDueSources(data: CareData) {
 export function reatomCare(dependencies: CareDependencies) {
   const data = reatomCareData(dependencies);
   const screen = atom<CareScreen["kind"]>("blocks", "care.screenKind");
+  const photos = reatomCarePhotos(dependencies, data);
   const form = reatomCareForm({
     ...dependencies,
+    photos: photos.attachments,
     onSaved: () => {
       data.reload();
       screen.set("blocks");
@@ -210,6 +218,7 @@ export function reatomCare(dependencies: CareDependencies) {
     dueSources: reatomDueSources(data),
     failure: computed(() => sources.failure(), "care.visibleFailure"),
     form,
+    ...photos,
     ...reatomViews(sources, weightRange),
     ...reatomMoves(sources, weightRange),
     remove: action(() => {
