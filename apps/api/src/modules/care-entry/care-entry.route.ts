@@ -98,6 +98,16 @@ export const careEntryRoute = new Hono<CareEntryEnv>()
       ),
     ),
   )
+  .get("/api/care-entries/:id", async (context) => {
+    const result = await context.var.careEntries.get(
+      context.var.membership,
+      context.req.param("id"),
+    );
+
+    return result.status === "ok"
+      ? context.json<CareEntry>(result.entry)
+      : refuse(context, result.status);
+  })
   .put("/api/care-entries/:id", entryBody, async (context) => {
     const result = await context.var.careEntries.update(
       context.var.membership,

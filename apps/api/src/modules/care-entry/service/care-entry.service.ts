@@ -205,6 +205,8 @@ export function createCareEntryService(dependencies: CareEntryDependencies) {
 
       return withPhotos(dependencies, membership, rows);
     },
+    get: async (membership: Membership, entryId: string) =>
+      current(dependencies, membership, entryId),
     create: async (membership: Membership, petId: string, change: CareEntryChange) =>
       create(dependencies, membership, { petId, change }),
     update: async (membership: Membership, entryId: string, change: CareEntryChange) =>

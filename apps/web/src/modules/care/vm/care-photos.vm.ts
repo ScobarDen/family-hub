@@ -25,7 +25,7 @@ export function reatomCarePhotos(dependencies: CarePhotosDependencies, data: Car
     attachments: reatomPhotoAttachments({
       max: careEntryPhotoMax,
       ...dependencies,
-      canUploadPhotos: () => dependencies.photoHint() === undefined,
+      canUploadPhotos: () => dependencies.photoHint() === undefined && !dependencies.isReadOnly(),
     }),
     viewer: reatomPhotoViewer({
       ...dependencies,

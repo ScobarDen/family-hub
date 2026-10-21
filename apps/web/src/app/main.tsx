@@ -168,6 +168,7 @@ const care = reatomCare({
   onMakeAvatar: (photoId) => {
     pets.makeAvatar(photoId);
   },
+  onOpenPet: pets.open,
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
@@ -226,13 +227,22 @@ const microphone = reatomMicrophone({
   onRecorded: commandSheet.send,
 });
 
+// The Pet's card opens at once; an entry's form follows once the entry is at hand.
+function openPetOf(target: Extract<FeedTarget, { petId: string }>) {
+  navigation.openModule("pet");
+  pets.open(target.petId);
+
+  if (target.kind === "care-entry") {
+    care.openEntry(target.entryId);
+  }
+}
+
 function openFromFeed(target: FeedTarget) {
   if (target.kind === "plan") {
     navigation.openModule("plans");
     plans.open(target.planId);
-  } else if (target.kind === "pet") {
-    navigation.openModule("pet");
-    pets.open(target.petId);
+  } else if (target.kind === "pet" || target.kind === "care-entry") {
+    openPetOf(target);
   } else if (target.kind === "goal") {
     navigation.openModule("goals");
     goals.open(target.goalId);
@@ -361,14 +371,20 @@ if (link?.kind === "plan") {
   goals.open(link.id);
 }
 
-// A draft needs the session's token, so the bot's «Изменить» opens only once signed in.
-if (link?.kind === "cmd") {
+// A draft or a Care Entry is fetched by its id with the session's token, so it opens once signed in.
+function onceSignedIn(open: (id: string) => void, id: string) {
   const stopWaiting = session.member.subscribe((member) => {
     if (member !== undefined) {
       stopWaiting();
-      commandSheet.openForEdit(link.id);
+      open(id);
     }
   });
+}
+
+if (link?.kind === "cmd") {
+  onceSignedIn(commandSheet.openForEdit, link.id);
+} else if (link?.kind === "entry") {
+  onceSignedIn(care.openEntry, link.id);
 }
 
 timeZone.keepFollowingDevice();

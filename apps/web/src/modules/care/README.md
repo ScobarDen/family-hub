@@ -4,7 +4,7 @@ A Pet's journal of Care Entries — vaccination, treatment, vet visit, weight, e
 
 ## Injected
 
-- `api` — `createCareApi(httpClient)`: a Pet's Care Entries, adding, correcting and deleting one, and the Pet Expenses of a time range summed by category on the server.
+- `api` — `createCareApi(httpClient)`: a Pet's Care Entries, one Care Entry by its id, adding, correcting and deleting one, and the Pet Expenses of a time range summed by category on the server.
 - `petId` — the Pet whose card is open, from the `pets` module.
 - `today`, `now`, `timeZone` — the viewer's date, time and zone: «this month» and «this year» are counted in it, and a new entry starts at the current minute.
 - `telegram` — `showPopup` from `common/telegram` for the delete confirmation.
@@ -12,6 +12,9 @@ A Pet's journal of Care Entries — vaccination, treatment, vet visit, weight, e
 - `preparePhoto` — `preparePhoto` from `common/photo`: reads when a picture was taken from its Exif, then shrinks it to 2560 px as a JPEG; over 10 MB it is refused.
 - `photoHint` — from `photo-storage`: why photos cannot be added now, shown in the form and the «Фото» block.
 - `onMakeAvatar` — makes a photo the open Pet's avatar; `app/main.tsx` hands it to the `pets` module.
+- `onOpenPet` — opens a Pet's card in the `pets` module, for an entry opened from outside it.
+
+`openEntry` opens a Care Entry named by a Due Date reminder's `entry_<id>` link or tapped in the Feed: it takes the entry from the journal if it is there, else asks for it by id (`GET /api/care-entries/:id`), so a journal not yet loaded or another Pet's card does not matter. It then opens the entry's Pet and its form, read-only for an archived Pet; an entry that is gone leaves the screen as it was. `followUp` finds its entry the same way.
 
 The open Due Dates come from the server (`GET /api/pets/:id/due-dates`): the newest entry of each vaccine, treatment target or vet visit holds the date, so the next one closes the last, and overdue is judged in the Member's own zone. `dueSources` hands them to the pet card's «Скоро», and `followUp` opens the next entry of the same kind and name.
 

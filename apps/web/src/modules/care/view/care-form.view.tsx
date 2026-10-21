@@ -18,9 +18,12 @@ import type { CareFormModel } from "../vm/care-form.vm.ts";
 type CareFormProps = {
   model: CareFormModel;
   photos: ReactNode;
+  isReadOnly: boolean;
   onCancel: () => void;
   onRemove: () => void;
 };
+
+type ActionsProps = Omit<CareFormProps, "photos">;
 
 type Fields = CareFormModel["form"]["fields"];
 
@@ -79,23 +82,19 @@ function kindFields(fields: Fields, kind: CareKind): ReactNode {
   return kind === "note" ? undefined : <MedicalFields fields={fields} kind={kind} />;
 }
 
-export const CareForm = reatomComponent(({ model, photos, onCancel, onRemove }: CareFormProps) => {
-  const { fields } = model.form;
+const Actions = reatomComponent(({ model, isReadOnly, onCancel, onRemove }: ActionsProps) => {
   const isSaving = model.isSaving();
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    model.save();
+  if (isReadOnly) {
+    return (
+      <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
+        Закрыть
+      </Button>
+    );
   }
 
   return (
-    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submit}>
-      <ChoiceField field={fields.kind} label="Что записать" choices={kindChoices} />
-      <TextField field={fields.occurredAt} id="care-time" label="Когда" type="datetime-local" />
-      {kindFields(fields, model.kind())}
-      <TextAreaField field={fields.note} id="care-note" label="Заметка" />
-      {photos}
-      <FieldError>{model.failure()}</FieldError>
+    <>
       <Button type="submit" size="lg" disabled={isSaving}>
         {isSaving ? "Сохраняем…" : "Сохранить"}
       </Button>
@@ -107,6 +106,31 @@ export const CareForm = reatomComponent(({ model, photos, onCancel, onRemove }: 
       <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
         Отмена
       </Button>
+    </>
+  );
+}, "CareFormActions");
+
+// An archived Pet's entry opens to read: the fieldset switches every input and chip off at once.
+export const CareForm = reatomComponent(({ photos, ...props }: CareFormProps) => {
+  const { model, isReadOnly } = props;
+  const { fields } = model.form;
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    model.save();
+  }
+
+  return (
+    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submit}>
+      <fieldset className="flex min-w-0 flex-col gap-4" disabled={isReadOnly}>
+        <ChoiceField field={fields.kind} label="Что записать" choices={kindChoices} />
+        <TextField field={fields.occurredAt} id="care-time" label="Когда" type="datetime-local" />
+        {kindFields(fields, model.kind())}
+        <TextAreaField field={fields.note} id="care-note" label="Заметка" />
+        {photos}
+      </fieldset>
+      <FieldError>{model.failure()}</FieldError>
+      <Actions {...props} />
     </form>
   );
 }, "CareForm");

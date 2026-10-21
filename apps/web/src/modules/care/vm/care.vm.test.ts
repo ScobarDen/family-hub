@@ -1,4 +1,4 @@
-import { context, noop } from "@reatom/core";
+import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { CareEntry, ExpenseSummary, Photo } from "@family-hub/contract";
@@ -44,6 +44,21 @@ const entries: CareEntry[] = [
   },
 ];
 
+const buickVaccine: CareEntry = {
+  id: "entry-7",
+  petId: "pet-2",
+  occurredAt: Date.parse("2025-10-02T15:00:00Z"),
+  note: null,
+  details: {
+    kind: "vaccination",
+    vaccine: "Нобивак DHPPi",
+    cost: { amount: 1800, category: "vet" },
+    dueDate: "2026-10-02",
+  },
+  author: "Ася",
+  photos: [],
+};
+
 const month: ExpenseSummary = {
   total: 6500,
   byCategory: [
@@ -64,6 +79,12 @@ const walk: Photo = {
   canDelete: true,
 };
 
+const answers: Partial<Record<string, () => Response>> = {
+  "POST /api/photos": () => Response.json(walk, { status: 201 }),
+  "GET /api/care-entries/entry-7": () => Response.json(buickVaccine),
+  "GET /api/pets/pet-2/care-entries": () => Response.json([buickVaccine]),
+};
+
 function fakeBackend() {
   const requests: Array<{ request: string; body: unknown }> = [];
 
@@ -81,8 +102,17 @@ function fakeBackend() {
       return Response.json({ status: "deleted" });
     }
 
-    if (request === "POST /api/photos") {
-      return Response.json(walk, { status: 201 });
+    const answer = answers[request];
+
+    if (answer !== undefined) {
+      return answer();
+    }
+
+    if (request.startsWith("GET /api/care-entries/")) {
+      return Response.json(
+        { code: "CARE_ENTRY_NOT_FOUND", message: "No such Care Entry in the Family" },
+        { status: 404 },
+      );
     }
 
     return request === "GET /api/pets/pet-1/care-entries"
@@ -103,14 +133,16 @@ function startCare(choices: string[] = []) {
   const savedDrafts: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const pending = [...choices];
+  const openedPet = atom<string | undefined>("pet-1", "test.openedPet");
+  const isArchived = atom(false, "test.isArchived");
   const model = reatomCare({
     api: createCareApi(client),
-    petId: () => "pet-1",
+    petId: () => openedPet(),
     today: () => "2026-10-11",
     now: () => "2026-10-11T18:30",
     timeZone: () => "Europe/Moscow",
     telegram: { showPopup: async () => pending.shift() },
-    isReadOnly: () => false,
+    isReadOnly: () => isArchived(),
     preparePhoto: async (file) => {
       if (file === tooLarge) {
         throw new PhotoTooLargeError();
@@ -122,6 +154,9 @@ function startCare(choices: string[] = []) {
     onMakeAvatar: (photoId) => {
       avatars.push(photoId);
     },
+    onOpenPet: (petId) => {
+      openedPet.set(petId);
+    },
     onDraftSaved: (draftId) => {
       savedDrafts.push(draftId);
     },
@@ -131,7 +166,7 @@ function startCare(choices: string[] = []) {
   model.month.subscribe(noop);
   model.weight.subscribe(noop);
 
-  return { model, backend, avatars, savedDrafts };
+  return { model, backend, avatars, savedDrafts, openedPet, isArchived };
 }
 
 type Model = ReturnType<typeof startCare>["model"];
@@ -350,5 +385,82 @@ describe("a Care Entry draft opened by «Изменить»", () => {
     expect(
       backend.requests.find(({ request }) => request === "POST /api/pets/pet-1/care-entries")?.body,
     ).toMatchObject({ details: { kind: "vaccination", vaccine: "Бешенство" }, photoIds: [] });
+  });
+});
+
+describe("a Care Entry opened from outside the card", () => {
+  test("opens its Pet and its form when nothing is open yet, as a Due Date reminder's link does", async () => {
+    const { model, openedPet } = startCare();
+
+    openedPet.set(undefined);
+    model.openEntry("entry-7");
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "form", isCreating: false });
+    });
+    expect(openedPet()).toBe("pet-2");
+    expect(model.form.form.fields.name()).toBe("Нобивак DHPPi");
+    expect(model.form.form.fields.dueDate()).toBe("2026-10-02");
+  });
+
+  test("opens an entry of another Pet than the open one and saves it in place", async () => {
+    const { model, backend, openedPet } = startCare();
+
+    await loaded(model);
+    model.openEntry("entry-7");
+    await vi.waitFor(() => {
+      expect(model.form.form.fields.name()).toBe("Нобивак DHPPi");
+    });
+
+    expect(openedPet()).toBe("pet-2");
+
+    model.form.save();
+    await vi.waitFor(() => {
+      expect(model.canGoBack()).toBe(false);
+    });
+    expect(backend.requests.map(({ request }) => request)).toContain(
+      "PUT /api/care-entries/entry-7",
+    );
+  });
+
+  test("opens an archived Pet's entry to read, without taking photos", async () => {
+    const { model, isArchived } = startCare();
+
+    isArchived.set(true);
+    model.openEntry("entry-7");
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "form", isCreating: false });
+    });
+    expect(model.isReadOnly()).toBe(true);
+    expect(model.attachments.canAdd()).toBe(false);
+  });
+
+  test("leaves the card as it is when the entry is gone", async () => {
+    const { model, backend, openedPet } = startCare();
+
+    await loaded(model);
+    model.openEntry("entry-gone");
+    await vi.waitFor(() => {
+      expect(backend.requests.map(({ request }) => request)).toContain(
+        "GET /api/care-entries/entry-gone",
+      );
+    });
+
+    expect(model.screen()).toEqual({ kind: "blocks" });
+    expect(openedPet()).toBe("pet-1");
+  });
+
+  test("follows up a Due Date before the Pet's journal has loaded", async () => {
+    const { model, openedPet } = startCare();
+
+    openedPet.set("pet-2");
+    model.followUp("entry-7");
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "form", isCreating: true });
+    });
+    expect(model.form.kind()).toBe("vaccination");
+    expect(model.form.form.fields.name()).toBe("Нобивак DHPPi");
   });
 });
