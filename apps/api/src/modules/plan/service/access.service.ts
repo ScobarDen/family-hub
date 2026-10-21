@@ -1,8 +1,8 @@
 import type { Membership } from "@/common/auth";
 
-import { toPlan } from "../plan.lib.ts";
 import type { PlanTree } from "../plan.repo.ts";
 import type { Assignment, PlanDependencies, PlanResult } from "../plan.types.ts";
+import { planOf } from "./plan-album.service.ts";
 
 export async function visibleTree(
   { plans }: PlanDependencies,
@@ -40,7 +40,7 @@ export async function currentPlan(
   const tree = await dependencies.plans.findTree(membership.family.id, planId);
 
   return tree
-    ? { status: "ok", plan: toPlan(tree, membership.member.id) }
+    ? { status: "ok", plan: await planOf(dependencies, membership, tree) }
     : { status: "not-found" };
 }
 

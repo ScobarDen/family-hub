@@ -117,7 +117,12 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     sources: createSourceRepo(db),
     ...shared,
   });
-  const plans = createPlanService({ plans: createPlanRepo(db), ...shared, schedule: reminders });
+  const plans = createPlanService({
+    plans: createPlanRepo(db),
+    ...shared,
+    schedule: reminders,
+    links,
+  });
   const careEntries = createCareEntryService({
     entries: createCareEntryRepo(db),
     clock,
@@ -133,7 +138,7 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     events: createEventService({ events: createEventRepo(db), clock, schedule: reminders }),
     pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders, links }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
-    feed: createFeedService({ feed: createFeedRepo(db), clock }),
+    feed: createFeedService({ feed: createFeedRepo(db), clock, links }),
     goals: createGoalService({ goals: createGoalRepo(db), clock }),
     photos: createPhotoService({
       photos: createPhotoRepo(db),

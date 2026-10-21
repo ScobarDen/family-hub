@@ -17,6 +17,7 @@ const ceiling: PlanChange = {
   assigneeId: null,
   visibility: "shared",
   petId: null,
+  albumId: null,
 };
 
 async function request(

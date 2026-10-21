@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { photo } from "./photo.ts";
 import { optionalText } from "./text.ts";
 
 export const visibility = z.enum(["shared", "private"]);
@@ -28,6 +29,7 @@ export const planChange = subplanChange.extend({
   note: optionalText(planNoteMaxLength),
   visibility,
   petId: z.string().nullable().default(null),
+  albumId: z.string().nullable().default(null),
 });
 
 export type PlanChange = z.infer<typeof planChange>;
@@ -53,9 +55,22 @@ export type Subplan = z.infer<typeof subplan>;
 
 export const planPet = z.object({ id: z.string(), name: z.string() });
 
+export const planAlbumPreview = 10;
+
+// A trip's Plan shows a strip of its Album and opens the Album itself.
+export const planAlbum = z.object({
+  id: z.string(),
+  title: z.string(),
+  photos: z.array(photo),
+  photoCount: z.number(),
+});
+
+export type PlanAlbum = z.infer<typeof planAlbum>;
+
 export const plan = subplan.extend({
   note: z.string().nullable(),
   pet: planPet.nullable(),
+  album: planAlbum.nullable(),
   visibility,
   isOwn: z.boolean(),
   subplans: z.array(subplan),

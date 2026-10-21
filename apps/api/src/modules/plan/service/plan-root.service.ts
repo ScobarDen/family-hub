@@ -2,10 +2,10 @@ import { uuidv7, type Plan, type PlanChange } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
 
-import { toPlan } from "../plan.lib.ts";
 import type { PlanDependencies, PlanRefusal, PlanResult } from "../plan.types.ts";
 import { currentPlan, isAssigneeAllowed, visibleTree } from "./access.service.ts";
 import { notifyAssignee } from "./assignment.service.ts";
+import { planOf } from "./plan-album.service.ts";
 
 function byDueDate(left: Plan, right: Plan): number {
   if (left.dueDate === right.dueDate) {
@@ -30,17 +30,28 @@ async function refusalOf(
 
   const isPetMissing =
     change.petId !== null && !(await dependencies.plans.hasPet(membership.family.id, change.petId));
+  const isAlbumMissing =
+    change.albumId !== null &&
+    (await dependencies.plans.albumOf({
+      familyId: membership.family.id,
+      albumId: change.albumId,
+    })) === undefined;
 
-  return isPetMissing ? "pet-not-found" : undefined;
+  if (isPetMissing) {
+    return "pet-not-found";
+  }
+
+  return isAlbumMissing ? "album-not-found" : undefined;
 }
 
 export async function list(
-  { plans }: PlanDependencies,
-  { family, member }: Membership,
+  dependencies: PlanDependencies,
+  membership: Membership,
 ): Promise<Plan[]> {
-  const trees = await plans.listVisible(family.id, member.id);
+  const trees = await dependencies.plans.listVisible(membership.family.id, membership.member.id);
+  const all = await Promise.all(trees.map(async (tree) => planOf(dependencies, membership, tree)));
 
-  return trees.map((tree) => toPlan(tree, member.id)).toSorted(byDueDate);
+  return all.toSorted(byDueDate);
 }
 
 export async function create(
@@ -70,6 +81,7 @@ export async function create(
     reminder: change.reminder,
     assigneeMemberId: change.assigneeId,
     petId: change.petId,
+    albumId: change.albumId,
     createdAt: now,
     createdBy: ownerId,
     updatedAt: now,
@@ -117,6 +129,7 @@ export async function update(
     assigneeMemberId: change.assigneeId,
     visibility: change.visibility,
     petId: change.petId,
+    albumId: change.albumId,
     updatedAt: dependencies.clock.now(),
   });
   await notifyAssignee(dependencies, membership, {

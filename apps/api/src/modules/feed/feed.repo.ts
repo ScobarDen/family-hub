@@ -1,13 +1,17 @@
-import { and, desc, eq, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 
 import {
+  albumPhotos,
+  albums,
   careEntries,
+  careEntryPhotos,
   events,
   familyMembers,
   goalMovements,
   goals,
   members,
   pets,
+  photos,
   plans,
   reminders,
   type Db,
@@ -30,6 +34,16 @@ export type FeedMovementRow = Pick<
   typeof goalMovements.$inferSelect,
   "id" | "goalId" | "kind" | "amount" | "createdAt"
 > & { memberName: string };
+export type FeedPhotoRow = typeof photos.$inferSelect;
+export type FeedEntryPhotoRow = { careEntryId: string; photo: FeedPhotoRow };
+export type FeedUploadRow = {
+  albumId: string;
+  albumTitle: string;
+  addedBy: string;
+  memberName: string;
+  addedAt: number;
+  photo: FeedPhotoRow;
+};
 export type FeedJoinRow = { memberId: string; memberName: string; createdAt: number };
 
 type Viewer = { familyId: string; memberId: string };
@@ -129,6 +143,45 @@ async function movementsOf(db: Db, familyId: string): Promise<FeedMovementRow[]>
     .all();
 }
 
+async function entryPhotosOf(
+  db: Db,
+  familyId: string,
+  entryIds: string[],
+): Promise<FeedEntryPhotoRow[]> {
+  if (entryIds.length === 0) {
+    return [];
+  }
+
+  return db
+    .select({ careEntryId: careEntryPhotos.careEntryId, photo: photos })
+    .from(careEntryPhotos)
+    .innerJoin(photos, eq(photos.id, careEntryPhotos.photoId))
+    .where(
+      and(eq(careEntryPhotos.familyId, familyId), inArray(careEntryPhotos.careEntryId, entryIds)),
+    )
+    .orderBy(asc(careEntryPhotos.position))
+    .all();
+}
+
+async function uploadsOf(db: Db, familyId: string): Promise<FeedUploadRow[]> {
+  return db
+    .select({
+      albumId: albumPhotos.albumId,
+      albumTitle: albums.title,
+      addedBy: albumPhotos.addedBy,
+      memberName: members.name,
+      addedAt: albumPhotos.addedAt,
+      photo: photos,
+    })
+    .from(albumPhotos)
+    .innerJoin(albums, eq(albums.id, albumPhotos.albumId))
+    .innerJoin(members, eq(members.id, albumPhotos.addedBy))
+    .innerJoin(photos, eq(photos.id, albumPhotos.photoId))
+    .where(eq(albumPhotos.familyId, familyId))
+    .orderBy(asc(albumPhotos.addedAt))
+    .all();
+}
+
 export function createFeedRepo(db: Db) {
   return {
     events: async (viewer: Viewer) =>
@@ -149,6 +202,9 @@ export function createFeedRepo(db: Db) {
       careBefore(db, query),
     joins: async (familyId: string) => joinsOf(db, familyId),
     goals: async (familyId: string) => goalsOf(db, familyId),
+    entryPhotosOf: async (familyId: string, entryIds: string[]) =>
+      entryPhotosOf(db, familyId, entryIds),
+    uploadsOf: async (familyId: string) => uploadsOf(db, familyId),
     movements: async (familyId: string) => movementsOf(db, familyId),
 
     async timeZoneOf(memberId: string): Promise<string | null> {

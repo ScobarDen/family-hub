@@ -41,6 +41,11 @@ const refusals = {
     message: "The Plan's Pet is not a Pet of the Family",
     status: httpStatus.badRequest,
   },
+  "album-not-found": {
+    code: "ALBUM_NOT_IN_FAMILY",
+    message: "The Plan's Album is not an Album of the Family",
+    status: httpStatus.badRequest,
+  },
   "visibility-one-way": {
     code: "VISIBILITY_ONE_WAY",
     message: "A Shared Plan cannot become Private",

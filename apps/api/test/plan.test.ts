@@ -20,6 +20,7 @@ const bedroom: PlanChange = {
   assigneeId: null,
   visibility: "shared",
   petId: null,
+  albumId: null,
 };
 
 async function call(
@@ -139,6 +140,7 @@ describe("a Plan", () => {
       title: "Ремонт в спальне",
       note: null,
       pet: null,
+      album: null,
       reminder: null,
       dueDate: "2026-11-30",
       assignee: { id: worker.asyaId, name: "Ася" },

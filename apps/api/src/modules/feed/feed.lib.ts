@@ -1,12 +1,15 @@
-import type {
-  CareDetails,
-  ExpenseCategory,
-  FeedActivity,
-  FeedUpcoming,
+import {
+  uploadBatchGapMs,
+  type CareDetails,
+  type ExpenseCategory,
+  type FeedActivity,
+  type FeedUpcoming,
+  type Photo,
 } from "@family-hub/contract";
 
 import type {
   FeedCareRow,
+  FeedUploadRow,
   FeedGoalRow,
   FeedJoinRow,
   FeedMovementRow,
@@ -110,7 +113,14 @@ export function planActivity(trees: PlanTree[]): FeedActivity[] {
   );
 }
 
-export function careActivity(rows: FeedCareRow[], petNames: Map<string, string>): FeedActivity[] {
+export type PhotoPreview = { photos: Photo[]; photoCount: number };
+
+const noPhotos: PhotoPreview = { photos: [], photoCount: 0 };
+
+export function careActivity(
+  rows: FeedCareRow[],
+  { petNames, previews }: { petNames: Map<string, string>; previews: Map<string, PhotoPreview> },
+): FeedActivity[] {
   return rows.map((row) => ({
     kind: "care",
     key: `care-${row.id}`,
@@ -119,6 +129,7 @@ export function careActivity(rows: FeedCareRow[], petNames: Map<string, string>)
     title: `${careTitleOf(row.details)} — ${petNames.get(row.petId) ?? ""}`,
     petId: row.petId,
     entryId: row.id,
+    ...(previews.get(row.id) ?? noPhotos),
   }));
 }
 
@@ -216,4 +227,43 @@ export function parseCursor(raw: string | undefined): Cursor | undefined {
   return raw === undefined || separator < 0 || !Number.isFinite(at)
     ? undefined
     : { at, key: raw.slice(separator + 1) };
+}
+
+export type UploadBatch = {
+  key: string;
+  albumId: string;
+  albumTitle: string;
+  memberName: string;
+  at: number;
+  photos: Array<FeedUploadRow["photo"]>;
+};
+
+// One Member's uploads to one Album make a batch while the pauses between them stay short.
+export function uploadBatchesOf(rows: FeedUploadRow[]): UploadBatch[] {
+  const batches: UploadBatch[] = [];
+  const open = new Map<string, UploadBatch>();
+
+  for (const row of rows.toSorted((left, right) => left.addedAt - right.addedAt)) {
+    const group = `${row.albumId}:${row.addedBy}`;
+    const batch = open.get(group);
+
+    if (batch !== undefined && row.addedAt - batch.at < uploadBatchGapMs) {
+      batch.at = row.addedAt;
+      batch.photos.push(row.photo);
+    } else {
+      const started: UploadBatch = {
+        key: `upload-${group}-${row.addedAt}`,
+        albumId: row.albumId,
+        albumTitle: row.albumTitle,
+        memberName: row.memberName,
+        at: row.addedAt,
+        photos: [row.photo],
+      };
+
+      open.set(group, started);
+      batches.push(started);
+    }
+  }
+
+  return batches;
 }

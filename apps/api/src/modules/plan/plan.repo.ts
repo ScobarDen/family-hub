@@ -1,7 +1,16 @@
 import { and, asc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
-import { familyMembers, members, pets, plans, type Db } from "@/common/db";
+import {
+  albumPhotos,
+  albums,
+  familyMembers,
+  members,
+  pets,
+  photos,
+  plans,
+  type Db,
+} from "@/common/db";
 
 export type PlanRow = typeof plans.$inferSelect & {
   assigneeName: string | null;
@@ -125,6 +134,36 @@ async function completeWithSubplans(
     );
 }
 
+export type PlanAlbumRow = {
+  id: string;
+  title: string;
+  photos: Array<typeof photos.$inferSelect>;
+};
+
+async function albumOf(
+  db: Db,
+  { familyId, albumId }: { familyId: string; albumId: string },
+): Promise<PlanAlbumRow | undefined> {
+  const album = await db
+    .select({ id: albums.id, title: albums.title })
+    .from(albums)
+    .where(and(eq(albums.familyId, familyId), eq(albums.id, albumId)))
+    .get();
+
+  if (!album) {
+    return undefined;
+  }
+
+  const rows = await db
+    .select({ photo: photos })
+    .from(albumPhotos)
+    .innerJoin(photos, eq(photos.id, albumPhotos.photoId))
+    .where(and(eq(albumPhotos.familyId, familyId), eq(albumPhotos.albumId, albumId)))
+    .all();
+
+  return { ...album, photos: rows.map(({ photo }) => photo) };
+}
+
 export function createPlanRepo(db: Db) {
   return {
     listVisible: async (familyId: string, memberId: string) => listVisible(db, familyId, memberId),
@@ -132,6 +171,7 @@ export function createPlanRepo(db: Db) {
 
     isInFamily: async (familyId: string, memberId: string) => isInFamily(db, familyId, memberId),
     hasPet: async (familyId: string, petId: string) => hasPet(db, familyId, petId),
+    albumOf: async (target: { familyId: string; albumId: string }) => albumOf(db, target),
 
     async parentOf(familyId: string, subplanId: string): Promise<string | undefined> {
       const row = await db

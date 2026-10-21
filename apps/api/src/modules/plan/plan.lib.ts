@@ -4,6 +4,7 @@ import {
   encodeDeepLink,
   type Completion,
   type Plan,
+  type PlanAlbum,
   type PlanMember,
   type Subplan,
 } from "@family-hub/contract";
@@ -29,11 +30,15 @@ function toSubplan(row: PlanRow): Subplan {
   };
 }
 
-export function toPlan({ root, subplans }: PlanTree, memberId: string): Plan {
+export function toPlan(
+  { root, subplans }: PlanTree,
+  { memberId, album }: { memberId: string; album: PlanAlbum | null },
+): Plan {
   return {
     ...toSubplan(root),
     note: root.note,
     pet: memberOf(root.petId, root.petName),
+    album,
     visibility: root.visibility ?? "shared",
     isOwn: root.ownerMemberId === memberId,
     subplans: subplans.map(toSubplan),

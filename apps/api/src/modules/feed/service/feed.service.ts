@@ -3,6 +3,7 @@ import { dateInZone, daysAfter } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 import type { Clock } from "@/common/clock";
+import type { PhotoLinks } from "@/common/photo-link";
 
 import {
   byDateAndTime,
@@ -15,6 +16,7 @@ import {
   visibleTrees,
 } from "../feed.lib.ts";
 import type { FeedRepo } from "../feed.repo.ts";
+import { carePreviews, uploadActivity } from "./photo-activity.service.ts";
 import {
   birthdayUpcoming,
   dueDeadlines,
@@ -24,7 +26,7 @@ import {
   type Window,
 } from "./upcoming.service.ts";
 
-export type FeedDependencies = { feed: FeedRepo; clock: Clock };
+export type FeedDependencies = { feed: FeedRepo; clock: Clock; links: PhotoLinks };
 
 // A Member whose zone the Mini App has not reported yet sees the Feed on UTC days.
 const fallbackTimeZone = "UTC";
@@ -65,10 +67,12 @@ async function ahead(
 }
 
 async function activityPage(
-  { feed, clock }: FeedDependencies,
-  { family, member }: Membership,
+  dependencies: FeedDependencies,
+  membership: Membership,
   before: string | undefined,
 ) {
+  const { feed, clock } = dependencies;
+  const { family, member } = membership;
   const cursor = parseCursor(before);
   const [care, pets, plans, joins, goals, movements] = await Promise.all([
     feed.careBefore({
@@ -83,10 +87,12 @@ async function activityPage(
     feed.movements(family.id),
   ]);
   const petNames = new Map(pets.map(({ id, name }) => [id, name]));
+  const previews = await carePreviews(dependencies, { membership, care });
 
   return pageOf(
     [
-      ...careActivity(care, petNames),
+      ...careActivity(care, { petNames, previews }),
+      ...(await uploadActivity(dependencies, membership)),
       ...planActivity(visibleTrees(plans, member.id)),
       ...goalActivity({ goals, movements }, member.id),
       ...joinActivity(joins),
