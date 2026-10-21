@@ -3,6 +3,8 @@ import type { InlineKeyboardMarkup } from "@grammyjs/types";
 import { previewOf, type FamilyNames } from "@family-hub/commands";
 import type { CommandDraft, CommandFailure } from "@family-hub/contract";
 
+import { withCandidate } from "./draft-kind.lib.ts";
+
 export const commandCallbackPrefix = "cd";
 
 const commandActions = ["create", "dismiss", "pick"] as const;
@@ -80,16 +82,12 @@ export function previewButtons(
   return { inline_keyboard: [canCreate ? [create, change, dismiss] : [change, dismiss]] };
 }
 
-// Picking a candidate settles one ambiguity: a Member joins the Recipients, a Pet becomes the one.
+// Picking a candidate settles the first ambiguity; the draft's kind says what the choice fills.
 export function picked(draft: CommandDraft, index: number): CommandDraft | undefined {
   const [ambiguity, ...rest] = draft.ambiguities;
   const chosenId = ambiguity?.candidateIds[index];
 
-  if (chosenId === undefined || draft.kind === "event") {
-    return undefined;
-  }
-
-  return draft.kind === "care_entry"
-    ? { ...draft, ambiguities: rest, petId: chosenId }
-    : { ...draft, ambiguities: rest, recipientIds: [...(draft.recipientIds ?? []), chosenId] };
+  return chosenId === undefined
+    ? undefined
+    : withCandidate({ ...draft, ambiguities: rest }, chosenId);
 }

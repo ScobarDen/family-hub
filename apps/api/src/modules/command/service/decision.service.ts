@@ -10,7 +10,7 @@ import { previewText } from "../command-preview.lib.ts";
 import { createdText, dismissedText, picked, previewButtons } from "../command.lib.ts";
 import type { CommandDraftRow } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
-import { createRecord, type Phrase } from "./creation.service.ts";
+import { createRecord, type Phrase } from "../draft-kind.lib.ts";
 import { editLinkOf, namesOf, speakerZoneOf } from "./draft.service.ts";
 
 export type Press = { row: CommandDraftRow; draft: CommandDraft; membership: Membership };

@@ -1,6 +1,7 @@
 import type {
   CareEntryDraftField,
   CommandDraft,
+  CommandKind,
   DraftAmbiguity,
   EventDraft,
   EventDraftField,
@@ -96,32 +97,42 @@ function eventDetailsOf(draft: EventDraft): string[] {
   ];
 }
 
-function titleOf(draft: CommandDraft): string {
-  if (draft.kind === "care_entry") {
-    return careTitleOf(draft.details);
-  }
+type KindPreview<Draft> = {
+  title(draft: Draft): string;
+  details(draft: Draft, names: FamilyNames): string[];
+  missing(draft: Draft): string[];
+  hint: string | undefined;
+};
 
-  return (draft.kind === "event" ? draft.title : draft.text) ?? "…";
-}
+type DraftOf<Kind extends CommandKind> = Extract<CommandDraft, { kind: Kind }>;
 
-function detailsOf(draft: CommandDraft, { members, pets }: FamilyNames): string[] {
-  if (draft.kind === "care_entry") {
-    return careDetailsOf(draft, pets);
-  }
+const kindPreviews: { [Kind in CommandKind]: KindPreview<DraftOf<Kind>> } = {
+  reminder: {
+    title: ({ text }) => text ?? "…",
+    details: (draft, { members }) => [
+      momentOf(draft),
+      repeatOf(draft),
+      recipientsOf(draft, members),
+    ],
+    missing: ({ missing }) => missing.map((field) => reminderFieldTitles[field]),
+    hint: undefined,
+  },
+  event: {
+    title: ({ title }) => title ?? "…",
+    details: eventDetailsOf,
+    missing: ({ missing }) => missing.map((field) => eventFieldTitles[field]),
+    hint: undefined,
+  },
+  care_entry: {
+    title: ({ details }) => careTitleOf(details),
+    details: (draft, { pets }) => careDetailsOf(draft, pets),
+    missing: ({ missing }) => missing.map((field) => careFieldTitles[field]),
+    hint: photoHint,
+  },
+};
 
-  return draft.kind === "event"
-    ? eventDetailsOf(draft)
-    : [momentOf(draft), repeatOf(draft), recipientsOf(draft, members)];
-}
-
-function missingTitlesOf(draft: CommandDraft): string[] {
-  if (draft.kind === "care_entry") {
-    return draft.missing.map((field) => careFieldTitles[field]);
-  }
-
-  return draft.kind === "event"
-    ? draft.missing.map((field) => eventFieldTitles[field])
-    : draft.missing.map((field) => reminderFieldTitles[field]);
+function kindPreviewOf<Kind extends CommandKind>(draft: DraftOf<Kind>): KindPreview<DraftOf<Kind>> {
+  return kindPreviews[draft.kind];
 }
 
 function questionTitleOf({ field, mention }: DraftAmbiguity): string {
@@ -153,15 +164,16 @@ function questionOf(draft: CommandDraft, names: FamilyNames): DraftPreview["ques
 }
 
 export function previewOf(draft: CommandDraft, names: FamilyNames): DraftPreview {
+  const kind = kindPreviewOf(draft);
   const question = questionOf(draft, names);
-  const missing = missingTitlesOf(draft);
+  const missing = kind.missing(draft);
 
   return {
-    title: titleOf(draft),
-    details: detailsOf(draft, names).filter((detail) => detail !== ""),
+    title: kind.title(draft),
+    details: kind.details(draft, names).filter((detail) => detail !== ""),
     missing: missing.length === 0 ? undefined : `Не хватает: ${missing.join(", ")}`,
     question,
-    hint: draft.kind === "care_entry" ? photoHint : undefined,
+    hint: kind.hint,
     canCreate: missing.length === 0 && question === undefined,
   };
 }
