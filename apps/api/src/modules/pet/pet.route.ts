@@ -2,6 +2,7 @@ import { sValidator } from "@hono/standard-validator";
 import { Hono, type Context } from "hono";
 
 import {
+  petAvatar,
   petDeletion,
   petMemoChange,
   petProfile,
@@ -42,6 +43,11 @@ const refusals = {
     message: "The typed name is not the Pet's name",
     status: httpStatus.badRequest,
   },
+  "photo-not-found": {
+    code: "PHOTO_NOT_FOUND",
+    message: "The avatar is one of the photos of the Pet's own Care Entries",
+    status: httpStatus.badRequest,
+  },
 } as const satisfies Record<PetRefusal, { code: ErrorCode; message: string; status: number }>;
 
 function refuse(context: Context<PetEnv>, refusal: PetRefusal) {
@@ -54,10 +60,9 @@ function reply(context: Context<PetEnv>, result: PetResult) {
   return result.status === "ok" ? context.json<Pet>(result.pet) : refuse(context, result.status);
 }
 
-function bodyOf<Schema extends typeof petProfile | typeof petMemoChange | typeof petDeletion>(
-  schema: Schema,
-  message: string,
-) {
+function bodyOf<
+  Schema extends typeof petProfile | typeof petMemoChange | typeof petDeletion | typeof petAvatar,
+>(schema: Schema, message: string) {
   return sValidator("json", schema, (result, context) =>
     result.success
       ? undefined
@@ -68,6 +73,7 @@ function bodyOf<Schema extends typeof petProfile | typeof petMemoChange | typeof
 const profileBody = bodyOf(petProfile, "A Pet needs a name and a species");
 const memoBody = bodyOf(petMemoChange, "The Pet Memo takes food, clinic and important notes");
 const deletionBody = bodyOf(petDeletion, "Deleting a Pet takes its name");
+const avatarBody = bodyOf(petAvatar, "The avatar takes a photo id or null");
 
 export const petRoute = new Hono<PetEnv>()
   .use("/api/pets", requireMember)
@@ -75,6 +81,17 @@ export const petRoute = new Hono<PetEnv>()
   .use("/api/pets/:id/memo", requireMember)
   .use("/api/pets/:id/archive", requireMember)
   .use("/api/pets/:id/unarchive", requireMember)
+  .use("/api/pets/:id/avatar", requireMember)
+  .put("/api/pets/:id/avatar", avatarBody, async (context) =>
+    reply(
+      context,
+      await context.var.pets.setAvatar(
+        context.var.membership,
+        context.req.param("id"),
+        context.req.valid("json").photoId,
+      ),
+    ),
+  )
   .get("/api/pets", async (context) =>
     context.json<PetList>(await context.var.pets.list(context.var.membership)),
   )

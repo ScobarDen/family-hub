@@ -4,4 +4,4 @@ export {
   createCareEntryService,
   type CareEntryService,
   type CareSchedule,
-} from "./care-entry.service.ts";
+} from "./service/care-entry.service.ts";

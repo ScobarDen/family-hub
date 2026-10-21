@@ -88,6 +88,7 @@ describe("adding a Pet", () => {
       ...buick,
       archivedAt: null,
       memo: { food: null, clinic: null, important: null, updatedAt: null, updatedBy: null },
+      avatar: null,
     });
     expect(await petsOf(worker, denis)).toEqual([created]);
   });

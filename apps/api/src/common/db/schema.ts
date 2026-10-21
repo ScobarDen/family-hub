@@ -137,6 +137,9 @@ export const pets = sqliteTable(
     memoUpdatedAt: integer("memo_updated_at"),
     memoUpdatedBy: text("memo_updated_by").references(() => members.id),
     archivedAt: integer("archived_at"),
+    avatarPhotoId: text("avatar_photo_id").references((): AnySQLiteColumn => photos.id, {
+      onDelete: "set null",
+    }),
     createdAt: integer("created_at").notNull(),
     createdBy: text("created_by")
       .notNull()
@@ -373,4 +376,42 @@ export const goalMovements = sqliteTable(
     updatedAt: integer("updated_at").notNull(),
   },
   (table) => [index("goal_movements_goal_id_idx").on(table.goalId)],
+);
+
+export type PhotoVariants = { thumb: string; medium: string; full: string };
+
+// A photo is the file_ids Telegram gave its variants; deleting it only forgets them (ADR 0002).
+export const photos = sqliteTable(
+  "photos",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    fileUniqueId: text("file_unique_id").notNull(),
+    variants: text("variants", { mode: "json" }).$type<PhotoVariants>().notNull(),
+    takenAt: integer("taken_at"),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+  },
+  (table) => [uniqueIndex("photos_family_file_idx").on(table.familyId, table.fileUniqueId)],
+);
+
+export const careEntryPhotos = sqliteTable(
+  "care_entry_photos",
+  {
+    careEntryId: text("care_entry_id")
+      .notNull()
+      .references(() => careEntries.id, { onDelete: "cascade" }),
+    photoId: text("photo_id")
+      .notNull()
+      .references(() => photos.id, { onDelete: "cascade" }),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.careEntryId, table.photoId] })],
 );

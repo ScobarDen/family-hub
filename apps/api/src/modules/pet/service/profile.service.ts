@@ -8,17 +8,22 @@ import type { PetDependencies, PetResult } from "../pet.types.ts";
 
 type Change<Values> = { petId: string; values: Values };
 
-export async function list({ pets }: PetDependencies, { family }: Membership): Promise<Pet[]> {
-  const rows = await pets.list(family.id);
+export async function petOf({ links }: PetDependencies, row: PetRow): Promise<Pet> {
+  return toPet(row, row.avatarPhotoId === null ? null : await links.urlsOf(row.avatarPhotoId));
+}
 
-  return rows.map(toPet);
+export async function list(dependencies: PetDependencies, { family }: Membership): Promise<Pet[]> {
+  const rows = await dependencies.pets.list(family.id);
+
+  return Promise.all(rows.map(async (row) => petOf(dependencies, row)));
 }
 
 export async function create(
-  { pets, clock, schedule }: PetDependencies,
+  dependencies: PetDependencies,
   { family, member }: Membership,
   profile: PetProfile,
 ): Promise<Pet> {
+  const { pets, clock, schedule } = dependencies;
   const now = clock.now();
   const id = uuidv7(now);
 
@@ -39,7 +44,7 @@ export async function create(
     throw new Error("The Pet just added is missing");
   }
 
-  return toPet(created);
+  return petOf(dependencies, created);
 }
 
 // An archived Pet is kept for its history and reads only.
@@ -57,8 +62,11 @@ async function editable(
   return row.archivedAt === null ? row : { status: "archived" };
 }
 
-function asResult(saved: PetRow | undefined): PetResult {
-  return saved ? { status: "ok", pet: toPet(saved) } : { status: "not-found" };
+export async function asResult(
+  dependencies: PetDependencies,
+  saved: PetRow | undefined,
+): Promise<PetResult> {
+  return saved ? { status: "ok", pet: await petOf(dependencies, saved) } : { status: "not-found" };
 }
 
 export async function saveProfile(
@@ -72,7 +80,8 @@ export async function saveProfile(
     return pet;
   }
 
-  const result = asResult(
+  const result = await asResult(
+    dependencies,
     await dependencies.pets.saveProfile({
       familyId: membership.family.id,
       petId,
@@ -99,6 +108,7 @@ export async function saveMemo(
   }
 
   return asResult(
+    dependencies,
     await dependencies.pets.saveMemo({
       familyId: membership.family.id,
       petId,
@@ -106,5 +116,27 @@ export async function saveMemo(
       memberId: membership.member.id,
       now: dependencies.clock.now(),
     }),
+  );
+}
+
+export async function setAvatar(
+  dependencies: PetDependencies,
+  membership: Membership,
+  { petId, photoId }: { petId: string; photoId: string | null },
+): Promise<PetResult> {
+  const pet = await editable(dependencies, membership, petId);
+  const target = { familyId: membership.family.id, petId };
+
+  if ("status" in pet) {
+    return pet;
+  }
+
+  if (photoId !== null && !(await dependencies.pets.hasPhoto({ ...target, photoId }))) {
+    return { status: "photo-not-found" };
+  }
+
+  return asResult(
+    dependencies,
+    await dependencies.pets.setAvatar({ ...target, photoId, now: dependencies.clock.now() }),
   );
 }

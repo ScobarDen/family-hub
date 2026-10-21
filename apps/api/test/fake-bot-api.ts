@@ -16,6 +16,7 @@ type FakeBotState = {
   blockedChats: Set<string>;
   pendingRateLimit: { retryAfterSeconds: number; method: BotMethod | undefined } | undefined;
   lastMessageId: number;
+  files: string[];
 };
 
 function rejectUndeliverable(state: FakeBotState, method: BotMethod, params: unknown): void {
@@ -37,6 +38,26 @@ function rejectUndeliverable(state: FakeBotState, method: BotMethod, params: unk
   }
 }
 
+// Telegram answers a photo with its sizes; the fake keeps one per variant the app stores.
+function photoMessage(state: FakeBotState, params: BotParams<"sendPhoto">): Message.PhotoMessage {
+  state.lastMessageId += 1;
+
+  const photo = params.photo as Blob;
+  const unique = `unique-${photo.size}`;
+
+  return {
+    message_id: state.lastMessageId,
+    date: 0,
+    chat: { id: Number(params.chat_id), type: "channel", title: "" },
+    photo: [320, 1280, 2560].map((side) => ({
+      file_id: `file-${side}-${state.lastMessageId}`,
+      file_unique_id: `${unique}-${side}`,
+      width: side,
+      height: (side * 3) / 4,
+    })),
+  };
+}
+
 function respond(state: FakeBotState, call: BotCall): unknown {
   if (call.method === "getMe") {
     return { id: 1, is_bot: true, first_name: "Family Hub", username: "family_hub_test_bot" };
@@ -44,6 +65,18 @@ function respond(state: FakeBotState, call: BotCall): unknown {
 
   if (call.method === "savePreparedInlineMessage") {
     return { id: `prepared-${state.calls.length}`, expiration_date: 0 };
+  }
+
+  if (call.method === "sendPhoto") {
+    return photoMessage(state, call.params);
+  }
+
+  if (call.method === "getFile") {
+    return {
+      file_id: call.params.file_id,
+      file_unique_id: "",
+      file_path: `photos/${call.params.file_id}.jpg`,
+    };
   }
 
   if (call.method !== "sendMessage") {
@@ -60,15 +93,27 @@ function respond(state: FakeBotState, call: BotCall): unknown {
   } satisfies Message.TextMessage;
 }
 
-export function createFakeBotApi() {
-  const state: FakeBotState = {
+async function fileOf(state: FakeBotState, filePath: string): Promise<Response> {
+  state.files.push(filePath);
+
+  return new Response(`jpeg:${filePath}`, { headers: { "content-type": "image/jpeg" } });
+}
+
+function emptyState(): FakeBotState {
+  return {
     calls: [],
     blockedChats: new Set(),
     pendingRateLimit: undefined,
     lastMessageId: 0,
+    files: [],
   };
+}
+
+export function createFakeBotApi() {
+  const state = emptyState();
 
   const api: BotApi = {
+    file: async (filePath: string) => fileOf(state, filePath),
     async call<Method extends BotMethod>(method: Method, params: BotParams<Method>) {
       rejectUndeliverable(state, method, params);
 
@@ -92,6 +137,8 @@ export function createFakeBotApi() {
     editedMessages: () => paramsOf("editMessageText"),
     answeredCallbacks: () => paramsOf("answerCallbackQuery"),
     preparedMessages: () => paramsOf("savePreparedInlineMessage"),
+    sentPhotos: () => paramsOf("sendPhoto"),
+    downloadedFiles: () => [...state.files],
     blockChat(chatId: ChatId) {
       state.blockedChats.add(String(chatId));
     },

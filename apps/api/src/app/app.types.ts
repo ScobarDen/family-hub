@@ -11,6 +11,7 @@ import type { GoalService } from "@/modules/goal";
 import type { InviteService } from "@/modules/invite";
 import type { MemberService } from "@/modules/member";
 import type { PetService } from "@/modules/pet";
+import type { PhotoService } from "@/modules/photo";
 import type { PhotoStorageService } from "@/modules/photo-storage";
 import type { PlanService } from "@/modules/plan";
 import type { ReminderService } from "@/modules/reminder";
@@ -25,6 +26,7 @@ export type AppServices = {
   families: FamilyService;
   feed: FeedService;
   goals: GoalService;
+  photos: PhotoService;
   familyRequests: FamilyRequestService;
   invites: InviteService;
   members: MemberService;

@@ -157,6 +157,7 @@ export {
   petLongTextMaxLength,
   petMemo,
   petDeleted,
+  petAvatar,
   petDeletion,
   petMemoChange,
   petNameMaxLength,
@@ -226,3 +227,15 @@ export {
   type MovementChange,
   type MovementKind,
 } from "./goal.ts";
+export {
+  careEntryPhotoMax,
+  photo,
+  photoDeleted,
+  photoMaxBytes,
+  photoMaxSide,
+  photoUrls,
+  photoVariant,
+  type Photo,
+  type PhotoUrls,
+  type PhotoVariant,
+} from "./photo.ts";

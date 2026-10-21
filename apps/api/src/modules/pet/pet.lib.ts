@@ -1,8 +1,8 @@
-import type { Pet } from "@family-hub/contract";
+import type { Pet, PhotoUrls } from "@family-hub/contract";
 
 import type { PetRow } from "./pet.repo.ts";
 
-export function toPet(row: PetRow): Pet {
+export function toPet(row: PetRow, avatar: PhotoUrls | null): Pet {
   return {
     id: row.id,
     name: row.name,
@@ -20,6 +20,7 @@ export function toPet(row: PetRow): Pet {
       updatedAt: row.memoUpdatedAt,
       updatedBy: row.memoUpdatedByName,
     },
+    avatar,
   };
 }
 

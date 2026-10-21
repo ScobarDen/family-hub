@@ -4,6 +4,7 @@ import type {
   DueDateItem,
   ExpenseCategory,
   ExpenseSummary,
+  Photo,
 } from "@family-hub/contract";
 
 import type { CareEntryRow } from "./care-entry.repo.ts";
@@ -59,7 +60,7 @@ export function columnsOf(details: CareDetails): PromotedColumns {
   };
 }
 
-export function toCareEntry(row: CareEntryRow): CareEntry {
+export function toCareEntry(row: CareEntryRow, photos: Photo[]): CareEntry {
   return {
     id: row.id,
     petId: row.petId,
@@ -67,6 +68,7 @@ export function toCareEntry(row: CareEntryRow): CareEntry {
     note: row.note,
     details: row.details,
     author: row.authorName,
+    photos,
   };
 }
 

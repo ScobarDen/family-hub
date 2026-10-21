@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { photoUrls } from "./photo.ts";
 import { optionalText } from "./text.ts";
 
 export const petSpecies = z.enum(["dog", "cat", "bird", "rodent", "fish", "reptile", "other"]);
@@ -45,7 +46,11 @@ export const pet = petProfile.extend({
   id: z.string(),
   archivedAt: z.number().nullable(),
   memo: petMemo,
+  avatar: photoUrls.nullable(),
 });
+
+// The avatar is one of the photos of the Pet's own Care Entries; null takes it away.
+export const petAvatar = z.object({ photoId: z.string().nullable() });
 
 export type Pet = z.infer<typeof pet>;
 

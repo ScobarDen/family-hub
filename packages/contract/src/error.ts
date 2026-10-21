@@ -33,6 +33,10 @@ export const errorCode = z.enum([
   "NOT_MOVEMENT_AUTHOR",
   "BALANCE_NEGATIVE",
   "CONTRIBUTOR_NOT_ALLOWED",
+  "PHOTO_STORAGE_UNAVAILABLE",
+  "PHOTO_TOO_LARGE",
+  "PHOTO_NOT_FOUND",
+  "NOT_PHOTO_UPLOADER",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

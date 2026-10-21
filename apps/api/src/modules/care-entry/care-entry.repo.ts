@@ -1,8 +1,12 @@
-import { and, desc, eq, gte, isNotNull, lt, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, type SQL } from "drizzle-orm";
 
-import { careEntries, members, pets, type Db } from "@/common/db";
+import { careEntries, careEntryPhotos, members, pets, photos, type Db } from "@/common/db";
 
 export type CareEntryRow = typeof careEntries.$inferSelect & { authorName: string | null };
+
+export type EntryPhotoRow = { careEntryId: string; photo: typeof photos.$inferSelect };
+
+type PhotoLinks = { familyId: string; entryId: string; photoIds: string[] };
 
 type ExpenseQuery = { familyId: string; petId: string; from: number; to: number };
 
@@ -71,6 +75,45 @@ async function expenses(db: Db, { familyId, petId, from, to }: ExpenseQuery) {
   );
 }
 
+async function photosOf(db: Db, familyId: string, entryIds: string[]): Promise<EntryPhotoRow[]> {
+  if (entryIds.length === 0) {
+    return [];
+  }
+
+  return db
+    .select({ careEntryId: careEntryPhotos.careEntryId, photo: photos })
+    .from(careEntryPhotos)
+    .innerJoin(photos, eq(photos.id, careEntryPhotos.photoId))
+    .where(
+      and(eq(careEntryPhotos.familyId, familyId), inArray(careEntryPhotos.careEntryId, entryIds)),
+    )
+    .orderBy(asc(careEntryPhotos.position))
+    .all();
+}
+
+async function knownPhotoIds(db: Db, familyId: string, photoIds: string[]): Promise<string[]> {
+  if (photoIds.length === 0) {
+    return [];
+  }
+
+  const rows = await db
+    .select({ id: photos.id })
+    .from(photos)
+    .where(and(eq(photos.familyId, familyId), inArray(photos.id, photoIds)))
+    .all();
+
+  return rows.map(({ id }) => id);
+}
+
+async function setPhotos(db: Db, { familyId, entryId, photoIds }: PhotoLinks): Promise<void> {
+  await db.batch([
+    db.delete(careEntryPhotos).where(eq(careEntryPhotos.careEntryId, entryId)),
+    ...photoIds.map((photoId, position) =>
+      db.insert(careEntryPhotos).values({ careEntryId: entryId, photoId, familyId, position }),
+    ),
+  ]);
+}
+
 export function createCareEntryRepo(db: Db) {
   return {
     list: async (familyId: string, petId: string) =>
@@ -80,6 +123,10 @@ export function createCareEntryRepo(db: Db) {
     dueCandidates: async (familyId: string, petId: string) => dueCandidates(db, familyId, petId),
     timeZoneOf: async (memberId: string) => timeZoneOf(db, memberId),
     expenses: async (query: ExpenseQuery) => expenses(db, query),
+    photosOf: async (familyId: string, entryIds: string[]) => photosOf(db, familyId, entryIds),
+    knownPhotoIds: async (familyId: string, photoIds: string[]) =>
+      knownPhotoIds(db, familyId, photoIds),
+    setPhotos: async (links: PhotoLinks) => setPhotos(db, links),
 
     async add(entry: typeof careEntries.$inferInsert): Promise<void> {
       await db.insert(careEntries).values(entry);

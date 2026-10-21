@@ -15,7 +15,7 @@ import {
 import { requireMember, type MemberEnv } from "@/common/auth";
 import { apiError, httpStatus } from "@/common/errors";
 
-import type { CareEntryService, CareRefusal } from "./care-entry.service.ts";
+import type { CareEntryService, CareRefusal } from "./service/care-entry.service.ts";
 
 export type CareEntryEnv = {
   Variables: MemberEnv["Variables"] & { careEntries: CareEntryService };
@@ -36,6 +36,11 @@ const refusals = {
     code: "PET_ARCHIVED",
     message: "An archived Pet's journal reads only",
     status: httpStatus.conflict,
+  },
+  "photo-not-found": {
+    code: "PHOTO_NOT_FOUND",
+    message: "Attach photos uploaded to the Family, at most five",
+    status: httpStatus.badRequest,
   },
 } as const satisfies Record<CareRefusal, { code: ErrorCode; message: string; status: number }>;
 

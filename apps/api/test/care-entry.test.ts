@@ -128,6 +128,7 @@ describe("the Care Entry journal", () => {
           dueDate: "2027-10-02",
         },
         author: "Денис",
+        photos: [],
       },
       expect.objectContaining({ details: { kind: "weight", weightKg: 12.4 }, author: "Ася" }),
     ]);

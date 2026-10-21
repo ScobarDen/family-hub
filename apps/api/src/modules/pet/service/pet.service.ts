@@ -4,7 +4,7 @@ import type { Membership } from "@/common/auth";
 
 import type { PetDependencies } from "../pet.types.ts";
 import { deletePet, setArchived } from "./archive.service.ts";
-import { create, list, saveMemo, saveProfile } from "./profile.service.ts";
+import { create, list, saveMemo, saveProfile, setAvatar } from "./profile.service.ts";
 
 export function createPetService(dependencies: PetDependencies) {
   return {
@@ -19,6 +19,8 @@ export function createPetService(dependencies: PetDependencies) {
       setArchived(dependencies, membership, { petId, isArchived: true }),
     unarchive: async (membership: Membership, petId: string) =>
       setArchived(dependencies, membership, { petId, isArchived: false }),
+    setAvatar: async (membership: Membership, petId: string, photoId: string | null) =>
+      setAvatar(dependencies, membership, { petId, photoId }),
     delete: async (membership: Membership, petId: string, petName: string) =>
       deletePet(dependencies, membership, { petId, petName }),
   };

@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { careEntryPhotoMax, photo } from "./photo.ts";
 import { optionalText } from "./text.ts";
 
 export const careKind = z.enum([
@@ -70,6 +71,7 @@ export const careEntryChange = z.object({
   occurredAt: z.number().int().positive(),
   note: optionalText(careNoteMaxLength),
   details: careDetails,
+  photoIds: z.array(z.string()).max(careEntryPhotoMax).default([]),
 });
 
 export type CareEntryChange = z.infer<typeof careEntryChange>;
@@ -81,6 +83,7 @@ export const careEntry = z.object({
   note: z.string().nullable(),
   details: careDetails,
   author: z.string().nullable(),
+  photos: z.array(photo),
 });
 
 export type CareEntry = z.infer<typeof careEntry>;
