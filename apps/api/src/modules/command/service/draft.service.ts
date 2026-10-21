@@ -8,14 +8,9 @@ import type { Membership } from "@/common/auth";
 import type { CommandSource } from "@/common/db";
 import { ignoringBotErrors } from "@/common/telegram";
 
-import {
-  editLink,
-  failureTexts,
-  heardText,
-  previewButtons,
-  previewText,
-  strangerText,
-} from "../command.lib.ts";
+import { previewText } from "../command-preview.lib.ts";
+import { editLink, failureTexts, heardText, previewButtons, strangerText } from "../command.lib.ts";
+import type { FamilyNames } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
 
 const dayMs = 86_400_000;
@@ -76,13 +71,20 @@ export async function editLinkOf({ bot }: CommandDependencies, draftId: string):
   return editLink(username, draftId);
 }
 
+export async function namesOf(
+  { drafts }: CommandDependencies,
+  familyId: string,
+): Promise<FamilyNames> {
+  return { members: await drafts.membersOf(familyId), pets: await drafts.petsOf(familyId) };
+}
+
 export async function outcomeOf(
   dependencies: CommandDependencies,
   { membership, text }: { membership: Membership; text: string },
 ): Promise<Outcome> {
   const timeZone = (await dependencies.drafts.timeZoneOf(membership.member.id)) ?? fallbackTimeZone;
   const today = dateInZone(dependencies.clock.now(), timeZone);
-  const members = await dependencies.drafts.membersOf(membership.family.id);
+  const { members, pets } = await namesOf(dependencies, membership.family.id);
 
   try {
     return await parseCommand(dependencies, {
@@ -93,6 +95,7 @@ export async function outcomeOf(
         timeZone,
         speaker: { id: membership.member.id, name: membership.member.name },
         members,
+        pets,
       },
     });
   } catch (error) {
@@ -155,13 +158,13 @@ export async function sendPreview(
     return;
   }
 
-  const people = await dependencies.drafts.membersOf(membership.family.id);
+  const names = await namesOf(dependencies, membership.family.id);
   const message = await dependencies.bot.call("sendMessage", {
     chat_id: chatId,
-    text: withHeard(previewText(outcome.draft, people), heard),
+    text: withHeard(previewText(outcome.draft, names), heard),
     reply_markup: previewButtons(
       { draft: outcome.draft, draftId, editLink: await editLinkOf(dependencies, draftId) },
-      people,
+      names,
     ),
   });
 

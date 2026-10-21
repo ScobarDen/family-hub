@@ -6,6 +6,7 @@ import {
   type CommandOutcome,
   type DraftCreated,
   type FamilyMember,
+  type Pet,
   type ReminderDraft,
 } from "@family-hub/contract";
 
@@ -39,12 +40,35 @@ const members: FamilyMember[] = [
 
 const heard = "напомни в пятницу в 19:00 оплатить интернет";
 
+const pets = [
+  buickPet("pet-1", "Бьюик"),
+  buickPet("pet-2", "Мурка"),
+  { ...buickPet("pet-3", "Рекс"), archivedAt: 1 },
+];
+
+function buickPet(id: string, name: string): Pet {
+  return {
+    id,
+    name,
+    species: "dog",
+    breed: null,
+    sex: null,
+    birthDate: null,
+    chipNumber: null,
+    notes: null,
+    archivedAt: null,
+    memo: { food: null, clinic: null, important: null, updatedAt: null, updatedBy: null },
+    avatar: null,
+  };
+}
+
 function fakeBackend(outcome: CommandOutcome) {
   const requests: string[] = [];
   let isRefusesCreate = false;
   const replies: Record<string, (body: unknown) => Response> = {
     "POST /api/commands/voice": () => Response.json(outcome),
     "GET /api/family/members": () => Response.json(members),
+    "GET /api/pets": () => Response.json(pets),
     "GET /api/commands/draft-1": () => Response.json(outcome),
     "POST /api/commands/draft-1/create": () =>
       isRefusesCreate
@@ -133,6 +157,7 @@ describe("the preview sheet", () => {
         details: ["пт 16 окт, 19:00", "каждый месяц", "Денис, Ася, Ася"],
         missing: undefined,
         question: undefined,
+        hint: undefined,
         canCreate: true,
       },
       error: undefined,
@@ -278,6 +303,57 @@ describe("the preview sheet", () => {
           text: "Груминг Бьюика",
           details: ["сб 17 окт, 12:00", "каждый месяц", "напомнить за час, за день", "только мне"],
           canCreate: true,
+        },
+      });
+    });
+  });
+
+  test("shows a Care Entry with its Pet, cost and Due Date, and asks which Pet in care", async () => {
+    const backend = fakeBackend({
+      status: "draft",
+      draftId: "draft-1",
+      heard: null,
+      draft: {
+        kind: "care_entry",
+        petId: null,
+        date: null,
+        time: null,
+        note: null,
+        details: {
+          kind: "vaccination",
+          vaccine: "Бешенство",
+          cost: { amount: 1800, category: "vet" },
+          dueDate: "2027-10-13",
+        },
+        missing: [],
+        ambiguities: [{ field: "pet", mention: "", candidateIds: ["pet-1", "pet-2"] }],
+      },
+    });
+    const model = reatomCommandSheet({
+      api: createCommandApi(
+        createHttpClient({ baseUrl: "https://api.test", fetch: backend.fetch }),
+      ),
+      onEdit: noop,
+      onCreated: noop,
+    });
+
+    model.send(new Blob(["voice"]));
+
+    await vi.waitFor(() => {
+      expect(model.sheet()).toMatchObject({
+        kind: "draft",
+        preview: {
+          text: "Прививка «Бешенство»",
+          details: ["сейчас", expect.stringMatching(/^1\s800\s₽$/u), "следующий срок ср 13 окт"],
+          question: {
+            title: "Для какого питомца запись?",
+            candidates: [
+              { index: 0, name: "Бьюик" },
+              { index: 1, name: "Мурка" },
+            ],
+          },
+          hint: "Фото можно приложить в «Изменить».",
+          canCreate: false,
         },
       });
     });

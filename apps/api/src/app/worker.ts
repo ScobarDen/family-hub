@@ -183,7 +183,11 @@ function commandServiceOf(
     db,
     shared,
     records,
-  }: { db: Db; shared: Shared; records: Pick<AppServices, "reminders" | "events"> },
+  }: {
+    db: Db;
+    shared: Shared;
+    records: Pick<AppServices, "reminders" | "events" | "careEntries">;
+  },
 ) {
   const perDay = Number(env.AI_COMMANDS_PER_FAMILY_DAY);
 
@@ -197,6 +201,7 @@ function commandServiceOf(
       Number.isFinite(perDay) && perDay > 0 ? perDay : defaultCommandsPerFamilyDay,
     reminders: records.reminders,
     events: records.events,
+    careEntries: records.careEntries,
   });
 }
 

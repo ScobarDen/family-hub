@@ -1,10 +1,13 @@
 import {
+  careEntryChange,
   eventChange,
   reminderChange,
+  type CareEntryDraft,
   type CommandDraft,
   type EventDraft,
   type ReminderDraft,
 } from "@family-hub/contract";
+import { occurrenceMoment, timeInZone } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 
@@ -53,12 +56,45 @@ async function eventOf(
   return result?.status === "ok" ? result.event?.id : undefined;
 }
 
+// No date is now; «вчера» alone keeps the time of day it was said at.
+function occurredAtOf(
+  { date, time }: CareEntryDraft,
+  { now, timeZone }: { now: number; timeZone: string },
+): number {
+  return date === null
+    ? now
+    : occurrenceMoment(date, { time: time ?? timeInZone(now, timeZone), timeZone });
+}
+
+// The Care Entry use case also derives the Due Date's key, so the entry closes the one before.
+async function careEntryOf(
+  { careEntries, clock }: CommandDependencies,
+  { membership, draft, timeZone }: Creating<CareEntryDraft>,
+): Promise<string | undefined> {
+  const change = careEntryChange.safeParse({
+    occurredAt: occurredAtOf(draft, { now: clock.now(), timeZone }),
+    note: draft.note,
+    details: draft.details,
+    photoIds: [],
+  });
+  const result =
+    change.success && draft.petId !== null
+      ? await careEntries.create(membership, draft.petId, change.data)
+      : undefined;
+
+  return result?.status === "ok" ? result.entry?.id : undefined;
+}
+
 // «Создать» goes through the same use case as the Mini App form of the draft's kind.
 export async function createRecord(
   dependencies: CommandDependencies,
   { membership, draft }: { membership: Membership; draft: CommandDraft },
 ): Promise<string | undefined> {
   const timeZone = (await dependencies.drafts.timeZoneOf(membership.member.id)) ?? fallbackTimeZone;
+
+  if (draft.kind === "care_entry") {
+    return careEntryOf(dependencies, { membership, draft, timeZone });
+  }
 
   return draft.kind === "event"
     ? eventOf(dependencies, { membership, draft, timeZone })

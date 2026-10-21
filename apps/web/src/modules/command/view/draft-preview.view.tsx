@@ -40,6 +40,9 @@ export function DraftPreviewBlock({
         <span className="text-sm text-muted-foreground">{preview.details.join(" · ")}</span>
       </div>
       {preview.missing !== undefined && <p className="text-sm">{preview.missing}</p>}
+      {preview.hint !== undefined && (
+        <p className="text-sm text-muted-foreground">{preview.hint}</p>
+      )}
       {questionOf(model, preview.question)}
       <div className="flex gap-2">
         {preview.canCreate && (

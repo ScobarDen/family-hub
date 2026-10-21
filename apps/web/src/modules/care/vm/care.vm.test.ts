@@ -100,6 +100,7 @@ const connectedStorage: string | undefined = undefined;
 function startCare(choices: string[] = []) {
   const backend = fakeBackend();
   const avatars: string[] = [];
+  const savedDrafts: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const pending = [...choices];
   const model = reatomCare({
@@ -121,13 +122,16 @@ function startCare(choices: string[] = []) {
     onMakeAvatar: (photoId) => {
       avatars.push(photoId);
     },
+    onDraftSaved: (draftId) => {
+      savedDrafts.push(draftId);
+    },
   });
 
   model.journal.subscribe(noop);
   model.month.subscribe(noop);
   model.weight.subscribe(noop);
 
-  return { model, backend, avatars };
+  return { model, backend, avatars, savedDrafts };
 }
 
 type Model = ReturnType<typeof startCare>["model"];
@@ -304,5 +308,47 @@ describe("a Care Entry's photos", () => {
 
     expect(avatars).toEqual(["photo-1"]);
     expect(backend.requests.map(({ request }) => request)).toContain("DELETE /api/photos/photo-1");
+  });
+});
+
+describe("a Care Entry draft opened by «Изменить»", () => {
+  test("fills the form from yesterday at the current time and settles the draft once saved", async () => {
+    const { model, backend, savedDrafts } = startCare();
+
+    await loaded(model);
+    model.editDraft({
+      draftId: "draft-3",
+      draft: {
+        kind: "care_entry",
+        petId: "pet-1",
+        date: "2026-10-10",
+        time: null,
+        note: null,
+        details: {
+          kind: "vaccination",
+          vaccine: "Бешенство",
+          cost: { amount: 1800, category: "vet" },
+          dueDate: "2027-10-10",
+        },
+        missing: [],
+        ambiguities: [],
+      },
+    });
+
+    expect(model.screen()).toEqual({ kind: "form", isCreating: true });
+    expect(model.form.kind()).toBe("vaccination");
+    expect(model.form.form.fields.occurredAt()).toBe("2026-10-10T18:30");
+    expect(model.form.form.fields.name()).toBe("Бешенство");
+    expect(model.form.form.fields.costAmount()).toBe("1800");
+    expect(model.form.form.fields.dueDate()).toBe("2027-10-10");
+
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(savedDrafts).toEqual(["draft-3"]);
+    });
+    expect(
+      backend.requests.find(({ request }) => request === "POST /api/pets/pet-1/care-entries")?.body,
+    ).toMatchObject({ details: { kind: "vaccination", vaccine: "Бешенство" }, photoIds: [] });
   });
 });

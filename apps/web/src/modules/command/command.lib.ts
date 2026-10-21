@@ -1,13 +1,23 @@
 import type {
+  CareDetails,
+  CareEntryDraft,
+  CareEntryDraftField,
   CommandDraft,
+  DraftAmbiguity,
   EventDraft,
   EventDraftField,
   EventReminderOffset,
+  ExpenseCategory,
   ReminderDraft,
   ReminderDraftField,
 } from "@family-hub/contract";
 
+import { formatRubles } from "@/common/format-money";
+
 export type Person = { id: string; name: string };
+
+// Who a draft may refer to: the Members by name and the Pets in care.
+export type FamilyNames = { members: Person[]; pets: Person[] };
 
 export type Candidate = { index: number; name: string };
 
@@ -17,6 +27,7 @@ export type DraftPreview = {
   details: string[];
   missing: string | undefined;
   question: { title: string; candidates: Candidate[] } | undefined;
+  hint: string | undefined;
   canCreate: boolean;
 };
 
@@ -31,6 +42,11 @@ const eventFieldTitles: Record<EventDraftField, string> = {
   date: "дату",
 };
 
+const careFieldTitles: Record<CareEntryDraftField, string> = {
+  pet: "питомца",
+  details: "что записать",
+};
+
 const offsetTitles: Record<EventReminderOffset, string> = {
   "at-start": "в момент начала",
   "15m": "за 15 минут",
@@ -39,7 +55,18 @@ const offsetTitles: Record<EventReminderOffset, string> = {
   "1w": "за неделю",
 };
 
+const categoryTitles: Record<ExpenseCategory, string> = {
+  food: "корм",
+  vet: "ветеринар",
+  medicine: "лекарства",
+  grooming: "груминг",
+  toys: "игрушки",
+  other: "другое",
+};
+
 const frequencyTitles = { weekly: "каждую неделю", monthly: "каждый месяц", yearly: "каждый год" };
+
+const photoHint = "Фото можно приложить в «Изменить».";
 
 const dayFormat = new Intl.DateTimeFormat("ru-RU", {
   weekday: "short",
@@ -65,31 +92,21 @@ function momentOf({ date, time }: { date: string | null; time: string | null }):
     .join(", ");
 }
 
-function recipientsOf(draft: ReminderDraft, people: Person[]): string {
+function repeatOf({ recurrence }: ReminderDraft | EventDraft): string {
+  return recurrence === null ? "" : frequencyTitles[recurrence.frequency];
+}
+
+function recipientsOf(draft: ReminderDraft, members: Person[]): string {
   if (draft.visibility === "private") {
     return "только мне";
   }
 
   const chosen =
     draft.recipientIds === null
-      ? people
-      : people.filter(({ id }) => draft.recipientIds?.includes(id) === true);
+      ? members
+      : members.filter(({ id }) => draft.recipientIds?.includes(id) === true);
 
   return chosen.map(({ name }) => name).join(", ");
-}
-
-function questionOf(draft: CommandDraft, people: Person[]): DraftPreview["question"] {
-  const ambiguity = draft.ambiguities[0];
-
-  return (
-    ambiguity && {
-      title: `Кого вы имели в виду под «${ambiguity.mention}»?`,
-      candidates: ambiguity.candidateIds.map((id, index) => ({
-        index,
-        name: people.find((person) => person.id === id)?.name ?? "…",
-      })),
-    }
-  );
 }
 
 // «сб 17 окт, 12:00 – 14:00», «сб 17 окт, весь день», «пн 1 дек – ср 3 дек».
@@ -115,7 +132,7 @@ function eventMomentOf(draft: EventDraft): string {
 function eventDetailsOf(draft: EventDraft): string[] {
   return [
     eventMomentOf(draft),
-    draft.recurrence === null ? "" : frequencyTitles[draft.recurrence.frequency],
+    repeatOf(draft),
     draft.reminderOffsets.length === 0
       ? ""
       : `напомнить ${draft.reminderOffsets.map((offset) => offsetTitles[offset]).join(", ")}`,
@@ -123,32 +140,118 @@ function eventDetailsOf(draft: EventDraft): string[] {
   ];
 }
 
-function reminderDetailsOf(draft: ReminderDraft, people: Person[]): string[] {
+function visitTitleOf(reason: string | null): string {
+  return reason === null ? "Визит к ветеринару" : `Визит к ветеринару: ${reason}`;
+}
+
+function careTitleOf(details: CareDetails | null): string {
+  if (details === null) {
+    return "Запись";
+  }
+
+  if (details.kind === "vaccination") {
+    return `Прививка «${details.vaccine}»`;
+  }
+
+  if (details.kind === "treatment") {
+    return `Обработка «${details.target}»`;
+  }
+
+  if (details.kind === "vet_visit") {
+    return visitTitleOf(details.reason);
+  }
+
+  if (details.kind === "weight") {
+    return `Вес ${String(details.weightKg).replace(".", ",")} кг`;
+  }
+
+  return details.kind === "expense"
+    ? `Трата ${formatRubles(details.amount)} · ${categoryTitles[details.category]}`
+    : "Заметка";
+}
+
+function careMedicalOf(details: CareDetails | null): string[] {
+  if (details === null || !("dueDate" in details)) {
+    return [];
+  }
+
   return [
-    momentOf(draft),
-    draft.recurrence === null ? "" : frequencyTitles[draft.recurrence.frequency],
-    recipientsOf(draft, people),
+    details.cost === null ? "" : formatRubles(details.cost.amount),
+    details.dueDate === null ? "" : `следующий срок ${dayOf(details.dueDate)}`,
   ];
 }
 
-function missingOf(draft: CommandDraft): string | undefined {
-  const titles =
-    draft.kind === "event"
-      ? draft.missing.map((field) => eventFieldTitles[field])
-      : draft.missing.map((field) => fieldTitles[field]);
-
-  return titles.length === 0 ? undefined : `Не хватает: ${titles.join(", ")}`;
+function careDetailsOf(draft: CareEntryDraft, pets: Person[]): string[] {
+  return [
+    pets.find(({ id }) => id === draft.petId)?.name ?? "",
+    draft.date === null ? "сейчас" : momentOf(draft),
+    ...careMedicalOf(draft.details),
+  ];
 }
 
-export function previewOf(draft: CommandDraft, people: Person[]): DraftPreview {
-  const question = questionOf(draft, people);
-  const details = draft.kind === "event" ? eventDetailsOf(draft) : reminderDetailsOf(draft, people);
+function detailsOf(draft: CommandDraft, { members, pets }: FamilyNames): string[] {
+  if (draft.kind === "care_entry") {
+    return careDetailsOf(draft, pets);
+  }
+
+  return draft.kind === "event"
+    ? eventDetailsOf(draft)
+    : [momentOf(draft), repeatOf(draft), recipientsOf(draft, members)];
+}
+
+function textOf(draft: CommandDraft): string {
+  if (draft.kind === "care_entry") {
+    return careTitleOf(draft.details);
+  }
+
+  return (draft.kind === "event" ? draft.title : draft.text) ?? "…";
+}
+
+function missingTitlesOf(draft: CommandDraft): string[] {
+  if (draft.kind === "care_entry") {
+    return draft.missing.map((field) => careFieldTitles[field]);
+  }
+
+  return draft.kind === "event"
+    ? draft.missing.map((field) => eventFieldTitles[field])
+    : draft.missing.map((field) => fieldTitles[field]);
+}
+
+function questionTitleOf({ field, mention }: DraftAmbiguity): string {
+  if (field === "recipients") {
+    return `Кого вы имели в виду под «${mention}»?`;
+  }
+
+  return mention === ""
+    ? "Для какого питомца запись?"
+    : `Какого питомца вы имели в виду под «${mention}»?`;
+}
+
+function questionOf(draft: CommandDraft, names: FamilyNames): DraftPreview["question"] {
+  const ambiguity = draft.ambiguities[0];
+  const people = ambiguity?.field === "pet" ? names.pets : names.members;
+
+  return (
+    ambiguity && {
+      title: questionTitleOf(ambiguity),
+      candidates: ambiguity.candidateIds.map((id, index) => ({
+        index,
+        name: people.find((person) => person.id === id)?.name ?? "…",
+      })),
+    }
+  );
+}
+
+export function previewOf(draft: CommandDraft, names: FamilyNames): DraftPreview {
+  const question = questionOf(draft, names);
+  const missing = missingTitlesOf(draft);
 
   return {
-    text: (draft.kind === "event" ? draft.title : draft.text) ?? "…",
-    details: details.filter((detail) => detail !== ""),
-    missing: missingOf(draft),
+    text: textOf(draft),
+    details: detailsOf(draft, names).filter((detail) => detail !== ""),
+    missing: missing.length === 0 ? undefined : `Не хватает: ${missing.join(", ")}`,
     question,
+    hint: draft.kind === "care_entry" ? photoHint : undefined,
     canCreate: draft.missing.length === 0 && question === undefined,
   };
 }

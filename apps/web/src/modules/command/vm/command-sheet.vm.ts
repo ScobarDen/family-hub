@@ -3,12 +3,12 @@ import { action, atom, computed, noop, withAsyncData, wrap, type Atom } from "@r
 import type { CommandDraft, CommandOutcome, DraftCreated } from "@family-hub/contract";
 
 import type { CommandApi } from "../command.api.ts";
-import { previewOf, type DraftPreview, type Person } from "../command.lib.ts";
+import { previewOf, type DraftPreview, type FamilyNames } from "../command.lib.ts";
 
 export type OpenedDraft = { draftId: string; draft: CommandDraft };
 
 type CommandSheetDependencies = {
-  api: Pick<CommandApi, "send" | "open" | "create" | "pick" | "dismiss" | "members">;
+  api: Pick<CommandApi, "send" | "open" | "create" | "pick" | "dismiss" | "members" | "pets">;
   // «Изменить» hands the draft to the module whose form creates that kind of record.
   onEdit: (opened: OpenedDraft) => void;
   onCreated: (created: DraftCreated) => void;
@@ -140,7 +140,7 @@ function reatomLeaving({ api, onEdit }: CommandSheetDependencies, phase: PhaseAt
   };
 }
 
-function sheetOf(current: Phase, people: Person[]): CommandSheet {
+function sheetOf(current: Phase, names: FamilyNames): CommandSheet {
   if (current.kind !== "outcome") {
     return current;
   }
@@ -151,7 +151,7 @@ function sheetOf(current: Phase, people: Person[]): CommandSheet {
     ? {
         kind: "draft",
         heard: outcome.heard,
-        preview: previewOf(outcome.draft, people),
+        preview: previewOf(outcome.draft, names),
         error: current.error,
       }
     : { kind: "failure", heard: outcome.heard, message: outcome.message };
@@ -159,13 +159,20 @@ function sheetOf(current: Phase, people: Person[]): CommandSheet {
 
 export function reatomCommandSheet(dependencies: CommandSheetDependencies) {
   const phase = atom<Phase>({ kind: "closed" }, "commandSheet.phase");
-  const members = computed(
-    async () => wrap(dependencies.api.members()),
-    "commandSheet.members",
-  ).extend(withAsyncData());
+  // Pets in care only, as the server offers them to the model.
+  const names = computed(async (): Promise<FamilyNames> => {
+    const [members, pets] = await wrap(
+      Promise.all([dependencies.api.members(), dependencies.api.pets()]),
+    );
+
+    return { members, pets: pets.filter(({ archivedAt }) => archivedAt === null) };
+  }, "commandSheet.names").extend(withAsyncData());
 
   return {
-    sheet: computed(() => sheetOf(phase(), members.data() ?? []), "commandSheet.sheet"),
+    sheet: computed(
+      () => sheetOf(phase(), names.data() ?? { members: [], pets: [] }),
+      "commandSheet.sheet",
+    ),
     ...reatomRequests(dependencies, phase),
     ...reatomDecisions(dependencies, phase),
     ...reatomLeaving(dependencies, phase),

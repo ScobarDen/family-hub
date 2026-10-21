@@ -286,6 +286,8 @@ export {
 } from "./recipe.ts";
 export {
   botChat,
+  careEntryDraft,
+  careEntryDraftField,
   commandAnswer,
   commandDraft,
   commandDraftLifetimeMs,
@@ -303,6 +305,8 @@ export {
   voiceMaxBytes,
   voiceMaxSeconds,
   type BotChat,
+  type CareEntryDraft,
+  type CareEntryDraftField,
   type CommandAnswer,
   type CommandDraft,
   type CommandFailure,

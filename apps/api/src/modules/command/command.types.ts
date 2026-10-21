@@ -1,5 +1,5 @@
 import type { CommandModel, CommandModels } from "@family-hub/commands";
-import type { EventChange, ReminderChange } from "@family-hub/contract";
+import type { CareEntryChange, EventChange, ReminderChange } from "@family-hub/contract";
 
 import type { Membership, MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
@@ -22,6 +22,14 @@ export type EventCreation = {
   ): Promise<{ status: string; event?: { id: string } }>;
 };
 
+export type CareEntryCreation = {
+  create(
+    membership: Membership,
+    petId: string,
+    change: CareEntryChange,
+  ): Promise<{ status: string; entry?: { id: string } }>;
+};
+
 export type CommandDependencies = {
   drafts: CommandRepo;
   memberships: MembershipRepo;
@@ -33,4 +41,5 @@ export type CommandDependencies = {
   commandsPerFamilyDay: number;
   reminders: ReminderCreation;
   events: EventCreation;
+  careEntries: CareEntryCreation;
 };

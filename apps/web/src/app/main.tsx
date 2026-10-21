@@ -168,6 +168,9 @@ const care = reatomCare({
   onMakeAvatar: (photoId) => {
     pets.makeAvatar(photoId);
   },
+  onDraftSaved: (draftId) => {
+    commandApi.markCreated(draftId).catch(noop);
+  },
 });
 const calendar = reatomCalendar({
   api: createCalendarApi(httpClient),
@@ -189,6 +192,18 @@ const calendar = reatomCalendar({
 });
 
 function editDraft({ draftId, draft }: OpenedDraft) {
+  if (draft.kind === "care_entry") {
+    navigation.openModule("pet");
+
+    // Without a chosen Pet the form has nowhere to write; the Member picks the Pet first.
+    if (draft.petId !== null) {
+      pets.open(draft.petId);
+      care.editDraft({ draftId, draft });
+    }
+
+    return;
+  }
+
   navigation.openModule("calendar");
 
   if (draft.kind === "event") {

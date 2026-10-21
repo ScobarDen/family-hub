@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { careDetails, careNoteMaxLength } from "./care-entry.ts";
 import {
   eventNoteMaxLength,
   eventReminderMaxCount,
@@ -26,9 +27,9 @@ export const reminderDraftField = z.enum(["text", "date", "time"]);
 
 export type ReminderDraftField = z.infer<typeof reminderDraftField>;
 
-// A name that matched several Members comes back with all of them for the Member to pick from.
+// A name that matched several Members or Pets comes back with all of them to pick from.
 export const draftAmbiguity = z.object({
-  field: z.literal("recipients"),
+  field: z.enum(["recipients", "pet"]),
   mention: z.string(),
   candidateIds: z.array(z.string()).min(ambiguousCandidates),
 });
@@ -73,11 +74,34 @@ export const eventDraft = z.object({
 
 export type EventDraft = z.infer<typeof eventDraft>;
 
-export const commandKind = z.enum(["reminder", "event"]);
+export const careEntryDraftField = z.enum(["pet", "details"]);
+
+export type CareEntryDraftField = z.infer<typeof careEntryDraftField>;
+
+// The fields of the Care Entry form. No date means now; a date alone («вчера») keeps the time of
+// day it was said at. Photos are added in the form only.
+export const careEntryDraft = z.object({
+  kind: z.literal("care_entry"),
+  petId: z.string().nullable(),
+  date: z.iso.date().nullable(),
+  time: time.nullable(),
+  note: z.string().trim().min(1).max(careNoteMaxLength).nullable(),
+  details: careDetails.nullable(),
+  missing: z.array(careEntryDraftField),
+  ambiguities: z.array(draftAmbiguity),
+});
+
+export type CareEntryDraft = z.infer<typeof careEntryDraft>;
+
+export const commandKind = z.enum(["reminder", "event", "care_entry"]);
 
 export type CommandKind = z.infer<typeof commandKind>;
 
-export const commandDraft = z.discriminatedUnion("kind", [reminderDraft, eventDraft]);
+export const commandDraft = z.discriminatedUnion("kind", [
+  reminderDraft,
+  eventDraft,
+  careEntryDraft,
+]);
 
 export type CommandDraft = z.infer<typeof commandDraft>;
 
@@ -85,6 +109,7 @@ export type CommandDraft = z.infer<typeof commandDraft>;
 export const commandAnswer = z.discriminatedUnion("outcome", [
   reminderDraft.omit({ kind: true }).extend({ outcome: z.literal("reminder") }),
   eventDraft.omit({ kind: true }).extend({ outcome: z.literal("event") }),
+  careEntryDraft.omit({ kind: true }).extend({ outcome: z.literal("care_entry") }),
   z.object({ outcome: z.literal("unsupported") }),
   z.object({ outcome: z.literal("unrecognized") }),
 ]);

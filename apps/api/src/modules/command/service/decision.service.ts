@@ -5,18 +5,12 @@ import type { CommandDraft, DraftCreated } from "@family-hub/contract";
 import type { Membership } from "@/common/auth";
 import { ignoringBotErrors } from "@/common/telegram";
 
-import {
-  createdText,
-  dismissedText,
-  failedText,
-  picked,
-  previewButtons,
-  previewText,
-} from "../command.lib.ts";
+import { previewText } from "../command-preview.lib.ts";
+import { createdText, dismissedText, failedText, picked, previewButtons } from "../command.lib.ts";
 import type { CommandDraftRow } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
 import { createRecord } from "./creation.service.ts";
-import { editLinkOf } from "./draft.service.ts";
+import { editLinkOf, namesOf } from "./draft.service.ts";
 
 export type Press = { row: CommandDraftRow; draft: CommandDraft; membership: Membership };
 
@@ -64,7 +58,7 @@ async function settleCreated(dependencies: CommandDependencies, { row, draft }: 
   });
   await edit(dependencies, {
     row,
-    text: `${createdText}: ${previewText(draft, await dependencies.drafts.membersOf(row.familyId))}`,
+    text: `${createdText}: ${previewText(draft, await namesOf(dependencies, row.familyId))}`,
   });
 }
 
@@ -106,15 +100,15 @@ export async function pick(
     return undefined;
   }
 
-  const people = await dependencies.drafts.membersOf(row.familyId);
+  const names = await namesOf(dependencies, row.familyId);
 
   await dependencies.drafts.update(row.id, { payload: next, updatedAt: dependencies.clock.now() });
   await edit(dependencies, {
     row,
-    text: previewText(next, people),
+    text: previewText(next, names),
     markup: previewButtons(
       { draft: next, draftId: row.id, editLink: await editLinkOf(dependencies, row.id) },
-      people,
+      names,
     ),
   });
 
