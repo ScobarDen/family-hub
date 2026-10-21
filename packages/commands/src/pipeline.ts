@@ -2,9 +2,12 @@ import { z } from "zod";
 
 import {
   commandAnswer,
+  eventDraftField,
   reminderDraftField,
   type CommandAnswer,
   type CommandDraft,
+  type EventDraft,
+  type EventDraftField,
   type ReminderDraft,
   type ReminderDraftField,
 } from "@family-hub/contract";
@@ -60,6 +63,29 @@ function jsonOf(raw: unknown): unknown {
   } catch {
     return undefined;
   }
+}
+
+function missingEventFields(draft: Omit<EventDraft, "kind">): EventDraftField[] {
+  return eventDraftField.options.filter(
+    (field) => draft[field] === null || draft.missing.includes(field),
+  );
+}
+
+// An Event refers to nobody, so it has nothing to be ambiguous about.
+function eventDraftOf(answer: Extract<CommandAnswer, { outcome: "event" }>): CommandResult {
+  const { outcome: _outcome, ...fields } = answer;
+  const hasEnd = fields.endDate !== null;
+
+  return {
+    status: "draft",
+    draft: {
+      kind: "event",
+      ...fields,
+      endTime: hasEnd && fields.time !== null ? fields.endTime : null,
+      ambiguities: [],
+      missing: missingEventFields(fields),
+    },
+  };
 }
 
 function missingOf(draft: Omit<ReminderDraft, "kind">): ReminderDraftField[] {
@@ -125,7 +151,11 @@ export async function parseCommand(
     return { status: "unrecognized" };
   }
 
-  return answer.data.outcome === "unsupported"
-    ? { status: "unsupported" }
+  if (answer.data.outcome === "unsupported") {
+    return { status: "unsupported" };
+  }
+
+  return answer.data.outcome === "event"
+    ? eventDraftOf(answer.data)
     : draftOf(answer.data, context);
 }

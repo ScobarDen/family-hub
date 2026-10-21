@@ -188,9 +188,14 @@ const calendar = reatomCalendar({
   },
 });
 
-function editDraft(opened: OpenedDraft) {
+function editDraft({ draftId, draft }: OpenedDraft) {
   navigation.openModule("calendar");
-  calendar.openReminderDraft(opened);
+
+  if (draft.kind === "event") {
+    calendar.openEventDraft({ draftId, draft });
+  } else {
+    calendar.openReminderDraft({ draftId, draft });
+  }
 }
 
 const commandSheet = reatomCommandSheet({ api: commandApi, onEdit: editDraft, onCreated: noop });

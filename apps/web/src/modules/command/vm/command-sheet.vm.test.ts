@@ -241,6 +241,48 @@ describe("the preview sheet", () => {
     });
   });
 
+  test("shows an Event draft with its time, repeat and Reminders", async () => {
+    const backend = fakeBackend({
+      status: "draft",
+      draftId: "draft-1",
+      heard: null,
+      draft: {
+        kind: "event",
+        title: "Груминг Бьюика",
+        note: null,
+        date: "2026-10-17",
+        time: "12:00",
+        endDate: null,
+        endTime: "14:00",
+        recurrence: { frequency: "monthly", until: null },
+        visibility: "private",
+        reminderOffsets: ["1h", "1d"],
+        missing: [],
+        ambiguities: [],
+      },
+    });
+    const model = reatomCommandSheet({
+      api: createCommandApi(
+        createHttpClient({ baseUrl: "https://api.test", fetch: backend.fetch }),
+      ),
+      onEdit: noop,
+      onCreated: noop,
+    });
+
+    model.send(new Blob(["voice"]));
+
+    await vi.waitFor(() => {
+      expect(model.sheet()).toMatchObject({
+        kind: "draft",
+        preview: {
+          text: "Груминг Бьюика",
+          details: ["сб 17 окт, 12:00", "каждый месяц", "напомнить за час, за день", "только мне"],
+          canCreate: true,
+        },
+      });
+    });
+  });
+
   test("says what went wrong with the bot's words", async () => {
     const backend = fakeBackend({ status: "unheard", heard: null, message: "Не расслышал" });
     const model = reatomCommandSheet({

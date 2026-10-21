@@ -9,6 +9,7 @@ import {
   lastTo,
   press,
   reminders,
+  request,
   say,
   speak,
   startWithFamily,
@@ -128,7 +129,7 @@ describe("a text command to the bot", () => {
     await say(worker, denis, "удали все напоминания");
 
     expect(lastTo(worker, denis)?.text).toBe(
-      "Такое голосом и текстом не умею — только создать напоминание.",
+      "Такое голосом и текстом не умею — только создать напоминание или событие.",
     );
   });
 
@@ -168,6 +169,71 @@ describe("a text command to the bot", () => {
 
     expect(worker.bot.answeredCallbacks().at(-1)?.text).toBe("Черновик устарел");
     expect(await reminders(worker, denis)).toEqual([]);
+  });
+});
+
+const grooming = {
+  outcome: "event",
+  title: "Груминг Бьюика",
+  note: null,
+  date: "2026-10-17",
+  time: "12:00",
+  endDate: null,
+  endTime: null,
+  recurrence: null,
+  visibility: "shared",
+  reminderOffsets: ["1d"],
+  missing: [],
+  ambiguities: [],
+};
+
+describe("an Event command to the bot", () => {
+  test("previews the Event and creates it with its Reminder on «Создать»", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.answer({ response: grooming });
+    await say(worker, denis, "в субботу в 12 груминг Бьюика, напомни за день");
+
+    const preview = lastTo(worker, denis);
+
+    expect(preview?.text).toBe("📅 Груминг Бьюика · сб 17 окт, 12:00 · напомнить за день");
+
+    await press(worker, denis, dataOf(preview, "Создать"));
+
+    const events = await request(worker, asya, { path: "/api/events" });
+
+    expect(await events.json()).toMatchObject([
+      {
+        title: "Груминг Бьюика",
+        start: { date: "2026-10-17", time: "12:00", timeZone: "Europe/Moscow" },
+        reminderOffsets: ["1d"],
+      },
+    ]);
+
+    worker.clock.set("2026-10-16T09:00:00Z");
+    await worker.tick();
+
+    expect(lastTo(worker, asya)?.text).toMatch(/Груминг Бьюика/u);
+  });
+
+  test("shows an all-day Event without a time", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.answer({
+      response: {
+        ...grooming,
+        title: "День рождения мамы",
+        date: "2027-03-03",
+        time: null,
+        recurrence: { frequency: "yearly", until: null },
+        reminderOffsets: [],
+      },
+    });
+    await say(worker, denis, "каждый год 3 марта день рождения мамы");
+
+    expect(lastTo(worker, denis)?.text).toBe(
+      "📅 День рождения мамы · ср 3 мар, весь день · каждый год",
+    );
   });
 });
 

@@ -461,6 +461,50 @@ describe("a Command Draft opened by «Изменить»", () => {
   });
 });
 
+describe("an Event draft opened by «Изменить»", () => {
+  test("fills the Event form, all day with its Reminders, and settles the draft once saved", async () => {
+    const { model, backend, savedDrafts } = startCalendar();
+
+    await loaded(model);
+    model.openEventDraft({
+      draftId: "draft-2",
+      draft: {
+        kind: "event",
+        title: "День рождения мамы",
+        note: null,
+        date: "2027-03-03",
+        time: null,
+        endDate: null,
+        endTime: null,
+        recurrence: { frequency: "yearly", until: null },
+        visibility: "shared",
+        reminderOffsets: ["1d"],
+        missing: [],
+        ambiguities: [],
+      },
+    });
+
+    expect(model.screen()).toEqual({ kind: "event-form" });
+    expect(model.form.isTimed()).toBe(false);
+    expect(model.form.form.fields.title()).toBe("День рождения мамы");
+    expect(model.form.offsets().filter(({ isChosen }) => isChosen)).toMatchObject([
+      { offset: "1d" },
+    ]);
+
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(savedDrafts).toEqual(["draft-2"]);
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({
+      title: "День рождения мамы",
+      start: { date: "2027-03-03", time: null, timeZone: null },
+      recurrence: { frequency: "yearly", until: null },
+      reminderOffsets: ["1d"],
+    });
+  });
+});
+
 describe("a Plan's deadline", () => {
   test("leads «Ближайшее» once missed, while done steps drop out", async () => {
     const { model } = startCalendar({ plans: [bedroom] });

@@ -16,7 +16,7 @@ import {
 } from "../calendar.lib.ts";
 import { reatomCalendarData, type CalendarData } from "../calendar.model.ts";
 import { reatomEventDetails, type OpenedOccurrence } from "./event-details.vm.ts";
-import { reatomEventForm } from "./event-form.vm.ts";
+import { reatomEventForm, type EventDraftOpening } from "./event-form.vm.ts";
 import { reatomReminderForm, type ReminderDraftOpening } from "./reminder-form.vm.ts";
 
 export type CalendarScreen =
@@ -160,11 +160,6 @@ function reatomMoves(dependencies: CalendarDependencies, navigation: Navigation,
       form.startCreating(selected());
       screen.set("event-form");
     }, "calendar.add"),
-    // «Изменить» on a Command Draft lands in the ordinary form, filled in from the draft.
-    openReminderDraft: action((opening: ReminderDraftOpening) => {
-      reminderForm.startFromDraft(opening);
-      screen.set("reminder-form");
-    }, "calendar.openReminderDraft"),
     addReminder: action(() => {
       reminderForm.startCreating(selected());
       screen.set("reminder-form");
@@ -172,6 +167,21 @@ function reatomMoves(dependencies: CalendarDependencies, navigation: Navigation,
     back: action(() => {
       screen.set(screen() === "event-form" && opened() !== undefined ? "event" : "calendar");
     }, "calendar.back"),
+  };
+}
+
+// «Изменить» on a Command Draft lands in the ordinary form, filled in from the draft.
+function reatomDraftOpenings({ screen, opened }: Navigation, { form, reminderForm }: Parts) {
+  return {
+    openReminderDraft: action((opening: ReminderDraftOpening) => {
+      reminderForm.startFromDraft(opening);
+      screen.set("reminder-form");
+    }, "calendar.openReminderDraft"),
+    openEventDraft: action((opening: EventDraftOpening) => {
+      opened.set(undefined);
+      form.startFromDraft(opening);
+      screen.set("event-form");
+    }, "calendar.openEventDraft"),
   };
 }
 
@@ -255,6 +265,7 @@ export function reatomCalendar(dependencies: CalendarDependencies) {
     details: parts.details,
     ...reatomViews({ dependencies, data }, navigation, reatomItems(data, dependencies)),
     ...reatomMoves(dependencies, navigation, parts),
+    ...reatomDraftOpenings(navigation, parts),
     edit: action(() => {
       editOpened(screen, parts);
     }, "calendar.edit"),

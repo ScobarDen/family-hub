@@ -1,5 +1,5 @@
 import type { CommandModel, CommandModels } from "@family-hub/commands";
-import type { ReminderChange } from "@family-hub/contract";
+import type { EventChange, ReminderChange } from "@family-hub/contract";
 
 import type { Membership, MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
@@ -15,6 +15,13 @@ export type ReminderCreation = {
   ): Promise<{ status: string; reminder?: { id: string } }>;
 };
 
+export type EventCreation = {
+  create(
+    membership: Membership,
+    change: EventChange,
+  ): Promise<{ status: string; event?: { id: string } }>;
+};
+
 export type CommandDependencies = {
   drafts: CommandRepo;
   memberships: MembershipRepo;
@@ -25,4 +32,5 @@ export type CommandDependencies = {
   speechModel: string;
   commandsPerFamilyDay: number;
   reminders: ReminderCreation;
+  events: EventCreation;
 };

@@ -1,6 +1,6 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import { reminderChange, type CommandDraft, type DraftCreated } from "@family-hub/contract";
+import type { CommandDraft, DraftCreated } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
 import { ignoringBotErrors } from "@/common/telegram";
@@ -15,11 +15,10 @@ import {
 } from "../command.lib.ts";
 import type { CommandDraftRow } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
+import { createRecord } from "./creation.service.ts";
 import { editLinkOf } from "./draft.service.ts";
 
 export type Press = { row: CommandDraftRow; draft: CommandDraft; membership: Membership };
-
-const fallbackTimeZone = "UTC";
 
 // A draft decided in the Mini App still has its preview in the bot chat, which follows suit.
 async function edit(
@@ -73,20 +72,10 @@ export async function create(
   dependencies: CommandDependencies,
   press: Press,
 ): Promise<DraftCreated | undefined> {
-  const { row, draft, membership } = press;
-  const timeZone = (await dependencies.drafts.timeZoneOf(membership.member.id)) ?? fallbackTimeZone;
-  const change = reminderChange.safeParse({
-    text: draft.text,
-    start: { date: draft.date, time: draft.time, timeZone },
-    recurrence: draft.recurrence,
-    visibility: draft.visibility,
-    recipientIds: draft.recipientIds,
-  });
-  const result = change.success
-    ? await dependencies.reminders.create(membership, change.data)
-    : { status: "invalid" };
+  const { row, draft } = press;
+  const id = await createRecord(dependencies, press);
 
-  if (result.status !== "ok" || result.reminder === undefined) {
+  if (id === undefined) {
     await dependencies.drafts.update(row.id, {
       status: "failed",
       updatedAt: dependencies.clock.now(),
@@ -98,7 +87,7 @@ export async function create(
 
   await settleCreated(dependencies, press);
 
-  return { kind: draft.kind, id: result.reminder.id };
+  return { kind: draft.kind, id };
 }
 
 // The Member fixed the draft in the ordinary form, which created the record itself.

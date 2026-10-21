@@ -124,6 +124,96 @@ describe("a command", () => {
   });
 });
 
+const grooming = {
+  outcome: "event",
+  title: "Груминг Бьюика",
+  note: null,
+  date: "2026-10-17",
+  time: "12:00",
+  endDate: null,
+  endTime: null,
+  recurrence: null,
+  visibility: "shared",
+  reminderOffsets: [],
+  missing: [],
+  ambiguities: [],
+};
+
+describe("an Event command", () => {
+  test("becomes an Event draft at a moment", async () => {
+    expect(await parsed({ response: grooming })).toEqual({
+      status: "draft",
+      draft: {
+        kind: "event",
+        title: "Груминг Бьюика",
+        note: null,
+        date: "2026-10-17",
+        time: "12:00",
+        endDate: null,
+        endTime: null,
+        recurrence: null,
+        visibility: "shared",
+        reminderOffsets: [],
+        missing: [],
+        ambiguities: [],
+      },
+    });
+  });
+
+  test("lasts all day without a time and repeats yearly, like a birthday", async () => {
+    const result = await parsed({
+      response: {
+        ...grooming,
+        title: "День рождения мамы",
+        date: "2027-03-03",
+        time: null,
+        endTime: "18:00",
+        recurrence: { frequency: "yearly", until: null },
+      },
+    });
+
+    expect(result).toMatchObject({
+      draft: {
+        kind: "event",
+        time: null,
+        endTime: null,
+        recurrence: { frequency: "yearly", until: null },
+      },
+    });
+  });
+
+  test("keeps the Reminder a day before that «напомни за день до» asks for", async () => {
+    const result = await parsed({ response: { ...grooming, reminderOffsets: ["1d"] } });
+
+    expect(result).toMatchObject({ draft: { kind: "event", reminderOffsets: ["1d"] } });
+  });
+
+  test("lists a missing date and has nothing to be ambiguous about", async () => {
+    const result = await parsed({
+      response: {
+        ...grooming,
+        date: null,
+        ambiguities: [{ field: "recipients", mention: "Ася", candidateIds: ["a", "b"] }],
+      },
+    });
+
+    expect(result).toMatchObject({ draft: { missing: ["date"], ambiguities: [] } });
+  });
+
+  test("is told apart from a Reminder by the model, whose answer decides the kind", async () => {
+    expect(await parsed({ response: internet })).toMatchObject({ draft: { kind: "reminder" } });
+    expect(await parsed({ response: grooming })).toMatchObject({ draft: { kind: "event" } });
+  });
+
+  test("is not understood with more than three Reminders", async () => {
+    const result = await parsed({
+      response: { ...grooming, reminderOffsets: ["at-start", "15m", "1h", "1d"] },
+    });
+
+    expect(result).toEqual({ status: "unrecognized" });
+  });
+});
+
 describe("the prompt", () => {
   test("carries today, the zone, the speaker and the Members", async () => {
     const { model, calls } = modelAnswering({ response: internet });

@@ -50,6 +50,8 @@ Run on the dev bot with the real `AI` binding (`wrangler dev --remote`), since t
 - [ ] A voice message over 30 seconds is turned down at once; a silent one answers «Не расслышал».
 - [ ] `wrangler tail` shows the voice command's CPU time within 10 ms.
 - [ ] «Изменить» in the bot's preview opens the Mini App on the Reminder form filled from the draft; saving it turns the preview into «✅ Создано».
+- [ ] «в субботу в 12 груминг Бьюика, напомни за день» answers «📅 Груминг Бьюика · сб <date>, 12:00 · напомнить за день»; «Создать» puts it in the calendar and the Reminder arrives a day before.
+- [ ] «каждый год 3 марта день рождения мамы» becomes an all-day yearly Event, while «напомни в пятницу оплатить интернет» stays a Reminder; «Изменить» on an Event opens the Event form.
 
 ### Microphone in the Mini App
 

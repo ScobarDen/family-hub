@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import {
   reminderChange,
-  type CommandDraft,
+  type ReminderDraft,
   type Reminder,
   type ReminderChange,
 } from "@family-hub/contract";
@@ -25,7 +25,7 @@ type ReminderFormDependencies = {
   onDraftSaved?: (draftId: string) => void;
 };
 
-export type ReminderDraftOpening = { draftId: string; draft: CommandDraft };
+export type ReminderDraftOpening = { draftId: string; draft: ReminderDraft };
 
 export type RecipientChoice = { id: string; name: string; isChosen: boolean };
 
@@ -77,7 +77,13 @@ function valuesOf({ text, start, recurrence, visibility }: Reminder): ReminderVa
   };
 }
 
-function valuesOfDraft({ text, date, time, recurrence, visibility }: CommandDraft): ReminderValues {
+function valuesOfDraft({
+  text,
+  date,
+  time,
+  recurrence,
+  visibility,
+}: ReminderDraft): ReminderValues {
   return {
     text: text ?? "",
     date: date ?? "",

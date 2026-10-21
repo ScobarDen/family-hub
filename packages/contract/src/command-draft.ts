@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-import { recurrence } from "./event.ts";
+import {
+  eventNoteMaxLength,
+  eventReminderMaxCount,
+  eventReminderOffset,
+  eventTitleMaxLength,
+  recurrence,
+} from "./event.ts";
 import { visibility } from "./plan.ts";
 import { reminderTextMaxLength } from "./reminder.ts";
 
@@ -44,13 +50,41 @@ export const reminderDraft = z.object({
 
 export type ReminderDraft = z.infer<typeof reminderDraft>;
 
-export const commandDraft = z.discriminatedUnion("kind", [reminderDraft]);
+export const eventDraftField = z.enum(["title", "date"]);
+
+export type EventDraftField = z.infer<typeof eventDraftField>;
+
+// The fields of the Event form: no time means all day, on a floating date; a time is a moment
+// in the speaker's zone. Its Reminders are offsets before the start, as in the form.
+export const eventDraft = z.object({
+  kind: z.literal("event"),
+  title: z.string().trim().min(1).max(eventTitleMaxLength).nullable(),
+  note: z.string().trim().min(1).max(eventNoteMaxLength).nullable(),
+  date: z.iso.date().nullable(),
+  time: time.nullable(),
+  endDate: z.iso.date().nullable(),
+  endTime: time.nullable(),
+  recurrence: recurrence.nullable(),
+  visibility,
+  reminderOffsets: z.array(eventReminderOffset).max(eventReminderMaxCount),
+  missing: z.array(eventDraftField),
+  ambiguities: z.array(draftAmbiguity),
+});
+
+export type EventDraft = z.infer<typeof eventDraft>;
+
+export const commandKind = z.enum(["reminder", "event"]);
+
+export type CommandKind = z.infer<typeof commandKind>;
+
+export const commandDraft = z.discriminatedUnion("kind", [reminderDraft, eventDraft]);
 
 export type CommandDraft = z.infer<typeof commandDraft>;
 
 // What the model answers: a draft, or that the phrase is beyond it, or a refused kind of command.
 export const commandAnswer = z.discriminatedUnion("outcome", [
   reminderDraft.omit({ kind: true }).extend({ outcome: z.literal("reminder") }),
+  eventDraft.omit({ kind: true }).extend({ outcome: z.literal("event") }),
   z.object({ outcome: z.literal("unsupported") }),
   z.object({ outcome: z.literal("unrecognized") }),
 ]);
@@ -85,7 +119,7 @@ export const draftPick = z.object({ index: z.int().nonnegative() });
 
 export type DraftPick = z.infer<typeof draftPick>;
 
-export const draftCreated = z.object({ kind: z.enum(["reminder"]), id: z.string() });
+export const draftCreated = z.object({ kind: commandKind, id: z.string() });
 
 export type DraftCreated = z.infer<typeof draftCreated>;
 
