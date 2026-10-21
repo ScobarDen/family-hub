@@ -289,6 +289,9 @@ importers:
       '@family-hub/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@family-hub/recurrence':
+        specifier: workspace:*
+        version: link:../../packages/recurrence
       '@hono/standard-validator':
         specifier: 'catalog:'
         version: 0.4.0(@standard-schema/spec@1.1.0)(hono@4.13.12)
@@ -332,6 +335,9 @@ importers:
       '@family-hub/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@family-hub/recurrence':
+        specifier: workspace:*
+        version: link:../../packages/recurrence
       '@reatom/core':
         specifier: 'catalog:'
         version: 1001.3.0
@@ -411,6 +417,10 @@ importers:
         version: 1.0.0(@types/node@24.19.1)(@vitest/ui@5.0.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
 
   packages/recurrence:
+    dependencies:
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.6
     devDependencies:
       typescript:
         specifier: 'catalog:'

@@ -28,6 +28,25 @@ export {
 } from "./care-entry.ts";
 export { apiError, errorCode, type ApiError, type ErrorCode } from "./error.ts";
 export {
+  calendarEvent,
+  calendarEventList,
+  eventChange,
+  eventDeleted,
+  eventEnd,
+  eventNoteMaxLength,
+  eventStart,
+  eventTitleMaxLength,
+  frequency,
+  occurrenceSkip,
+  recurrence,
+  type CalendarEvent,
+  type CalendarEventList,
+  type EventChange,
+  type EventDeleted,
+  type OccurrenceSkip,
+  type Recurrence,
+} from "./event.ts";
+export {
   familyDeleted,
   familyDeletion,
   familyLeft,

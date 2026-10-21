@@ -22,6 +22,8 @@ export const errorCode = z.enum([
   "NOT_PLAN_OWNER",
   "ASSIGNEE_NOT_ALLOWED",
   "VISIBILITY_ONE_WAY",
+  "EVENT_NOT_FOUND",
+  "NOT_EVENT_OWNER",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

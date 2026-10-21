@@ -1,6 +1,6 @@
 import { and, eq, exists, gt, isNull, sql } from "drizzle-orm";
 
-import { families, familyMembers, invites, members, plans, type Db } from "@/common/db";
+import { events, families, familyMembers, invites, members, plans, type Db } from "@/common/db";
 
 export type FamilyMemberRow = { id: string; name: string; telegramId: number };
 
@@ -27,6 +27,21 @@ function departFromPlans(db: Db, { familyId, memberId, now }: Departure) {
   ] as const;
 }
 
+function departFromEvents(db: Db, { familyId, memberId, now }: Departure) {
+  const ofFamily = eq(events.familyId, familyId);
+  const familyOwner = sql`(select ${families.ownerMemberId} from ${families} where ${families.id} = ${familyId})`;
+
+  return [
+    db
+      .delete(events)
+      .where(and(ofFamily, eq(events.ownerMemberId, memberId), eq(events.visibility, "private"))),
+    db
+      .update(events)
+      .set({ ownerMemberId: familyOwner, updatedAt: now })
+      .where(and(ofFamily, eq(events.ownerMemberId, memberId))),
+  ] as const;
+}
+
 // Private records of the one who leaves go, their Shared ones pass to the Family Owner and their
 // reminder_dispatch rows go: every table with owner_member_id or a Recipient joins this batch.
 async function depart(db: Db, departure: Departure): Promise<void> {
@@ -34,6 +49,7 @@ async function depart(db: Db, departure: Departure): Promise<void> {
 
   await db.batch([
     ...departFromPlans(db, departure),
+    ...departFromEvents(db, departure),
     db
       .delete(familyMembers)
       .where(and(eq(familyMembers.familyId, familyId), eq(familyMembers.memberId, memberId))),

@@ -204,3 +204,32 @@ export const careEntries = sqliteTable(
     index("care_entries_family_id_idx").on(table.familyId),
   ],
 );
+
+// A timed Event keeps its wall-clock time and the zone it was set in; an all-day one has neither.
+export const events = sqliteTable(
+  "events",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    ownerMemberId: text("owner_member_id").references(() => members.id),
+    visibility: text("visibility").$type<Visibility>().notNull(),
+    title: text("title").notNull(),
+    note: text("note"),
+    startDate: text("start_date").notNull(),
+    startTime: text("start_time"),
+    timeZone: text("time_zone"),
+    endDate: text("end_date"),
+    endTime: text("end_time"),
+    frequency: text("frequency").$type<"weekly" | "monthly" | "yearly">(),
+    until: text("until"),
+    skippedDates: text("skipped_dates", { mode: "json" }).$type<string[]>().notNull().default([]),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("events_family_id_idx").on(table.familyId)],
+);

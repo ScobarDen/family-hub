@@ -1,0 +1,259 @@
+import { context, noop } from "@reatom/core";
+import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+
+import { eventChange, type CalendarEvent, type DueDateItem, type Pet } from "@family-hub/contract";
+
+import { createHttpClient } from "@/common/http-client";
+
+import { createCalendarApi } from "../calendar.api.ts";
+import { reatomCalendar } from "./calendar.vm.ts";
+
+const call: CalendarEvent = {
+  id: "event-1",
+  title: "Созвон с родителями",
+  note: null,
+  start: { date: "2026-10-01", time: "19:00", timeZone: "Europe/Moscow" },
+  end: null,
+  recurrence: { frequency: "weekly", until: null },
+  visibility: "shared",
+  isOwn: true,
+  skippedDates: ["2026-10-08"],
+};
+
+const buick: Pet = {
+  id: "pet-1",
+  name: "Бьюик",
+  species: "dog",
+  breed: null,
+  sex: null,
+  birthDate: "2022-10-20",
+  chipNumber: null,
+  notes: null,
+  archivedAt: null,
+  memo: { food: null, clinic: null, important: null, updatedAt: null, updatedBy: null },
+};
+
+const rabies: DueDateItem = {
+  entryId: "entry-1",
+  kind: "vaccination",
+  title: "Бешенство",
+  dueDate: "2026-10-25",
+  isOverdue: false,
+};
+
+function fakeBackend() {
+  const requests: Array<{ request: string; body: unknown }> = [];
+  const replies: Record<string, (body: unknown) => unknown> = {
+    "GET /api/events": () => [call],
+    "GET /api/pets": () => [buick],
+    "GET /api/pets/pet-1/due-dates": () => [rabies],
+    "POST /api/events": (body) => ({
+      ...call,
+      ...eventChange.parse(body),
+      id: "event-2",
+      skippedDates: [],
+    }),
+    "POST /api/events/event-1/skip": () => ({
+      ...call,
+      skippedDates: ["2026-10-08", "2026-10-15"],
+    }),
+  };
+
+  async function fetch(url: URL, init: RequestInit): Promise<Response> {
+    const request = `${init.method ?? "GET"} ${url.pathname}`;
+    const body: unknown = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
+
+    requests.push({ request, body });
+
+    return Response.json(replies[request]?.(body) ?? {});
+  }
+
+  return { fetch, requests };
+}
+
+function startCalendar({ timeZone = "Europe/Moscow", choices = [] as string[] } = {}) {
+  const backend = fakeBackend();
+  const opened: string[] = [];
+  const pending = [...choices];
+  const model = reatomCalendar({
+    api: createCalendarApi(
+      createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch }),
+    ),
+    today: () => "2026-10-14",
+    timeZone: () => timeZone,
+    telegram: { showPopup: async () => pending.shift() },
+    onOpenPet: (petId) => {
+      opened.push(petId);
+    },
+  });
+
+  model.grid.subscribe(noop);
+  model.upcoming.subscribe(noop);
+  model.dayItems.subscribe(noop);
+
+  return { model, backend, opened };
+}
+
+type Model = ReturnType<typeof startCalendar>["model"];
+
+async function loaded(model: Model) {
+  await vi.waitFor(() => {
+    expect(model.upcoming().map(({ kind }) => kind)).toContain("due");
+  });
+}
+
+function upcomingAt(model: Model, index: number) {
+  const item = model.upcoming()[index];
+
+  if (item === undefined) {
+    throw new Error(`Nothing at ${index} in «Ближайшее»`);
+  }
+
+  return item;
+}
+
+beforeEach(() => {
+  context.reset();
+});
+
+describe("the month", () => {
+  test("starts on Monday, marks today and the days that have something", async () => {
+    const { model } = startCalendar();
+
+    await loaded(model);
+
+    const grid = model.grid();
+
+    expect(model.monthTitle()).toBe("Октябрь 2026");
+    expect(grid[0]?.date).toBe("2026-09-28");
+    expect(grid.find(({ isToday }) => isToday)?.date).toBe("2026-10-14");
+    expect(grid.filter(({ hasItems }) => hasItems).map(({ date }) => date)).toEqual([
+      "2026-10-01",
+      "2026-10-15",
+      "2026-10-20",
+      "2026-10-22",
+      "2026-10-25",
+      "2026-10-29",
+    ]);
+  });
+
+  test("moves to the next month", async () => {
+    const { model } = startCalendar();
+
+    model.nextMonth();
+
+    expect(model.monthTitle()).toBe("Ноябрь 2026");
+  });
+});
+
+describe("«Ближайшее»", () => {
+  test("lists Occurrences, the Pet's birthday and its Due Dates for a month ahead", async () => {
+    const { model } = startCalendar();
+
+    await loaded(model);
+
+    expect(model.upcoming().map(({ date, time, title }) => [date, time, title])).toEqual([
+      ["2026-10-15", "19:00", "Созвон с родителями"],
+      ["2026-10-20", undefined, "День рождения: Бьюик, 4 года"],
+      ["2026-10-22", "19:00", "Созвон с родителями"],
+      ["2026-10-25", undefined, "Прививка: Бьюик, Бешенство"],
+      ["2026-10-29", "19:00", "Созвон с родителями"],
+      ["2026-11-05", "19:00", "Созвон с родителями"],
+      ["2026-11-12", "19:00", "Созвон с родителями"],
+    ]);
+  });
+
+  test("shows a timed Event at the viewer's own time and day", async () => {
+    const { model } = startCalendar({ timeZone: "Asia/Vladivostok" });
+
+    await loaded(model);
+
+    expect(model.upcoming()[0]).toMatchObject({ date: "2026-10-16", time: "02:00" });
+  });
+
+  test("opens the Pet's card from a birthday or a Due Date", async () => {
+    const { model, opened } = startCalendar();
+
+    await loaded(model);
+    model.openItem(upcomingAt(model, 1));
+
+    expect(opened).toEqual(["pet-1"]);
+  });
+});
+
+describe("an Event", () => {
+  test("opens on the chosen Occurrence and skips just that one", async () => {
+    const { model, backend } = startCalendar({ choices: ["confirm"] });
+
+    await loaded(model);
+    model.openItem(upcomingAt(model, 0));
+
+    expect(model.screen()).toEqual({ kind: "event" });
+    expect(model.details.details()).toMatchObject({
+      when: "15 октября, 19:00",
+      repeats: "Каждую неделю",
+      isRecurring: true,
+    });
+
+    model.details.skipOccurrence();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "calendar" });
+    });
+    expect(backend.requests.at(-1)).toEqual({
+      request: "POST /api/events/event-1/skip",
+      body: { date: "2026-10-15" },
+    });
+  });
+
+  test("is added on the selected day, all day by default", async () => {
+    const { model, backend } = startCalendar();
+
+    await loaded(model);
+    model.select("2026-10-18");
+    model.add();
+    model.form.form.fields.title.set("Пикник");
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "event" });
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({
+      title: "Пикник",
+      start: { date: "2026-10-18", time: null, timeZone: null },
+      recurrence: null,
+    });
+  });
+
+  test("takes the creator's zone when it has a time", async () => {
+    const { model, backend } = startCalendar({ timeZone: "Asia/Tbilisi" });
+
+    await loaded(model);
+    model.add();
+    model.form.form.fields.title.set("Футбол");
+    model.form.form.fields.timing.set("timed");
+    model.form.form.fields.time.set("20:30");
+    model.form.form.fields.frequency.set("weekly");
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "event" });
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({
+      start: { date: "2026-10-14", time: "20:30", timeZone: "Asia/Tbilisi" },
+      recurrence: { frequency: "weekly", until: null },
+    });
+  });
+
+  test("keeps a Shared Event Shared when edited", async () => {
+    const { model } = startCalendar();
+
+    await loaded(model);
+    model.openItem(upcomingAt(model, 0));
+    model.edit();
+
+    expect(model.screen()).toEqual({ kind: "event-form" });
+    expect(model.form.canChooseVisibility()).toBe(false);
+    expect(model.form.form.fields.time()).toBe("19:00");
+  });
+});

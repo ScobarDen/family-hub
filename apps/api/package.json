@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@family-hub/contract": "workspace:*",
+    "@family-hub/recurrence": "workspace:*",
     "@hono/standard-validator": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",

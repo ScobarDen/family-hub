@@ -7,6 +7,7 @@ import { parseDeepLink } from "@family-hub/contract";
 import { deviceTimeZone, today } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { reatomTelegram } from "@/common/telegram";
+import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCareApi, reatomCare } from "@/modules/care";
 import { createFamilyApi, reatomFamily } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
@@ -113,6 +114,16 @@ const care = reatomCare({
   telegram,
   isReadOnly: () => pets.isOpenedPetArchived(),
 });
+const calendar = reatomCalendar({
+  api: createCalendarApi(httpClient),
+  today: () => today(deviceTimeZone()),
+  timeZone: deviceTimeZone,
+  telegram,
+  onOpenPet: (petId) => {
+    navigation.openModule("pet");
+    pets.open(petId);
+  },
+});
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,
   tabBar: tabBarModules.modules,
@@ -130,6 +141,7 @@ const navigation = reatomNavigation({
       },
     },
     plans,
+    calendar,
   },
 });
 const timeZone = reatomTimeZone({
@@ -176,6 +188,7 @@ const home = {
   plans,
   photoStorage,
   care,
+  calendar,
 };
 
 telegram.launch();
@@ -188,6 +201,8 @@ const link = parseDeepLink(telegram.startParam);
 
 if (link?.kind === "plan") {
   plans.open(link.id);
+} else if (link?.kind === "event") {
+  calendar.openEvent(link.id);
 } else if (link?.kind === "pet") {
   pets.open(link.id);
 }

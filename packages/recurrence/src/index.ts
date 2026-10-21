@@ -1,2 +1,10 @@
-// oxlint-disable-next-line unicorn/require-module-specifiers -- placeholder until the first recurrence function lands
-export {};
+export {
+  dateInZone,
+  nthOccurrence,
+  occurrenceDates,
+  occurrenceMoment,
+  timeInZone,
+  type DateRange,
+  type Frequency,
+  type Recurrence,
+} from "./occurrence.ts";

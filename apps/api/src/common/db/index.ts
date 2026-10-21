@@ -1,6 +1,7 @@
 export { createDb, type Db } from "./db.lib.ts";
 export {
   careEntries,
+  events,
   families,
   familyMembers,
   familyRequests,
