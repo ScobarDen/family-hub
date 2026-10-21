@@ -1,7 +1,13 @@
 import { action, atom, computed, noop, reatomForm, wrap, type Atom } from "@reatom/core";
 import { z } from "zod";
 
-import { careEntryChange, careKind, type CareEntry, type CareKind } from "@family-hub/contract";
+import {
+  careEntryChange,
+  careKind,
+  type CareEntry,
+  type CareEntryDraft,
+  type CareKind,
+} from "@family-hub/contract";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
 import type { PhotoAttachmentsModel } from "@/common/photo-attachments";
@@ -12,6 +18,7 @@ import {
   detailsOf,
   emptyEntry,
   valuesOf,
+  valuesOfDraft,
   type EntryValues,
 } from "./care-form-values.vm.ts";
 
@@ -22,7 +29,11 @@ type CareFormDependencies = {
   timeZone: () => string;
   photos: PhotoAttachmentsModel;
   onSaved: () => void;
+  // An entry saved from a Command Draft settles that draft.
+  onDraftSaved?: (draftId: string) => void;
 };
+
+export type CareEntryDraftOpening = { draftId: string; draft: CareEntryDraft };
 
 const fieldOfIssue: Record<string, keyof EntryValues> = {
   vaccine: "name",
@@ -73,13 +84,17 @@ const schema = fields.superRefine((values, issues) => {
 
 type EntryForm = ReturnType<typeof reatomForm<EntryValues>>;
 
-function reatomStarts(
-  dependencies: CareFormDependencies,
-  { form, editedId }: { form: EntryForm; editedId: Atom<string | undefined> },
-) {
+type Editing = {
+  form: EntryForm;
+  editedId: Atom<string | undefined>;
+  fromDraft: Atom<string | undefined>;
+};
+
+function reatomStarts(dependencies: CareFormDependencies, { form, editedId, fromDraft }: Editing) {
   return {
     startCreating: action((kind: CareKind) => {
       editedId.set(undefined);
+      fromDraft.set(undefined);
       dependencies.photos.reset([]);
       fillForm(form, { ...emptyEntry, kind, occurredAt: dependencies.now() });
     }, "care.form.startCreating"),
@@ -88,19 +103,41 @@ function reatomStarts(
       const { kind, name } = valuesOf(entry, dependencies.timeZone());
 
       editedId.set(undefined);
+      fromDraft.set(undefined);
       dependencies.photos.reset([]);
       fillForm(form, { ...emptyEntry, kind, name, occurredAt: dependencies.now() });
     }, "care.form.startFollowUp"),
+    // Photos never come by voice; the form is where they are added.
+    startFromDraft: action(({ draftId, draft }: CareEntryDraftOpening) => {
+      editedId.set(undefined);
+      fromDraft.set(draftId);
+      dependencies.photos.reset([]);
+      fillForm(form, valuesOfDraft(draft, dependencies.now()));
+    }, "care.form.startFromDraft"),
     startEditing: action((entry: CareEntry) => {
       editedId.set(entry.id);
+      fromDraft.set(undefined);
       dependencies.photos.reset(entry.photos);
       fillForm(form, valuesOf(entry, dependencies.timeZone()));
     }, "care.form.startEditing"),
   };
 }
 
+function settleDraft(
+  { onDraftSaved }: CareFormDependencies,
+  fromDraft: Atom<string | undefined>,
+): void {
+  const draftId = fromDraft();
+
+  if (draftId !== undefined) {
+    fromDraft.set(undefined);
+    onDraftSaved?.(draftId);
+  }
+}
+
 export function reatomCareForm(dependencies: CareFormDependencies) {
   const editedId = atom<string | undefined>(undefined, "care.form.editedId");
+  const fromDraft = atom<string | undefined>(undefined, "care.form.fromDraft");
   const form = reatomForm(emptyEntry, {
     name: "care.form",
     schema,
@@ -116,6 +153,7 @@ export function reatomCareForm(dependencies: CareFormDependencies) {
         await wrap(dependencies.api.update(entryId, change));
       } else if (petId !== undefined) {
         await wrap(dependencies.api.create(petId, change));
+        settleDraft(dependencies, fromDraft);
       }
 
       dependencies.onSaved();
@@ -135,7 +173,7 @@ export function reatomCareForm(dependencies: CareFormDependencies) {
       name: "care.form.failure",
     }),
 
-    ...reatomStarts(dependencies, { form, editedId }),
+    ...reatomStarts(dependencies, { form, editedId, fromDraft }),
 
     save: action(() => {
       form.submit().catch(noop);

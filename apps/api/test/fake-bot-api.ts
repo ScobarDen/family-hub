@@ -72,10 +72,12 @@ function respond(state: FakeBotState, call: BotCall): unknown {
   }
 
   if (call.method === "getFile") {
+    const id = call.params.file_id;
+
     return {
-      file_id: call.params.file_id,
+      file_id: id,
       file_unique_id: "",
-      file_path: `photos/${call.params.file_id}.jpg`,
+      file_path: id.startsWith("voice") ? `voice/${id}.oga` : `photos/${id}.jpg`,
     };
   }
 
@@ -96,7 +98,9 @@ function respond(state: FakeBotState, call: BotCall): unknown {
 async function fileOf(state: FakeBotState, filePath: string): Promise<Response> {
   state.files.push(filePath);
 
-  return new Response(`jpeg:${filePath}`, { headers: { "content-type": "image/jpeg" } });
+  return filePath.startsWith("voice/")
+    ? new Response(`ogg:${filePath}`, { headers: { "content-type": "audio/ogg" } })
+    : new Response(`jpeg:${filePath}`, { headers: { "content-type": "image/jpeg" } });
 }
 
 function emptyState(): FakeBotState {

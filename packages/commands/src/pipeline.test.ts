@@ -14,6 +14,7 @@ const context: CommandContext = {
     { id: "member-asya", name: "Ася" },
     { id: "member-asya-mom", name: "Ася (мама)" },
   ],
+  pets: [{ id: "pet-buick", name: "Бьюик", species: "dog" }],
 };
 
 const models = { primary: "primary-model", fallback: "fallback-model" };
@@ -53,6 +54,12 @@ async function parsed(...answers: unknown[]) {
   const { model } = modelAnswering(...answers);
 
   return parseCommand({ model, models }, { text: "напомни", context });
+}
+
+async function parsedWith(pets: CommandContext["pets"], answer: unknown) {
+  const { model } = modelAnswering(answer);
+
+  return parseCommand({ model, models }, { text: "Бьюик", context: { ...context, pets } });
 }
 
 describe("a command", () => {
@@ -124,6 +131,207 @@ describe("a command", () => {
   });
 });
 
+const grooming = {
+  outcome: "event",
+  title: "Груминг Бьюика",
+  note: null,
+  date: "2026-10-17",
+  time: "12:00",
+  endDate: null,
+  endTime: null,
+  recurrence: null,
+  visibility: "shared",
+  reminderOffsets: [],
+  missing: [],
+  ambiguities: [],
+};
+
+describe("an Event command", () => {
+  test("becomes an Event draft at a moment", async () => {
+    expect(await parsed({ response: grooming })).toEqual({
+      status: "draft",
+      draft: {
+        kind: "event",
+        title: "Груминг Бьюика",
+        note: null,
+        date: "2026-10-17",
+        time: "12:00",
+        endDate: null,
+        endTime: null,
+        recurrence: null,
+        visibility: "shared",
+        reminderOffsets: [],
+        missing: [],
+        ambiguities: [],
+      },
+    });
+  });
+
+  test("lasts all day without a time and repeats yearly, like a birthday", async () => {
+    const result = await parsed({
+      response: {
+        ...grooming,
+        title: "День рождения мамы",
+        date: "2027-03-03",
+        time: null,
+        endTime: "18:00",
+        recurrence: { frequency: "yearly", until: null },
+      },
+    });
+
+    expect(result).toMatchObject({
+      draft: {
+        kind: "event",
+        time: null,
+        endTime: null,
+        recurrence: { frequency: "yearly", until: null },
+      },
+    });
+  });
+
+  test("keeps the Reminder a day before that «напомни за день до» asks for", async () => {
+    const result = await parsed({ response: { ...grooming, reminderOffsets: ["1d"] } });
+
+    expect(result).toMatchObject({ draft: { kind: "event", reminderOffsets: ["1d"] } });
+  });
+
+  test("lists a missing date and has nothing to be ambiguous about", async () => {
+    const result = await parsed({
+      response: {
+        ...grooming,
+        date: null,
+        ambiguities: [{ field: "recipients", mention: "Ася", candidateIds: ["a", "b"] }],
+      },
+    });
+
+    expect(result).toMatchObject({ draft: { missing: ["date"], ambiguities: [] } });
+  });
+
+  test("is told apart from a Reminder by the model, whose answer decides the kind", async () => {
+    expect(await parsed({ response: internet })).toMatchObject({ draft: { kind: "reminder" } });
+    expect(await parsed({ response: grooming })).toMatchObject({ draft: { kind: "event" } });
+  });
+
+  test("is not understood with more than three Reminders", async () => {
+    const result = await parsed({
+      response: { ...grooming, reminderOffsets: ["at-start", "15m", "1h", "1d"] },
+    });
+
+    expect(result).toEqual({ status: "unrecognized" });
+  });
+});
+
+const rabies = {
+  outcome: "care_entry",
+  petId: "pet-buick",
+  date: null,
+  time: null,
+  note: null,
+  details: {
+    kind: "vaccination",
+    vaccine: "Бешенство",
+    cost: { amount: 1800, category: "vet" },
+    dueDate: "2027-10-13",
+  },
+  missing: [],
+  ambiguities: [],
+};
+
+const cat = { id: "pet-cat", name: "Мурка", species: "cat" };
+
+describe("a Care Entry command", () => {
+  test("becomes a vaccination with its cost and the next Due Date", async () => {
+    expect(await parsed({ response: rabies })).toEqual({
+      status: "draft",
+      draft: {
+        kind: "care_entry",
+        petId: "pet-buick",
+        date: null,
+        time: null,
+        note: null,
+        details: {
+          kind: "vaccination",
+          vaccine: "Бешенство",
+          cost: { amount: 1800, category: "vet" },
+          dueDate: "2027-10-13",
+        },
+        missing: [],
+        ambiguities: [],
+      },
+    });
+  });
+
+  test.each([
+    ["a weight", { kind: "weight", weightKg: 12.4 }],
+    ["an expense with its category", { kind: "expense", amount: 3200, category: "food" }],
+  ])("becomes %s", async (_case, details) => {
+    expect(await parsed({ response: { ...rabies, details } })).toMatchObject({
+      draft: { kind: "care_entry", details },
+    });
+  });
+
+  test("keeps «вчера» as yesterday's date", async () => {
+    const result = await parsed({ response: { ...rabies, date: "2026-10-12" } });
+
+    expect(result).toMatchObject({ draft: { date: "2026-10-12", time: null } });
+  });
+
+  test("puts the only Pet in when no name was said", async () => {
+    const result = await parsed({ response: { ...rabies, petId: null } });
+
+    expect(result).toMatchObject({ draft: { petId: "pet-buick", ambiguities: [], missing: [] } });
+  });
+
+  test("offers every Pet when there are several and no name", async () => {
+    const result = await parsedWith([...context.pets, cat], {
+      response: { ...rabies, petId: null },
+    });
+
+    expect(result).toMatchObject({
+      draft: {
+        petId: null,
+        ambiguities: [{ field: "pet", mention: "", candidateIds: ["pet-buick", "pet-cat"] }],
+        missing: [],
+      },
+    });
+  });
+
+  test("keeps two Pets of one name as candidates", async () => {
+    const twin = { id: "pet-buick-2", name: "Бьюик", species: "cat" };
+    const ambiguity = {
+      field: "pet",
+      mention: "Бьюик",
+      candidateIds: ["pet-buick", "pet-buick-2"],
+    };
+    const result = await parsedWith([...context.pets, twin], {
+      response: { ...rabies, petId: null, ambiguities: [ambiguity] },
+    });
+
+    expect(result).toMatchObject({ draft: { petId: null, ambiguities: [ambiguity] } });
+  });
+
+  test("lists the details as missing when the kind is unclear", async () => {
+    const result = await parsed({ response: { ...rabies, details: null } });
+
+    expect(result).toMatchObject({ draft: { details: null, missing: ["details"] } });
+  });
+
+  test.each([
+    ["an unknown Pet", { ...rabies, petId: "pet-stranger" }],
+    ["a weight off the 0.1 kg step", { ...rabies, details: { kind: "weight", weightKg: 12.45 } }],
+    [
+      "a cost in kopecks",
+      { ...rabies, details: { ...rabies.details, cost: { amount: 18.5, category: "vet" } } },
+    ],
+    [
+      "an unknown expense category",
+      { ...rabies, details: { kind: "expense", amount: 300, category: "taxi" } },
+    ],
+  ])("is not understood with %s", async (_case, response) => {
+    expect(await parsed({ response })).toEqual({ status: "unrecognized" });
+  });
+});
+
 describe("the prompt", () => {
   test("carries today, the zone, the speaker and the Members", async () => {
     const { model, calls } = modelAnswering({ response: internet });
@@ -142,6 +350,7 @@ describe("the prompt", () => {
     expect(facts).toContain("Сегодня 2026-10-13 (вторник), часовой пояс Europe/Moscow.");
     expect(facts).toContain("Говорит: Денис (member-denis).");
     expect(facts).toContain("- Ася (мама): member-asya-mom");
+    expect(facts).toContain("- Бьюик (dog): pet-buick");
     expect(messages.at(-1)).toEqual({
       role: "user",
       content: "напомни в пятницу в 19:00 оплатить интернет",

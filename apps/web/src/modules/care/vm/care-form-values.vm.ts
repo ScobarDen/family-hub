@@ -6,6 +6,7 @@ import {
   type CareDetails,
   type CareEntry,
   type CareEntryChange,
+  type CareEntryDraft,
   type CareKind,
 } from "@family-hub/contract";
 
@@ -118,5 +119,18 @@ export function valuesOf(entry: CareEntry, timeZone: string): EntryValues {
     occurredAt,
     note: entry.note ?? "",
     ...kindValuesOf(entry.details),
+  };
+}
+
+// A draft's moment is on the speaker's clock: no date is now, a date alone keeps now's time of day.
+export function valuesOfDraft(draft: CareEntryDraft, now: string): EntryValues {
+  const [, nowTime = ""] = now.split("T");
+
+  return {
+    ...emptyEntry,
+    kind: draft.details?.kind ?? "note",
+    occurredAt: draft.date === null ? now : `${draft.date}T${draft.time ?? nowTime}`,
+    note: draft.note ?? "",
+    ...(draft.details === null ? {} : kindValuesOf(draft.details)),
   };
 }

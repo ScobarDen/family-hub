@@ -8,6 +8,9 @@ export const httpStatus = {
   notFound: 404,
   conflict: 409,
   gone: 410,
+  lengthRequired: 411,
+  payloadTooLarge: 413,
+  unsupportedMediaType: 415,
   tooManyRequests: 429,
   serviceUnavailable: 503,
 } as const;

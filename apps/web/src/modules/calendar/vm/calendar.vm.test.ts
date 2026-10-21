@@ -150,6 +150,7 @@ function startCalendar({
   const backend = fakeBackend(plans);
   const opened: string[] = [];
   const openedPlans: string[] = [];
+  const savedDrafts: string[] = [];
   const pending = [...choices];
   const model = reatomCalendar({
     api: createCalendarApi(
@@ -165,6 +166,9 @@ function startCalendar({
       openedPlans.push(planId);
     },
     self: () => "member-1",
+    onDraftSaved: (draftId) => {
+      savedDrafts.push(draftId);
+    },
   });
 
   model.grid.subscribe(noop);
@@ -172,7 +176,7 @@ function startCalendar({
   model.dayItems.subscribe(noop);
   model.reminderForm.recipients.subscribe(noop);
 
-  return { model, backend, opened, openedPlans };
+  return { model, backend, opened, openedPlans, savedDrafts };
 }
 
 type Model = ReturnType<typeof startCalendar>["model"];
@@ -415,6 +419,89 @@ describe("a standalone Reminder", () => {
     expect(model.reminderForm.isForEveryone()).toBe(true);
     expect(model.reminderForm.canDelete()).toBe(true);
     expect(model.reminderForm.form.fields.frequency()).toBe("monthly");
+  });
+});
+
+describe("a Command Draft opened by «Изменить»", () => {
+  test("fills the Reminder form and settles the draft once saved", async () => {
+    const { model, backend, savedDrafts } = startCalendar();
+
+    await loaded(model);
+    model.openReminderDraft({
+      draftId: "draft-1",
+      draft: {
+        kind: "reminder",
+        text: "Оплатить интернет",
+        date: "2026-10-16",
+        time: null,
+        recurrence: { frequency: "monthly", until: null },
+        visibility: "shared",
+        recipientIds: ["member-2"],
+        missing: ["time"],
+        ambiguities: [],
+      },
+    });
+
+    expect(model.screen()).toEqual({ kind: "reminder-form" });
+    expect(model.title()).toBe("Новое напоминание");
+    expect(model.reminderForm.form.fields.text()).toBe("Оплатить интернет");
+    expect(model.reminderForm.form.fields.frequency()).toBe("monthly");
+    expect(model.reminderForm.isForEveryone()).toBe(false);
+
+    model.reminderForm.form.fields.time.set("19:00");
+    model.reminderForm.save();
+
+    await vi.waitFor(() => {
+      expect(savedDrafts).toEqual(["draft-1"]);
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({
+      start: { date: "2026-10-16", time: "19:00" },
+      recipientIds: ["member-2"],
+    });
+  });
+});
+
+describe("an Event draft opened by «Изменить»", () => {
+  test("fills the Event form, all day with its Reminders, and settles the draft once saved", async () => {
+    const { model, backend, savedDrafts } = startCalendar();
+
+    await loaded(model);
+    model.openEventDraft({
+      draftId: "draft-2",
+      draft: {
+        kind: "event",
+        title: "День рождения мамы",
+        note: null,
+        date: "2027-03-03",
+        time: null,
+        endDate: null,
+        endTime: null,
+        recurrence: { frequency: "yearly", until: null },
+        visibility: "shared",
+        reminderOffsets: ["1d"],
+        missing: [],
+        ambiguities: [],
+      },
+    });
+
+    expect(model.screen()).toEqual({ kind: "event-form" });
+    expect(model.form.isTimed()).toBe(false);
+    expect(model.form.form.fields.title()).toBe("День рождения мамы");
+    expect(model.form.offsets().filter(({ isChosen }) => isChosen)).toMatchObject([
+      { offset: "1d" },
+    ]);
+
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(savedDrafts).toEqual(["draft-2"]);
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({
+      title: "День рождения мамы",
+      start: { date: "2027-03-03", time: null, timeZone: null },
+      recurrence: { frequency: "yearly", until: null },
+      reminderOffsets: ["1d"],
+    });
   });
 });
 

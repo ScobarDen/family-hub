@@ -16,8 +16,8 @@ import {
 } from "../calendar.lib.ts";
 import { reatomCalendarData, type CalendarData } from "../calendar.model.ts";
 import { reatomEventDetails, type OpenedOccurrence } from "./event-details.vm.ts";
-import { reatomEventForm } from "./event-form.vm.ts";
-import { reatomReminderForm } from "./reminder-form.vm.ts";
+import { reatomEventForm, type EventDraftOpening } from "./event-form.vm.ts";
+import { reatomReminderForm, type ReminderDraftOpening } from "./reminder-form.vm.ts";
 
 export type CalendarScreen =
   | { kind: "calendar" }
@@ -33,6 +33,7 @@ type CalendarDependencies = {
   onOpenPet: (petId: string) => void;
   onOpenPlan: (planId: string) => void;
   self: () => string | undefined;
+  onDraftSaved?: (draftId: string) => void;
 };
 
 const upcomingDays = 30;
@@ -169,6 +170,21 @@ function reatomMoves(dependencies: CalendarDependencies, navigation: Navigation,
   };
 }
 
+// «Изменить» on a Command Draft lands in the ordinary form, filled in from the draft.
+function reatomDraftOpenings({ screen, opened }: Navigation, { form, reminderForm }: Parts) {
+  return {
+    openReminderDraft: action((opening: ReminderDraftOpening) => {
+      reminderForm.startFromDraft(opening);
+      screen.set("reminder-form");
+    }, "calendar.openReminderDraft"),
+    openEventDraft: action((opening: EventDraftOpening) => {
+      opened.set(undefined);
+      form.startFromDraft(opening);
+      screen.set("event-form");
+    }, "calendar.openEventDraft"),
+  };
+}
+
 function reatomTitle(screen: Atom<CalendarScreen["kind"]>, { form, reminderForm, details }: Parts) {
   return computed(() => {
     const kind = screen();
@@ -249,6 +265,7 @@ export function reatomCalendar(dependencies: CalendarDependencies) {
     details: parts.details,
     ...reatomViews({ dependencies, data }, navigation, reatomItems(data, dependencies)),
     ...reatomMoves(dependencies, navigation, parts),
+    ...reatomDraftOpenings(navigation, parts),
     edit: action(() => {
       editOpened(screen, parts);
     }, "calendar.edit"),

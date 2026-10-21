@@ -1,8 +1,13 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import type { CommandDraft, ReminderDraftField } from "@family-hub/contract";
+import {
+  encodeDeepLink,
+  type CommandDraft,
+  type CommandFailure,
+  type DraftAmbiguity,
+} from "@family-hub/contract";
 
-import type { FamilyPerson } from "./command.repo.ts";
+import type { FamilyNames } from "./command.repo.ts";
 
 export const commandCallbackPrefix = "cd";
 
@@ -24,28 +29,29 @@ export const unrecognizedText = [
   "• напомни в пятницу в 19:00 оплатить интернет",
   "• напомни мне завтра в 9 позвонить врачу",
   "• каждый месяц 5-го в 10:00 напоминай про квартплату",
+  "• в субботу в 12 груминг Бьюика",
+  "• Бьюик весит 12,4",
 ].join("\n");
-export const unsupportedText = "Такое голосом и текстом не умею — только создать напоминание.";
+export const unsupportedText =
+  "Такое голосом и текстом не умею — только создать напоминание, событие или запись питомца.";
+export const tooLongText = "Слишком длинно — уложитесь в 30 секунд.";
+export const unheardText = "Не расслышал, попробуйте ещё раз.";
+export const failureTexts: Record<CommandFailure, string> = {
+  quota: quotaText,
+  unheard: unheardText,
+  unrecognized: unrecognizedText,
+  unsupported: unsupportedText,
+  too_long: tooLongText,
+};
 export const notYoursText = "Это не ваш черновик";
 export const staleText = "Черновик устарел";
 export const createdText = "✅ Создано";
 export const dismissedText = "Отменено";
-export const failedText = "Не получилось создать напоминание. Попробуйте в приложении.";
+export const failedText = "Не получилось создать. Попробуйте в приложении через «Изменить».";
 
-const fieldTitles: Record<ReminderDraftField, string> = {
-  text: "что напомнить",
-  date: "дату",
-  time: "время",
-};
-
-const frequencyTitles = { weekly: "каждую неделю", monthly: "каждый месяц", yearly: "каждый год" };
-
-const dayFormat = new Intl.DateTimeFormat("ru-RU", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
+export function heardText(phrase: string): string {
+  return `🎙 «${phrase}»`;
+}
 
 export function parseCallback(data: string | undefined) {
   const match = callbackPattern.exec(data ?? "");
@@ -57,62 +63,27 @@ export function parseCallback(data: string | undefined) {
     : { action, draftId, index: index === undefined ? undefined : Number(index) };
 }
 
-// «пт 16 окт» the way the preview in the spec reads, without Intl's commas and dots.
-function partOf(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
-  return parts.find((part) => part.type === type)?.value.replaceAll(".", "") ?? "";
+// The bot's Main Mini App opens from t.me/<bot>, so the link needs no app short name.
+export function editLink(botUsername: string, draftId: string): string {
+  const link = new URL(`https://t.me/${botUsername}`);
+
+  link.searchParams.set("startapp", encodeDeepLink({ kind: "cmd", id: draftId }));
+
+  return link.toString();
 }
 
-function dayOf(date: string): string {
-  const parts = dayFormat.formatToParts(new Date(`${date}T12:00:00Z`));
+function candidateNameOf({ field }: DraftAmbiguity, id: string, names: FamilyNames): string {
+  const people = field === "pet" ? names.pets : names.members;
 
-  return `${partOf(parts, "weekday")} ${partOf(parts, "day")} ${partOf(parts, "month")}`;
-}
-
-function momentOf({ date, time }: CommandDraft): string | undefined {
-  const parts = [date === null ? undefined : dayOf(date), time ?? undefined];
-
-  return parts.filter((part) => part !== undefined).join(", ") || undefined;
-}
-
-function recipientsOf(draft: CommandDraft, people: FamilyPerson[]): string {
-  if (draft.visibility === "private") {
-    return "только мне";
-  }
-
-  const chosen =
-    draft.recipientIds === null
-      ? people
-      : people.filter(({ id }) => draft.recipientIds?.includes(id) === true);
-
-  return chosen.map(({ name }) => name).join(", ");
-}
-
-// «⏰ Оплатить интернет · пт 16 окт, 19:00 · каждый месяц · Денис, Ася»
-export function previewText(draft: CommandDraft, people: FamilyPerson[]): string {
-  const line = [
-    `⏰ ${draft.text ?? "…"}`,
-    momentOf(draft),
-    draft.recurrence === null ? undefined : frequencyTitles[draft.recurrence.frequency],
-    recipientsOf(draft, people),
-  ]
-    .filter((part) => part !== undefined && part !== "")
-    .join(" · ");
-  const missing =
-    draft.missing.length === 0
-      ? undefined
-      : `Не хватает: ${draft.missing.map((field) => fieldTitles[field]).join(", ")}. Напишите команду заново целиком.`;
-  const ambiguity = draft.ambiguities[0];
-  const question =
-    ambiguity === undefined ? undefined : `Кого вы имели в виду под «${ambiguity.mention}»?`;
-
-  return [line, missing, question].filter((part) => part !== undefined).join("\n\n");
+  return people.find((person) => person.id === id)?.name ?? id;
 }
 
 export function previewButtons(
-  { draft, draftId }: { draft: CommandDraft; draftId: string },
-  people: FamilyPerson[],
+  { draft, draftId, editLink: link }: { draft: CommandDraft; draftId: string; editLink: string },
+  names: FamilyNames,
 ): InlineKeyboardMarkup {
   const dismiss = { text: "×", callback_data: `${commandCallbackPrefix}:dismiss:${draftId}` };
+  const change = { text: "Изменить", url: link };
   const ambiguity = draft.ambiguities[0];
 
   if (ambiguity !== undefined) {
@@ -120,33 +91,32 @@ export function previewButtons(
       inline_keyboard: [
         ...ambiguity.candidateIds.map((id, index) => [
           {
-            text: people.find((person) => person.id === id)?.name ?? id,
+            text: candidateNameOf(ambiguity, id, names),
             callback_data: `${commandCallbackPrefix}:pick:${draftId}:${index}`,
           },
         ]),
-        [dismiss],
+        [change, dismiss],
       ],
     };
   }
 
-  return draft.missing.length > 0
-    ? { inline_keyboard: [[dismiss]] }
-    : {
-        inline_keyboard: [
-          [
-            { text: "Создать", callback_data: `${commandCallbackPrefix}:create:${draftId}` },
-            dismiss,
-          ],
-        ],
-      };
+  const create = { text: "Создать", callback_data: `${commandCallbackPrefix}:create:${draftId}` };
+
+  return {
+    inline_keyboard: [draft.missing.length > 0 ? [change, dismiss] : [create, change, dismiss]],
+  };
 }
 
-// Picking a candidate settles one ambiguity: that Member joins the Recipients.
+// Picking a candidate settles one ambiguity: a Member joins the Recipients, a Pet becomes the one.
 export function picked(draft: CommandDraft, index: number): CommandDraft | undefined {
   const [ambiguity, ...rest] = draft.ambiguities;
-  const memberId = ambiguity?.candidateIds[index];
+  const chosenId = ambiguity?.candidateIds[index];
 
-  return memberId === undefined
-    ? undefined
-    : { ...draft, ambiguities: rest, recipientIds: [...(draft.recipientIds ?? []), memberId] };
+  if (chosenId === undefined || draft.kind === "event") {
+    return undefined;
+  }
+
+  return draft.kind === "care_entry"
+    ? { ...draft, ambiguities: rest, petId: chosenId }
+    : { ...draft, ambiguities: rest, recipientIds: [...(draft.recipientIds ?? []), chosenId] };
 }

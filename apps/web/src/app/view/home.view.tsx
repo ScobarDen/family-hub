@@ -7,6 +7,12 @@ import { deviceTimeZone } from "@/common/format-date";
 import { Albums, type AlbumsScreenModel } from "@/modules/albums";
 import { Calendar, type CalendarModel } from "@/modules/calendar";
 import { Care, ExpensesBlock, JournalBlock, PhotosBlock, type CareModel } from "@/modules/care";
+import {
+  CommandSheet,
+  Microphone,
+  type CommandSheetModel,
+  type MicrophoneModel,
+} from "@/modules/command";
 import type { DigestModel } from "@/modules/digest";
 import type { FamilyModel } from "@/modules/family";
 import { Feed, type FeedModel } from "@/modules/feed";
@@ -44,6 +50,8 @@ export type HomeProps = {
   recipes: RecipesScreenModel;
   plans: PlansScreenModel;
   photoStorage: PhotoStorageModel;
+  microphone: MicrophoneModel;
+  commandSheet: CommandSheetModel;
 };
 
 function profileOf(props: HomeProps): ReactNode {
@@ -145,7 +153,10 @@ function screenOf(props: HomeProps): ReactNode {
       >
         {contentOf(props, screen.module)?.content}
       </ModulePage>
-      {screen.isOnTabBar && <TabBar model={tabBar} />}
+      {screen.isOnTabBar && (
+        <TabBar model={tabBar} center={<Microphone model={props.microphone} />} />
+      )}
+      <CommandSheet model={props.commandSheet} />
     </>
   );
 }

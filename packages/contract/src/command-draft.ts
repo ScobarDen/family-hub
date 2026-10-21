@@ -1,10 +1,22 @@
 import { z } from "zod";
 
-import { recurrence } from "./event.ts";
+import { careDetails, careNoteMaxLength } from "./care-entry.ts";
+import {
+  eventNoteMaxLength,
+  eventReminderMaxCount,
+  eventReminderOffset,
+  eventTitleMaxLength,
+  recurrence,
+} from "./event.ts";
 import { visibility } from "./plan.ts";
 import { reminderTextMaxLength } from "./reminder.ts";
 
 export const commandDraftLifetimeMs = 86_400_000;
+
+export const voiceMaxSeconds = 30;
+
+// Thirty seconds of speech is well under a megabyte in any format a WebView records.
+export const voiceMaxBytes = 2_097_152;
 
 const ambiguousCandidates = 2;
 
@@ -15,9 +27,9 @@ export const reminderDraftField = z.enum(["text", "date", "time"]);
 
 export type ReminderDraftField = z.infer<typeof reminderDraftField>;
 
-// A name that matched several Members comes back with all of them for the Member to pick from.
+// A name that matched several Members or Pets comes back with all of them to pick from.
 export const draftAmbiguity = z.object({
-  field: z.literal("recipients"),
+  field: z.enum(["recipients", "pet"]),
   mention: z.string(),
   candidateIds: z.array(z.string()).min(ambiguousCandidates),
 });
@@ -39,15 +51,108 @@ export const reminderDraft = z.object({
 
 export type ReminderDraft = z.infer<typeof reminderDraft>;
 
-export const commandDraft = z.discriminatedUnion("kind", [reminderDraft]);
+export const eventDraftField = z.enum(["title", "date"]);
+
+export type EventDraftField = z.infer<typeof eventDraftField>;
+
+// The fields of the Event form: no time means all day, on a floating date; a time is a moment
+// in the speaker's zone. Its Reminders are offsets before the start, as in the form.
+export const eventDraft = z.object({
+  kind: z.literal("event"),
+  title: z.string().trim().min(1).max(eventTitleMaxLength).nullable(),
+  note: z.string().trim().min(1).max(eventNoteMaxLength).nullable(),
+  date: z.iso.date().nullable(),
+  time: time.nullable(),
+  endDate: z.iso.date().nullable(),
+  endTime: time.nullable(),
+  recurrence: recurrence.nullable(),
+  visibility,
+  reminderOffsets: z.array(eventReminderOffset).max(eventReminderMaxCount),
+  missing: z.array(eventDraftField),
+  ambiguities: z.array(draftAmbiguity),
+});
+
+export type EventDraft = z.infer<typeof eventDraft>;
+
+export const careEntryDraftField = z.enum(["pet", "details"]);
+
+export type CareEntryDraftField = z.infer<typeof careEntryDraftField>;
+
+// The fields of the Care Entry form. No date means now; a date alone («вчера») keeps the time of
+// day it was said at. Photos are added in the form only.
+export const careEntryDraft = z.object({
+  kind: z.literal("care_entry"),
+  petId: z.string().nullable(),
+  date: z.iso.date().nullable(),
+  time: time.nullable(),
+  note: z.string().trim().min(1).max(careNoteMaxLength).nullable(),
+  details: careDetails.nullable(),
+  missing: z.array(careEntryDraftField),
+  ambiguities: z.array(draftAmbiguity),
+});
+
+export type CareEntryDraft = z.infer<typeof careEntryDraft>;
+
+export const commandKind = z.enum(["reminder", "event", "care_entry"]);
+
+export type CommandKind = z.infer<typeof commandKind>;
+
+export const commandDraft = z.discriminatedUnion("kind", [
+  reminderDraft,
+  eventDraft,
+  careEntryDraft,
+]);
 
 export type CommandDraft = z.infer<typeof commandDraft>;
 
 // What the model answers: a draft, or that the phrase is beyond it, or a refused kind of command.
 export const commandAnswer = z.discriminatedUnion("outcome", [
   reminderDraft.omit({ kind: true }).extend({ outcome: z.literal("reminder") }),
+  eventDraft.omit({ kind: true }).extend({ outcome: z.literal("event") }),
+  careEntryDraft.omit({ kind: true }).extend({ outcome: z.literal("care_entry") }),
   z.object({ outcome: z.literal("unsupported") }),
   z.object({ outcome: z.literal("unrecognized") }),
 ]);
 
 export type CommandAnswer = z.infer<typeof commandAnswer>;
+
+// Why a command became no draft; the bot and the Mini App say the same words for each.
+export const commandFailure = z.enum([
+  "unrecognized",
+  "unsupported",
+  "quota",
+  "unheard",
+  "too_long",
+]);
+
+export type CommandFailure = z.infer<typeof commandFailure>;
+
+// What the Mini App gets for a recording or a draft it opens; heard is the transcript, if any.
+export const commandOutcome = z.union([
+  z.object({
+    status: z.literal("draft"),
+    draftId: z.string(),
+    heard: z.string().nullable(),
+    draft: commandDraft,
+  }),
+  z.object({ status: commandFailure, heard: z.string().nullable(), message: z.string() }),
+]);
+
+export type CommandOutcome = z.infer<typeof commandOutcome>;
+
+export const draftPick = z.object({ index: z.int().nonnegative() });
+
+export type DraftPick = z.infer<typeof draftPick>;
+
+export const draftCreated = z.object({ kind: commandKind, id: z.string() });
+
+export type DraftCreated = z.infer<typeof draftCreated>;
+
+// Where the microphone sends a Member whose WebView cannot record: the bot chat.
+export const botChat = z.object({ url: z.url() });
+
+export type BotChat = z.infer<typeof botChat>;
+
+export const draftSettled = z.object({ status: z.enum(["dismissed", "created"]) });
+
+export type DraftSettled = z.infer<typeof draftSettled>;

@@ -4,4 +4,10 @@ export {
   type CommandModels,
   type CommandResult,
 } from "./pipeline.ts";
-export { promptOf, type ChatMessage, type CommandContext, type CommandPerson } from "./prompt.ts";
+export {
+  promptOf,
+  type ChatMessage,
+  type CommandContext,
+  type CommandPerson,
+  type CommandPet,
+} from "./prompt.ts";

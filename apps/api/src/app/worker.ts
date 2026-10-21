@@ -13,7 +13,7 @@ import {
   createCareEntryService,
   type CareEntryService,
 } from "@/modules/care-entry";
-import { createCommandRepo, createCommandService } from "@/modules/command";
+import { commandRoute, createCommandRepo, createCommandService } from "@/modules/command";
 import { createEventRepo, createEventService, eventRoute } from "@/modules/event";
 import { createFamilyRepo, createFamilyService, familyRoute } from "@/modules/family";
 import {
@@ -179,7 +179,15 @@ function workersAiModel(ai: Ai) {
 
 function commandServiceOf(
   env: Env,
-  { db, shared, reminders }: { db: Db; shared: Shared; reminders: AppServices["reminders"] },
+  {
+    db,
+    shared,
+    records,
+  }: {
+    db: Db;
+    shared: Shared;
+    records: Pick<AppServices, "reminders" | "events" | "careEntries">;
+  },
 ) {
   const perDay = Number(env.AI_COMMANDS_PER_FAMILY_DAY);
 
@@ -188,9 +196,12 @@ function commandServiceOf(
     ...shared,
     model: workersAiModel(env.AI),
     models: { primary: env.AI_COMMAND_MODEL, fallback: env.AI_COMMAND_MODEL_FALLBACK },
+    speechModel: env.AI_SPEECH_MODEL,
     commandsPerFamilyDay:
       Number.isFinite(perDay) && perDay > 0 ? perDay : defaultCommandsPerFamilyDay,
-    reminders,
+    reminders: records.reminders,
+    events: records.events,
+    careEntries: records.careEntries,
   });
 }
 
@@ -240,7 +251,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       clock,
     }),
     photoStorage: createPhotoStorageService({ storage: createPhotoStorageRepo(db), ...shared }),
-    commands: commandServiceOf(env, { db, shared, reminders: records.reminders }),
+    commands: commandServiceOf(env, { db, shared, records }),
   };
 }
 
@@ -297,7 +308,8 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", photoStorageRoute)
     .route("/", careEntryRoute)
     .route("/", eventRoute)
-    .route("/", reminderRoute);
+    .route("/", reminderRoute)
+    .route("/", commandRoute);
 }
 
 async function runScheduled(env: Env, dependencies: WorkerDependencies): Promise<void> {

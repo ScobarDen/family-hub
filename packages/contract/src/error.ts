@@ -48,6 +48,9 @@ export const errorCode = z.enum([
   "COOKED_NOT_FOUND",
   "NOT_COOKED_AUTHOR",
   "COOKED_IN_FUTURE",
+  "COMMAND_DRAFT_NOT_FOUND",
+  "AUDIO_TOO_LARGE",
+  "AUDIO_TYPE_UNSUPPORTED",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

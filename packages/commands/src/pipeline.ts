@@ -1,10 +1,17 @@
 import { z } from "zod";
 
 import {
+  careEntryDraftField,
   commandAnswer,
+  eventDraftField,
   reminderDraftField,
+  type CareEntryDraft,
+  type CareEntryDraftField,
   type CommandAnswer,
+  type DraftAmbiguity,
   type CommandDraft,
+  type EventDraft,
+  type EventDraftField,
   type ReminderDraft,
   type ReminderDraftField,
 } from "@family-hub/contract";
@@ -21,7 +28,8 @@ export type CommandResult =
   | { status: "unrecognized" }
   | { status: "unsupported" };
 
-const answerSchema = z.toJSONSchema(commandAnswer);
+// The model writes the input side: blank optional texts become null only when parsed.
+const answerSchema = z.toJSONSchema(commandAnswer, { io: "input" });
 const missingModelPattern = /model.*(not found|does not exist|no such)|no such model|5007/iu;
 
 function isModelMissing(error: unknown): boolean {
@@ -60,6 +68,81 @@ function jsonOf(raw: unknown): unknown {
   } catch {
     return undefined;
   }
+}
+
+function missingEventFields(draft: Omit<EventDraft, "kind">): EventDraftField[] {
+  return eventDraftField.options.filter(
+    (field) => draft[field] === null || draft.missing.includes(field),
+  );
+}
+
+// An Event refers to nobody, so it has nothing to be ambiguous about.
+function eventDraftOf(answer: Extract<CommandAnswer, { outcome: "event" }>): CommandResult {
+  const { outcome: _outcome, ...fields } = answer;
+  const hasEnd = fields.endDate !== null;
+
+  return {
+    status: "draft",
+    draft: {
+      kind: "event",
+      ...fields,
+      endTime: hasEnd && fields.time !== null ? fields.endTime : null,
+      ambiguities: [],
+      missing: missingEventFields(fields),
+    },
+  };
+}
+
+// One Pet in care needs no name; several without one are offered as candidates.
+function petChoiceOf(
+  fields: Omit<CareEntryDraft, "kind">,
+  context: CommandContext,
+): { petId: string | null; ambiguities: DraftAmbiguity[] } {
+  const ambiguities = fields.ambiguities.filter(({ field }) => field === "pet");
+  const [onlyPet, ...others] = context.pets;
+
+  if (fields.petId !== null || ambiguities.length > 0) {
+    return { petId: fields.petId, ambiguities };
+  }
+
+  if (onlyPet !== undefined && others.length === 0) {
+    return { petId: onlyPet.id, ambiguities: [] };
+  }
+
+  return {
+    petId: null,
+    ambiguities:
+      others.length === 0
+        ? []
+        : [{ field: "pet", mention: "", candidateIds: context.pets.map(({ id }) => id) }],
+  };
+}
+
+function careDraftOf(
+  answer: Extract<CommandAnswer, { outcome: "care_entry" }>,
+  context: CommandContext,
+): CommandResult {
+  const { outcome: _outcome, ...fields } = answer;
+  const known = new Set(context.pets.map(({ id }) => id));
+  const mentioned = [
+    ...(fields.petId === null ? [] : [fields.petId]),
+    ...fields.ambiguities
+      .filter(({ field }) => field === "pet")
+      .flatMap(({ candidateIds }) => candidateIds),
+  ];
+
+  if (mentioned.some((id) => !known.has(id))) {
+    return { status: "unrecognized" };
+  }
+
+  const choice = petChoiceOf(fields, context);
+  const missing: CareEntryDraftField[] = careEntryDraftField.options.filter((field) =>
+    field === "pet"
+      ? choice.petId === null && choice.ambiguities.length === 0
+      : fields.details === null,
+  );
+
+  return { status: "draft", draft: { kind: "care_entry", ...fields, ...choice, missing } };
 }
 
 function missingOf(draft: Omit<ReminderDraft, "kind">): ReminderDraftField[] {
@@ -102,6 +185,21 @@ function draftOf(
   };
 }
 
+function resultOf(
+  answer: Exclude<CommandAnswer, { outcome: "unrecognized" }>,
+  context: CommandContext,
+): CommandResult {
+  if (answer.outcome === "unsupported") {
+    return { status: "unsupported" };
+  }
+
+  if (answer.outcome === "care_entry") {
+    return careDraftOf(answer, context);
+  }
+
+  return answer.outcome === "event" ? eventDraftOf(answer) : draftOf(answer, context);
+}
+
 export async function parseCommand(
   dependencies: { model: CommandModel; models: CommandModels },
   { text, context }: { text: string; context: CommandContext },
@@ -125,7 +223,5 @@ export async function parseCommand(
     return { status: "unrecognized" };
   }
 
-  return answer.data.outcome === "unsupported"
-    ? { status: "unsupported" }
-    : draftOf(answer.data, context);
+  return resultOf(answer.data, context);
 }

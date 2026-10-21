@@ -46,6 +46,26 @@ Run on the dev bot with the real `AI` binding (`wrangler dev --remote`), since t
 - [ ] «напомни мне завтра в 9 позвонить врачу» makes a Private Reminder for the speaker only.
 - [ ] A phrase without a time shows «Не хватает: время» and no «Создать»; nonsense answers «Не понял» with examples; «удали все напоминания» is refused.
 - [ ] After `AI_COMMANDS_PER_FAMILY_DAY` commands the bot says commands are over for today, without calling the model.
+- [ ] A voice message from a phone, «напомни в пятницу в семь вечера оплатить интернет», answers with «🎙 «…»» over the same preview, and «Создать» creates the Reminder.
+- [ ] A voice message over 30 seconds is turned down at once; a silent one answers «Не расслышал».
+- [ ] `wrangler tail` shows the voice command's CPU time within 10 ms.
+- [ ] «Изменить» in the bot's preview opens the Mini App on the Reminder form filled from the draft; saving it turns the preview into «✅ Создано».
+- [ ] «в субботу в 12 груминг Бьюика, напомни за день» answers «📅 Груминг Бьюика · сб <date>, 12:00 · напомнить за день»; «Создать» puts it in the calendar and the Reminder arrives a day before.
+- [ ] «Бьюику сделали прививку от бешенства, 1800 рублей, следующая через год» previews a vaccination with its cost and Due Date and the photo hint; «Создать» puts it in the journal, the month's expenses and «Скоро», and closes the earlier rabies Due Date.
+- [ ] «Бьюик весит 12,4» becomes a weight entry and shows on the chart; «вчера купили корм за 3200» is dated yesterday; with two Pets, a phrase without a name asks which Pet with buttons.
+- [ ] «каждый год 3 марта день рождения мамы» becomes an all-day yearly Event, while «напомни в пятницу оплатить интернет» stays a Reminder; «Изменить» on an Event opens the Event form.
+
+### Microphone in the Mini App
+
+Each item on iOS, Android and Telegram Desktop.
+
+- [ ] Holding the microphone records with a running timer and a haptic tick; releasing shows the preview sheet with the heard phrase, and «Создать» creates the Reminder.
+- [ ] The very first hold asks for the microphone and sends nothing, saying «Держите кнопку и говорите»; the next hold records.
+- [ ] Sliding the finger off the button cancels: no sheet, no request in the network log.
+- [ ] Holding for 30 seconds stops and sends by itself.
+- [ ] While the finger is down, dragging it downwards neither scrolls the page nor closes the Mini App; after release the swipe-to-close works again.
+- [ ] With the microphone refused in the system settings, the button opens the bot chat and says to send a voice message there.
+- [ ] «Изменить» in the sheet opens the Reminder form filled from the draft; «×» closes the sheet.
 
 Items for features that are not built yet are skipped until they land.
 

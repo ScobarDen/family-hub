@@ -7,6 +7,7 @@ import {
   eventReminderOffset,
   type CalendarEvent,
   type EventChange,
+  type EventDraft,
   type EventReminderOffset,
 } from "@family-hub/contract";
 
@@ -20,7 +21,11 @@ type EventFormDependencies = {
   data: Pick<CalendarData, "keep">;
   timeZone: () => string;
   onSaved: (event: CalendarEvent) => void;
+  // An Event saved from a Command Draft settles that draft.
+  onDraftSaved?: (draftId: string) => void;
 };
+
+export type EventDraftOpening = { draftId: string; draft: EventDraft };
 
 const emptyEvent = {
   title: "",
@@ -100,7 +105,7 @@ function whenValuesOf({ start, end }: CalendarEvent) {
   };
 }
 
-function repeatValuesOf({ recurrence }: CalendarEvent) {
+function repeatValuesOf({ recurrence }: Pick<CalendarEvent, "recurrence">) {
   return recurrence === null
     ? { frequency: "", until: "" }
     : { frequency: recurrence.frequency, until: recurrence.until ?? "" };
@@ -113,6 +118,26 @@ function valuesOf(event: CalendarEvent): EventValues {
     ...repeatValuesOf(event),
     visibility: event.visibility,
     note: event.note ?? "",
+  };
+}
+
+function draftWhenValuesOf({ date, time, endDate, endTime }: EventDraft) {
+  return {
+    timing: time === null ? "all-day" : "timed",
+    date: date ?? "",
+    time: time ?? "",
+    endDate: endDate ?? "",
+    endTime: endTime ?? "",
+  };
+}
+
+function valuesOfDraft(draft: EventDraft): EventValues {
+  return {
+    title: draft.title ?? "",
+    ...draftWhenValuesOf(draft),
+    ...repeatValuesOf(draft),
+    visibility: draft.visibility,
+    note: draft.note ?? "",
   };
 }
 
@@ -182,9 +207,51 @@ function reatomFlags(form: EventForm, edited: Atom<CalendarEvent | undefined>) {
   };
 }
 
+type Editing = {
+  edited: Atom<CalendarEvent | undefined>;
+  chosenOffsets: Atom<EventReminderOffset[]>;
+  fromDraft: Atom<string | undefined>;
+};
+
+function reatomStarts(form: EventForm, { edited, chosenOffsets, fromDraft }: Editing) {
+  return {
+    startCreating: action((date: string) => {
+      edited.set(undefined);
+      chosenOffsets.set([]);
+      fromDraft.set(undefined);
+      fillForm(form, { ...emptyEvent, date });
+    }, "calendar.form.startCreating"),
+    startFromDraft: action(({ draftId, draft }: EventDraftOpening) => {
+      edited.set(undefined);
+      chosenOffsets.set(draft.reminderOffsets);
+      fromDraft.set(draftId);
+      fillForm(form, valuesOfDraft(draft));
+    }, "calendar.form.startFromDraft"),
+    startEditing: action((event: CalendarEvent) => {
+      edited.set(event);
+      chosenOffsets.set(event.reminderOffsets);
+      fromDraft.set(undefined);
+      fillForm(form, valuesOf(event));
+    }, "calendar.form.startEditing"),
+  };
+}
+
+function settleDraft(
+  { onDraftSaved }: EventFormDependencies,
+  fromDraft: Atom<string | undefined>,
+): void {
+  const draftId = fromDraft();
+
+  if (draftId !== undefined) {
+    fromDraft.set(undefined);
+    onDraftSaved?.(draftId);
+  }
+}
+
 export function reatomEventForm(dependencies: EventFormDependencies) {
   const edited = atom<CalendarEvent | undefined>(undefined, "calendar.form.edited");
   const chosenOffsets = atom<EventReminderOffset[]>([], "calendar.form.chosenOffsets");
+  const fromDraft = atom<string | undefined>(undefined, "calendar.form.fromDraft");
   const form = reatomForm(emptyEvent, {
     name: "calendar.form",
     schema,
@@ -201,6 +268,7 @@ export function reatomEventForm(dependencies: EventFormDependencies) {
       );
 
       dependencies.data.keep(saved);
+      settleDraft(dependencies, fromDraft);
       dependencies.onSaved(saved);
     },
   });
@@ -209,16 +277,7 @@ export function reatomEventForm(dependencies: EventFormDependencies) {
     form,
     ...reatomFlags(form, edited),
     ...reatomOffsets(form, chosenOffsets),
-    startCreating: action((date: string) => {
-      edited.set(undefined);
-      chosenOffsets.set([]);
-      fillForm(form, { ...emptyEvent, date });
-    }, "calendar.form.startCreating"),
-    startEditing: action((event: CalendarEvent) => {
-      edited.set(event);
-      chosenOffsets.set(event.reminderOffsets);
-      fillForm(form, valuesOf(event));
-    }, "calendar.form.startEditing"),
+    ...reatomStarts(form, { edited, chosenOffsets, fromDraft }),
     save: action(() => {
       form.submit().catch(noop);
     }, "calendar.form.save"),

@@ -1,10 +1,45 @@
-import { and, asc, eq, gte, lt } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lt } from "drizzle-orm";
 
-import { commandDrafts, familyMembers, members, type Db } from "@/common/db";
+import { commandDrafts, familyMembers, members, pets, type Db } from "@/common/db";
 
 export type CommandDraftRow = typeof commandDrafts.$inferSelect;
 
 export type FamilyPerson = { id: string; name: string };
+
+export type FamilyPet = FamilyPerson & { species: string };
+
+// Who a draft may refer to: the Members by name and the Pets in care.
+export type FamilyNames = { members: FamilyPerson[]; pets: FamilyPet[] };
+
+// The speaker's Family as the prompt sees it, and the speaker's own clock.
+function familyQueries(db: Db) {
+  return {
+    membersOf: async (familyId: string): Promise<FamilyPerson[]> =>
+      db
+        .select({ id: members.id, name: members.name })
+        .from(familyMembers)
+        .innerJoin(members, eq(members.id, familyMembers.memberId))
+        .where(eq(familyMembers.familyId, familyId))
+        .orderBy(asc(familyMembers.createdAt))
+        .all(),
+    petsOf: async (familyId: string): Promise<FamilyPet[]> =>
+      db
+        .select({ id: pets.id, name: pets.name, species: pets.species })
+        .from(pets)
+        .where(and(eq(pets.familyId, familyId), isNull(pets.archivedAt)))
+        .orderBy(asc(pets.createdAt))
+        .all(),
+    async timeZoneOf(memberId: string): Promise<string | null> {
+      const row = await db
+        .select({ timeZone: members.timeZone })
+        .from(members)
+        .where(eq(members.id, memberId))
+        .get();
+
+      return row?.timeZone ?? null;
+    },
+  };
+}
 
 export function createCommandRepo(db: Db) {
   return {
@@ -27,23 +62,7 @@ export function createCommandRepo(db: Db) {
       await db.delete(commandDrafts).where(lt(commandDrafts.expiresAt, now));
     },
 
-    membersOf: async (familyId: string): Promise<FamilyPerson[]> =>
-      db
-        .select({ id: members.id, name: members.name })
-        .from(familyMembers)
-        .innerJoin(members, eq(members.id, familyMembers.memberId))
-        .where(eq(familyMembers.familyId, familyId))
-        .orderBy(asc(familyMembers.createdAt))
-        .all(),
-    async timeZoneOf(memberId: string): Promise<string | null> {
-      const row = await db
-        .select({ timeZone: members.timeZone })
-        .from(members)
-        .where(eq(members.id, memberId))
-        .get();
-
-      return row?.timeZone ?? null;
-    },
+    ...familyQueries(db),
   };
 }
 

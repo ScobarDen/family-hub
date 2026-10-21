@@ -18,7 +18,7 @@ import {
   type WeightPoint,
 } from "../care.lib.ts";
 import { reatomCareData, type CareData } from "../care.model.ts";
-import { reatomCareForm, type CareFormModel } from "./care-form.vm.ts";
+import { reatomCareForm, type CareEntryDraftOpening, type CareFormModel } from "./care-form.vm.ts";
 import { reatomCarePhotos } from "./care-photos.vm.ts";
 
 export type CareScreen =
@@ -38,6 +38,7 @@ type CareDependencies = {
   // Why photos cannot be added now, from photo-storage; undefined when they can.
   photoHint: () => string | undefined;
   onMakeAvatar: (photoId: string) => void;
+  onDraftSaved?: (draftId: string) => void;
 };
 
 export type DueSource = { id: string; title: string; dueDate: string; kind: "due" };
@@ -124,6 +125,16 @@ function reatomRemove({ api, data, form, screen, failure, telegram }: Sources) {
   }, "care.remove").extend(withAsync());
 }
 
+// «Изменить» on a Command Draft lands in the ordinary form, filled in from the draft.
+function reatomDraftEditing({ form, screen }: Sources) {
+  return {
+    editDraft: action((opening: CareEntryDraftOpening) => {
+      form.startFromDraft(opening);
+      screen.set("form");
+    }, "care.editDraft"),
+  };
+}
+
 function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRange>) {
   return {
     add: action((kind: CareKind) => {
@@ -184,6 +195,14 @@ function reatomDueSources(data: CareData) {
   );
 }
 
+function reatomScreen(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
+  return computed((): CareScreen => {
+    const kind = screen();
+
+    return kind === "form" ? { kind, isCreating: form.editedId() === undefined } : { kind };
+  }, "care.screen");
+}
+
 export function reatomCare(dependencies: CareDependencies) {
   const data = reatomCareData(dependencies);
   const screen = atom<CareScreen["kind"]>("blocks", "care.screenKind");
@@ -207,11 +226,7 @@ export function reatomCare(dependencies: CareDependencies) {
   const remove = reatomRemove(sources);
 
   return {
-    screen: computed((): CareScreen => {
-      const kind = screen();
-
-      return kind === "form" ? { kind, isCreating: form.editedId() === undefined } : { kind };
-    }, "care.screen"),
+    screen: reatomScreen(screen, form),
     title: reatomTitle(screen, form),
     canGoBack: computed(() => screen() !== "blocks", "care.canGoBack"),
     isReadOnly: computed(() => dependencies.isReadOnly(), "care.isReadOnly"),
@@ -221,6 +236,7 @@ export function reatomCare(dependencies: CareDependencies) {
     ...photos,
     ...reatomViews(sources, weightRange),
     ...reatomMoves(sources, weightRange),
+    ...reatomDraftEditing(sources),
     remove: action(() => {
       remove().catch(noop);
     }, "care.removeEntry"),

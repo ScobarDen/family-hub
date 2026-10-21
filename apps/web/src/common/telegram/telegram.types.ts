@@ -55,6 +55,8 @@ export type PopupButton = {
 
 export type PopupParams = { title?: string; message: string; buttons: PopupButton[] };
 
+export type HapticImpact = "light" | "medium" | "heavy" | "rigid" | "soft";
+
 export type TelegramWebApp = {
   initData: string;
   initDataUnsafe: { start_param?: string };
@@ -74,6 +76,9 @@ export type TelegramWebApp = {
   requestWriteAccess(callback?: (isAllowed: boolean) => void): void;
   shareMessage(preparedMessageId: string, callback?: (isSent: boolean) => void): void;
   openTelegramLink(url: string): void;
+  HapticFeedback: { impactOccurred(style: HapticImpact): void };
+  enableVerticalSwipes(): void;
+  disableVerticalSwipes(): void;
   BackButton: TelegramButton;
   SettingsButton: TelegramButton;
   onEvent(event: WebAppEvent, handler: () => void): void;
