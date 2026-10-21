@@ -263,6 +263,25 @@ describe("deleting the Family", () => {
     expect(backend.requests).toContain('DELETE /api/family {"familyName":"Гущины"}');
   });
 
+  test("still goes through after an earlier attempt was cancelled", async () => {
+    const { model, onLeft } = startFamily();
+
+    await loaded(model);
+    model.openDeletion();
+    model.deletion.fields.familyName.set("Гущ");
+    model.closeDeletion();
+
+    expect(model.deletion.fields.familyName()).toBe("");
+
+    model.openDeletion();
+    model.deletion.fields.familyName.set("Гущины");
+    model.deleteFamily();
+
+    await vi.waitFor(() => {
+      expect(onLeft).toHaveBeenCalledOnce();
+    });
+  });
+
   test("is refused while the typed name differs", async () => {
     const { model, backend, onLeft } = startFamily();
 

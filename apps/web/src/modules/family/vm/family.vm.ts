@@ -61,7 +61,11 @@ function reatomDeletionFlow(sources: FamilySources) {
     }, "family.openDeletion"),
     closeDeletion: action(() => {
       isOpen.set(false);
-      form.reset();
+
+      // The form's own reset would also abort the next submit, so the fields are reset one by one.
+      for (const field of form.fieldsList()) {
+        field.reset();
+      }
     }, "family.closeDeletion"),
     deleteFamily: action(() => {
       form.submit().catch(noop);
