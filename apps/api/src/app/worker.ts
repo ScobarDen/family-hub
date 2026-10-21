@@ -20,6 +20,7 @@ import {
   createFamilyRequestRepo,
   createFamilyRequestService,
   familyRequestRoute,
+  type FamilyRequestService,
 } from "@/modules/family-request";
 import { createFeedRepo, createFeedService, feedRoute, type FeedService } from "@/modules/feed";
 import { createGoalRepo, createGoalService, goalRoute } from "@/modules/goal";
@@ -45,6 +46,7 @@ import {
   createReminderService,
   createSourceRepo,
   reminderRoute,
+  type ReminderService,
 } from "@/modules/reminder";
 import { sessionRoute } from "@/modules/session";
 
@@ -217,6 +219,26 @@ function authServiceOf(
   });
 }
 
+// Who joins or leaves a Family changes whom its Reminders reach.
+function membershipServicesOf(
+  db: Db,
+  {
+    shared,
+    familyRequests,
+    schedule,
+  }: { shared: Shared; familyRequests: FamilyRequestService; schedule: ReminderService },
+) {
+  return {
+    families: createFamilyService({ families: createFamilyRepo(db), schedule, ...shared }),
+    invites: createInviteService({
+      invites: createInviteRepo(db),
+      familyRequests,
+      schedule,
+      ...shared,
+    }),
+  };
+}
+
 function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): AppServices {
   const db = createDb(env.DB);
   const bot = createBotApi(env.BOT_TOKEN);
@@ -241,15 +263,8 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
     bot,
     auth: authServiceOf(env, { memberships, clock }),
     ...records,
-    families: createFamilyService({ families: createFamilyRepo(db), bot, clock }),
+    ...membershipServicesOf(db, { shared, familyRequests, schedule: records.reminders }),
     familyRequests,
-    invites: createInviteService({
-      invites: createInviteRepo(db),
-      memberships,
-      familyRequests,
-      bot,
-      clock,
-    }),
     photoStorage: createPhotoStorageService({ storage: createPhotoStorageRepo(db), ...shared }),
     commands: commandServiceOf(env, { db, shared, records }),
   };

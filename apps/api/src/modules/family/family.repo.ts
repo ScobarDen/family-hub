@@ -8,8 +8,6 @@ import {
   invites,
   members,
   plans,
-  reminderDispatch,
-  reminderRecipients,
   reminders,
   type Db,
 } from "@/common/db";
@@ -59,14 +57,6 @@ function departFromReminders(db: Db, { familyId, memberId, now }: Departure) {
 
   return [
     db
-      .delete(reminderDispatch)
-      .where(and(eq(reminderDispatch.familyId, familyId), eq(reminderDispatch.memberId, memberId))),
-    db
-      .delete(reminderRecipients)
-      .where(
-        and(eq(reminderRecipients.familyId, familyId), eq(reminderRecipients.memberId, memberId)),
-      ),
-    db
       .delete(reminders)
       .where(
         and(
@@ -97,8 +87,8 @@ function departFromGoals(db: Db, { familyId, memberId, now }: Departure) {
   ] as const;
 }
 
-// Private records of the one who leaves go, their Shared ones pass to the Family Owner and their
-// reminder_dispatch rows go: every table with owner_member_id or a Recipient joins this batch.
+// Private records of the one who leaves go and their Shared ones pass to the Family Owner: every
+// table with owner_member_id joins this batch. Their Reminder rows are the reminder module's to drop.
 async function depart(db: Db, departure: Departure): Promise<void> {
   const { familyId, memberId, now } = departure;
 

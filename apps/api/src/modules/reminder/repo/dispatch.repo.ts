@@ -1,6 +1,6 @@
-import { and, asc, eq, inArray, isNull, like, lt, lte, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, like, lt, lte, notInArray, or } from "drizzle-orm";
 
-import { reminderDispatch, type DispatchSource, type Db } from "@/common/db";
+import { familyMembers, reminderDispatch, type DispatchSource, type Db } from "@/common/db";
 
 export type DispatchRow = typeof reminderDispatch.$inferSelect;
 
@@ -15,6 +15,10 @@ export type DispatchPlan = {
 export type SourceRows = { familyId: string; source: DispatchSource; prefix: string };
 
 type Replacement = SourceRows & { plans: DispatchPlan[]; now: number };
+
+export type NewRow = DispatchPlan & { source: DispatchSource };
+
+type Addition = { familyId: string; rows: NewRow[]; now: number };
 
 const lockMs = 60_000;
 
@@ -63,6 +67,32 @@ async function replace(db: Db, { plans, now, ...rows }: Replacement, newId: () =
   ] as const);
 }
 
+async function add(db: Db, { familyId, rows, now }: Addition, newId: () => string) {
+  // One statement per row, as D1 caps the bound parameters of a single statement.
+  const [first, ...rest] = rows.map((row) =>
+    db
+      .insert(reminderDispatch)
+      .values({ id: newId(), familyId, ...row, createdAt: now, updatedAt: now }),
+  );
+
+  if (first !== undefined) {
+    await db.batch([first, ...rest]);
+  }
+}
+
+async function removeDeparted(db: Db, familyId: string): Promise<void> {
+  const stayed = db
+    .select({ memberId: familyMembers.memberId })
+    .from(familyMembers)
+    .where(eq(familyMembers.familyId, familyId));
+
+  await db
+    .delete(reminderDispatch)
+    .where(
+      and(eq(reminderDispatch.familyId, familyId), notInArray(reminderDispatch.memberId, stayed)),
+    );
+}
+
 async function release(db: Db, dispatchIds: string[]): Promise<void> {
   if (dispatchIds.length > 0) {
     await db
@@ -82,6 +112,10 @@ export function createDispatchRepo(db: Db) {
     // A Member's own rows are found by the Member alone, whose zone they follow.
     ofMember: async (memberId: string): Promise<DispatchRow[]> =>
       db.select().from(reminderDispatch).where(eq(reminderDispatch.memberId, memberId)).all(),
+    ofFamily: async (familyId: string): Promise<DispatchRow[]> =>
+      db.select().from(reminderDispatch).where(eq(reminderDispatch.familyId, familyId)).all(),
+    add: async (addition: Addition, newId: () => string) => add(db, addition, newId),
+    removeDeparted: async (familyId: string) => removeDeparted(db, familyId),
     replace: async (replacement: Replacement, newId: () => string) =>
       replace(db, replacement, newId),
     remove: async (rows: SourceRows) => {

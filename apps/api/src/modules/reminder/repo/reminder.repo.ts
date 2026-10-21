@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, or, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray, or, type SQL } from "drizzle-orm";
 
 import { familyMembers, members, reminderRecipients, reminders, type Db } from "@/common/db";
 
@@ -112,6 +112,22 @@ async function areMembers(db: Db, familyId: string, memberIds: string[]): Promis
   return found.length === new Set(memberIds).size;
 }
 
+async function removeDepartedRecipients(db: Db, familyId: string): Promise<void> {
+  const stayed = db
+    .select({ memberId: familyMembers.memberId })
+    .from(familyMembers)
+    .where(eq(familyMembers.familyId, familyId));
+
+  await db
+    .delete(reminderRecipients)
+    .where(
+      and(
+        eq(reminderRecipients.familyId, familyId),
+        notInArray(reminderRecipients.memberId, stayed),
+      ),
+    );
+}
+
 export function createReminderRepo(db: Db) {
   return {
     familyMembersOf: async (familyId: string) => familyMembersOf(db, familyId),
@@ -120,6 +136,7 @@ export function createReminderRepo(db: Db) {
     // The cron and the bot buttons know a Reminder by its id alone; the row names its Family.
     findById: async (reminderId: string) => findWhere(db, eq(reminders.id, reminderId)),
     save: async (saving: Saving, recipientIds: string[]) => save(db, saving, recipientIds),
+    removeDepartedRecipients: async (familyId: string) => removeDepartedRecipients(db, familyId),
     areMembers: async (familyId: string, memberIds: string[]) =>
       areMembers(db, familyId, memberIds),
 

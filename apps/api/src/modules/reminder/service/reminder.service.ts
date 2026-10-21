@@ -11,6 +11,7 @@ import { deliverDue } from "./delivery.service.ts";
 import {
   digestChanged,
   eventChanged,
+  membershipChanged,
   petChanged,
   planChanged,
   zoneChanged,
@@ -33,6 +34,7 @@ export function createReminderService(dependencies: ReminderDependencies) {
       petChanged(dependencies, { familyId, petId }),
     planChanged: async (familyId: string, planId: string) =>
       planChanged(dependencies, { familyId, planId }),
+    membershipChanged: async (familyId: string) => membershipChanged(dependencies, familyId),
     digestChanged: async (memberId: string) => digestChanged(dependencies, memberId),
     zoneChanged: async (memberId: string) => zoneChanged(dependencies, memberId),
   };

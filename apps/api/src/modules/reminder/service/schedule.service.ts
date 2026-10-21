@@ -5,11 +5,18 @@ import type { DispatchSource } from "@/common/db";
 
 import { fallbackTimeZone } from "../reminder.lib.ts";
 import type { ReminderDependencies, Source } from "../reminder.types.ts";
-import type { DispatchPlan } from "../repo/dispatch.repo.ts";
+import type { DispatchPlan, DispatchRow, NewRow } from "../repo/dispatch.repo.ts";
 import type { ReminderWithRecipients } from "../repo/reminder.repo.ts";
 import { reminderSource } from "./calendar-source.service.ts";
 import { planSources } from "./plan-source.service.ts";
-import { birthdayOf, digestOf, dueSources, eventSources, sourceOfRow } from "./source.service.ts";
+import {
+  birthdayOf,
+  digestOf,
+  dueSources,
+  eventSources,
+  familySources,
+  sourceOfRow,
+} from "./source.service.ts";
 
 export type Fire = { occurrence: string; fireAt: number };
 
@@ -48,10 +55,13 @@ export function fireAfter(
     : { occurrence: next, fireAt: source.fireAt(next, timeZone) };
 }
 
-async function plansOf(dependencies: ReminderDependencies, source: Source, now: number) {
+async function plansOf(
+  dependencies: ReminderDependencies,
+  { source, memberIds, now }: { source: Source; memberIds: string[]; now: number },
+) {
   const plans: DispatchPlan[] = [];
 
-  for (const memberId of source.recipientIds) {
+  for (const memberId of memberIds) {
     const fire = upcoming(source, {
       timeZone: await zoneOf(dependencies, { memberId, source }),
       now,
@@ -79,7 +89,9 @@ async function scheduleRows(
 ): Promise<void> {
   const now = dependencies.clock.now();
   const plans = await Promise.all(
-    sources.map(async (source) => plansOf(dependencies, source, now)),
+    sources.map(async (source) =>
+      plansOf(dependencies, { source, memberIds: source.recipientIds, now }),
+    ),
   );
 
   await dependencies.dispatch.replace(
@@ -181,4 +193,37 @@ export async function zoneChanged(dependencies: ReminderDependencies, memberId: 
       updatedAt: now,
     });
   }
+}
+
+function rowKey({
+  source,
+  sourceId,
+  memberId,
+}: Pick<DispatchRow, "source" | "sourceId" | "memberId">) {
+  return `${source}|${sourceId}|${memberId}`;
+}
+
+// Rows already there stay as they are, snoozes included: a Member who joined gets rows for every
+// source that now reaches them, and one who left loses theirs along with their chosen-Recipient places.
+export async function membershipChanged(dependencies: ReminderDependencies, familyId: string) {
+  const now = dependencies.clock.now();
+
+  await dependencies.reminders.removeDepartedRecipients(familyId);
+  await dependencies.dispatch.removeDeparted(familyId);
+
+  const kept = await dependencies.dispatch.ofFamily(familyId);
+  const existing = new Set(kept.map(rowKey));
+  const rows: NewRow[] = [];
+
+  for (const source of await familySources(dependencies, familyId)) {
+    const memberIds = source.recipientIds.filter(
+      (memberId) =>
+        !existing.has(rowKey({ source: source.kind, sourceId: source.sourceId, memberId })),
+    );
+    const plans = await plansOf(dependencies, { source, memberIds, now });
+
+    rows.push(...plans.map((plan) => ({ ...plan, source: source.kind })));
+  }
+
+  await dependencies.dispatch.add({ familyId, rows, now }, () => uuidv7(now));
 }

@@ -5,7 +5,7 @@ import type { DispatchRow } from "../repo/dispatch.repo.ts";
 import { eventSource, reminderSource } from "./calendar-source.service.ts";
 import { digestSource } from "./digest-source.service.ts";
 import { birthdaySource, dueSource, openDues } from "./pet-source.service.ts";
-import { planOf } from "./plan-source.service.ts";
+import { planOf, planSources } from "./plan-source.service.ts";
 
 async function reminderOf({ reminders }: ReminderDependencies, reminderId: string) {
   const entry = await reminders.findById(reminderId);
@@ -118,6 +118,36 @@ export async function dueSources(
   const dues = openDues(await dependencies.sources.dueEntriesOf(petId));
 
   return Promise.all(dues.map(async (entry) => dueSource(dependencies, { pet, entry })));
+}
+
+async function petSources(dependencies: ReminderDependencies, petId: string): Promise<Source[]> {
+  const birthday = await birthdayOf(dependencies, petId);
+
+  return [
+    ...(birthday === undefined ? [] : [birthday]),
+    ...(await dueSources(dependencies, petId)),
+  ];
+}
+
+// Every source a Family keeps, read when its Members change; a digest belongs to its Member alone.
+export async function familySources(
+  dependencies: ReminderDependencies,
+  familyId: string,
+): Promise<Source[]> {
+  const { reminderIds, eventIds, petIds, planIds } =
+    await dependencies.sources.sourceIdsOf(familyId);
+  const groups = await Promise.all([
+    ...reminderIds.map(async (reminderId) => {
+      const source = await reminderOf(dependencies, reminderId);
+
+      return source === undefined ? [] : [source];
+    }),
+    ...eventIds.map(async (eventId) => eventSources(dependencies, eventId)),
+    ...petIds.map(async (petId) => petSources(dependencies, petId)),
+    ...planIds.map(async (planId) => planSources(dependencies, planId)),
+  ]);
+
+  return groups.flat();
 }
 
 export { birthdayOf };
