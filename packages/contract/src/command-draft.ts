@@ -6,6 +6,11 @@ import { reminderTextMaxLength } from "./reminder.ts";
 
 export const commandDraftLifetimeMs = 86_400_000;
 
+export const voiceMaxSeconds = 30;
+
+// Thirty seconds of speech is well under a megabyte in any format a WebView records.
+export const voiceMaxBytes = 2_097_152;
+
 const ambiguousCandidates = 2;
 
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/u);
@@ -51,3 +56,44 @@ export const commandAnswer = z.discriminatedUnion("outcome", [
 ]);
 
 export type CommandAnswer = z.infer<typeof commandAnswer>;
+
+// Why a command became no draft; the bot and the Mini App say the same words for each.
+export const commandFailure = z.enum([
+  "unrecognized",
+  "unsupported",
+  "quota",
+  "unheard",
+  "too_long",
+]);
+
+export type CommandFailure = z.infer<typeof commandFailure>;
+
+// What the Mini App gets for a recording or a draft it opens; heard is the transcript, if any.
+export const commandOutcome = z.union([
+  z.object({
+    status: z.literal("draft"),
+    draftId: z.string(),
+    heard: z.string().nullable(),
+    draft: commandDraft,
+  }),
+  z.object({ status: commandFailure, heard: z.string().nullable(), message: z.string() }),
+]);
+
+export type CommandOutcome = z.infer<typeof commandOutcome>;
+
+export const draftPick = z.object({ index: z.int().nonnegative() });
+
+export type DraftPick = z.infer<typeof draftPick>;
+
+export const draftCreated = z.object({ kind: z.enum(["reminder"]), id: z.string() });
+
+export type DraftCreated = z.infer<typeof draftCreated>;
+
+// Where the microphone sends a Member whose WebView cannot record: the bot chat.
+export const botChat = z.object({ url: z.url() });
+
+export type BotChat = z.infer<typeof botChat>;
+
+export const draftSettled = z.object({ status: z.enum(["dismissed", "created"]) });
+
+export type DraftSettled = z.infer<typeof draftSettled>;

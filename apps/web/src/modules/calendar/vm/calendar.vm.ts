@@ -17,7 +17,7 @@ import {
 import { reatomCalendarData, type CalendarData } from "../calendar.model.ts";
 import { reatomEventDetails, type OpenedOccurrence } from "./event-details.vm.ts";
 import { reatomEventForm } from "./event-form.vm.ts";
-import { reatomReminderForm } from "./reminder-form.vm.ts";
+import { reatomReminderForm, type ReminderDraftOpening } from "./reminder-form.vm.ts";
 
 export type CalendarScreen =
   | { kind: "calendar" }
@@ -33,6 +33,7 @@ type CalendarDependencies = {
   onOpenPet: (petId: string) => void;
   onOpenPlan: (planId: string) => void;
   self: () => string | undefined;
+  onDraftSaved?: (draftId: string) => void;
 };
 
 const upcomingDays = 30;
@@ -159,6 +160,11 @@ function reatomMoves(dependencies: CalendarDependencies, navigation: Navigation,
       form.startCreating(selected());
       screen.set("event-form");
     }, "calendar.add"),
+    // «Изменить» on a Command Draft lands in the ordinary form, filled in from the draft.
+    openReminderDraft: action((opening: ReminderDraftOpening) => {
+      reminderForm.startFromDraft(opening);
+      screen.set("reminder-form");
+    }, "calendar.openReminderDraft"),
     addReminder: action(() => {
       reminderForm.startCreating(selected());
       screen.set("reminder-form");

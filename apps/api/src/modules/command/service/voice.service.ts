@@ -1,6 +1,8 @@
 import type { Message, Voice } from "@grammyjs/types";
 
-import { quotaText, tooLongText, voiceMaxSeconds } from "../command.lib.ts";
+import { voiceMaxSeconds } from "@family-hub/contract";
+
+import { quotaText, tooLongText } from "../command.lib.ts";
 import type { CommandDependencies } from "../command.types.ts";
 import {
   isOverQuota,
@@ -14,7 +16,9 @@ import {
 
 const telegramVoiceType = "audio/ogg";
 
-type Heard = { status: "heard"; text: string } | { status: "unheard" } | { status: "quota" };
+export type Audio = { body: ReadableStream; contentType: string };
+
+export type Heard = { status: "heard"; text: string } | { status: "unheard" } | { status: "quota" };
 
 function transcriptOf(raw: unknown): string {
   const text = typeof raw === "object" && raw !== null && "text" in raw ? raw.text : undefined;
@@ -22,35 +26,37 @@ function transcriptOf(raw: unknown): string {
   return typeof text === "string" ? text.trim() : "";
 }
 
-async function audioOf(
-  { bot }: CommandDependencies,
-  voice: Voice,
-): Promise<ReadableStream | undefined> {
-  const file = await bot.call("getFile", { file_id: voice.file_id });
-  const response = file.file_path === undefined ? undefined : await bot.file(file.file_path);
-
-  return response?.ok === true ? (response.body ?? undefined) : undefined;
-}
-
-// The audio streams from Telegram straight into Whisper: base64 would spend the 10 ms of CPU.
-async function listen(dependencies: CommandDependencies, voice: Voice): Promise<Heard> {
+// The audio streams straight into Whisper: base64 would spend the 10 ms of CPU.
+export async function listen(dependencies: CommandDependencies, audio: Audio): Promise<Heard> {
   try {
-    const body = await audioOf(dependencies, voice);
-
-    if (body === undefined) {
-      return { status: "unheard" };
-    }
-
     const text = transcriptOf(
-      await dependencies.model.run(dependencies.speechModel, {
-        audio: { body, contentType: voice.mime_type ?? telegramVoiceType },
-        language: "ru",
-      }),
+      await dependencies.model.run(dependencies.speechModel, { audio, language: "ru" }),
     );
 
     return text === "" ? { status: "unheard" } : { status: "heard", text };
   } catch (error) {
     return isQuotaError(error) ? { status: "quota" } : { status: "unheard" };
+  }
+}
+
+async function voiceAudioOf(
+  { bot }: CommandDependencies,
+  voice: Voice,
+): Promise<Audio | undefined> {
+  const file = await bot.call("getFile", { file_id: voice.file_id });
+  const response = file.file_path === undefined ? undefined : await bot.file(file.file_path);
+  const body = response?.ok === true ? response.body : null;
+
+  return body === null ? undefined : { body, contentType: voice.mime_type ?? telegramVoiceType };
+}
+
+async function listenToVoice(dependencies: CommandDependencies, voice: Voice): Promise<Heard> {
+  try {
+    const audio = await voiceAudioOf(dependencies, voice);
+
+    return audio === undefined ? { status: "unheard" } : await listen(dependencies, audio);
+  } catch {
+    return { status: "unheard" };
   }
 }
 
@@ -80,7 +86,7 @@ export async function handleVoice(
 
   await showTyping(dependencies, chatId);
 
-  const heard = await listen(dependencies, message.voice);
+  const heard = await listenToVoice(dependencies, message.voice);
 
   await sendPreview(dependencies, {
     membership,

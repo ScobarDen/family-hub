@@ -13,7 +13,7 @@ import {
   createCareEntryService,
   type CareEntryService,
 } from "@/modules/care-entry";
-import { createCommandRepo, createCommandService } from "@/modules/command";
+import { commandRoute, createCommandRepo, createCommandService } from "@/modules/command";
 import { createEventRepo, createEventService, eventRoute } from "@/modules/event";
 import { createFamilyRepo, createFamilyService, familyRoute } from "@/modules/family";
 import {
@@ -298,7 +298,8 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", photoStorageRoute)
     .route("/", careEntryRoute)
     .route("/", eventRoute)
-    .route("/", reminderRoute);
+    .route("/", reminderRoute)
+    .route("/", commandRoute);
 }
 
 async function runScheduled(env: Env, dependencies: WorkerDependencies): Promise<void> {

@@ -9,14 +9,12 @@ import type { CommandSource } from "@/common/db";
 import { ignoringBotErrors } from "@/common/telegram";
 
 import {
+  editLink,
+  failureTexts,
   heardText,
   previewButtons,
   previewText,
-  quotaText,
   strangerText,
-  unheardText,
-  unrecognizedText,
-  unsupportedText,
 } from "../command.lib.ts";
 import type { CommandDependencies } from "../command.types.ts";
 
@@ -71,6 +69,13 @@ export async function showTyping({ bot }: CommandDependencies, chatId: number): 
   await ignoringBotErrors(bot.call("sendChatAction", { chat_id: chatId, action: "typing" }));
 }
 
+export async function editLinkOf({ bot }: CommandDependencies, draftId: string): Promise<string> {
+  // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
+  const { username } = await bot.call("getMe", undefined);
+
+  return editLink(username, draftId);
+}
+
 export async function outcomeOf(
   dependencies: CommandDependencies,
   { membership, text }: { membership: Membership; text: string },
@@ -99,23 +104,17 @@ export async function outcomeOf(
   }
 }
 
-// A voice command's answer starts with what the bot heard, so a misheard word is visible.
-function withHeard(text: string, heard: string | undefined): string {
-  return heard === undefined ? text : `${heardText(heard)}\n\n${text}`;
-}
-
-type Answer = {
+type Handled = {
   membership: Membership;
-  chatId: number;
+  chatId: number | null;
   source: CommandSource;
   outcome: Outcome;
-  heard?: string;
 };
 
 // Every command handled leaves a row, failed ones too: the rows are the Family's daily count.
-async function record(
+export async function record(
   dependencies: CommandDependencies,
-  { membership, chatId, source, outcome }: Answer,
+  { membership, chatId, source, outcome }: Handled,
 ): Promise<string> {
   const now = dependencies.clock.now();
   const draftId = uuidv7(now);
@@ -138,22 +137,20 @@ async function record(
   return draftId;
 }
 
+// A voice command's answer starts with what the bot heard, so a misheard word is visible.
+function withHeard(text: string, heard: string | undefined): string {
+  return heard === undefined ? text : `${heardText(heard)}\n\n${text}`;
+}
+
 export async function sendPreview(
   dependencies: CommandDependencies,
-  answer: Answer,
+  answer: Handled & { chatId: number; heard?: string },
 ): Promise<void> {
   const { membership, chatId, outcome, heard } = answer;
   const draftId = await record(dependencies, answer);
 
   if (outcome.status !== "draft") {
-    const texts = {
-      quota: quotaText,
-      unheard: unheardText,
-      unrecognized: unrecognizedText,
-      unsupported: unsupportedText,
-    };
-
-    await reply(dependencies, { chatId, text: withHeard(texts[outcome.status], heard) });
+    await reply(dependencies, { chatId, text: withHeard(failureTexts[outcome.status], heard) });
 
     return;
   }
@@ -162,7 +159,10 @@ export async function sendPreview(
   const message = await dependencies.bot.call("sendMessage", {
     chat_id: chatId,
     text: withHeard(previewText(outcome.draft, people), heard),
-    reply_markup: previewButtons({ draft: outcome.draft, draftId }, people),
+    reply_markup: previewButtons(
+      { draft: outcome.draft, draftId, editLink: await editLinkOf(dependencies, draftId) },
+      people,
+    ),
   });
 
   await dependencies.drafts.update(draftId, {

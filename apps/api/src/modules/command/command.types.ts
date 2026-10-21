@@ -9,7 +9,10 @@ import type { CommandRepo } from "./command.repo.ts";
 
 // «Создать» goes through the same use case as the Mini App form; the app wires the reminder module.
 export type ReminderCreation = {
-  create(membership: Membership, change: ReminderChange): Promise<{ status: string }>;
+  create(
+    membership: Membership,
+    change: ReminderChange,
+  ): Promise<{ status: string; reminder?: { id: string } }>;
 };
 
 export type CommandDependencies = {

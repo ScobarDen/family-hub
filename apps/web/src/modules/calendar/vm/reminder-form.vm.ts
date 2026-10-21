@@ -1,7 +1,12 @@
 import { action, atom, computed, noop, reatomForm, wrap, type Atom } from "@reatom/core";
 import { z } from "zod";
 
-import { reminderChange, type Reminder, type ReminderChange } from "@family-hub/contract";
+import {
+  reminderChange,
+  type CommandDraft,
+  type Reminder,
+  type ReminderChange,
+} from "@family-hub/contract";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
 import type { PopupParams } from "@/common/telegram";
@@ -16,7 +21,11 @@ type ReminderFormDependencies = {
   self: () => string | undefined;
   telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
   onClosed: () => void;
+  // A Reminder saved from a Command Draft settles that draft.
+  onDraftSaved?: (draftId: string) => void;
 };
+
+export type ReminderDraftOpening = { draftId: string; draft: CommandDraft };
 
 export type RecipientChoice = { id: string; name: string; isChosen: boolean };
 
@@ -62,6 +71,17 @@ function valuesOf({ text, start, recurrence, visibility }: Reminder): ReminderVa
     text,
     date: start.date,
     time: start.time,
+    frequency: recurrence?.frequency ?? "",
+    until: recurrence?.until ?? "",
+    visibility,
+  };
+}
+
+function valuesOfDraft({ text, date, time, recurrence, visibility }: CommandDraft): ReminderValues {
+  return {
+    text: text ?? "",
+    date: date ?? "",
+    time: time ?? "",
     frequency: recurrence?.frequency ?? "",
     until: recurrence?.until ?? "",
     visibility,
@@ -146,25 +166,50 @@ function reatomFlags(form: ReminderForm, edited: Editing) {
 
 function reatomStarts(
   form: ReminderForm,
-  { edited, chosen }: { edited: Editing; chosen: Atom<string[]> },
+  {
+    edited,
+    chosen,
+    fromDraft,
+  }: { edited: Editing; chosen: Atom<string[]>; fromDraft: Atom<string | undefined> },
 ) {
   return {
     startCreating: action((date: string) => {
       edited.set(undefined);
       chosen.set([]);
+      fromDraft.set(undefined);
       fillForm(form, { ...emptyReminder, date });
     }, "calendar.reminderForm.startCreating"),
+    startFromDraft: action(({ draftId, draft }: ReminderDraftOpening) => {
+      edited.set(undefined);
+      chosen.set(draft.visibility === "private" ? [] : (draft.recipientIds ?? []));
+      fromDraft.set(draftId);
+      fillForm(form, valuesOfDraft(draft));
+    }, "calendar.reminderForm.startFromDraft"),
     startEditing: action((reminder: Reminder) => {
       edited.set(reminder);
+      fromDraft.set(undefined);
       chosen.set(reminder.isForEveryone ? [] : reminder.recipients.map(({ id }) => id));
       fillForm(form, valuesOf(reminder));
     }, "calendar.reminderForm.startEditing"),
   };
 }
 
+function settleDraft(
+  { onDraftSaved }: ReminderFormDependencies,
+  fromDraft: Atom<string | undefined>,
+): void {
+  const draftId = fromDraft();
+
+  if (draftId !== undefined) {
+    fromDraft.set(undefined);
+    onDraftSaved?.(draftId);
+  }
+}
+
 export function reatomReminderForm(dependencies: ReminderFormDependencies) {
   const edited: Editing = atom<Reminder | undefined>(undefined, "calendar.reminderForm.edited");
   const chosen = atom<string[]>([], "calendar.reminderForm.chosen");
+  const fromDraft = atom<string | undefined>(undefined, "calendar.reminderForm.fromDraft");
   const form = reatomForm(emptyReminder, {
     name: "calendar.reminderForm",
     schema,
@@ -181,6 +226,7 @@ export function reatomReminderForm(dependencies: ReminderFormDependencies) {
       );
 
       dependencies.data.keepReminder(saved);
+      settleDraft(dependencies, fromDraft);
       dependencies.onClosed();
     },
   });
@@ -191,7 +237,7 @@ export function reatomReminderForm(dependencies: ReminderFormDependencies) {
     ...reatomRecipients(dependencies, chosen),
     ...reatomFlags(form, edited),
 
-    ...reatomStarts(form, { edited, chosen }),
+    ...reatomStarts(form, { edited, chosen, fromDraft }),
     save: action(() => {
       form.submit().catch(noop);
     }, "calendar.reminderForm.save"),

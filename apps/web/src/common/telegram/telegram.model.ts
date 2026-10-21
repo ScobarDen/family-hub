@@ -3,6 +3,7 @@ import { action, atom, effect, noop, withConnectHook, wrap } from "@reatom/core"
 import type {
   ColorScheme,
   PopupParams,
+  HapticImpact,
   SafeAreaInset,
   TelegramButton,
   TelegramWebApp,
@@ -19,6 +20,8 @@ const writeAccessVersion = "6.9";
 const shareMessageVersion = "8.0";
 const backButtonVersion = "6.1";
 const settingsButtonVersion = "7.0";
+const hapticsVersion = "6.1";
+const verticalSwipesVersion = "7.7";
 
 type PlatformLook = "ios" | "android";
 
@@ -113,6 +116,31 @@ function reatomPrompts(webApp: TelegramWebApp) {
   };
 }
 
+function reatomGestures(webApp: TelegramWebApp) {
+  return {
+    haptic: action((impact: HapticImpact) => {
+      if (webApp.isVersionAtLeast(hapticsVersion)) {
+        webApp.HapticFeedback.impactOccurred(impact);
+      }
+    }, "telegram.haptic"),
+    // A swipe down closes the Mini App, which would fight a finger held on the microphone.
+    disableVerticalSwipes: action(() => {
+      if (webApp.isVersionAtLeast(verticalSwipesVersion)) {
+        webApp.disableVerticalSwipes();
+      }
+    }, "telegram.disableVerticalSwipes"),
+    enableVerticalSwipes: action(() => {
+      if (webApp.isVersionAtLeast(verticalSwipesVersion)) {
+        webApp.enableVerticalSwipes();
+      }
+    }, "telegram.enableVerticalSwipes"),
+  };
+}
+
+function reatomInteractions(webApp: TelegramWebApp) {
+  return { ...reatomDialogs(webApp), ...reatomPrompts(webApp), ...reatomGestures(webApp) };
+}
+
 function reatomButton(
   webApp: TelegramWebApp,
   { button, version, name }: { button: TelegramButton; version: string; name: string },
@@ -178,8 +206,7 @@ export function reatomTelegram(webApp: TelegramWebApp) {
       webApp.ready();
       webApp.expand();
     }, "telegram.launch"),
-    ...reatomDialogs(webApp),
-    ...reatomPrompts(webApp),
+    ...reatomInteractions(webApp),
     // Colours themselves arrive as --tg-theme-* variables; only Tailwind's dark: variant needs the class.
     followColorScheme: (element: HTMLElement) =>
       effect(() => {

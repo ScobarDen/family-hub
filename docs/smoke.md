@@ -49,6 +49,19 @@ Run on the dev bot with the real `AI` binding (`wrangler dev --remote`), since t
 - [ ] A voice message from a phone, «напомни в пятницу в семь вечера оплатить интернет», answers with «🎙 «…»» over the same preview, and «Создать» creates the Reminder.
 - [ ] A voice message over 30 seconds is turned down at once; a silent one answers «Не расслышал».
 - [ ] `wrangler tail` shows the voice command's CPU time within 10 ms.
+- [ ] «Изменить» in the bot's preview opens the Mini App on the Reminder form filled from the draft; saving it turns the preview into «✅ Создано».
+
+### Microphone in the Mini App
+
+Each item on iOS, Android and Telegram Desktop.
+
+- [ ] Holding the microphone records with a running timer and a haptic tick; releasing shows the preview sheet with the heard phrase, and «Создать» creates the Reminder.
+- [ ] The very first hold asks for the microphone and sends nothing, saying «Держите кнопку и говорите»; the next hold records.
+- [ ] Sliding the finger off the button cancels: no sheet, no request in the network log.
+- [ ] Holding for 30 seconds stops and sends by itself.
+- [ ] While the finger is down, dragging it downwards neither scrolls the page nor closes the Mini App; after release the swipe-to-close works again.
+- [ ] With the microphone refused in the system settings, the button opens the bot chat and says to send a voice message there.
+- [ ] «Изменить» in the sheet opens the Reminder form filled from the draft; «×» closes the sheet.
 
 Items for features that are not built yet are skipped until they land.
 

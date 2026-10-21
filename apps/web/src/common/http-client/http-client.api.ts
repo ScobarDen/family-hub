@@ -48,11 +48,17 @@ type RequestOptions<Schema extends z.ZodType> = {
   body?: unknown;
 };
 
-// A FormData body sets its own multipart content type.
+function isRaw(body: unknown): body is FormData | Blob {
+  return body instanceof FormData || body instanceof Blob;
+}
+
+// A FormData body sets its own multipart content type; a Blob, such as a recording, carries its own.
 function headersFor(body: unknown, token: string | undefined): Headers {
   const headers = new Headers();
 
-  if (body !== undefined && !(body instanceof FormData)) {
+  if (body instanceof Blob) {
+    headers.set("content-type", body.type);
+  } else if (body !== undefined && !isRaw(body)) {
     headers.set("content-type", "application/json");
   }
 
@@ -79,7 +85,7 @@ export function createHttpClient({
       fetch(new URL(path, baseUrl), {
         method,
         headers: headersFor(body, token()),
-        body: body === undefined || body instanceof FormData ? body : JSON.stringify(body),
+        body: body === undefined || isRaw(body) ? body : JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs),
       }),
     );

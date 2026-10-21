@@ -1,6 +1,11 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import type { CommandDraft, ReminderDraftField } from "@family-hub/contract";
+import {
+  encodeDeepLink,
+  type CommandDraft,
+  type CommandFailure,
+  type ReminderDraftField,
+} from "@family-hub/contract";
 
 import type { FamilyPerson } from "./command.repo.ts";
 
@@ -26,9 +31,15 @@ export const unrecognizedText = [
   "• каждый месяц 5-го в 10:00 напоминай про квартплату",
 ].join("\n");
 export const unsupportedText = "Такое голосом и текстом не умею — только создать напоминание.";
-export const voiceMaxSeconds = 30;
 export const tooLongText = "Слишком длинно — уложитесь в 30 секунд.";
 export const unheardText = "Не расслышал, попробуйте ещё раз.";
+export const failureTexts: Record<CommandFailure, string> = {
+  quota: quotaText,
+  unheard: unheardText,
+  unrecognized: unrecognizedText,
+  unsupported: unsupportedText,
+  too_long: tooLongText,
+};
 export const notYoursText = "Это не ваш черновик";
 export const staleText = "Черновик устарел";
 export const createdText = "✅ Создано";
@@ -107,7 +118,7 @@ export function previewText(draft: CommandDraft, people: FamilyPerson[]): string
   const missing =
     draft.missing.length === 0
       ? undefined
-      : `Не хватает: ${draft.missing.map((field) => fieldTitles[field]).join(", ")}. Напишите команду заново целиком.`;
+      : `Не хватает: ${draft.missing.map((field) => fieldTitles[field]).join(", ")}. Допишите в «Изменить» или скажите команду заново целиком.`;
   const ambiguity = draft.ambiguities[0];
   const question =
     ambiguity === undefined ? undefined : `Кого вы имели в виду под «${ambiguity.mention}»?`;
@@ -115,11 +126,21 @@ export function previewText(draft: CommandDraft, people: FamilyPerson[]): string
   return [line, missing, question].filter((part) => part !== undefined).join("\n\n");
 }
 
+// The bot's Main Mini App opens from t.me/<bot>, so the link needs no app short name.
+export function editLink(botUsername: string, draftId: string): string {
+  const link = new URL(`https://t.me/${botUsername}`);
+
+  link.searchParams.set("startapp", encodeDeepLink({ kind: "cmd", id: draftId }));
+
+  return link.toString();
+}
+
 export function previewButtons(
-  { draft, draftId }: { draft: CommandDraft; draftId: string },
+  { draft, draftId, editLink: link }: { draft: CommandDraft; draftId: string; editLink: string },
   people: FamilyPerson[],
 ): InlineKeyboardMarkup {
   const dismiss = { text: "×", callback_data: `${commandCallbackPrefix}:dismiss:${draftId}` };
+  const change = { text: "Изменить", url: link };
   const ambiguity = draft.ambiguities[0];
 
   if (ambiguity !== undefined) {
@@ -131,21 +152,16 @@ export function previewButtons(
             callback_data: `${commandCallbackPrefix}:pick:${draftId}:${index}`,
           },
         ]),
-        [dismiss],
+        [change, dismiss],
       ],
     };
   }
 
-  return draft.missing.length > 0
-    ? { inline_keyboard: [[dismiss]] }
-    : {
-        inline_keyboard: [
-          [
-            { text: "Создать", callback_data: `${commandCallbackPrefix}:create:${draftId}` },
-            dismiss,
-          ],
-        ],
-      };
+  const create = { text: "Создать", callback_data: `${commandCallbackPrefix}:create:${draftId}` };
+
+  return {
+    inline_keyboard: [draft.missing.length > 0 ? [change, dismiss] : [create, change, dismiss]],
+  };
 }
 
 // Picking a candidate settles one ambiguity: that Member joins the Recipients.

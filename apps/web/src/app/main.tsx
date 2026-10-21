@@ -1,3 +1,4 @@
+import { noop } from "@reatom/core";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Temporal } from "temporal-polyfill";
@@ -8,9 +9,16 @@ import { deviceTimeZone, today } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { preparePhoto } from "@/common/photo";
 import { reatomTelegram } from "@/common/telegram";
+import { createVoiceRecorder } from "@/common/voice-recorder";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCareApi, reatomCare } from "@/modules/care";
+import {
+  createCommandApi,
+  reatomCommandSheet,
+  reatomMicrophone,
+  type OpenedDraft,
+} from "@/modules/command";
 import { createDigestApi, reatomDigest } from "@/modules/digest";
 import { createFamilyApi, reatomFamily } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
@@ -65,6 +73,14 @@ const familyRequest = reatomFamilyRequest({
   onCheck: session.signIn,
 });
 
+const commandApi = createCommandApi(httpClient);
+
+async function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 const tabBarModules = reatomTabBarModules({
   api: createTabBarApi(httpClient),
   saved: () => session.member()?.settings.tabBar,
@@ -78,10 +94,7 @@ const albums = reatomAlbumsScreen({
   telegram,
   timeZone: deviceTimeZone,
   preparePhoto: async (file) => preparePhoto(file, deviceTimeZone()),
-  wait: async (ms) =>
-    new Promise((resolve) => {
-      setTimeout(resolve, ms);
-    }),
+  wait,
   photoHint: photoStorage.uploadHint,
 });
 const recipes = reatomRecipesScreen({
@@ -170,6 +183,27 @@ const calendar = reatomCalendar({
     plans.open(planId);
   },
   self: () => session.member()?.member.id,
+  onDraftSaved: (draftId) => {
+    commandApi.markCreated(draftId).catch(noop);
+  },
+});
+
+function editDraft(opened: OpenedDraft) {
+  navigation.openModule("calendar");
+  calendar.openReminderDraft(opened);
+}
+
+const commandSheet = reatomCommandSheet({ api: commandApi, onEdit: editDraft, onCreated: noop });
+const microphone = reatomMicrophone({
+  recorder: createVoiceRecorder(),
+  telegram,
+  botChat: async () => {
+    const chat = await commandApi.botChat();
+
+    return chat.url;
+  },
+  wait,
+  onRecorded: commandSheet.send,
 });
 
 function openFromFeed(target: FeedTarget) {
@@ -285,6 +319,8 @@ const home = {
   goals,
   albums,
   recipes,
+  microphone,
+  commandSheet,
 };
 
 telegram.launch();
@@ -303,6 +339,16 @@ if (link?.kind === "plan") {
   pets.open(link.id);
 } else if (link?.kind === "goal") {
   goals.open(link.id);
+}
+
+// A draft needs the session's token, so the bot's «Изменить» opens only once signed in.
+if (link?.kind === "cmd") {
+  const stopWaiting = session.member.subscribe((member) => {
+    if (member !== undefined) {
+      stopWaiting();
+      commandSheet.openForEdit(link.id);
+    }
+  });
 }
 
 timeZone.keepFollowingDevice();
