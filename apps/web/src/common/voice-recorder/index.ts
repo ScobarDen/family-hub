@@ -1,5 +1,8 @@
 export {
   createVoiceRecorder,
+  voiceRecorderOver,
+  type MicrophoneStream,
+  type RecorderEnvironment,
   type Recording,
   type RecordingRefusal,
   type VoiceRecorder,

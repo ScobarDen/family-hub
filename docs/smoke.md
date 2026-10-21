@@ -61,6 +61,7 @@ Each item on iOS, Android and Telegram Desktop.
 
 - [ ] Holding the microphone records with a running timer and a haptic tick; releasing shows the preview sheet with the heard phrase, and «Создать» creates the Reminder.
 - [ ] The very first hold asks for the microphone and sends nothing, saying «Держите кнопку и говорите»; the next hold records.
+- [ ] Later holds record without asking again, Android included; after the Mini App is minimised and reopened it may ask once more.
 - [ ] Sliding the finger off the button cancels: no sheet, no request in the network log.
 - [ ] Holding for 30 seconds stops and sends by itself.
 - [ ] While the finger is down, dragging it downwards neither scrolls the page nor closes the Mini App; after release the swipe-to-close works again.
