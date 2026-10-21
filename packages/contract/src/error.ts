@@ -14,6 +14,7 @@ export const errorCode = z.enum([
   "OWNER_MUST_HAND_OVER",
   "MEMBER_NOT_FOUND",
   "FAMILY_NAME_MISMATCH",
+  "PET_NOT_FOUND",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

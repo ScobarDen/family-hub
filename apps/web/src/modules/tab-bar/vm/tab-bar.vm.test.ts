@@ -9,7 +9,7 @@ import { createTabBarApi } from "../tab-bar.api.ts";
 import { reatomTabBarModules } from "../tab-bar.model.ts";
 import { reatomTabBar } from "./tab-bar.vm.ts";
 
-function startTabBar(saved?: AppModule[]) {
+function startTabBar(saved?: AppModule[], renamed?: () => Partial<Record<AppModule, string>>) {
   const client = createHttpClient({
     baseUrl: "https://api.family-hub.test",
     fetch: async () => Response.json({}),
@@ -22,6 +22,7 @@ function startTabBar(saved?: AppModule[]) {
     onOpen: (module) => {
       opened.push(module);
     },
+    titles: renamed,
   });
 
   return { model, activeModule, opened };
@@ -70,6 +71,12 @@ describe("the tab bar", () => {
       start: [{ module: "feed", title: "Лента", isActive: false }],
       end: [{ module: "plans", title: "Планы", isActive: true }],
     });
+  });
+
+  test("names a tab the way its module asks, like the pet tab after the only Pet", () => {
+    const { model } = startTabBar(["feed", "pet"], () => ({ pet: "Бьюик" }));
+
+    expect(titles(model.tabs().end)).toEqual(["Бьюик"]);
   });
 
   test("opens a module from its tab", () => {

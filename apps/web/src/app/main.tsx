@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
-import { deviceTimeZone } from "@/common/format-date";
+import { deviceTimeZone, today } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { reatomTelegram } from "@/common/telegram";
 import { createFamilyApi, reatomFamily } from "@/modules/family";
@@ -9,6 +9,7 @@ import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-re
 import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import { reatomNotifications } from "@/modules/notifications";
+import { createPetsApi, reatomPets, reatomPetsScreen } from "@/modules/pets";
 import { createSessionApi, reatomSession } from "@/modules/session";
 import {
   createTabBarApi,
@@ -55,11 +56,19 @@ const tabBarModules = reatomTabBarModules({
   api: createTabBarApi(httpClient),
   saved: () => session.member()?.settings.tabBar,
 });
+const petsApi = createPetsApi(httpClient);
+const petsModel = reatomPets({ api: petsApi });
+const pets = reatomPetsScreen({
+  api: petsApi,
+  pets: petsModel,
+  viewer: () => ({ today: today(deviceTimeZone()), timeZone: deviceTimeZone() }),
+});
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,
   tabBar: tabBarModules.modules,
   isSignedIn: () => session.member() !== undefined,
   telegram,
+  nestedBack: { pet: pets },
 });
 const timeZone = reatomTimeZone({
   api: createTimeZoneApi(httpClient),
@@ -74,6 +83,11 @@ const home = {
     modules: tabBarModules,
     activeModule: navigation.activeModule,
     onOpen: navigation.openModule,
+    titles: () => {
+      const petTitle = petsModel.tabTitle();
+
+      return petTitle === undefined ? {} : { pet: petTitle };
+    },
   }),
   tabBarMenu: reatomTabBarMenu({ modules: tabBarModules }),
   notifications: reatomNotifications({
@@ -96,6 +110,7 @@ const home = {
     telegram,
     timeZone: deviceTimeZone(),
   }),
+  pets,
 };
 
 telegram.launch();

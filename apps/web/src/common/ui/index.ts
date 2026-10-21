@@ -11,5 +11,7 @@ export { ScreenTitle } from "./screen-title.view.tsx";
 export { SectionItem } from "./section-item.view.tsx";
 export { Section } from "./section.view.tsx";
 export { Switch } from "./switch.view.tsx";
+export { TextAreaField } from "./text-area-field.view.tsx";
 export { TextField } from "./text-field.view.tsx";
+export { Textarea } from "./textarea.view.tsx";
 export { cn } from "./ui.lib.ts";

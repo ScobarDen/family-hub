@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import type { FamilyModel } from "@/modules/family";
 import type { InvitesModel } from "@/modules/invites";
 import { NotificationsBanner, type NotificationsModel } from "@/modules/notifications";
+import { Pets, type PetsScreenModel } from "@/modules/pets";
 import type { SessionModel } from "@/modules/session";
 import { TabBar, TabBarMenu, type TabBarMenuModel, type TabBarModel } from "@/modules/tab-bar";
 import type { TimeZoneModel } from "@/modules/time-zone";
@@ -21,6 +22,7 @@ export type HomeProps = {
   timeZone: TimeZoneModel;
   family: FamilyModel;
   invites: InvitesModel;
+  pets: PetsScreenModel;
 };
 
 function profileOf(props: HomeProps): ReactNode {
@@ -37,7 +39,7 @@ function profileOf(props: HomeProps): ReactNode {
 }
 
 function screenOf(props: HomeProps): ReactNode {
-  const { navigation, tabBar, tabBarMenu, notifications } = props;
+  const { navigation, tabBar, tabBarMenu, notifications, pets } = props;
   const screen = navigation.screen();
 
   if (screen.kind === "tab-bar-menu") {
@@ -52,9 +54,12 @@ function screenOf(props: HomeProps): ReactNode {
     <>
       <ModulePage
         module={screen.module}
+        title={screen.module === "pet" ? pets.title() : undefined}
         banner={<NotificationsBanner model={notifications} />}
         onOpenProfile={navigation.hasProfileButton ? navigation.openProfile : undefined}
-      />
+      >
+        {screen.module === "pet" ? <Pets model={pets} /> : undefined}
+      </ModulePage>
       {screen.isOnTabBar && <TabBar model={tabBar} />}
     </>
   );

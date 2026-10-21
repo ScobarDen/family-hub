@@ -59,6 +59,25 @@ export {
   type TimeZoneSettings,
 } from "./member.ts";
 export {
+  pet,
+  petList,
+  petLongTextMaxLength,
+  petMemo,
+  petMemoChange,
+  petNameMaxLength,
+  petProfile,
+  petSex,
+  petShortTextMaxLength,
+  petSpecies,
+  type Pet,
+  type PetList,
+  type PetMemo,
+  type PetMemoChange,
+  type PetProfile,
+  type PetSex,
+  type PetSpecies,
+} from "./pet.ts";
+export {
   currentMember,
   sessionRequest,
   sessionResponse,

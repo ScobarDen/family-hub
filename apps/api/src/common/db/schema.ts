@@ -8,7 +8,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-import type { AppModule } from "@family-hub/contract";
+import type { AppModule, PetSex, PetSpecies } from "@family-hub/contract";
 
 export const members = sqliteTable("members", {
   id: text("id").primaryKey(),
@@ -96,4 +96,33 @@ export const invites = sqliteTable(
     updatedAt: integer("updated_at").notNull(),
   },
   (table) => [index("invites_family_id_created_by_idx").on(table.familyId, table.createdBy)],
+);
+
+export const pets = sqliteTable(
+  "pets",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    species: text("species").$type<PetSpecies>().notNull(),
+    breed: text("breed"),
+    sex: text("sex").$type<PetSex>(),
+    birthDate: text("birth_date"),
+    chipNumber: text("chip_number"),
+    notes: text("notes"),
+    memoFood: text("memo_food"),
+    memoClinic: text("memo_clinic"),
+    memoImportant: text("memo_important"),
+    memoUpdatedAt: integer("memo_updated_at"),
+    memoUpdatedBy: text("memo_updated_by").references(() => members.id),
+    archivedAt: integer("archived_at"),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("pets_family_id_idx").on(table.familyId)],
 );

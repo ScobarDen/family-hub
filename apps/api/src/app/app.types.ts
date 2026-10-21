@@ -6,6 +6,7 @@ import type { FamilyService } from "@/modules/family";
 import type { FamilyRequestService } from "@/modules/family-request";
 import type { InviteService } from "@/modules/invite";
 import type { MemberService } from "@/modules/member";
+import type { PetService } from "@/modules/pet";
 
 export type AppServices = {
   db: Db;
@@ -16,6 +17,7 @@ export type AppServices = {
   familyRequests: FamilyRequestService;
   invites: InviteService;
   members: MemberService;
+  pets: PetService;
 };
 
 export type AppEnv = {
