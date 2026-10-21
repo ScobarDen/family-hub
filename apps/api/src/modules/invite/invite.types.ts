@@ -5,7 +5,6 @@ import type { BotApi } from "@/common/telegram";
 
 import type { InviteRepo } from "./invite.repo.ts";
 
-// Wired by the app to the reminder module: a newcomer starts getting the Family's Reminders.
 export type InviteSchedule = { membershipChanged(familyId: string): Promise<void> };
 
 export type InviteDependencies = {

@@ -101,7 +101,6 @@ function reatomStarts<Values, Form extends RecordForm<Values>, Edited, Draft, Sa
   };
 }
 
-// One form that creates a record, edits one, or creates one from a draft.
 export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(
   options: EditableRecordOptions<Values, Form, Edited, Draft, Saved>,
 ) {

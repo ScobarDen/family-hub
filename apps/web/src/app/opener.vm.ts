@@ -104,7 +104,6 @@ async function untilSignedIn({ isSignedIn }: OpenerDependencies): Promise<void> 
 
 type PetChoice = "picking" | "picked" | "left";
 
-// Settles once the Member picks a Pet, or leaves the pet tab instead.
 async function isPetPicked({ navigation, pets }: OpenerDependencies): Promise<boolean> {
   function choice(): PetChoice {
     if (navigation.shownModule() !== "pet") {

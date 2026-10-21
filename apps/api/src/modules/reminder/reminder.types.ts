@@ -44,7 +44,6 @@ export type ReminderRefusal =
 
 export type ReminderResult = { status: "ok"; reminder: Reminder } | { status: ReminderRefusal };
 
-// A source belongs to a record of the Family, or to a Member for their own digest.
 export type HolderKind = FamilyHolderKind | "member";
 
 export type SourceHolder = { familyId: string; id: string };

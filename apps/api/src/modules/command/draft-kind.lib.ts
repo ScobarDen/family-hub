@@ -33,7 +33,6 @@ type DraftKind<Draft> = {
 
 type Saved = { status: string; id: string | undefined };
 
-// What a kind of draft tells about itself; «Создать» is the same for every kind.
 type DraftKindParts<Draft, Change> = {
   emoji: (draft: Draft) => string;
   withCandidate?: (draft: Draft, chosenId: string) => Draft;

@@ -220,7 +220,6 @@ function authServiceOf(
   });
 }
 
-// Who joins or leaves a Family changes whom its Reminders reach.
 function membershipServicesOf(
   db: Db,
   {

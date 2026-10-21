@@ -13,7 +13,6 @@ type SourceKind = {
   load: (dependencies: ReminderDependencies, holder: SourceHolder) => Promise<Source[]>;
 };
 
-// Every kind of source and what holds it: a new kind is one entry here plus its loader.
 const sourceKinds: Record<DispatchSource, SourceKind> = {
   reminder: { holder: "reminder", load: reminderSources },
   event: { holder: "event", load: eventSources },
@@ -57,7 +56,6 @@ export async function sourceOfRow(
   return sources.find((found) => found.sourceId === sourceId);
 }
 
-// Every source a Family keeps, read when its Members change; a digest belongs to its Member alone.
 export async function familySources(
   dependencies: ReminderDependencies,
   familyId: string,

@@ -56,7 +56,7 @@ function heldBy(kind: FamilyHolderKind, rows: Array<{ id: string }>): FamilyHold
   return rows.map(({ id }) => ({ kind, id }));
 }
 
-// What a Family keeps that may remind of something; a digest belongs to its Member alone.
+// A digest belongs to its Member, not to the Family, so it is not among these.
 async function holdersOf(db: Db, familyId: string): Promise<FamilyHolder[]> {
   const [reminderRows, eventRows, petRows, planRows] = await Promise.all([
     db.select({ id: reminders.id }).from(reminders).where(eq(reminders.familyId, familyId)).all(),

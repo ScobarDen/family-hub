@@ -69,7 +69,6 @@ async function rowsOf(
   return rows;
 }
 
-// Called whenever an owner of sources changes: its rows are rewritten for the Recipients it has now.
 export async function sourceChanged(
   dependencies: ReminderDependencies,
   holder: SourceHolder & { kind: HolderKind },
