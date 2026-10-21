@@ -106,21 +106,24 @@ describe("Due Dates", () => {
       {
         entryId: expect.any(String),
         kind: "treatment",
-        title: "Клещи",
+        label: "Обработка: Клещи",
+        title: "Обработка: Клещи — Бьюик",
         dueDate: "2026-12-10",
         isOverdue: false,
       },
       {
         entryId: expect.any(String),
         kind: "vet_visit",
-        title: "Визит к ветеринару",
+        label: "Визит к ветеринару",
+        title: "Визит к ветеринару — Бьюик",
         dueDate: "2027-03-20",
         isOverdue: false,
       },
       {
         entryId: expect.any(String),
         kind: "vaccination",
-        title: "Бешенство",
+        label: "Прививка: Бешенство",
+        title: "Прививка: Бешенство — Бьюик",
         dueDate: "2027-09-01",
         isOverdue: false,
       },
@@ -140,7 +143,7 @@ describe("Due Dates", () => {
     });
 
     expect(await dueDatesOf(worker)).toEqual([
-      expect.objectContaining({ title: "НОБИВАК", dueDate: "2027-10-03" }),
+      expect.objectContaining({ label: "Прививка: НОБИВАК", dueDate: "2027-10-03" }),
     ]);
   });
 
@@ -246,7 +249,7 @@ describe("archiving a Pet", () => {
     await call(worker, asya, { method: "POST", path: `/api/pets/${worker.buickId}/unarchive` });
 
     expect(whileArchived).toEqual([]);
-    expect(await dueDatesOf(worker)).toMatchObject([{ title: "Бешенство" }]);
+    expect(await dueDatesOf(worker)).toMatchObject([{ label: "Прививка: Бешенство" }]);
   });
 });
 

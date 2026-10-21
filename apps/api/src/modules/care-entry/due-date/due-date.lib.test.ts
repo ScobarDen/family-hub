@@ -80,16 +80,16 @@ describe("open Due Dates", () => {
     ];
 
     expect(
-      openDueDates({ pets: [buick], entries }).map(({ kind, name, title, dueDate }) => [
+      openDueDates({ pets: [buick], entries }).map(({ kind, label, title, dueDate }) => [
         kind,
-        name,
+        label,
         title,
         dueDate,
       ]),
     ).toEqual([
-      ["treatment", "Клещи", "Обработка: Клещи — Бьюик", "2026-12-10"],
+      ["treatment", "Обработка: Клещи", "Обработка: Клещи — Бьюик", "2026-12-10"],
       ["vet_visit", "Визит к ветеринару", "Визит к ветеринару — Бьюик", "2027-03-20"],
-      ["vaccination", "Бешенство", "Прививка: Бешенство — Бьюик", "2027-09-01"],
+      ["vaccination", "Прививка: Бешенство", "Прививка: Бешенство — Бьюик", "2027-09-01"],
     ]);
   });
 

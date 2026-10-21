@@ -8,7 +8,7 @@ import type { PreparedPhoto } from "@/common/photo";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
-import { categoryTitles, kindTitles, type WeightRange } from "../care.config.ts";
+import { categoryTitles, type WeightRange } from "../care.config.ts";
 import {
   toExpensesView,
   toJournalItem,
@@ -208,9 +208,9 @@ function reatomTitle(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
 function reatomDueSources(data: CareData) {
   return computed(
     (): DueSource[] =>
-      (data.dueDates.data() ?? []).map(({ entryId, kind, title, dueDate }) => ({
+      (data.dueDates.data() ?? []).map(({ entryId, label, dueDate }) => ({
         id: entryId,
-        title: kind === "vet_visit" ? title : `${kindTitles[kind]}: ${title}`,
+        title: label,
         dueDate,
         kind: "due",
       })),

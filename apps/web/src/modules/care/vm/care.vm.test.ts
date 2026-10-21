@@ -1,7 +1,7 @@
 import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { CareEntry, ExpenseSummary, Photo } from "@family-hub/contract";
+import type { CareEntry, DueDateItem, ExpenseSummary, Photo } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
@@ -79,10 +79,20 @@ const walk: Photo = {
   canDelete: true,
 };
 
+const vetVisitDue: DueDateItem = {
+  entryId: "entry-2",
+  kind: "vet_visit",
+  label: "Визит к ветеринару",
+  title: "Визит к ветеринару — Бьюик",
+  dueDate: "2026-11-02",
+  isOverdue: false,
+};
+
 const answers: Partial<Record<string, () => Response>> = {
   "POST /api/photos": () => Response.json(walk, { status: 201 }),
   "GET /api/care-entries/entry-7": () => Response.json(buickVaccine),
   "GET /api/pets/pet-2/care-entries": () => Response.json([buickVaccine]),
+  "GET /api/pets/pet-1/due-dates": () => Response.json([vetVisitDue]),
 };
 
 function fakeBackend() {
@@ -190,6 +200,20 @@ describe("the journal", () => {
       subtitle: "2 октября · Денис · 2 500 ₽",
       note: "Перенёс спокойно",
       photos: [],
+    });
+  });
+});
+
+describe("«Скоро» on the pet card", () => {
+  test("names each open Due Date the way the server labels it", async () => {
+    const { model } = startCare();
+
+    model.dueSources.subscribe(noop);
+
+    await vi.waitFor(() => {
+      expect(model.dueSources()).toEqual([
+        { id: "entry-2", title: "Визит к ветеринару", dueDate: "2026-11-02", kind: "due" },
+      ]);
     });
   });
 });

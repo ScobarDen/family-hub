@@ -15,13 +15,12 @@ export type OpenDueDate = {
   entryId: string;
   petId: string;
   kind: DueDateItem["kind"];
-  // What is due, without its kind or Pet: a vaccine, a treatment target or the vet visit.
-  name: string;
+  label: string;
   title: string;
   dueDate: string;
 };
 
-const vetVisitName = "Визит к ветеринару";
+const vetVisitLabel = "Визит к ветеринару";
 
 // A later entry of the same vaccine, treatment target or a vet visit closes the earlier Due Date.
 export function dueKeyOf(details: CareDetails): string | null {
@@ -51,20 +50,18 @@ function newestOfEachKey(entries: DueEntry[]): DueEntry[] {
   return [...newest.values()];
 }
 
-type Subject = { kind: OpenDueDate["kind"]; name: string; label: string };
+type Subject = { kind: OpenDueDate["kind"]; label: string };
 
 function subjectOf(details: CareDetails): Subject | undefined {
   if (details.kind === "vaccination") {
-    return { kind: details.kind, name: details.vaccine, label: `Прививка: ${details.vaccine}` };
+    return { kind: details.kind, label: `Прививка: ${details.vaccine}` };
   }
 
   if (details.kind === "treatment") {
-    return { kind: details.kind, name: details.target, label: `Обработка: ${details.target}` };
+    return { kind: details.kind, label: `Обработка: ${details.target}` };
   }
 
-  return details.kind === "vet_visit"
-    ? { kind: details.kind, name: vetVisitName, label: vetVisitName }
-    : undefined;
+  return details.kind === "vet_visit" ? { kind: details.kind, label: vetVisitLabel } : undefined;
 }
 
 function openDueOf({ id, details, dueDate }: DueEntry, pet: DuePet): OpenDueDate[] {
@@ -77,7 +74,7 @@ function openDueOf({ id, details, dueDate }: DueEntry, pet: DuePet): OpenDueDate
           entryId: id,
           petId: pet.id,
           kind: subject.kind,
-          name: subject.name,
+          label: subject.label,
           title: `${subject.label} — ${pet.name}`,
           dueDate,
         },

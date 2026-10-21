@@ -91,10 +91,9 @@ export function todayIn(timeZone: string | null, now: number): string {
   }).format(now);
 }
 
-// The pet card names a Due Date by what is due alone; it shows the kind beside it.
 export function toDueDateItem(
-  { entryId, kind, name, dueDate }: OpenDueDate,
+  { entryId, kind, label, title, dueDate }: OpenDueDate,
   today: string,
 ): DueDateItem {
-  return { entryId, kind, title: name, dueDate, isOverdue: dueDate < today };
+  return { entryId, kind, label, title, dueDate, isOverdue: dueDate < today };
 }

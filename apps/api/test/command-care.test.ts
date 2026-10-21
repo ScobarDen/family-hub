@@ -107,7 +107,7 @@ describe("a Care Entry command to the bot", () => {
 
     expect(expenses.byCategory).toEqual([{ category: "vet", amount: 1800 }]);
     expect(await dueDatesOf(worker, buickId)).toMatchObject([
-      { title: "Бешенство", dueDate: "2027-10-13" },
+      { label: "Прививка: Бешенство", dueDate: "2027-10-13" },
     ]);
   });
 
