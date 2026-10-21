@@ -15,6 +15,10 @@ export const errorCode = z.enum([
   "MEMBER_NOT_FOUND",
   "FAMILY_NAME_MISMATCH",
   "PET_NOT_FOUND",
+  "PLAN_NOT_FOUND",
+  "NOT_PLAN_OWNER",
+  "ASSIGNEE_NOT_ALLOWED",
+  "VISIBILITY_ONE_WAY",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

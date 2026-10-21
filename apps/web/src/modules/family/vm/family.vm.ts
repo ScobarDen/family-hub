@@ -1,5 +1,7 @@
 import { action, atom, computed, noop } from "@reatom/core";
 
+import { fillForm, reatomSubmitFailure } from "@/common/form";
+
 import { reatomDeletion, reatomLeave } from "./family-exit.vm.ts";
 import { reatomManage } from "./family-manage.vm.ts";
 import { reatomList, type FamilyDependencies, type FamilySources } from "./family-sources.vm.ts";
@@ -49,12 +51,10 @@ function reatomDeletionFlow(sources: FamilySources) {
     deletion: form,
     isDeletionOpen: computed(() => isOpen(), "family.isDeletionOpenNow"),
     isDeleting: computed(() => !form.submit.ready(), "family.isDeleting"),
-    deletionFailure: computed((): string | undefined => {
-      const isRejectedByServer =
-        form.submit.error() !== undefined && form.validation().errors.length === 0;
-
-      return isRejectedByServer ? "Не получилось удалить семью. Попробуйте ещё раз." : undefined;
-    }, "family.deletionFailure"),
+    deletionFailure: reatomSubmitFailure(form, {
+      message: "Не получилось удалить семью. Попробуйте ещё раз.",
+      name: "family.deletionFailure",
+    }),
 
     openDeletion: action(() => {
       isOpen.set(true);
@@ -62,10 +62,7 @@ function reatomDeletionFlow(sources: FamilySources) {
     closeDeletion: action(() => {
       isOpen.set(false);
 
-      // The form's own reset would also abort the next submit, so the fields are reset one by one.
-      for (const field of form.fieldsList()) {
-        field.reset();
-      }
+      fillForm(form, { familyName: "" });
     }, "family.closeDeletion"),
     deleteFamily: action(() => {
       form.submit().catch(noop);

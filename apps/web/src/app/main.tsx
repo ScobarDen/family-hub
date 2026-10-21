@@ -10,6 +10,7 @@ import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import { reatomNotifications } from "@/modules/notifications";
 import { createPetsApi, reatomPets, reatomPetsScreen } from "@/modules/pets";
+import { createPlansApi, reatomPlans, reatomPlansScreen } from "@/modules/plans";
 import { createSessionApi, reatomSession } from "@/modules/session";
 import {
   createTabBarApi,
@@ -63,12 +64,20 @@ const pets = reatomPetsScreen({
   pets: petsModel,
   viewer: () => ({ today: today(deviceTimeZone()), timeZone: deviceTimeZone() }),
 });
+const plansApi = createPlansApi(httpClient);
+const plans = reatomPlansScreen({
+  api: plansApi,
+  plans: reatomPlans({ api: plansApi }),
+  telegram,
+  self: () => session.member()?.member.id,
+  timeZone: deviceTimeZone,
+});
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,
   tabBar: tabBarModules.modules,
   isSignedIn: () => session.member() !== undefined,
   telegram,
-  nestedBack: { pet: pets },
+  nestedBack: { pet: pets, plans },
 });
 const timeZone = reatomTimeZone({
   api: createTimeZoneApi(httpClient),
@@ -111,6 +120,7 @@ const home = {
     timeZone: deviceTimeZone(),
   }),
   pets,
+  plans,
 };
 
 telegram.launch();

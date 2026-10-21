@@ -10,4 +10,4 @@ The pet tab: the Family's Pets, each one's card and its Pet Memo. With a single 
 
 `reatomPetsScreen` decides what the tab shows (list, card, the card form, the Pet Memo form) and keeps the way back: `app/main.tsx` hands it to the navigation as the pet module's `nestedBack`, so Telegram's BackButton closes a form or returns from a card to the list first. The card is a skeleton in the order of the spec — header, «Скоро», Pet Memo, «Траты за месяц», «Фото», «Журнал» — and the later issues fill the blocks.
 
-Both forms fill their fields with `init` plus a reset of each field, never the form's own `reset`: that one also aborts the next submit.
+Both forms are filled through `fillForm` from `common/form`, never the form's own `reset`, which also aborts the next submit.

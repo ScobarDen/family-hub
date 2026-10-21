@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { optionalText } from "./text.ts";
+
 export const petSpecies = z.enum(["dog", "cat", "bird", "rodent", "fish", "reptile", "other"]);
 
 export type PetSpecies = z.infer<typeof petSpecies>;
@@ -11,16 +13,6 @@ export type PetSex = z.infer<typeof petSex>;
 export const petNameMaxLength = 64;
 export const petShortTextMaxLength = 100;
 export const petLongTextMaxLength = 2000;
-
-// The Mini App sends an emptied field as "", which means the field is cleared.
-function optionalText(maxLength: number) {
-  return z
-    .string()
-    .trim()
-    .max(maxLength)
-    .nullable()
-    .transform((text) => (text === "" ? null : text));
-}
 
 export const petProfile = z.object({
   name: z.string().trim().min(1).max(petNameMaxLength),

@@ -1,0 +1,189 @@
+import { action, atom, computed, type Atom } from "@reatom/core";
+
+import type { Plan } from "@family-hub/contract";
+
+import type { PopupParams } from "@/common/telegram";
+
+import type { PlansApi } from "../plans.api.ts";
+import { toDetails, toListItem, type PlanDetails, type PlanListItem } from "../plans.lib.ts";
+import type { PlansModel } from "../plans.model.ts";
+import { reatomPlanActions } from "./plan-actions.vm.ts";
+import { reatomPlanFormModel } from "./plan-form.vm.ts";
+import { reatomSubplanFormModel } from "./subplan-form.vm.ts";
+
+export type PlansScreen =
+  | { kind: "loading" }
+  | { kind: "failed" }
+  | { kind: "list"; open: PlanListItem[]; done: PlanListItem[]; isDoneShown: boolean }
+  | { kind: "plan"; plan: PlanDetails }
+  | { kind: "plan-form"; isCreating: boolean }
+  | { kind: "subplan-form"; isCreating: boolean };
+
+type PlansDependencies = {
+  api: PlansApi;
+  plans: PlansModel;
+  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  self: () => string | undefined;
+  timeZone: () => string;
+};
+
+type Navigation = {
+  editing: Atom<"plan" | "subplan" | undefined>;
+  openedPlanId: Atom<string | undefined>;
+  isDoneShown: Atom<boolean>;
+};
+
+type Forms = ReturnType<typeof reatomForms>;
+
+function reatomForms(dependencies: PlansDependencies, { editing, openedPlanId }: Navigation) {
+  function onSaved(saved: Plan): void {
+    editing.set(undefined);
+    openedPlanId.set(saved.id);
+  }
+
+  return {
+    planForm: reatomPlanFormModel({ ...dependencies, onSaved }),
+    subplanForm: reatomSubplanFormModel({ ...dependencies, onSaved }),
+  };
+}
+
+function listScreen(plans: Plan[], isDoneShown: boolean): PlansScreen {
+  return {
+    kind: "list",
+    open: plans.filter(({ completed }) => completed === null).map(toListItem),
+    done: plans.filter(({ completed }) => completed !== null).map(toListItem),
+    isDoneShown,
+  };
+}
+
+function reatomScreen(
+  dependencies: PlansDependencies,
+  { editing, isDoneShown }: Navigation,
+  { openedPlan, planForm, subplanForm }: Forms & { openedPlan: () => Plan | undefined },
+) {
+  return computed((): PlansScreen => {
+    const current = editing();
+
+    if (current === "plan") {
+      return { kind: "plan-form", isCreating: planForm.isCreating() };
+    }
+
+    if (current === "subplan") {
+      return { kind: "subplan-form", isCreating: subplanForm.isCreating() };
+    }
+
+    if (dependencies.plans.list.error() !== undefined) {
+      return { kind: "failed" };
+    }
+
+    const plans = dependencies.plans.list.data();
+    const plan = openedPlan();
+
+    if (plans === undefined) {
+      return { kind: "loading" };
+    }
+
+    return plan === undefined
+      ? listScreen(plans, isDoneShown())
+      : { kind: "plan", plan: toDetails(plan, dependencies.timeZone()) };
+  }, "plans.screen");
+}
+
+function reatomBrowsing({ editing, openedPlanId, isDoneShown }: Navigation) {
+  return {
+    open: action((planId: string) => {
+      openedPlanId.set(planId);
+    }, "plans.open"),
+    toggleDone: action(() => {
+      isDoneShown.set(!isDoneShown());
+    }, "plans.toggleDone"),
+    back: action(() => {
+      if (editing() === undefined) {
+        openedPlanId.set(undefined);
+      } else {
+        editing.set(undefined);
+      }
+    }, "plans.back"),
+  };
+}
+
+function reatomEditing(
+  { editing }: Navigation,
+  { openedPlan, planForm, subplanForm }: Forms & { openedPlan: () => Plan | undefined },
+) {
+  function editWith(start: (plan: Plan) => void, target: "plan" | "subplan"): void {
+    const plan = openedPlan();
+
+    if (plan !== undefined) {
+      start(plan);
+      editing.set(target);
+    }
+  }
+
+  return {
+    add: action(() => {
+      planForm.startCreating();
+      editing.set("plan");
+    }, "plans.add"),
+    edit: action(() => {
+      editWith(planForm.startEditing, "plan");
+    }, "plans.edit"),
+    addSubplan: action(() => {
+      editWith(subplanForm.startAdding, "subplan");
+    }, "plans.addSubplan"),
+    editSubplan: action((subplanId: string) => {
+      editWith((plan) => {
+        subplanForm.startEditing(plan, subplanId);
+      }, "subplan");
+    }, "plans.editSubplan"),
+  };
+}
+
+function titleOf(screen: PlansScreen): string {
+  if (screen.kind === "plan") {
+    return screen.plan.title;
+  }
+
+  if (screen.kind === "plan-form") {
+    return screen.isCreating ? "Новый план" : "План";
+  }
+
+  return screen.kind === "subplan-form" ? "Шаг" : "Планы";
+}
+
+export function reatomPlansScreen(dependencies: PlansDependencies) {
+  const navigation: Navigation = {
+    editing: atom<"plan" | "subplan" | undefined>(undefined, "plans.editing"),
+    openedPlanId: atom<string | undefined>(undefined, "plans.openedPlanId"),
+    isDoneShown: atom(false, "plans.isDoneShown"),
+  };
+  const openedPlan = computed(
+    () => dependencies.plans.list.data()?.find(({ id }) => id === navigation.openedPlanId()),
+    "plans.openedPlan",
+  );
+  const forms = reatomForms(dependencies, navigation);
+  const actions = reatomPlanActions({
+    ...dependencies,
+    openedPlan,
+    onDeleted: () => {
+      navigation.openedPlanId.set(undefined);
+    },
+  });
+
+  const screen = reatomScreen(dependencies, navigation, { ...forms, openedPlan });
+
+  return {
+    screen,
+    title: computed(() => titleOf(screen()), "plans.title"),
+    canGoBack: computed(
+      () => navigation.editing() !== undefined || openedPlan() !== undefined,
+      "plans.canGoBack",
+    ),
+    ...forms,
+    ...actions,
+    ...reatomBrowsing(navigation),
+    ...reatomEditing(navigation, { ...forms, openedPlan }),
+  };
+}
+
+export type PlansScreenModel = ReturnType<typeof reatomPlansScreen>;

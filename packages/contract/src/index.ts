@@ -59,6 +59,28 @@ export {
   type TimeZoneSettings,
 } from "./member.ts";
 export {
+  completion,
+  plan,
+  planChange,
+  planDeleted,
+  planList,
+  planMember,
+  planNoteMaxLength,
+  planTitleMaxLength,
+  subplan,
+  subplanChange,
+  visibility,
+  type Completion,
+  type Plan,
+  type PlanChange,
+  type PlanDeleted,
+  type PlanList,
+  type PlanMember,
+  type Subplan,
+  type SubplanChange,
+  type Visibility,
+} from "./plan.ts";
+export {
   pet,
   petList,
   petLongTextMaxLength,

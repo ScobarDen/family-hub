@@ -9,9 +9,10 @@ import {
   type Pet,
 } from "@family-hub/contract";
 
+import { fillForm, reatomSubmitFailure } from "@/common/form";
+
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
-import { fill } from "./form-fill.vm.ts";
 
 type ProfileFormDependencies = {
   api: PetsApi;
@@ -94,23 +95,21 @@ export function reatomPetProfileForm({ api, pets, today, onSaved }: ProfileFormD
     form,
     isCreating: computed(() => editedPetId() === undefined, "pets.profileForm.isCreating"),
     isSaving: computed(() => !form.submit.ready(), "pets.profileForm.isSaving"),
-    failure: computed((): string | undefined => {
-      const isRejectedByServer =
-        form.submit.error() !== undefined && form.validation().errors.length === 0;
-
-      return isRejectedByServer ? "Не получилось сохранить. Попробуйте ещё раз." : undefined;
-    }, "pets.profileForm.failure"),
+    failure: reatomSubmitFailure(form, {
+      message: "Не получилось сохранить. Попробуйте ещё раз.",
+      name: "pets.profileForm.failure",
+    }),
 
     startCreating: action(() => {
       editedPetId.set(undefined);
-      fill(form, emptyProfile);
+      fillForm(form, emptyProfile);
     }, "pets.profileForm.startCreating"),
     save: action(() => {
       form.submit().catch(noop);
     }, "pets.profileForm.save"),
     startEditing: action((pet: Pet) => {
       editedPetId.set(pet.id);
-      fill(form, valuesOf(pet));
+      fillForm(form, valuesOf(pet));
     }, "pets.profileForm.startEditing"),
   };
 }

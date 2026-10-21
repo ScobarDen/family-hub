@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnySQLiteColumn,
   index,
   integer,
   primaryKey,
@@ -8,7 +9,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-import type { AppModule, PetSex, PetSpecies } from "@family-hub/contract";
+import type { AppModule, PetSex, PetSpecies, Visibility } from "@family-hub/contract";
 
 export const members = sqliteTable("members", {
   id: text("id").primaryKey(),
@@ -125,4 +126,35 @@ export const pets = sqliteTable(
     updatedAt: integer("updated_at").notNull(),
   },
   (table) => [index("pets_family_id_idx").on(table.familyId)],
+);
+
+// A root Plan carries the owner and the visibility; its Subplans (parent_id set) inherit both.
+export const plans = sqliteTable(
+  "plans",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    parentId: text("parent_id").references((): AnySQLiteColumn => plans.id, {
+      onDelete: "cascade",
+    }),
+    ownerMemberId: text("owner_member_id").references(() => members.id),
+    visibility: text("visibility").$type<Visibility>(),
+    title: text("title").notNull(),
+    note: text("note"),
+    dueDate: text("due_date"),
+    assigneeMemberId: text("assignee_member_id").references(() => members.id),
+    completedAt: integer("completed_at"),
+    completedBy: text("completed_by").references(() => members.id),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    index("plans_family_id_idx").on(table.familyId),
+    index("plans_parent_id_idx").on(table.parentId),
+  ],
 );

@@ -3,9 +3,10 @@ import { z } from "zod";
 
 import { petLongTextMaxLength, petMemoChange, type Pet } from "@family-hub/contract";
 
+import { fillForm, reatomSubmitFailure } from "@/common/form";
+
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
-import { fill } from "./form-fill.vm.ts";
 
 type MemoFormDependencies = {
   api: PetsApi;
@@ -41,21 +42,17 @@ export function reatomPetMemoForm({ api, pets, onSaved }: MemoFormDependencies) 
   return {
     form,
     isSaving: computed(() => !form.submit.ready(), "pets.memoForm.isSaving"),
-    failure: computed((): string | undefined => {
-      const isRejectedByServer =
-        form.submit.error() !== undefined && form.validation().errors.length === 0;
-
-      return isRejectedByServer
-        ? "Не получилось сохранить памятку. Попробуйте ещё раз."
-        : undefined;
-    }, "pets.memoForm.failure"),
+    failure: reatomSubmitFailure(form, {
+      message: "Не получилось сохранить памятку. Попробуйте ещё раз.",
+      name: "pets.memoForm.failure",
+    }),
 
     save: action(() => {
       form.submit().catch(noop);
     }, "pets.memoForm.save"),
     startEditing: action((pet: Pet) => {
       petId.set(pet.id);
-      fill(form, {
+      fillForm(form, {
         food: pet.memo.food ?? "",
         clinic: pet.memo.clinic ?? "",
         important: pet.memo.important ?? "",

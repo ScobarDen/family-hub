@@ -14,6 +14,7 @@ import {
 import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
 import { createMemberRepo, createMemberService, memberRoute } from "@/modules/member";
 import { createPetRepo, createPetService, petRoute } from "@/modules/pet";
+import { createPlanRepo, createPlanService, planRoute } from "@/modules/plan";
 import { sessionRoute } from "@/modules/session";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -75,6 +76,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
     }),
     members: createMemberService({ members: createMemberRepo(db), clock }),
     pets: createPetService({ pets: createPetRepo(db), clock }),
+    plans: createPlanService({ plans: createPlanRepo(db), clock }),
   };
 }
 
@@ -93,6 +95,7 @@ function createApp(dependencies: WorkerDependencies) {
       context.set("invites", services.invites);
       context.set("members", services.members);
       context.set("pets", services.pets);
+      context.set("plans", services.plans);
       await next();
     })
     .route("/", healthRoute)
@@ -102,7 +105,8 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", inviteRoute)
     .route("/", memberRoute)
     .route("/", familyRoute)
-    .route("/", petRoute);
+    .route("/", petRoute)
+    .route("/", planRoute);
 }
 
 export function createWorker(dependencies: WorkerDependencies): Worker {

@@ -1,10 +1,13 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
+import type { AppModule } from "@family-hub/contract";
+
 import type { FamilyModel } from "@/modules/family";
 import type { InvitesModel } from "@/modules/invites";
 import { NotificationsBanner, type NotificationsModel } from "@/modules/notifications";
 import { Pets, type PetsScreenModel } from "@/modules/pets";
+import { Plans, type PlansScreenModel } from "@/modules/plans";
 import type { SessionModel } from "@/modules/session";
 import { TabBar, TabBarMenu, type TabBarMenuModel, type TabBarModel } from "@/modules/tab-bar";
 import type { TimeZoneModel } from "@/modules/time-zone";
@@ -23,6 +26,7 @@ export type HomeProps = {
   family: FamilyModel;
   invites: InvitesModel;
   pets: PetsScreenModel;
+  plans: PlansScreenModel;
 };
 
 function profileOf(props: HomeProps): ReactNode {
@@ -38,8 +42,22 @@ function profileOf(props: HomeProps): ReactNode {
   );
 }
 
+type ModuleContent = { title: string; content: ReactNode };
+
+function contentOf({ pets, plans }: HomeProps, module: AppModule): ModuleContent | undefined {
+  if (module === "pet") {
+    return { title: pets.title(), content: <Pets model={pets} /> };
+  }
+
+  if (module === "plans") {
+    return { title: plans.title(), content: <Plans model={plans} /> };
+  }
+
+  return undefined;
+}
+
 function screenOf(props: HomeProps): ReactNode {
-  const { navigation, tabBar, tabBarMenu, notifications, pets } = props;
+  const { navigation, tabBar, tabBarMenu, notifications } = props;
   const screen = navigation.screen();
 
   if (screen.kind === "tab-bar-menu") {
@@ -54,11 +72,11 @@ function screenOf(props: HomeProps): ReactNode {
     <>
       <ModulePage
         module={screen.module}
-        title={screen.module === "pet" ? pets.title() : undefined}
+        title={contentOf(props, screen.module)?.title}
         banner={<NotificationsBanner model={notifications} />}
         onOpenProfile={navigation.hasProfileButton ? navigation.openProfile : undefined}
       >
-        {screen.module === "pet" ? <Pets model={pets} /> : undefined}
+        {contentOf(props, screen.module)?.content}
       </ModulePage>
       {screen.isOnTabBar && <TabBar model={tabBar} />}
     </>
