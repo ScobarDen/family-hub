@@ -89,6 +89,10 @@ const plans = reatomPlansScreen({
   telegram,
   self: () => session.member()?.member.id,
   timeZone: deviceTimeZone,
+  onOpenAlbum: (albumId) => {
+    navigation.openModule("albums");
+    albums.open(albumId);
+  },
 });
 const goalsApi = createGoalsApi(httpClient);
 const goals = reatomGoalsScreen({
@@ -168,6 +172,9 @@ function openFromFeed(target: FeedTarget) {
   } else if (target.kind === "goal") {
     navigation.openModule("goals");
     goals.open(target.goalId);
+  } else if (target.kind === "album") {
+    navigation.openModule("albums");
+    albums.open(target.albumId);
   } else {
     navigation.openModule("calendar");
 
@@ -182,6 +189,7 @@ const feed = reatomFeed({
   today: () => today(deviceTimeZone()),
   timeZone: deviceTimeZone,
   onOpen: openFromFeed,
+  telegram,
   onRecord: ({ petId, entryId }) => {
     navigation.openModule("pet");
     pets.open(petId);

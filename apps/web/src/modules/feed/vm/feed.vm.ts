@@ -2,6 +2,9 @@ import { action, atom, computed, noop, withAsync, withAsyncData, wrap } from "@r
 
 import type { FeedActivity } from "@family-hub/contract";
 
+import { reatomPhotoViewer } from "@/common/photo-viewer";
+import type { PopupParams } from "@/common/telegram";
+
 import type { FeedApi } from "../feed.api.ts";
 import { blocksOf, type FeedBlock, type FeedFilter, type FeedItem } from "../feed.lib.ts";
 
@@ -10,7 +13,8 @@ export type FeedTarget =
   | { kind: "event"; eventId: string }
   | { kind: "calendar" }
   | { kind: "pet"; petId: string }
-  | { kind: "goal"; goalId: string };
+  | { kind: "goal"; goalId: string }
+  | { kind: "album"; albumId: string };
 
 export type FeedDependencies = {
   api: FeedApi;
@@ -18,6 +22,7 @@ export type FeedDependencies = {
   timeZone: () => string;
   onOpen: (target: FeedTarget) => void;
   onRecord: (due: { petId: string; entryId: string }) => void;
+  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
 };
 
 export const feedFilters: Array<{ value: FeedFilter; title: string }> = [
@@ -26,6 +31,7 @@ export const feedFilters: Array<{ value: FeedFilter; title: string }> = [
   { value: "calendar", title: "Календарь" },
   { value: "pet", title: "Питомец" },
   { value: "goals", title: "Цели" },
+  { value: "albums", title: "Альбомы" },
 ];
 
 function targetOf(item: FeedItem): FeedTarget | undefined {
@@ -45,11 +51,20 @@ function targetOf(item: FeedItem): FeedTarget | undefined {
     return { kind: "goal", goalId: item.goalId };
   }
 
+  if (item.kind === "upload") {
+    return { kind: "album", albumId: item.albumId };
+  }
+
   return item.kind === "joined" ? undefined : { kind: "pet", petId: item.petId };
 }
 
 function reatomPages(api: FeedApi) {
-  const first = computed(async () => wrap(api.page()), "feed.first").extend(withAsyncData());
+  const version = atom(0, "feed.version");
+  const first = computed(async () => {
+    version();
+
+    return wrap(api.page());
+  }, "feed.first").extend(withAsyncData());
   const older = atom<FeedActivity[]>([], "feed.older");
   const olderNext = atom<string | null | undefined>(undefined, "feed.olderNext");
   // Until an older page comes, the first one says where the next begins; null is the end.
@@ -69,7 +84,7 @@ function reatomPages(api: FeedApi) {
     }
   }, "feed.loadMore").extend(withAsync());
 
-  return { first, older, next, loadMore };
+  return { first, older, next, loadMore, version };
 }
 
 type Pages = ReturnType<typeof reatomPages>;
@@ -171,6 +186,12 @@ export function reatomFeed(dependencies: FeedDependencies) {
       complete(key).catch(noop);
     }, "feed.completeStep"),
     ...reatomTaps(dependencies, pages),
+    viewer: reatomPhotoViewer({
+      ...dependencies,
+      onDeleted: () => {
+        pages.version.set(pages.version() + 1);
+      },
+    }),
   };
 }
 

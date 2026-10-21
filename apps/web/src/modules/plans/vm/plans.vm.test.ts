@@ -21,6 +21,7 @@ const bedroom: Plan = {
   title: "Ремонт в спальне",
   note: null,
   pet: null,
+  album: null,
   dueDate: "2026-11-30",
   reminder: null,
   assignee: { id: "member-2", name: "Ася" },
@@ -143,18 +144,22 @@ function fakeTelegram(choices: string[] = []) {
 function startPlans(backend = fakeBackend(), telegram = fakeTelegram()) {
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const api = createPlansApi(client);
+  const openedAlbums: string[] = [];
   const model = reatomPlansScreen({
     api,
     plans: reatomPlans({ api }),
     telegram,
     self: () => "member-1",
     timeZone: () => "Europe/Moscow",
+    onOpenAlbum: (albumId) => {
+      openedAlbums.push(albumId);
+    },
   });
 
   model.screen.subscribe(noop);
   model.planForm.assignees.subscribe(noop);
 
-  return { model, backend, telegram };
+  return { model, backend, telegram, openedAlbums };
 }
 
 type Model = ReturnType<typeof startPlans>["model"];
@@ -428,5 +433,44 @@ describe("a Pet's Plans", () => {
         { value: "pet-1", title: "Бьюик" },
       ]);
     });
+  });
+});
+
+describe("a trip's Plan", () => {
+  test("shows a strip of its Album and opens the Album itself", async () => {
+    const kazan: Plan = {
+      ...vacation,
+      album: {
+        id: "album-1",
+        title: "Казань",
+        photoCount: 12,
+        photos: [
+          {
+            id: "photo-1",
+            takenAt: null,
+            urls: { thumb: "/photos/photo-1/thumb", medium: "/m", full: "/f" },
+            canDelete: true,
+          },
+        ],
+      },
+    };
+    const { model, openedAlbums } = startPlans(fakeBackend([kazan]));
+
+    await loaded(model);
+    model.open(kazan.id);
+
+    expect(model.screen()).toMatchObject({
+      kind: "plan",
+      plan: {
+        album: {
+          photoCount: 12,
+          photos: [{ urls: { thumb: "https://api.family-hub.test/photos/photo-1/thumb" } }],
+        },
+      },
+    });
+
+    model.openAlbum("album-1");
+
+    expect(openedAlbums).toEqual(["album-1"]);
   });
 });

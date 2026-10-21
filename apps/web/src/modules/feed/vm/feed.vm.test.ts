@@ -1,12 +1,26 @@
 import { context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { FeedPage, Plan } from "@family-hub/contract";
+import type { FeedPage, Photo, Plan } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 
 import { createFeedApi } from "../feed.api.ts";
 import { reatomFeed, type FeedTarget } from "./feed.vm.ts";
+
+// A popup the Member closes without choosing anything.
+const noChoice: string | undefined = undefined;
+
+const walk: Photo = {
+  id: "photo-1",
+  takenAt: null,
+  urls: {
+    thumb: "/photos/photo-1/thumb",
+    medium: "/photos/photo-1/medium",
+    full: "/photos/photo-1/full",
+  },
+  canDelete: true,
+};
 
 const firstPage: FeedPage = {
   overdue: [
@@ -46,6 +60,8 @@ const firstPage: FeedPage = {
       title: "Вес: 30 кг — Бьюик",
       petId: "pet-1",
       entryId: "entry-2",
+      photos: [walk],
+      photoCount: 4,
     },
     {
       kind: "plan",
@@ -78,6 +94,7 @@ const bedroom: Plan = {
   title: "Ремонт",
   note: null,
   pet: null,
+  album: null,
   dueDate: null,
   reminder: null,
   assignee: null,
@@ -114,6 +131,7 @@ function startFeed() {
     onRecord: ({ entryId }) => {
       recorded.push(entryId);
     },
+    telegram: { showPopup: async () => noChoice },
   });
 
   model.blocks.subscribe(noop);
@@ -206,5 +224,33 @@ describe("the Feed", () => {
       { kind: "event", eventId: "event-1" },
       { kind: "plan", planId: "plan-2" },
     ]);
+  });
+});
+
+describe("an Activity with photos", () => {
+  test("shows up to three thumbnails with «+N» and opens them full screen", async () => {
+    const { model } = startFeed();
+
+    await loaded(model);
+
+    const row = model.blocks().find(({ title }) => title === "Сегодня")?.rows[0];
+
+    expect(row).toMatchObject({
+      morePhotos: 3,
+      photos: [{ urls: { thumb: "https://api.family-hub.test/photos/photo-1/thumb" } }],
+    });
+
+    model.viewer.open(row?.photos ?? [], "photo-1");
+
+    expect(model.viewer.current()?.position).toBe("1 / 1");
+  });
+
+  test("narrows to Albums by its chip", async () => {
+    const { model } = startFeed();
+
+    await loaded(model);
+    model.choose("albums");
+
+    expect(model.blocks()).toEqual([]);
   });
 });

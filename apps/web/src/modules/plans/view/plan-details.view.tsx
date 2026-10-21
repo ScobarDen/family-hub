@@ -5,6 +5,7 @@ import { Button, FieldError, Section, SectionItem } from "@/common/ui";
 
 import type { PlanDetails as PlanDetailsData, SubplanItem } from "../plans.lib.ts";
 import type { PlansScreenModel } from "../vm/plans.vm.ts";
+import { PlanAlbum } from "./plan-album.view.tsx";
 
 type PlanDetailsProps = { plan: PlanDetailsData; model: PlansScreenModel };
 
@@ -81,6 +82,7 @@ export function PlanDetails({ plan, model }: PlanDetailsProps) {
         ))}
         <SectionItem icon={Plus} tone="green" title="Добавить шаг" onClick={model.addSubplan} />
       </Section>
+      {plan.album !== null && <PlanAlbum album={plan.album} onOpen={model.openAlbum} />}
       {plan.canDelete && (
         <Section>
           <SectionItem icon={Trash2} tone="red" title="Удалить план" onClick={model.removePlan} />

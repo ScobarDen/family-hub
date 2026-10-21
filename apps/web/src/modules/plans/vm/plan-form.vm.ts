@@ -18,7 +18,7 @@ import type { PlansModel } from "../plans.model.ts";
 
 type PlanFormDependencies = {
   api: PlansApi;
-  plans: Pick<PlansModel, "keep" | "members" | "pets">;
+  plans: Pick<PlansModel, "keep" | "members" | "pets" | "albums">;
   self: () => string | undefined;
   onSaved: (plan: Plan) => void;
 };
@@ -31,6 +31,7 @@ const emptyPlan = {
   assigneeId: "",
   visibility: "shared",
   petId: "",
+  albumId: "",
 };
 
 type PlanValues = typeof emptyPlan;
@@ -43,7 +44,16 @@ const schema = z.object({
   assigneeId: z.string(),
   visibility: z.string(),
   petId: z.string(),
+  albumId: z.string(),
 });
+
+function linksOf({
+  assignee,
+  pet,
+  album,
+}: Plan): Pick<PlanValues, "assigneeId" | "petId" | "albumId"> {
+  return { assigneeId: assignee?.id ?? "", petId: pet?.id ?? "", albumId: album?.id ?? "" };
+}
 
 function valuesOf(plan: Plan): PlanValues {
   return {
@@ -51,9 +61,8 @@ function valuesOf(plan: Plan): PlanValues {
     note: plan.note ?? "",
     dueDate: plan.dueDate ?? "",
     reminder: reminderValueOf(plan.reminder),
-    assigneeId: plan.assignee?.id ?? "",
     visibility: plan.visibility,
-    petId: plan.pet?.id ?? "",
+    ...linksOf(plan),
   };
 }
 
@@ -66,6 +75,7 @@ function changeOf(values: PlanValues): PlanChange {
     assigneeId: values.assigneeId === "" ? null : values.assigneeId,
     visibility: visibility.parse(values.visibility),
     petId: values.petId === "" ? null : values.petId,
+    albumId: values.albumId === "" ? null : values.albumId,
   };
 }
 
@@ -100,6 +110,19 @@ function reatomPlanForm({ api, plans, onSaved }: PlanFormDependencies) {
   return { form, editedPlan };
 }
 
+// A trip's Plan keeps its photos in one of the Family's own Albums, not a Pet's.
+function reatomAlbumChoices({ plans }: PlanFormDependencies) {
+  return computed(
+    (): Choice[] => [
+      { value: "", title: "Без альбома" },
+      ...(plans.albums.data() ?? [])
+        .filter(({ kind }) => kind === "album")
+        .map(({ id, title }) => ({ value: id, title })),
+    ],
+    "plans.planForm.albums",
+  );
+}
+
 function reatomChoices(
   dependencies: PlanFormDependencies,
   { form, editedPlan }: ReturnType<typeof reatomPlanForm>,
@@ -132,6 +155,7 @@ function reatomChoices(
       ],
       "plans.planForm.pets",
     ),
+    albums: reatomAlbumChoices(dependencies),
   };
 }
 

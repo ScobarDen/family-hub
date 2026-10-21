@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Circle,
   CircleCheck,
+  Images,
   ListTodo,
   NotebookPen,
   PawPrint,
@@ -16,10 +17,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { PhotoViewer } from "@/common/photo-viewer";
 import { Button, Chip, Section, SectionItem, type IconTone } from "@/common/ui";
 
 import type { FeedRow } from "../feed.lib.ts";
 import { feedFilters, type FeedModel } from "../vm/feed.vm.ts";
+import { FeedPhotos } from "./feed-photos.view.tsx";
 
 const icons: Record<FeedRow["kind"], LucideIcon> = {
   event: CalendarDays,
@@ -29,6 +32,7 @@ const icons: Record<FeedRow["kind"], LucideIcon> = {
   birthday: Cake,
   care: PawPrint,
   goal: PiggyBank,
+  upload: Images,
   done: CircleCheck,
   joined: UserPlus,
 };
@@ -41,6 +45,7 @@ const tones: Record<FeedRow["kind"], IconTone> = {
   birthday: "pink",
   care: "orange",
   goal: "teal",
+  upload: "violet",
   done: "green",
   joined: "blue",
 };
@@ -86,23 +91,26 @@ const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
   }
 
   return (
-    <SectionItem
-      icon={row.isOverdue ? TriangleAlert : icons[row.kind]}
-      tone={row.isOverdue ? "red" : tones[row.kind]}
-      title={row.title}
-      subtitle={row.subtitle}
-      after={
-        hasActions && (
-          <>
-            <RowActions row={row} model={model} />
-            <Button size="icon-sm" variant="ghost" aria-label="Открыть" onClick={open}>
-              <ChevronRight />
-            </Button>
-          </>
-        )
-      }
-      onClick={hasActions ? undefined : open}
-    />
+    <>
+      <SectionItem
+        icon={row.isOverdue ? TriangleAlert : icons[row.kind]}
+        tone={row.isOverdue ? "red" : tones[row.kind]}
+        title={row.title}
+        subtitle={row.subtitle}
+        after={
+          hasActions && (
+            <>
+              <RowActions row={row} model={model} />
+              <Button size="icon-sm" variant="ghost" aria-label="Открыть" onClick={open}>
+                <ChevronRight />
+              </Button>
+            </>
+          )
+        }
+        onClick={hasActions ? undefined : open}
+      />
+      <FeedPhotos row={row} model={model} />
+    </>
   );
 }, "FeedRowItem");
 
@@ -143,6 +151,7 @@ export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
           </Button>
         </div>
       )}
+      <PhotoViewer model={model.viewer} />
     </>
   );
 }, "Feed");

@@ -23,6 +23,7 @@ export function reatomPlans({ api }: { api: PlansApi }) {
     list,
     members: computed(async () => wrap(api.members()), "plans.members").extend(withAsyncData()),
     pets: computed(async () => wrap(api.pets()), "plans.pets").extend(withAsyncData()),
+    albums: computed(async () => wrap(api.albums()), "plans.albums").extend(withAsyncData()),
 
     keep: action((saved: Plan) => {
       const others = (list.data() ?? []).filter(({ id }) => id !== saved.id);

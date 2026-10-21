@@ -25,6 +25,7 @@ type PlansDependencies = {
   telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
   self: () => string | undefined;
   timeZone: () => string;
+  onOpenAlbum: (albumId: string) => void;
 };
 
 type Navigation = {
@@ -191,6 +192,9 @@ export function reatomPlansScreen(dependencies: PlansDependencies) {
     ...forms,
     ...actions,
     ...reatomBrowsing(navigation),
+    openAlbum: action((albumId: string) => {
+      dependencies.onOpenAlbum(albumId);
+    }, "plans.openAlbum"),
     ...reatomEditing(navigation, { ...forms, openedPlan }),
   };
 }

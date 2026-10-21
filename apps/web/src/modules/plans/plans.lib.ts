@@ -28,6 +28,7 @@ export type PlanDetails = {
   isPrivate: boolean;
   canDelete: boolean;
   subplans: SubplanItem[];
+  album: Plan["album"];
 };
 
 function joined(parts: Array<string | undefined>): string | undefined {
@@ -86,6 +87,7 @@ export function toDetails(plan: Plan, timeZone: string): PlanDetails {
     isPrivate: plan.visibility === "private",
     canDelete: plan.isOwn,
     subplans: plan.subplans.map((subplan) => toSubplanItem(subplan, plan.dueDate)),
+    album: plan.album,
   };
 }
 

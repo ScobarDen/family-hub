@@ -1,9 +1,9 @@
-import type { FeedActivity, FeedUpcoming } from "@family-hub/contract";
+import type { FeedActivity, FeedUpcoming, Photo } from "@family-hub/contract";
 import { dateInZone, dayBefore, timeInZone } from "@family-hub/recurrence";
 
 import { formatDate } from "@/common/format-date";
 
-export type FeedFilter = "all" | "plans" | "calendar" | "pet" | "goals";
+export type FeedFilter = "all" | "plans" | "calendar" | "pet" | "goals" | "albums";
 
 export type FeedItem = FeedUpcoming | FeedActivity;
 
@@ -15,6 +15,8 @@ export type FeedRow = {
   isOverdue: boolean;
   canComplete: boolean;
   canRecord: boolean;
+  photos: Photo[];
+  morePhotos: number;
 };
 
 export type FeedBlock = { title: string; rows: FeedRow[] };
@@ -35,6 +37,7 @@ const modules: Record<FeedItem["kind"], FeedFilter> = {
   birthday: "pet",
   care: "pet",
   goal: "goals",
+  upload: "albums",
   joined: "all",
 };
 
@@ -53,7 +56,25 @@ function aheadRow(item: FeedUpcoming, isOverdue: boolean): FeedRow {
     isOverdue,
     canComplete: item.kind === "plan",
     canRecord: item.kind === "due",
+    photos: [],
+    morePhotos: 0,
   };
+}
+
+function titleOf(item: FeedActivity): string {
+  if (item.kind === "joined") {
+    return `${item.memberName} теперь в семье`;
+  }
+
+  return item.kind === "upload"
+    ? `${item.memberName} добавил(а) ${item.photoCount} фото в «${item.albumTitle}»`
+    : item.title;
+}
+
+function photosOf(item: FeedActivity): Pick<FeedRow, "photos" | "morePhotos"> {
+  return item.kind === "care" || item.kind === "upload"
+    ? { photos: item.photos, morePhotos: item.photoCount - item.photos.length }
+    : { photos: [], morePhotos: 0 };
 }
 
 function activityRow(item: FeedActivity, timeZone: string): FeedRow {
@@ -62,11 +83,13 @@ function activityRow(item: FeedActivity, timeZone: string): FeedRow {
   return {
     key: item.key,
     kind: item.kind === "plan" ? "done" : item.kind,
-    title: item.kind === "joined" ? `${item.memberName} теперь в семье` : item.title,
-    subtitle: item.kind === "joined" ? time : `${item.memberName} · ${time}`,
+    title: titleOf(item),
+    subtitle:
+      item.kind === "joined" || item.kind === "upload" ? time : `${item.memberName} · ${time}`,
     isOverdue: false,
     canComplete: false,
     canRecord: false,
+    ...photosOf(item),
   };
 }
 

@@ -70,6 +70,7 @@ const bedroom: Plan = {
   title: "Ремонт",
   note: null,
   pet: null,
+  album: null,
   dueDate: "2026-10-10",
   reminder: null,
   assignee: null,
