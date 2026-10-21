@@ -26,7 +26,7 @@ export type FeedPetRow = typeof pets.$inferSelect;
 export type FeedPlanRow = typeof plans.$inferSelect & { completedByName: string | null };
 export type FeedDueRow = Pick<
   typeof careEntries.$inferSelect,
-  "id" | "petId" | "details" | "dueDate" | "dueKey"
+  "id" | "petId" | "details" | "dueDate" | "dueKey" | "occurredAt"
 >;
 export type FeedCareRow = Pick<
   typeof careEntries.$inferSelect,
@@ -98,7 +98,6 @@ async function careBefore(
     .all();
 }
 
-// Newest first, so the first entry of each due key is the one that holds its Due Date.
 async function duesOf(db: Db, familyId: string): Promise<FeedDueRow[]> {
   return db
     .select({
@@ -107,6 +106,7 @@ async function duesOf(db: Db, familyId: string): Promise<FeedDueRow[]> {
       details: careEntries.details,
       dueDate: careEntries.dueDate,
       dueKey: careEntries.dueKey,
+      occurredAt: careEntries.occurredAt,
     })
     .from(careEntries)
     .where(and(eq(careEntries.familyId, familyId), isNotNull(careEntries.dueKey)))

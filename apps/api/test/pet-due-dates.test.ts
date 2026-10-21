@@ -232,6 +232,22 @@ describe("archiving a Pet", () => {
     expect(await unarchived.json()).toMatchObject({ archivedAt: null });
     expect(accepted.status).toBe(201);
   });
+
+  test("leaves it no open Due Dates until it is unarchived", async () => {
+    const worker = await startWithBuick();
+
+    await record(worker, {
+      at: "2026-09-01T10:00:00Z",
+      details: vaccination("Бешенство", "2026-10-20"),
+    });
+    await call(worker, asya, { method: "POST", path: `/api/pets/${worker.buickId}/archive` });
+    const whileArchived = await dueDatesOf(worker);
+
+    await call(worker, asya, { method: "POST", path: `/api/pets/${worker.buickId}/unarchive` });
+
+    expect(whileArchived).toEqual([]);
+    expect(await dueDatesOf(worker)).toMatchObject([{ title: "Бешенство" }]);
+  });
 });
 
 describe("deleting a Pet", () => {

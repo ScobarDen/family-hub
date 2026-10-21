@@ -1,5 +1,6 @@
 import type { FeedUpcoming } from "@family-hub/contract";
 import {
+  birthdaysIn,
   dateInZone,
   dayAfter,
   dayBefore,
@@ -8,7 +9,9 @@ import {
   timeInZone,
 } from "@family-hub/recurrence";
 
-import { careTitleOf, stepTitle, visibleTrees } from "../feed.lib.ts";
+import { openDueDates } from "@/modules/care-entry";
+
+import { stepTitle, visibleTrees } from "../feed.lib.ts";
 import type {
   FeedDueRow,
   FeedEventRow,
@@ -85,21 +88,13 @@ export function birthdayUpcoming(pet: FeedPetRow, window: Window): FeedUpcoming[
     return [];
   }
 
-  const dates = occurrenceDates(
-    birthDate,
-    { frequency: "yearly", until: null },
-    { range: { from: window.today, to: window.last } },
-  );
-
-  return dates
-    .filter((date) => date !== birthDate)
-    .map((date) => ({
-      kind: "birthday",
-      key: `birthday-${pet.id}-${date}`,
-      title: `День рождения: ${pet.name}`,
-      date,
-      petId: pet.id,
-    }));
+  return birthdaysIn(birthDate, { from: window.today, to: window.last }).map((date) => ({
+    kind: "birthday",
+    key: `birthday-${pet.id}-${date}`,
+    title: `День рождения: ${pet.name}`,
+    date,
+    petId: pet.id,
+  }));
 }
 
 function split(items: FeedUpcoming[], window: Window): Split {
@@ -133,35 +128,19 @@ export function planDeadlines(
   return split(items, window);
 }
 
-// The newest entry of each due key holds its Due Date; a later one of the same key closes it.
 export function dueDeadlines(
   dues: FeedDueRow[],
   { pets, window }: { pets: FeedPetRow[]; window: Window },
 ): Split {
-  const names = new Map(pets.map(({ id, name }) => [id, name]));
-  const newest = new Map<string, FeedDueRow>();
-
-  for (const due of dues) {
-    const key = `${due.petId}:${due.dueKey}`;
-
-    if (names.has(due.petId) && !newest.has(key)) {
-      newest.set(key, due);
-    }
-  }
-
-  const items = [...newest.values()].flatMap((due): FeedUpcoming[] =>
-    due.dueDate === null
-      ? []
-      : [
-          {
-            kind: "due",
-            key: `due-${due.id}`,
-            title: `${careTitleOf(due.details)} — ${names.get(due.petId) ?? ""}`,
-            date: due.dueDate,
-            petId: due.petId,
-            entryId: due.id,
-          },
-        ],
+  const items = openDueDates({ pets, entries: dues }).map(
+    ({ entryId, petId, title, dueDate }): FeedUpcoming => ({
+      kind: "due",
+      key: `due-${entryId}`,
+      title,
+      date: dueDate,
+      petId,
+      entryId,
+    }),
   );
 
   return split(items, window);

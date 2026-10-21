@@ -280,4 +280,16 @@ describe("a Due Date", () => {
 
     expect(worker.bot.sentMessages()).toEqual([]);
   });
+
+  test("stops for an archived Pet", async () => {
+    const worker = await startWithFamily();
+    const buick = await addBuick(worker, null);
+
+    await vaccinate(worker, buick.id, { vaccine: "Бешенство", dueDate: "2026-10-20" });
+    await request(worker, asya, { method: "POST", path: `/api/pets/${buick.id}/archive` });
+    await tickAt(worker, "2026-10-13T06:00:00Z");
+    await tickAt(worker, "2026-10-20T06:00:00Z");
+
+    expect(worker.bot.sentMessages()).toEqual([]);
+  });
 });

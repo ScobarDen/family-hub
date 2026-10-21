@@ -34,7 +34,7 @@ async function find(db: Db, familyId: string, entryId: string) {
 
 async function petOf(db: Db, familyId: string, petId: string) {
   return db
-    .select({ id: pets.id, archivedAt: pets.archivedAt })
+    .select({ id: pets.id, name: pets.name, archivedAt: pets.archivedAt })
     .from(pets)
     .where(and(eq(pets.familyId, familyId), eq(pets.id, petId)))
     .get();

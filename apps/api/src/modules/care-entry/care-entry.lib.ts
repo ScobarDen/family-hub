@@ -8,6 +8,7 @@ import type {
 } from "@family-hub/contract";
 
 import type { CareEntryRow } from "./care-entry.repo.ts";
+import { dueKeyOf, type OpenDueDate } from "./due-date/index.ts";
 
 export type PromotedColumns = {
   dueDate: string | null;
@@ -24,19 +25,6 @@ const noColumns: PromotedColumns = {
   expenseAmount: null,
   expenseCategory: null,
 };
-
-// A later entry of the same vaccine, treatment target or a vet visit closes the earlier Due Date.
-function dueKeyOf(details: CareDetails): string | null {
-  if (details.kind === "vaccination") {
-    return details.vaccine.toLowerCase();
-  }
-
-  if (details.kind === "treatment") {
-    return details.target.toLowerCase();
-  }
-
-  return details.kind === "vet_visit" ? "vet_visit" : null;
-}
 
 export function columnsOf(details: CareDetails): PromotedColumns {
   if (details.kind === "weight") {
@@ -103,49 +91,10 @@ export function todayIn(timeZone: string | null, now: number): string {
   }).format(now);
 }
 
-function dueTitleOf(details: CareDetails): string {
-  if (details.kind === "vaccination") {
-    return details.vaccine;
-  }
-
-  return details.kind === "treatment" ? details.target : "Визит к ветеринару";
-}
-
-function dueItemOf(row: CareEntryRow, today: string): DueDateItem[] {
-  const { details, dueDate } = row;
-
-  if (
-    dueDate === null ||
-    details.kind === "weight" ||
-    details.kind === "expense" ||
-    details.kind === "note"
-  ) {
-    return [];
-  }
-
-  return [
-    {
-      entryId: row.id,
-      kind: details.kind,
-      title: dueTitleOf(details),
-      dueDate,
-      isOverdue: dueDate < today,
-    },
-  ];
-}
-
-// The newest entry of each due key holds its Due Date: a later vaccine of the same name closes
-// the earlier one, and a later entry without a date closes it for good.
-export function openDueDates(rows: CareEntryRow[], today: string): DueDateItem[] {
-  const newest = new Map<string, CareEntryRow>();
-
-  for (const row of rows) {
-    if (row.dueKey !== null && !newest.has(row.dueKey)) {
-      newest.set(row.dueKey, row);
-    }
-  }
-
-  return [...newest.values()]
-    .flatMap((row) => dueItemOf(row, today))
-    .toSorted((left, right) => (left.dueDate < right.dueDate ? -1 : 1));
+// The pet card names a Due Date by what is due alone; it shows the kind beside it.
+export function toDueDateItem(
+  { entryId, kind, name, dueDate }: OpenDueDate,
+  today: string,
+): DueDateItem {
+  return { entryId, kind, title: name, dueDate, isOverdue: dueDate < today };
 }
