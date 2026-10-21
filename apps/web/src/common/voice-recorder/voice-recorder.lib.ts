@@ -7,12 +7,22 @@ export type VoiceRecorder = {
   start(): Promise<Recording | RecordingRefusal>;
 };
 
+export type MicrophoneStream = {
+  getTracks(): Array<Pick<MediaStreamTrack, "readyState" | "stop">>;
+};
+
+// The browser parts the recorder touches, so tests can stand in for them.
+export type RecorderEnvironment<Stream extends MicrophoneStream> = {
+  requestMicrophone: (() => Promise<Stream>) | undefined;
+  record: ((stream: Stream) => Recording) | undefined;
+  page: {
+    visibilityState: DocumentVisibilityState;
+    addEventListener(type: "visibilitychange", listener: () => void): void;
+  };
+};
+
 // iOS WebViews record only mp4; the others take webm. Whatever comes first and works wins.
 const formats = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
-
-function formatOf(): string | undefined {
-  return formats.find((format) => MediaRecorder.isTypeSupported(format));
-}
 
 function refusalOf(error: unknown): RecordingRefusal {
   return error instanceof DOMException && error.name === "NotAllowedError"
@@ -20,14 +30,9 @@ function refusalOf(error: unknown): RecordingRefusal {
     : "unavailable";
 }
 
-function release(stream: MediaStream): void {
-  for (const track of stream.getTracks()) {
-    track.stop();
-  }
-}
-
-function recordingOf(stream: MediaStream, format: string | undefined): Recording {
-  const recorder = new MediaRecorder(stream, format === undefined ? {} : { mimeType: format });
+function recordingOf(Recorder: typeof MediaRecorder, stream: MediaStream): Recording {
+  const format = formats.find((each) => Recorder.isTypeSupported(each));
+  const recorder = new Recorder(stream, format === undefined ? {} : { mimeType: format });
   const chunks: Blob[] = [];
 
   recorder.addEventListener("dataavailable", (event) => {
@@ -49,35 +54,88 @@ function recordingOf(stream: MediaStream, format: string | undefined): Recording
 
       recorder.stop();
       await stopped;
-      release(stream);
 
       return new Blob(chunks, { type: recorder.mimeType });
     },
     cancel() {
       recorder.stop();
-      release(stream);
     },
   };
 }
 
-export function createVoiceRecorder(): VoiceRecorder {
-  const isAvailable =
-    typeof MediaRecorder !== "undefined" && navigator.mediaDevices?.getUserMedia !== undefined;
+function browserEnvironment(): RecorderEnvironment<MediaStream> {
+  const mediaDevices = typeof navigator === "undefined" ? undefined : navigator.mediaDevices;
+  const Recorder = typeof MediaRecorder === "undefined" ? undefined : MediaRecorder;
 
   return {
-    isAvailable,
+    requestMicrophone:
+      mediaDevices?.getUserMedia === undefined
+        ? undefined
+        : async () => mediaDevices.getUserMedia({ audio: true }),
+    record: Recorder && ((stream) => recordingOf(Recorder, stream)),
+    page: document,
+  };
+}
+
+// Telegram's Android WebView asks for the microphone on every getUserMedia, so the stream stays
+// open while the Mini App is on screen and is let go only when it leaves.
+function openMicrophone<Stream extends MicrophoneStream>({
+  requestMicrophone,
+  page,
+}: RecorderEnvironment<Stream>) {
+  let stream: Stream | undefined;
+
+  function release(): void {
+    for (const track of stream?.getTracks() ?? []) {
+      track.stop();
+    }
+
+    stream = undefined;
+  }
+
+  page.addEventListener("visibilitychange", () => {
+    if (page.visibilityState === "hidden") {
+      release();
+    }
+  });
+
+  return async (): Promise<Stream> => {
+    const isLive = stream?.getTracks().every(({ readyState }) => readyState === "live") === true;
+
+    if (stream === undefined || !isLive) {
+      stream = await requestMicrophone?.();
+    }
+
+    if (stream === undefined) {
+      throw new Error("No microphone");
+    }
+
+    return stream;
+  };
+}
+
+export function voiceRecorderOver<Stream extends MicrophoneStream>(
+  environment: RecorderEnvironment<Stream>,
+): VoiceRecorder {
+  const { record, requestMicrophone } = environment;
+  const microphone = openMicrophone(environment);
+
+  return {
+    isAvailable: record !== undefined && requestMicrophone !== undefined,
     async start() {
-      if (!isAvailable) {
+      if (record === undefined) {
         return "unavailable";
       }
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-        return recordingOf(stream, formatOf());
+        return record(await microphone());
       } catch (error) {
         return refusalOf(error);
       }
     },
   };
+}
+
+export function createVoiceRecorder(): VoiceRecorder {
+  return voiceRecorderOver(browserEnvironment());
 }
