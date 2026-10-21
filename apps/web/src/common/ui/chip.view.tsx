@@ -12,8 +12,8 @@ export function Chip({ isSelected = false, className, ...props }: ChipProps) {
       className={cn(
         "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
         isSelected
-          ? "bg-primary text-primary-foreground"
-          : "bg-secondary text-secondary-foreground",
+          ? "bg-foreground text-background"
+          : "bg-[color-mix(in_oklch,var(--foreground)_7%,transparent)] text-foreground",
         className,
       )}
       {...props}

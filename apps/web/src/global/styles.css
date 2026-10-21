@@ -20,7 +20,12 @@
   --secondary: var(--tg-theme-secondary-bg-color, #efeff4);
   --secondary-foreground: var(--foreground);
   --muted: var(--secondary);
-  --muted-foreground: var(--tg-theme-hint-color, #999999);
+  /* Telegram's hint grey is about 2.8:1 on its own background; pulled toward the text it reaches 4.5:1. */
+  --muted-foreground: color-mix(
+    in oklch,
+    var(--tg-theme-hint-color, #999999) 50%,
+    var(--tg-theme-text-color, #000000)
+  );
   --accent: var(--secondary);
   --accent-foreground: var(--tg-theme-accent-text-color, var(--primary));
   --destructive: var(--tg-theme-destructive-text-color, #e53935);
@@ -31,6 +36,10 @@
   --input: var(--border);
   --ring: var(--primary);
   --link: var(--tg-theme-link-color, var(--primary));
+  --person-1: color-mix(in oklch, oklch(0.72 0.12 250) 34%, var(--card));
+  --person-2: color-mix(in oklch, oklch(0.72 0.12 20) 34%, var(--card));
+  --person-3: color-mix(in oklch, oklch(0.72 0.12 140) 34%, var(--card));
+  --person-4: color-mix(in oklch, oklch(0.72 0.12 75) 34%, var(--card));
   --safe-area-top: calc(
     var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)
   );
@@ -63,6 +72,10 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-link: var(--link);
+  --color-person-1: var(--person-1);
+  --color-person-2: var(--person-2);
+  --color-person-3: var(--person-3);
+  --color-person-4: var(--person-4);
   --spacing-safe-top: var(--safe-area-top);
   --spacing-safe-bottom: var(--safe-area-bottom);
   --font-sans: -apple-system, system-ui, "Roboto", "Segoe UI", sans-serif;
@@ -74,6 +87,6 @@
   }
 
   body {
-    @apply bg-background font-sans text-foreground antialiased;
+    @apply bg-background font-sans text-foreground tabular-nums antialiased;
   }
 }

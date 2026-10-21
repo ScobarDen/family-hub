@@ -77,6 +77,7 @@ function reatomViews(
       (): DayCell[] => monthGrid(month(), { today: today(), items: monthItems() }),
       "calendar.grid",
     ),
+    today: computed(() => today(), "calendar.today"),
     selected: computed(() => selected(), "calendar.selectedDate"),
     dayItems: computed(
       (): CalendarItem[] => monthItems().filter(({ date }) => date === selected()),

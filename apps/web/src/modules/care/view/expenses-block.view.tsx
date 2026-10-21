@@ -1,9 +1,10 @@
 import { reatomComponent } from "@reatom/react";
-import { Plus, Wallet } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { Button, Section } from "@/common/ui";
 
 import type { CareModel } from "../vm/care.vm.ts";
+import { ExpenseRows } from "./expense-rows.view.tsx";
 
 export type CareBlockProps = { model: CareModel };
 
@@ -11,27 +12,35 @@ export const ExpensesBlock = reatomComponent(({ model }: CareBlockProps) => {
   const month = model.month();
 
   return (
-    <Section title="Траты за месяц">
-      <SectionItem
-        icon={Wallet}
-        tone="green"
-        title={month === undefined || month.rows.length === 0 ? "Трат пока нет" : month.total}
-        subtitle="Все траты за год"
-        onClick={model.openExpenses}
-      />
-      {month?.rows.map((row) => (
-        <SectionItem key={row.title} title={row.title} after={row.amount} />
-      ))}
-      {!model.isReadOnly() && (
-        <SectionItem
-          icon={Plus}
-          tone="green"
-          title="Добавить трату"
-          onClick={() => {
-            model.add("expense");
-          }}
-        />
-      )}
+    <Section
+      title="Траты за месяц"
+      aside={
+        <button
+          type="button"
+          className="inline-flex items-center font-medium text-foreground active:opacity-60"
+          onClick={model.openExpenses}
+        >
+          За год <ChevronRight className="size-4" />
+        </button>
+      }
+    >
+      <div className="flex items-end justify-between gap-3 px-4 pt-4 pb-3">
+        <span className="text-[1.75rem] leading-none tracking-tight">
+          {month === undefined || month.rows.length === 0 ? "0 ₽" : month.total}
+        </span>
+        {!model.isReadOnly() && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              model.add("expense");
+            }}
+          >
+            <Plus /> Трата
+          </Button>
+        )}
+      </div>
+      <ExpenseRows rows={month?.rows ?? []} />
     </Section>
   );
 }, "ExpensesBlock");

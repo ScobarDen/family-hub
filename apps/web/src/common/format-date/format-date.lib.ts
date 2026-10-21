@@ -30,6 +30,21 @@ export function formatDate(date: string): string {
   });
 }
 
+// Near dates read as words and this year's dates drop the year: «Завтра», «23 октября».
+export function formatNearDate(date: string, onDate: string): string {
+  const day = Temporal.PlainDate.from(date);
+  const shift = Temporal.PlainDate.from(onDate).until(day, { largestUnit: "days" }).days;
+  const words: Record<number, string> = { [-1]: "Вчера", 0: "Сегодня", 1: "Завтра" };
+
+  if (words[shift] !== undefined) {
+    return words[shift];
+  }
+
+  return day.year === Temporal.PlainDate.from(onDate).year
+    ? day.toLocaleString("ru-RU", dayAndMonth)
+    : formatDate(date);
+}
+
 export function today(timeZone: string): string {
   return Temporal.Now.plainDateISO(timeZone).toString();
 }
