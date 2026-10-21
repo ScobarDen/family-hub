@@ -11,6 +11,8 @@ export type BotApi = {
     method: Method,
     params: BotParams<Method>,
   ): Promise<BotResult<Method>>;
+  // A file's URL carries the bot token, so only the Worker ever fetches it.
+  file(filePath: string): Promise<Response>;
 };
 
 export class BotApiError extends Error {
@@ -45,13 +47,36 @@ type BotApiResponse<Result> =
       parameters?: { retry_after?: number };
     };
 
+// A file goes up as multipart, where every other field is a string and objects are JSON.
+function bodyOf(params: object | undefined): { body: BodyInit; headers: HeadersInit } {
+  const fields = Object.entries(params ?? {});
+
+  if (!fields.some(([, value]) => value instanceof Blob)) {
+    return { body: JSON.stringify(params ?? {}), headers: { "content-type": "application/json" } };
+  }
+
+  const form = new FormData();
+
+  for (const [key, value] of fields) {
+    if (value instanceof Blob) {
+      form.append(key, value, "photo.jpg");
+    } else if (value !== undefined) {
+      form.append(key, typeof value === "object" ? JSON.stringify(value) : String(value));
+    }
+  }
+
+  return { body: form, headers: {} };
+}
+
 export function createHttpBotApi(token: string): BotApi {
   return {
+    async file(filePath) {
+      return fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+    },
     async call(method, params) {
       const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify(params ?? {}),
+        ...bodyOf(params ?? undefined),
       });
       const body = await response.json<BotApiResponse<BotResult<typeof method>>>();
 

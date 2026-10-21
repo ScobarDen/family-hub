@@ -10,11 +10,15 @@ export type Screen =
   | { kind: "profile" }
   | { kind: "tab-bar-menu" };
 
+type NestedBack = { canGoBack: () => boolean; back: () => void };
+
 type NavigationDependencies = {
   base: string;
   tabBar: () => AppModule[];
   isSignedIn: () => boolean;
   telegram: Pick<Telegram, "startParam" | "backButton" | "settingsButton">;
+  // Screens inside a module (a Pet's card among several, a form) step back before the app does.
+  nestedBack?: Partial<Record<AppModule, NestedBack>>;
 };
 
 const deepLinkModules: Partial<Record<DeepLinkKind, AppModule>> = {
@@ -75,6 +79,15 @@ function isOffTabBar(screen: Screen): boolean {
   return screen.kind !== "module" || !screen.isOnTabBar;
 }
 
+function nestedBackOf(
+  screen: Screen,
+  nestedBack: NavigationDependencies["nestedBack"],
+): NestedBack | undefined {
+  const nested = screen.kind === "module" ? nestedBack?.[screen.module] : undefined;
+
+  return nested?.canGoBack() === true ? nested : undefined;
+}
+
 function reatomMoves(routes: Routes, tabBar: () => AppModule[]) {
   const lastTab = atom<AppModule | undefined>(undefined, "navigation.lastTab");
 
@@ -116,17 +129,47 @@ function reatomMoves(routes: Routes, tabBar: () => AppModule[]) {
   };
 }
 
-export function reatomNavigation({ base, tabBar, isSignedIn, telegram }: NavigationDependencies) {
+type BackSources = {
+  screen: () => Screen;
+  nestedBack: NavigationDependencies["nestedBack"];
+  leaveProfile: () => void;
+  goToProfile: () => void;
+};
+
+function reatomBack({ screen, nestedBack, leaveProfile, goToProfile }: BackSources) {
+  return action(() => {
+    const nested = nestedBackOf(screen(), nestedBack);
+
+    if (nested !== undefined) {
+      nested.back();
+    } else if (screen().kind === "profile") {
+      leaveProfile();
+    } else {
+      goToProfile();
+    }
+  }, "navigation.back").extend(() => ({
+    isVisible: () => isOffTabBar(screen()) || nestedBackOf(screen(), nestedBack) !== undefined,
+  }));
+}
+
+export function reatomNavigation({
+  base,
+  tabBar,
+  isSignedIn,
+  telegram,
+  nestedBack,
+}: NavigationDependencies) {
   const routes = reatomRoutes(base);
   const screen = reatomScreen(routes, tabBar);
   const { leaveProfile, openDeepLink, ...moves } = reatomMoves(routes, tabBar);
-  const back = action(() => {
-    if (screen().kind === "profile") {
-      leaveProfile();
-    } else {
+  const back = reatomBack({
+    screen,
+    nestedBack,
+    leaveProfile,
+    goToProfile: () => {
       routes.profile.go();
-    }
-  }, "navigation.back");
+    },
+  });
 
   return {
     screen,
@@ -142,10 +185,7 @@ export function reatomNavigation({ base, tabBar, isSignedIn, telegram }: Navigat
     start(): () => void {
       openDeepLink(telegram.startParam);
 
-      const stopBack = telegram.backButton.follow(
-        () => isSignedIn() && isOffTabBar(screen()),
-        back,
-      );
+      const stopBack = telegram.backButton.follow(() => isSignedIn() && back.isVisible(), back);
       const stopSettings = telegram.settingsButton.follow(isSignedIn, moves.openProfile);
 
       return () => {

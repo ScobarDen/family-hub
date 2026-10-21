@@ -36,6 +36,125 @@
       "when": 1792355749173,
       "tag": "0004_member_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792568446923,
+      "tag": "0005_pets",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792569684808,
+      "tag": "0006_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792571278875,
+      "tag": "0007_photo_storage",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792572162511,
+      "tag": "0008_plan_pet",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792572741543,
+      "tag": "0009_care_entries",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792574513193,
+      "tag": "0010_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1792575577410,
+      "tag": "0011_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792576519111,
+      "tag": "0012_event_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792577604460,
+      "tag": "0013_plan_reminders",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1792578885598,
+      "tag": "0014_goals",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1792579806062,
+      "tag": "0015_photos",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1792581275575,
+      "tag": "0016_albums",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1792582699738,
+      "tag": "0017_plan_albums",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1792584675404,
+      "tag": "0018_digest",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1792586776353,
+      "tag": "0019_recipes",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1792587755151,
+      "tag": "0020_recipe_cooks",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1792588689593,
+      "tag": "0021_command_drafts",
+      "breakpoints": true
     }
   ]
 }

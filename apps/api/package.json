@@ -11,7 +11,9 @@
     "cf-typegen": "wrangler types --strict-vars=false"
   },
   "dependencies": {
+    "@family-hub/commands": "workspace:*",
     "@family-hub/contract": "workspace:*",
+    "@family-hub/recurrence": "workspace:*",
     "@hono/standard-validator": "catalog:",
     "drizzle-orm": "catalog:",
     "hono": "catalog:",

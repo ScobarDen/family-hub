@@ -19,6 +19,7 @@ const denis: CurrentMember = {
     tabBar: ["goals", "feed"],
     timeZone: { timeZone: "Europe/Moscow", isAuto: true },
     canMessage: true,
+    digest: { isEnabled: true, time: "09:00" },
   },
 };
 

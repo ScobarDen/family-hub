@@ -15,15 +15,22 @@ type TabBarDependencies = {
   modules: Pick<TabBarModules, "modules">;
   activeModule: () => AppModule | undefined;
   onOpen: (module: AppModule) => void;
+  // A module may be renamed by its content, like the pet tab after the Family's only Pet.
+  titles?: () => Partial<Record<AppModule, string>>;
 };
 
-export function reatomTabBar({ modules, activeModule, onOpen }: TabBarDependencies) {
+export function reatomTabBar({
+  modules,
+  activeModule,
+  onOpen,
+  titles = () => ({}),
+}: TabBarDependencies) {
   return {
     // The centre stays free for the microphone; the odd tab goes to its left.
     tabs: computed(() => {
       const tabs = modules.modules().map((module) => ({
         module,
-        title: moduleTitles[module],
+        title: titles()[module] ?? moduleTitles[module],
         isActive: module === activeModule(),
       }));
       const middle = Math.ceil(tabs.length / sides);

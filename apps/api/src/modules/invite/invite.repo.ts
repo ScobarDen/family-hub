@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, lt, or } from "drizzle-orm";
 
 import { families, familyMembers, invites, members, type Db } from "@/common/db";
 
@@ -116,6 +116,15 @@ export function createInviteRepo(db: Db) {
     },
 
     join: async (joining: Joining) => join(db, joining),
+
+    // An Invite nobody used is of no use once it expired or was revoked; a used one stays as history.
+    async sweep(now: number): Promise<void> {
+      await db
+        .delete(invites)
+        .where(
+          and(isNull(invites.usedAt), or(lt(invites.expiresAt, now), isNotNull(invites.revokedAt))),
+        );
+    },
   };
 }
 

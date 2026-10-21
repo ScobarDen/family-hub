@@ -47,6 +47,14 @@ export type TelegramButton = {
   offClick(handler: () => void): void;
 };
 
+export type PopupButton = {
+  id: string;
+  type?: "default" | "ok" | "close" | "cancel" | "destructive";
+  text?: string;
+};
+
+export type PopupParams = { title?: string; message: string; buttons: PopupButton[] };
+
 export type TelegramWebApp = {
   initData: string;
   initDataUnsafe: { start_param?: string };
@@ -61,6 +69,7 @@ export type TelegramWebApp = {
   ready(): void;
   expand(): void;
   showAlert(message: string, callback?: () => void): void;
+  showPopup(params: PopupParams, callback?: (buttonId: string | null) => void): void;
   isVersionAtLeast(version: string): boolean;
   requestWriteAccess(callback?: (isAllowed: boolean) => void): void;
   shareMessage(preparedMessageId: string, callback?: (isSent: boolean) => void): void;

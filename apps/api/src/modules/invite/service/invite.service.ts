@@ -15,6 +15,7 @@ export function createInviteService(dependencies: InviteDependencies) {
       revoke(dependencies, membership, inviteId),
     preview: async (user: TelegramUser, token: string) => preview(dependencies, user, token),
     accept: async (user: TelegramUser, token: string) => accept(dependencies, user, token),
+    sweep: async () => dependencies.invites.sweep(dependencies.clock.now()),
   };
 }
 

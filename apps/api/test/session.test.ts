@@ -59,6 +59,7 @@ describe("signing in with initData", () => {
         tabBar: ["feed", "plans", "calendar", "pet"],
         timeZone: null,
         canMessage: true,
+        digest: { isEnabled: true, time: "09:00" },
       },
     });
   });

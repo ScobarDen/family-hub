@@ -9,7 +9,7 @@ import { createTabBarApi } from "../tab-bar.api.ts";
 import { reatomTabBarModules } from "../tab-bar.model.ts";
 import { reatomTabBar } from "./tab-bar.vm.ts";
 
-function startTabBar(saved?: AppModule[]) {
+function startTabBar(saved?: AppModule[], renamed?: () => Partial<Record<AppModule, string>>) {
   const client = createHttpClient({
     baseUrl: "https://api.family-hub.test",
     fetch: async () => Response.json({}),
@@ -22,6 +22,7 @@ function startTabBar(saved?: AppModule[]) {
     onOpen: (module) => {
       opened.push(module);
     },
+    titles: renamed,
   });
 
   return { model, activeModule, opened };
@@ -72,6 +73,12 @@ describe("the tab bar", () => {
     });
   });
 
+  test("names a tab the way its module asks, like the pet tab after the only Pet", () => {
+    const { model } = startTabBar(["feed", "pet"], () => ({ pet: "Бьюик" }));
+
+    expect(titles(model.tabs().end)).toEqual(["Бьюик"]);
+  });
+
   test("opens a module from its tab", () => {
     const { model, opened } = startTabBar(["feed", "plans"]);
 
@@ -89,12 +96,16 @@ describe("the modules hidden from the tab bar", () => {
       { module: "calendar", title: "Календарь" },
       { module: "pet", title: "Питомец" },
       { module: "goals", title: "Цели" },
+      { module: "recipes", title: "Рецепты" },
     ]);
   });
 
   test("leave out every module the tab bar shows", () => {
     const { model } = startTabBar(["feed", "plans", "calendar", "pet", "goals"]);
 
-    expect(model.hidden()).toEqual([{ module: "albums", title: "Альбомы" }]);
+    expect(model.hidden()).toEqual([
+      { module: "albums", title: "Альбомы" },
+      { module: "recipes", title: "Рецепты" },
+    ]);
   });
 });

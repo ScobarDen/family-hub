@@ -8,14 +8,20 @@ import { moduleTitles } from "@/modules/tab-bar";
 
 type ModulePageProps = {
   module: AppModule;
+  title?: string;
+  children?: ReactNode;
   banner: ReactNode;
   // Telegram before 7.0 has no «⋯ → Настройки», so the Profile needs a button of its own.
   onOpenProfile?: () => void;
 };
 
-export function ModulePage({ module, banner, onOpenProfile }: ModulePageProps) {
-  const title = moduleTitles[module];
-
+export function ModulePage({
+  module,
+  title = moduleTitles[module],
+  children,
+  banner,
+  onOpenProfile,
+}: ModulePageProps) {
   return (
     <>
       <div className="flex items-start justify-between">
@@ -33,9 +39,11 @@ export function ModulePage({ module, banner, onOpenProfile }: ModulePageProps) {
         )}
       </div>
       {banner}
-      <Section>
-        <SectionItem title={`Раздел «${title}» скоро появится`} />
-      </Section>
+      {children ?? (
+        <Section>
+          <SectionItem title={`Раздел «${title}» скоро появится`} />
+        </Section>
+      )}
     </>
   );
 }

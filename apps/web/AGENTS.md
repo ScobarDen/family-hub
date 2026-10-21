@@ -6,7 +6,7 @@ The Telegram Mini App: React 19 and Reatom v1001, shadcn on Base UI with Tailwin
 
 - MVVM on FEOD levels, as in the `frontend-mvvm` skill: a ViewModel `*.vm.ts` per screen, a passive `*.view.tsx` built with `reatomComponent`, data in `*.api.ts` / `*.model.ts`, a module's public API in `index.ts`, a README in every module that has a ViewModel. The role matrix in `vite.config.ts` decides who imports whom.
 - `src/app/main.tsx` is the composition root: it builds the real Telegram wrapper, HTTP client and models and hands them down. Nothing imports `global` (`@feod/analyzer` forbids it even from `main.tsx`): `index.html` links `global/styles.css`, and `global/*.d.ts` augments Vite's ambient types. A browser global owned by a common entity is declared beside that entity's types (`window.Telegram` in `common/telegram/telegram.types.ts`), because `global` may not import from `common`.
-- `common/` holds the shared entities: `telegram` (the Mini App wrapper, `telegram-mini-app` skill), `http-client`, `ui` (shadcn components), `icons`, `format-date`, `format-money`.
+- `common/` holds the shared entities: `telegram` (the Mini App wrapper, `telegram-mini-app` skill), `http-client`, `ui` (shadcn components), `icons`, `format-date`, `format-money`, `form` (refilling a Reatom form without its `reset`, which aborts the next submit, and the «server refused the submit» message).
 
 ## Rules
 

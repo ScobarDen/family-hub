@@ -1,2 +1,29 @@
 export { createDb, type Db } from "./db.lib.ts";
-export { families, familyMembers, familyRequests, invites, members } from "./schema.ts";
+export type { CommandSource, CommandStatus, DispatchSource, PhotoVariants } from "./schema.ts";
+export {
+  albumPhotos,
+  albums,
+  careEntries,
+  careEntryPhotos,
+  commandDrafts,
+  events,
+  families,
+  familyMembers,
+  familyRequests,
+  goalMovements,
+  goals,
+  invites,
+  members,
+  pets,
+  photos,
+  plans,
+  recipeCooks,
+  recipeFavorites,
+  recipePhotos,
+  recipeTagLinks,
+  recipeTags,
+  recipes,
+  reminderDispatch,
+  reminderRecipients,
+  reminders,
+} from "./schema.ts";

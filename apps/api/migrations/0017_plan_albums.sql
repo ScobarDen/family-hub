@@ -1,0 +1,1 @@
+ALTER TABLE `plans` ADD `album_id` text REFERENCES albums(id) ON DELETE SET NULL;

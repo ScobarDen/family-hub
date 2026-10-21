@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const appModule = z.enum(["feed", "plans", "calendar", "pet", "goals", "albums"]);
+export const appModule = z.enum(["feed", "plans", "calendar", "pet", "goals", "albums", "recipes"]);
 
 export type AppModule = z.infer<typeof appModule>;
 
@@ -34,10 +34,21 @@ export const timeZoneSettings = z.object({
 
 export type TimeZoneSettings = z.infer<typeof timeZoneSettings>;
 
+export const defaultDigestTime = "09:00";
+
+// The morning digest: on by default, at 09:00 on the Member's own clock.
+export const digestSettings = z.object({
+  isEnabled: z.boolean(),
+  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/u, "HH:MM"),
+});
+
+export type DigestSettings = z.infer<typeof digestSettings>;
+
 export const memberSettings = z.object({
   tabBar,
   timeZone: timeZoneSettings.nullable(),
   canMessage: z.boolean(),
+  digest: digestSettings,
 });
 
 export type MemberSettings = z.infer<typeof memberSettings>;

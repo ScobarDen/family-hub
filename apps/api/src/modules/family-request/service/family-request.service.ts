@@ -2,6 +2,7 @@ import type { CallbackQuery } from "@grammyjs/types";
 
 import type { TelegramUser } from "@/common/auth";
 
+import { familyRequestRetentionMs } from "../family-request.config.ts";
 import type { FamilyRequestDependencies } from "../family-request.types.ts";
 import { handleCallback } from "./operator-decision.service.ts";
 import { statusOf, submit } from "./submission.service.ts";
@@ -16,6 +17,8 @@ export function createFamilyRequestService(dependencies: FamilyRequestDependenci
     statusOf: async (telegramId: number) => statusOf(dependencies, telegramId),
     cancelPending: async (telegramId: number) =>
       dependencies.requests.cancelPendingOf(telegramId, dependencies.clock.now()),
+    sweep: async () =>
+      dependencies.requests.sweepDecidedBefore(dependencies.clock.now() - familyRequestRetentionMs),
   };
 }
 

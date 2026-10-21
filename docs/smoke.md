@@ -37,6 +37,16 @@ Bring up the Worker, the Mini App and the tunnel on the dev bot as in [docs/dev.
 - [ ] A button pressed by someone who is not that message's Recipient changes nothing and shows an alert.
 - [ ] Due Date buttons «📝 Записать» and «⏰ Отложить на день» behave the same way.
 
+### Voice and commands
+
+Run on the dev bot with the real `AI` binding (`wrangler dev --remote`), since the models answer only on Cloudflare.
+
+- [ ] «напомни в пятницу в 19:00 оплатить интернет» answers with «⏰ Оплатить интернет · пт <date>, 19:00 · …» and «Создать / ×» within a few seconds, with «печатает…» meanwhile.
+- [ ] «Создать» creates the Reminder: it shows in the calendar and the bot sends it at the time; the preview turns into «✅ Создано».
+- [ ] «напомни мне завтра в 9 позвонить врачу» makes a Private Reminder for the speaker only.
+- [ ] A phrase without a time shows «Не хватает: время» and no «Создать»; nonsense answers «Не понял» with examples; «удали все напоминания» is refused.
+- [ ] After `AI_COMMANDS_PER_FAMILY_DAY` commands the bot says commands are over for today, without calling the model.
+
 Items for features that are not built yet are skipped until they land.
 
 ## After a production deploy

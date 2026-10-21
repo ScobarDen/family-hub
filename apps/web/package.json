@@ -12,6 +12,7 @@
   "dependencies": {
     "@base-ui/react": "catalog:",
     "@family-hub/contract": "workspace:*",
+    "@family-hub/recurrence": "workspace:*",
     "@reatom/core": "catalog:",
     "@reatom/react": "catalog:",
     "class-variance-authority": "catalog:",
@@ -19,6 +20,8 @@
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-is": "catalog:",
+    "recharts": "catalog:",
     "tailwind-merge": "catalog:",
     "temporal-polyfill": "catalog:",
     "zod": "catalog:"

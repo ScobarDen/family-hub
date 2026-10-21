@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  CookingPot,
   Images,
   ListChecks,
   Newspaper,
@@ -19,6 +20,7 @@ export const moduleTitles: Record<AppModule, string> = {
   pet: "Питомец",
   goals: "Цели",
   albums: "Альбомы",
+  recipes: "Рецепты",
 };
 
 export const moduleIcons: Record<AppModule, LucideIcon> = {
@@ -28,6 +30,7 @@ export const moduleIcons: Record<AppModule, LucideIcon> = {
   pet: PawPrint,
   goals: PiggyBank,
   albums: Images,
+  recipes: CookingPot,
 };
 
 export const moduleTones: Record<AppModule, IconTone> = {
@@ -37,4 +40,5 @@ export const moduleTones: Record<AppModule, IconTone> = {
   pet: "orange",
   goals: "teal",
   albums: "violet",
+  recipes: "pink",
 };

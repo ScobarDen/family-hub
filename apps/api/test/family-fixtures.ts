@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { createDb, families, familyMembers, members, type Db } from "@/common/db";
+import { createDb, families, familyMembers, invites, members, pets, type Db } from "@/common/db";
 
 import type { FakeClock } from "./fake-clock.ts";
 
@@ -40,6 +40,21 @@ async function join(
   await db.insert(familyMembers).values({ familyId, memberId, ...audit(clock, memberId) });
 }
 
+// The channel handshake has tests of its own; photo tests start from a connected channel.
+async function setPhotoChannel(
+  db: Db,
+  { familyId, channelId }: { familyId: string; channelId: number | null },
+) {
+  await db
+    .update(families)
+    .set({
+      photoChannelId: channelId,
+      photoChannelTitle: channelId === null ? null : "Фото Гущиных",
+      isPhotoChannelConnected: channelId !== null,
+    })
+    .where(eq(families.id, familyId));
+}
+
 export function createFamilyFixtures(d1: D1Database, clock: FakeClock) {
   const db = createDb(d1);
 
@@ -65,6 +80,13 @@ export function createFamilyFixtures(d1: D1Database, clock: FakeClock) {
     },
     async leaveFamily(memberId: string) {
       await db.delete(familyMembers).where(eq(familyMembers.memberId, memberId));
+    },
+    setPhotoChannel: async (familyId: string, channelId: number | null) =>
+      setPhotoChannel(db, { familyId, channelId }),
+    countInvites: async () => db.$count(invites),
+    // Pet deletion arrives with the Pet archive; until then the cascade is checked straight in the database.
+    async deletePet(petId: string) {
+      await db.delete(pets).where(eq(pets.id, petId));
     },
     async rowCounts() {
       return {

@@ -11,23 +11,28 @@ type TextFieldProps = {
   id: string;
   label: string;
   placeholder?: string;
+  type?: "text" | "date" | "time" | "datetime-local";
 };
 
-export const TextField = reatomComponent(({ field, id, label, placeholder }: TextFieldProps) => {
-  const { error, ...input } = bindField(field);
-  const isInvalid = error !== undefined;
+export const TextField = reatomComponent(
+  ({ field, id, label, placeholder, type = "text" }: TextFieldProps) => {
+    const { error, ...input } = bindField(field);
+    const isInvalid = error !== undefined;
 
-  return (
-    <Field data-invalid={isInvalid}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Input
-        id={id}
-        placeholder={placeholder}
-        autoComplete="off"
-        aria-invalid={isInvalid}
-        {...input}
-      />
-      <FieldError>{error}</FieldError>
-    </Field>
-  );
-}, "TextField");
+    return (
+      <Field data-invalid={isInvalid}>
+        <FieldLabel htmlFor={id}>{label}</FieldLabel>
+        <Input
+          id={id}
+          type={type}
+          placeholder={placeholder}
+          autoComplete="off"
+          aria-invalid={isInvalid}
+          {...input}
+        />
+        <FieldError>{error}</FieldError>
+      </Field>
+    );
+  },
+  "TextField",
+);
