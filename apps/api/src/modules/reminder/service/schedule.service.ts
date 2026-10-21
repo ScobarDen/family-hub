@@ -8,6 +8,7 @@ import type { ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchPlan } from "../repo/dispatch.repo.ts";
 import type { ReminderWithRecipients } from "../repo/reminder.repo.ts";
 import { reminderSource } from "./calendar-source.service.ts";
+import { planSources } from "./plan-source.service.ts";
 import { birthdayOf, dueSources, eventSources, sourceOfRow } from "./source.service.ts";
 
 export type Fire = { occurrence: string; fireAt: number };
@@ -133,6 +134,18 @@ export async function petChanged(
     kind: "pet_due",
     prefix: `${petId}:`,
     sources: await dueSources(dependencies, petId),
+  });
+}
+
+export async function planChanged(
+  dependencies: ReminderDependencies,
+  { familyId, planId }: { familyId: string; planId: string },
+): Promise<void> {
+  await scheduleRows(dependencies, {
+    familyId,
+    kind: "plan",
+    prefix: `${planId}:`,
+    sources: await planSources(dependencies, planId),
   });
 }
 

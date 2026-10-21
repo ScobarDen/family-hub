@@ -24,6 +24,10 @@ const offsetDays: Record<EventOffset, number> = {
   "1w": 7,
 };
 
+export type PlanLead = "on-day" | "1d" | "1w";
+
+const planLeadDays: Record<PlanLead, number> = { "on-day": 0, "1d": 1, "1w": 7 };
+
 const dueLeadDays = 7;
 const overdueRepeatDays = 7;
 
@@ -70,4 +74,14 @@ export function dueStepFrom(dueDate: string, day: string): string {
   const weeksLate = Math.ceil(due.until(from).days / overdueRepeatDays);
 
   return due.add({ days: weeksLate * overdueRepeatDays }).toString();
+}
+
+// A Plan's deadline nudges at 09:00 on the Recipient's clock: on the day, a day or a week before.
+export function planReminderMoment(
+  dueDate: string,
+  { lead, recipientZone }: { lead: PlanLead; recipientZone: string },
+): number {
+  const day = Temporal.PlainDate.from(dueDate).subtract({ days: planLeadDays[lead] });
+
+  return morningOf(day.toString(), recipientZone);
 }

@@ -2,7 +2,7 @@ import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
 import type { Reminder } from "@family-hub/contract";
 
-import type { MembershipRepo } from "@/common/auth";
+import type { Membership, MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import type { DispatchSource } from "@/common/db";
 import type { BotApi } from "@/common/telegram";
@@ -11,7 +11,13 @@ import type { DispatchRepo } from "./repo/dispatch.repo.ts";
 import type { ReminderRepo } from "./repo/reminder.repo.ts";
 import type { SourceRepo } from "./repo/source.repo.ts";
 
+// «✅ Выполнено» on a Plan's Reminder completes it in the plan module, which the app wires in.
+export type PlanCompletion = {
+  completeById(membership: Membership, planId: string): Promise<unknown>;
+};
+
 export type ReminderDependencies = {
+  plans: PlanCompletion;
   reminders: ReminderRepo;
   dispatch: DispatchRepo;
   sources: SourceRepo;
@@ -44,6 +50,7 @@ export type Source = {
   title: (occurrence: string, timeZone: string) => string;
   buttons: (dispatchId: string) => InlineKeyboardMarkup;
   closesForEveryone: boolean;
+  complete?: (presser: Membership) => Promise<void>;
   snoozeMs: number;
   isSkippedWhenLate: boolean;
 };

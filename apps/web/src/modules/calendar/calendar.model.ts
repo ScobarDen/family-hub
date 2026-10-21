@@ -17,6 +17,7 @@ export function reatomCalendarData({ api }: { api: CalendarApi }) {
   );
   const pets = computed(async () => wrap(api.pets()), "calendar.pets").extend(withAsyncData());
 
+  const plans = computed(async () => wrap(api.plans()), "calendar.plans").extend(withAsyncData());
   const reminders = computed(async () => wrap(api.reminders()), "calendar.reminders").extend(
     withAsyncData(),
   );
@@ -24,6 +25,7 @@ export function reatomCalendarData({ api }: { api: CalendarApi }) {
   return {
     events,
     pets,
+    plans,
     reminders,
     members: computed(async () => wrap(api.members()), "calendar.members").extend(withAsyncData()),
 

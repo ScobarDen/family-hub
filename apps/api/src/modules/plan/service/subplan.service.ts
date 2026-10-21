@@ -45,6 +45,7 @@ export async function addSubplan(
     parentId: planId,
     title: change.title,
     dueDate: change.dueDate,
+    reminder: change.reminder,
     assigneeMemberId: change.assigneeId,
     createdAt: now,
     createdBy: membership.member.id,
@@ -80,6 +81,7 @@ export async function updateSubplan(
   await dependencies.plans.update(membership.family.id, subplanId, {
     title: change.title,
     dueDate: change.dueDate,
+    reminder: change.reminder,
     assigneeMemberId: change.assigneeId,
     updatedAt: dependencies.clock.now(),
   });

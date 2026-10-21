@@ -18,6 +18,13 @@ const visibilityChoices: Choice[] = [
   { value: "private", title: "Только я" },
 ];
 
+const reminderChoices: Choice[] = [
+  { value: "", title: "Не напоминать" },
+  { value: "on-day", title: "В день срока" },
+  { value: "1d", title: "За день" },
+  { value: "1w", title: "За неделю" },
+];
+
 type FormButtonsProps = { isSaving: boolean; onCancel: () => void };
 
 function FormButtons({ isSaving, onCancel }: FormButtonsProps) {
@@ -55,6 +62,9 @@ export const PlanForm = reatomComponent(({ model, onCancel }: PlanFormProps) => 
       />
       <TextAreaField field={fields.note} id="plan-note" label="Заметка" />
       <TextField field={fields.dueDate} id="plan-due-date" label="Срок" type="date" />
+      {fields.dueDate() !== "" && (
+        <ChoiceField field={fields.reminder} label="Напомнить" choices={reminderChoices} />
+      )}
       {model.canChooseVisibility() && (
         <ChoiceField
           field={fields.visibility}
@@ -84,6 +94,9 @@ export const SubplanForm = reatomComponent(({ model, onCancel }: SubplanFormProp
       <TextField field={fields.title} id="subplan-title" label="Шаг" placeholder="Купить обои" />
       <TextField field={fields.dueDate} id="subplan-due-date" label="Срок" type="date" />
       {warning !== undefined && <p className="text-sm text-orange-500">{warning}</p>}
+      {fields.dueDate() !== "" && (
+        <ChoiceField field={fields.reminder} label="Напомнить" choices={reminderChoices} />
+      )}
       <ChoiceField field={fields.assigneeId} label="Исполнитель" choices={model.assignees()} />
       <FormButtons isSaving={model.isSaving()} onCancel={onCancel} />
     </form>

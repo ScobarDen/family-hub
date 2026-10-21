@@ -4,6 +4,7 @@ import type { ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
 import { eventSource, reminderSource } from "./calendar-source.service.ts";
 import { birthdaySource, dueSource, openDues } from "./pet-source.service.ts";
+import { planOf } from "./plan-source.service.ts";
 
 async function reminderOf({ reminders }: ReminderDependencies, reminderId: string) {
   const entry = await reminders.findById(reminderId);
@@ -62,6 +63,10 @@ export async function sourceOfRow(
 
   if (source === "event") {
     return eventOf(dependencies, sourceId);
+  }
+
+  if (source === "plan") {
+    return planOf(dependencies, sourceId);
   }
 
   return source === "pet_birthday"

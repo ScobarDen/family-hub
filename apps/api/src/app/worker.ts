@@ -70,15 +70,19 @@ type Shared = { memberships: MembershipRepo; bot: BotApi; clock: Clock };
 // The services of what a Family keeps: its Pets, journal, Plans, Events and Reminders.
 function familyRecordServices(db: Db, shared: Shared) {
   const { clock } = shared;
+  // A Plan's Reminder completes the Plan from the bot, and the Plan reschedules its Reminders.
   const reminders = createReminderService({
+    plans: { completeById: async (membership, planId) => plans.completeById(membership, planId) },
     reminders: createReminderRepo(db),
     dispatch: createDispatchRepo(db),
     sources: createSourceRepo(db),
     ...shared,
   });
+  const plans = createPlanService({ plans: createPlanRepo(db), ...shared, schedule: reminders });
 
   return {
     reminders,
+    plans,
     careEntries: createCareEntryService({
       entries: createCareEntryRepo(db),
       clock,
@@ -86,7 +90,6 @@ function familyRecordServices(db: Db, shared: Shared) {
     }),
     events: createEventService({ events: createEventRepo(db), clock, schedule: reminders }),
     pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders }),
-    plans: createPlanService({ plans: createPlanRepo(db), ...shared }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
   };
 }

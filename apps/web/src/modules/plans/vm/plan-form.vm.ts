@@ -13,6 +13,7 @@ import { fillForm, reatomSubmitFailure } from "@/common/form";
 import type { Choice } from "@/common/ui";
 
 import type { PlansApi } from "../plans.api.ts";
+import { reminderOf, reminderValueOf } from "../plans.lib.ts";
 import type { PlansModel } from "../plans.model.ts";
 
 type PlanFormDependencies = {
@@ -26,6 +27,7 @@ const emptyPlan = {
   title: "",
   note: "",
   dueDate: "",
+  reminder: "",
   assigneeId: "",
   visibility: "shared",
   petId: "",
@@ -37,6 +39,7 @@ const schema = z.object({
   title: z.string().trim().min(1, "Введите название").max(planTitleMaxLength, "Слишком длинно"),
   note: z.string().max(planNoteMaxLength, `Не длиннее ${planNoteMaxLength} символов`),
   dueDate: z.string(),
+  reminder: z.string(),
   assigneeId: z.string(),
   visibility: z.string(),
   petId: z.string(),
@@ -47,6 +50,7 @@ function valuesOf(plan: Plan): PlanValues {
     title: plan.title,
     note: plan.note ?? "",
     dueDate: plan.dueDate ?? "",
+    reminder: reminderValueOf(plan.reminder),
     assigneeId: plan.assignee?.id ?? "",
     visibility: plan.visibility,
     petId: plan.pet?.id ?? "",
@@ -58,6 +62,7 @@ function changeOf(values: PlanValues): PlanChange {
     title: values.title.trim(),
     note: values.note.trim() === "" ? null : values.note.trim(),
     dueDate: values.dueDate === "" ? null : values.dueDate,
+    reminder: reminderOf(values),
     assigneeId: values.assigneeId === "" ? null : values.assigneeId,
     visibility: visibility.parse(values.visibility),
     petId: values.petId === "" ? null : values.petId,

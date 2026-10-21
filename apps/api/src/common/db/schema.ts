@@ -18,6 +18,7 @@ import type {
   ExpenseCategory,
   PetSex,
   PetSpecies,
+  PlanReminder,
   Visibility,
 } from "@family-hub/contract";
 
@@ -157,6 +158,7 @@ export const plans = sqliteTable(
     title: text("title").notNull(),
     note: text("note"),
     dueDate: text("due_date"),
+    reminder: text("reminder").$type<PlanReminder>(),
     assigneeMemberId: text("assignee_member_id").references(() => members.id),
     petId: text("pet_id").references(() => pets.id, { onDelete: "set null" }),
     completedAt: integer("completed_at"),
@@ -282,7 +284,7 @@ export const reminderRecipients = sqliteTable(
 
 // A Pet's Due Dates and an Event's offsets each get their own source id, "<pet>:<entry>" and
 // "<event>:<offset>", so a source's rows are found by that prefix.
-export type DispatchSource = "reminder" | "event" | "pet_birthday" | "pet_due";
+export type DispatchSource = "reminder" | "event" | "pet_birthday" | "pet_due" | "plan";
 
 // One row per source and Recipient: services set next_fire_at whenever the source changes; the
 // cron only takes due rows, sends and moves them on to the next Occurrence.

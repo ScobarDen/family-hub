@@ -1,15 +1,33 @@
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, isNotNull, or } from "drizzle-orm";
 
-import { careEntries, events, familyMembers, members, pets, type Db } from "@/common/db";
+import { careEntries, events, familyMembers, members, pets, plans, type Db } from "@/common/db";
 
 export type EventRow = typeof events.$inferSelect;
 
 export type PetRow = typeof pets.$inferSelect;
 
+export type PlanRow = typeof plans.$inferSelect;
+
 export type DueEntryRow = Pick<
   typeof careEntries.$inferSelect,
   "id" | "petId" | "details" | "dueDate" | "dueKey" | "occurredAt"
 >;
+
+async function dueEntriesOf(db: Db, petId: string): Promise<DueEntryRow[]> {
+  return db
+    .select({
+      id: careEntries.id,
+      petId: careEntries.petId,
+      details: careEntries.details,
+      dueDate: careEntries.dueDate,
+      dueKey: careEntries.dueKey,
+      occurredAt: careEntries.occurredAt,
+    })
+    .from(careEntries)
+    .where(and(eq(careEntries.petId, petId), isNotNull(careEntries.dueKey)))
+    .orderBy(desc(careEntries.occurredAt))
+    .all();
+}
 
 // The cron and the bot buttons know a source by its id alone; each row names its Family.
 export function createSourceRepo(db: Db) {
@@ -20,19 +38,13 @@ export function createSourceRepo(db: Db) {
     pet: async (petId: string): Promise<PetRow | undefined> =>
       db.select().from(pets).where(eq(pets.id, petId)).get(),
 
-    dueEntriesOf: async (petId: string): Promise<DueEntryRow[]> =>
+    dueEntriesOf: async (petId: string) => dueEntriesOf(db, petId),
+
+    planTree: async (planId: string): Promise<PlanRow[]> =>
       db
-        .select({
-          id: careEntries.id,
-          petId: careEntries.petId,
-          details: careEntries.details,
-          dueDate: careEntries.dueDate,
-          dueKey: careEntries.dueKey,
-          occurredAt: careEntries.occurredAt,
-        })
-        .from(careEntries)
-        .where(and(eq(careEntries.petId, petId), isNotNull(careEntries.dueKey)))
-        .orderBy(desc(careEntries.occurredAt))
+        .select()
+        .from(plans)
+        .where(or(eq(plans.id, planId), eq(plans.parentId, planId)))
         .all(),
 
     memberIdsOf: async (familyId: string): Promise<string[]> => {

@@ -5,6 +5,7 @@ import {
   eventDeleted,
   familyMemberList,
   petList,
+  planList,
   reminder,
   reminderDeleted,
   reminderList,
@@ -38,6 +39,7 @@ export function createCalendarApi(client: HttpClient) {
     remove: async (eventId: string) =>
       client.request(`/api/events/${eventId}`, { method: "DELETE", schema: eventDeleted }),
 
+    plans: async () => client.request("/api/plans", { schema: planList }),
     members: async () => client.request("/api/family/members", { schema: familyMemberList }),
     reminders: async () => client.request("/api/reminders", { schema: reminderList }),
     createReminder: async (change: ReminderChange) =>

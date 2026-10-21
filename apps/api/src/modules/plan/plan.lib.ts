@@ -23,6 +23,7 @@ function toSubplan(row: PlanRow): Subplan {
     id: row.id,
     title: row.title,
     dueDate: row.dueDate,
+    reminder: row.reminder,
     assignee: memberOf(row.assigneeMemberId, row.assigneeName),
     completed: completionOf(row),
   };

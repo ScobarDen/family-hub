@@ -1,6 +1,6 @@
 import { Temporal } from "temporal-polyfill";
 
-import type { CalendarEvent, DueDateItem, Pet, Reminder } from "@family-hub/contract";
+import type { CalendarEvent, DueDateItem, Pet, Plan, Reminder } from "@family-hub/contract";
 import {
   dateInZone,
   occurrenceDates,
@@ -33,7 +33,18 @@ export type CalendarItem =
       title: string;
       petId: string;
       isOverdue: boolean;
+    }
+  | {
+      kind: "plan";
+      key: string;
+      date: string;
+      time: undefined;
+      title: string;
+      planId: string;
+      isOverdue: boolean;
     };
+
+export type Viewer = { range: DateRange; timeZone: string; today: string };
 
 export type DayCell = {
   date: string;
@@ -143,20 +154,45 @@ function dueItems(dues: PetDue[], range: DateRange): CalendarItem[] {
     }));
 }
 
+// The deadlines still open of a Plan and its Subplans; a Subplan names its Plan.
+export function planDeadlines(plans: Plan[], today: string): CalendarItem[] {
+  return plans.flatMap((plan) =>
+    [plan, ...plan.subplans].flatMap((step) =>
+      step.dueDate === null || step.completed !== null
+        ? []
+        : [
+            {
+              kind: "plan" as const,
+              key: `plan-${step.id}`,
+              date: step.dueDate,
+              time: undefined,
+              title: step.id === plan.id ? step.title : `${plan.title}: ${step.title}`,
+              planId: plan.id,
+              isOverdue: step.dueDate < today,
+            },
+          ],
+    ),
+  );
+}
+
+type Sources = {
+  events: CalendarEvent[];
+  reminders: Reminder[];
+  pets: Pet[];
+  dues: PetDue[];
+  plans: Plan[];
+};
+
 export function itemsIn(
-  {
-    events,
-    reminders,
-    pets,
-    dues,
-  }: { events: CalendarEvent[]; reminders: Reminder[]; pets: Pet[]; dues: PetDue[] },
-  { range, timeZone }: { range: DateRange; timeZone: string },
+  { events, reminders, pets, dues, plans }: Sources,
+  { range, timeZone, today }: Viewer,
 ): CalendarItem[] {
   return [
     ...events.flatMap((event) => eventItems(event, range, timeZone)),
     ...reminders.flatMap((reminder) => reminderItems(reminder, range, timeZone)),
     ...pets.flatMap((pet) => birthdayItems(pet, range)),
     ...dueItems(dues, range),
+    ...planDeadlines(plans, today).filter(({ date }) => isWithin(date, range)),
   ].toSorted((left, right) =>
     left.date === right.date
       ? (left.time ?? "").localeCompare(right.time ?? "")

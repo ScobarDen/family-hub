@@ -6,11 +6,15 @@ import type { BotApi } from "@/common/telegram";
 
 import type { PlanRepo } from "./plan.repo.ts";
 
+// The Reminders of a Plan tree are rewritten whenever the Plan or any of its Subplans changes.
+export type PlanSchedule = { planChanged(familyId: string, planId: string): Promise<void> };
+
 export type PlanDependencies = {
   plans: PlanRepo;
   memberships: MembershipRepo;
   bot: BotApi;
   clock: Clock;
+  schedule: PlanSchedule;
 };
 
 export type PlanRefusal =

@@ -133,6 +133,16 @@ export function createPlanRepo(db: Db) {
     isInFamily: async (familyId: string, memberId: string) => isInFamily(db, familyId, memberId),
     hasPet: async (familyId: string, petId: string) => hasPet(db, familyId, petId),
 
+    async parentOf(familyId: string, subplanId: string): Promise<string | undefined> {
+      const row = await db
+        .select({ parentId: plans.parentId })
+        .from(plans)
+        .where(inFamily(familyId, eq(plans.id, subplanId)))
+        .get();
+
+      return row?.parentId ?? undefined;
+    },
+
     async add(plan: typeof plans.$inferInsert): Promise<void> {
       await db.insert(plans).values(plan);
     },

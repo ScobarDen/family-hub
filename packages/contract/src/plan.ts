@@ -11,10 +11,15 @@ export const planNoteMaxLength = 2000;
 
 const title = z.string().trim().min(1).max(planTitleMaxLength);
 
+export const planReminder = z.enum(["on-day", "1d", "1w"]);
+
+export type PlanReminder = z.infer<typeof planReminder>;
+
 export const subplanChange = z.object({
   title,
   dueDate: z.iso.date().nullable(),
   assigneeId: z.string().nullable(),
+  reminder: planReminder.nullable().default(null),
 });
 
 export type SubplanChange = z.infer<typeof subplanChange>;
@@ -39,6 +44,7 @@ export const subplan = z.object({
   id: z.string(),
   title: z.string(),
   dueDate: z.string().nullable(),
+  reminder: planReminder.nullable(),
   assignee: planMember.nullable(),
   completed: completion.nullable(),
 });

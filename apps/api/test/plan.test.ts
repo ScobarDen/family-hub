@@ -16,6 +16,7 @@ const bedroom: PlanChange = {
   title: "Ремонт в спальне",
   note: null,
   dueDate: "2026-11-30",
+  reminder: null,
   assigneeId: null,
   visibility: "shared",
   petId: null,
@@ -138,6 +139,7 @@ describe("a Plan", () => {
       title: "Ремонт в спальне",
       note: null,
       pet: null,
+      reminder: null,
       dueDate: "2026-11-30",
       assignee: { id: worker.asyaId, name: "Ася" },
       visibility: "shared",
@@ -147,6 +149,7 @@ describe("a Plan", () => {
         {
           id: expect.any(String),
           title: "Купить обои",
+          reminder: null,
           dueDate: "2026-11-10",
           assignee: { id: worker.denisId, name: "Денис" },
           completed: null,

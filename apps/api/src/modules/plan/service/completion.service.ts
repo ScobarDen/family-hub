@@ -91,3 +91,20 @@ export async function markSubplan(
 
   return currentPlan(dependencies, membership, planId);
 }
+
+// The bot knows a Plan or a Subplan by its id alone; done from there completes either one.
+export async function completeById(
+  dependencies: PlanDependencies,
+  membership: Membership,
+  planId: string,
+): Promise<PlanResult> {
+  if (await visibleTree(dependencies, membership, planId)) {
+    return complete(dependencies, membership, planId);
+  }
+
+  const parentId = await dependencies.plans.parentOf(membership.family.id, planId);
+
+  return parentId === undefined
+    ? { status: "not-found" }
+    : markSubplan(dependencies, membership, { planId: parentId, subplanId: planId, isDone: true });
+}

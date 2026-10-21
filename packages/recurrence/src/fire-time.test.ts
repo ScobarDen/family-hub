@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { dueStepFrom, eventReminderMoment, morningOf } from "./fire-time.ts";
+import { dueStepFrom, eventReminderMoment, morningOf, planReminderMoment } from "./fire-time.ts";
 
 function iso(moment: number) {
   return new Date(moment).toISOString();
@@ -63,5 +63,17 @@ describe("the Due Date nudges", () => {
     ["a month late", "2026-11-18", "2026-11-24"],
   ])("from %s fall on the next step", (_case, day, step) => {
     expect(dueStepFrom("2026-10-20", day)).toBe(step);
+  });
+});
+
+describe("a Plan's deadline Reminder", () => {
+  test.each([
+    ["on-day", "2026-10-22T06:00:00.000Z"],
+    ["1d", "2026-10-21T06:00:00.000Z"],
+    ["1w", "2026-10-15T06:00:00.000Z"],
+  ] as const)("comes %s before the due day at 09:00 on the Recipient's clock", (lead, moment) => {
+    expect(iso(planReminderMoment("2026-10-22", { lead, recipientZone: "Europe/Moscow" }))).toBe(
+      moment,
+    );
   });
 });

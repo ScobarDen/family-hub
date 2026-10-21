@@ -1,6 +1,6 @@
 # plans
 
-The «Планы» tab: the Family's Plans with their Subplans, Assignees and progress. The list goes by due date with undated Plans last; «Выполненные» stay folded under their own row and open again into work from the Plan. A Plan shows its due date, Assignee, note, «Шаги · 1 из 3» and who completed it and when.
+The «Планы» tab: the Family's Plans with their Subplans, Assignees and progress. The list goes by due date with undated Plans last; «Выполненные» stay folded under their own row and open again into work from the Plan. A Plan shows its due date, Assignee, note, «Шаги · 1 из 3» and who completed it and when. A Plan or Subplan with a due date may get a Reminder on the day, a day or a week before at 09:00: the bot sends it to the Assignee, or to everyone without one (a Private Plan only to its owner), and «✅ Выполнено» there completes it.
 
 ## Injected
 

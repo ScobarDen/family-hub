@@ -136,9 +136,13 @@ export async function handleReminderCallback(
     return;
   }
 
-  await (parsed.action === "done" && press.source.closesForEveryone
-    ? markDone(dependencies, press)
-    : snooze(dependencies, press));
+  if (parsed.action === "done" && press.source.closesForEveryone) {
+    await markDone(dependencies, press);
+    await press.source.complete?.(press.presser);
+  } else {
+    await snooze(dependencies, press);
+  }
+
   await ignoringBotErrors(
     dependencies.bot.call("answerCallbackQuery", { callback_query_id: query.id }),
   );

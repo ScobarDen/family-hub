@@ -7,6 +7,7 @@ import {
   type CalendarEvent,
   type DueDateItem,
   type Pet,
+  type Plan,
   type Reminder,
 } from "@family-hub/contract";
 
@@ -63,13 +64,45 @@ const rabies: DueDateItem = {
   isOverdue: false,
 };
 
-function fakeBackend() {
+const bedroom: Plan = {
+  id: "plan-1",
+  title: "Ремонт",
+  note: null,
+  pet: null,
+  dueDate: "2026-10-10",
+  reminder: null,
+  assignee: null,
+  visibility: "shared",
+  isOwn: true,
+  completed: null,
+  subplans: [
+    {
+      id: "sub-1",
+      title: "Купить обои",
+      dueDate: "2026-10-20",
+      reminder: "1d",
+      assignee: null,
+      completed: null,
+    },
+    {
+      id: "sub-2",
+      title: "Снять старые",
+      dueDate: "2026-10-16",
+      reminder: null,
+      assignee: null,
+      completed: { at: 0, by: "Ася" },
+    },
+  ],
+};
+
+function fakeBackend(plans: Plan[]) {
   const requests: Array<{ request: string; body: unknown }> = [];
   const replies: Record<string, (body: unknown) => unknown> = {
     "GET /api/events": () => [call],
     "GET /api/pets": () => [buick],
     "GET /api/pets/pet-1/due-dates": () => [rabies],
     "GET /api/reminders": () => [internet],
+    "GET /api/plans": () => plans,
     "GET /api/family/members": () => [
       { id: "member-1", name: "Денис", isFamilyOwner: true },
       { id: "member-2", name: "Ася", isFamilyOwner: false },
@@ -107,9 +140,14 @@ function fakeBackend() {
   return { fetch, requests };
 }
 
-function startCalendar({ timeZone = "Europe/Moscow", choices = [] as string[] } = {}) {
-  const backend = fakeBackend();
+function startCalendar({
+  timeZone = "Europe/Moscow",
+  choices = [] as string[],
+  plans = [] as Plan[],
+} = {}) {
+  const backend = fakeBackend(plans);
   const opened: string[] = [];
+  const openedPlans: string[] = [];
   const pending = [...choices];
   const model = reatomCalendar({
     api: createCalendarApi(
@@ -121,6 +159,9 @@ function startCalendar({ timeZone = "Europe/Moscow", choices = [] as string[] } 
     onOpenPet: (petId) => {
       opened.push(petId);
     },
+    onOpenPlan: (planId) => {
+      openedPlans.push(planId);
+    },
     self: () => "member-1",
   });
 
@@ -129,7 +170,7 @@ function startCalendar({ timeZone = "Europe/Moscow", choices = [] as string[] } 
   model.dayItems.subscribe(noop);
   model.reminderForm.recipients.subscribe(noop);
 
-  return { model, backend, opened };
+  return { model, backend, opened, openedPlans };
 }
 
 type Model = ReturnType<typeof startCalendar>["model"];
@@ -140,8 +181,9 @@ async function loaded(model: Model) {
   });
 }
 
+// Plan deadlines have tests of their own; the rest count «Ближайшее» without them.
 function upcomingAt(model: Model, index: number) {
-  const item = model.upcoming()[index];
+  const item = model.upcoming().filter(({ kind }) => kind !== "plan")[index];
 
   if (item === undefined) {
     throw new Error(`Nothing at ${index} in «Ближайшее»`);
@@ -371,5 +413,34 @@ describe("a standalone Reminder", () => {
     expect(model.reminderForm.isForEveryone()).toBe(true);
     expect(model.reminderForm.canDelete()).toBe(true);
     expect(model.reminderForm.form.fields.frequency()).toBe("monthly");
+  });
+});
+
+describe("a Plan's deadline", () => {
+  test("leads «Ближайшее» once missed, while done steps drop out", async () => {
+    const { model } = startCalendar({ plans: [bedroom] });
+
+    await loaded(model);
+
+    const deadlines = model.upcoming().filter(({ kind }) => kind === "plan");
+
+    expect(deadlines.map(({ title, date }) => [title, date])).toEqual([
+      ["Ремонт", "2026-10-10"],
+      ["Ремонт: Купить обои", "2026-10-20"],
+    ]);
+    expect(deadlines.map((item) => item.kind === "plan" && item.isOverdue)).toEqual([true, false]);
+    expect(model.upcoming()[0]?.title).toBe("Ремонт");
+  });
+
+  test("opens its Plan", async () => {
+    const { model, openedPlans } = startCalendar({ plans: [bedroom] });
+
+    await loaded(model);
+    const deadline = model.upcoming().find(({ kind }) => kind === "plan");
+
+    expect(deadline).toBeDefined();
+    model.openItem(deadline ?? upcomingAt(model, 0));
+
+    expect(openedPlans).toEqual(["plan-1"]);
   });
 });

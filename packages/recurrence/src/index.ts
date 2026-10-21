@@ -16,6 +16,8 @@ export {
   eventReminderMoment,
   morningOf,
   morningTime,
+  planReminderMoment,
   type EventOffset,
   type EventStart,
+  type PlanLead,
 } from "./fire-time.ts";

@@ -123,6 +123,10 @@ const calendar = reatomCalendar({
     navigation.openModule("pet");
     pets.open(petId);
   },
+  onOpenPlan: (planId) => {
+    navigation.openModule("plans");
+    plans.open(planId);
+  },
   self: () => session.member()?.member.id,
 });
 const navigation = reatomNavigation({

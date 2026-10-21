@@ -1,4 +1,4 @@
-import { Bell, Cake, CalendarDays, Syringe, TriangleAlert } from "lucide-react";
+import { Bell, Cake, CalendarDays, ListTodo, Syringe, TriangleAlert } from "lucide-react";
 
 import { formatDate } from "@/common/format-date";
 import { Section, SectionItem } from "@/common/ui";
@@ -13,7 +13,17 @@ type AgendaProps = {
   onOpen: (item: CalendarItem) => void;
 };
 
-const tones = { event: "red", reminder: "violet", birthday: "pink", due: "orange" } as const;
+const tones = {
+  event: "red",
+  reminder: "violet",
+  birthday: "pink",
+  due: "orange",
+  plan: "blue",
+} as const;
+
+function toneOf(item: CalendarItem) {
+  return item.kind === "plan" && item.isOverdue ? "red" : tones[item.kind];
+}
 
 function iconOf(item: CalendarItem) {
   if (item.kind === "birthday") {
@@ -26,6 +36,10 @@ function iconOf(item: CalendarItem) {
 
   if (item.kind === "due") {
     return item.isOverdue ? TriangleAlert : Syringe;
+  }
+
+  if (item.kind === "plan") {
+    return item.isOverdue ? TriangleAlert : ListTodo;
   }
 
   return CalendarDays;
@@ -47,7 +61,7 @@ export function Agenda({ title, items, isDated, empty, onOpen }: AgendaProps) {
         <SectionItem
           key={item.key}
           icon={iconOf(item)}
-          tone={tones[item.kind]}
+          tone={toneOf(item)}
           title={item.title}
           subtitle={subtitleOf(item, isDated)}
           onClick={() => {

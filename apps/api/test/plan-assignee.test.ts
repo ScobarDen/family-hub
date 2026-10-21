@@ -13,6 +13,7 @@ const ceiling: PlanChange = {
   title: "Покрасить потолок",
   note: null,
   dueDate: "2026-10-20",
+  reminder: null,
   assigneeId: null,
   visibility: "shared",
   petId: null,

@@ -74,6 +74,17 @@ export function snoozedText({
 
 export const notYoursText = "Это не ваше напоминание";
 
+export function planButtons(dispatchId: string): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: "✅ Выполнено", callback_data: `${callbackPrefix}:done:${dispatchId}` },
+        { text: "⏰ Отложить на день", callback_data: `${callbackPrefix}:snooze:${dispatchId}` },
+      ],
+    ],
+  };
+}
+
 export function dueButtons({ dispatchId, recordUrl }: { dispatchId: string; recordUrl: string }) {
   return {
     inline_keyboard: [

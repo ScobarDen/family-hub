@@ -1,4 +1,10 @@
-import type { Completion, Plan, Subplan } from "@family-hub/contract";
+import {
+  planReminder,
+  type Completion,
+  type Plan,
+  type PlanReminder,
+  type Subplan,
+} from "@family-hub/contract";
 
 import { formatDate, formatDay } from "@/common/format-date";
 
@@ -81,4 +87,13 @@ export function toDetails(plan: Plan, timeZone: string): PlanDetails {
     canDelete: plan.isOwn,
     subplans: plan.subplans.map((subplan) => toSubplanItem(subplan, plan.dueDate)),
   };
+}
+
+// A Reminder hangs on the deadline, so a step without one has nothing to remind of.
+export function reminderOf({ dueDate, reminder }: { dueDate: string; reminder: string }) {
+  return dueDate === "" || reminder === "" ? null : planReminder.parse(reminder);
+}
+
+export function reminderValueOf(reminder: PlanReminder | null): string {
+  return reminder ?? "";
 }

@@ -22,6 +22,7 @@ const bedroom: Plan = {
   note: null,
   pet: null,
   dueDate: "2026-11-30",
+  reminder: null,
   assignee: { id: "member-2", name: "Ася" },
   visibility: "shared",
   isOwn: true,
@@ -31,10 +32,18 @@ const bedroom: Plan = {
       id: "sub-1",
       title: "Купить обои",
       dueDate: "2026-12-05",
+      reminder: null,
       assignee: null,
       completed: { at: doneAt, by: "Ася" },
     },
-    { id: "sub-2", title: "Поклеить", dueDate: null, assignee: null, completed: null },
+    {
+      id: "sub-2",
+      title: "Поклеить",
+      dueDate: null,
+      reminder: null,
+      assignee: null,
+      completed: null,
+    },
   ],
 };
 
@@ -79,6 +88,11 @@ function fakeBackend(
       },
     ],
     "POST /api/plans": (body) => ({ ...vacation, ...planChange.parse(body), id: "plan-new" }),
+    "PUT /api/plans/plan-new": (body) => ({
+      ...vacation,
+      ...planChange.parse(body),
+      id: "plan-new",
+    }),
     "POST /api/plans/plan-1/complete": () => ({
       ...bedroom,
       completed: { at: doneAt, by: "Денис" },
@@ -306,6 +320,32 @@ describe("the Plan form", () => {
 
     expect(backend.requests).toContain("POST /api/plans");
     expect(model.title()).toBe("Купить диван");
+  });
+
+  test("keeps a deadline Reminder only while the Plan has a due date", async () => {
+    const { model } = startPlans();
+
+    await loaded(model);
+    model.add();
+    model.planForm.form.fields.title.set("Записаться к стоматологу");
+    model.planForm.form.fields.dueDate.set("2026-11-01");
+    model.planForm.form.fields.reminder.set("1w");
+    model.planForm.save();
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("plan");
+    });
+    model.edit();
+
+    expect(model.planForm.form.fields.reminder()).toBe("1w");
+
+    model.planForm.form.fields.dueDate.set("");
+    model.planForm.save();
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("plan");
+    });
+    model.edit();
+
+    expect(model.planForm.form.fields.reminder()).toBe("");
   });
 
   test("offers only the owner or nobody as Assignee of a Private Plan", async () => {

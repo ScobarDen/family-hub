@@ -9,6 +9,7 @@ import {
   monthGrid,
   monthRangeOf,
   monthTitle,
+  planDeadlines,
   shiftMonth,
   type CalendarItem,
   type DayCell,
@@ -30,6 +31,7 @@ type CalendarDependencies = {
   timeZone: () => string;
   telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
   onOpenPet: (petId: string) => void;
+  onOpenPlan: (planId: string) => void;
   self: () => string | undefined;
 };
 
@@ -42,7 +44,7 @@ type Navigation = {
   opened: Atom<OpenedOccurrence | undefined>;
 };
 
-function reatomItems(data: CalendarData, timeZone: () => string) {
+function reatomItems(data: CalendarData, { timeZone, today }: CalendarDependencies) {
   return (range: { from: string; to: string }) =>
     itemsIn(
       {
@@ -50,13 +52,19 @@ function reatomItems(data: CalendarData, timeZone: () => string) {
         reminders: data.reminders.data() ?? [],
         pets: data.pets.data() ?? [],
         dues: data.dues.data() ?? [],
+        plans: data.plans.data() ?? [],
       },
-      { range, timeZone: timeZone() },
+      { range, timeZone: timeZone(), today: today() },
     );
 }
 
+// «Ближайшее» leads with the Plan deadlines already missed, so they are not lost behind today.
+function overdueDeadlines(data: CalendarData, today: string): CalendarItem[] {
+  return planDeadlines(data.plans.data() ?? [], today).filter(({ date }) => date < today);
+}
+
 function reatomViews(
-  { today }: CalendarDependencies,
+  { dependencies: { today }, data }: { dependencies: CalendarDependencies; data: CalendarData },
   { month, selected }: Navigation,
   itemsOf: ReturnType<typeof reatomItems>,
 ) {
@@ -74,7 +82,10 @@ function reatomViews(
       "calendar.dayItems",
     ),
     upcoming: computed(
-      (): CalendarItem[] => itemsOf({ from: today(), to: daysAfter(today(), upcomingDays) }),
+      (): CalendarItem[] => [
+        ...overdueDeadlines(data, today()),
+        ...itemsOf({ from: today(), to: daysAfter(today(), upcomingDays) }),
+      ],
       "calendar.upcoming",
     ),
   };
@@ -89,9 +100,18 @@ type Parts = {
 
 type Sources = { dependencies: CalendarDependencies; navigation: Navigation; parts: Parts };
 
-function openItemWith({ dependencies, navigation, parts }: Sources, item: CalendarItem): void {
+function openReminder({ navigation, parts }: Sources, reminderId: string): void {
+  const reminder = parts.data.reminders.data()?.find(({ id }) => id === reminderId);
+
+  if (reminder !== undefined) {
+    parts.reminderForm.startEditing(reminder);
+    navigation.screen.set("reminder-form");
+  }
+}
+
+function openItemWith(sources: Sources, item: CalendarItem): void {
+  const { dependencies, navigation } = sources;
   const { screen, opened } = navigation;
-  const { data, reminderForm } = parts;
 
   if (item.kind === "event") {
     opened.set({ eventId: item.eventId, occurrence: item.occurrence });
@@ -100,17 +120,16 @@ function openItemWith({ dependencies, navigation, parts }: Sources, item: Calend
     return;
   }
 
-  if (item.kind !== "reminder") {
-    dependencies.onOpenPet(item.petId);
+  if (item.kind === "plan") {
+    dependencies.onOpenPlan(item.planId);
 
     return;
   }
 
-  const reminder = data.reminders.data()?.find(({ id }) => id === item.reminderId);
-
-  if (reminder !== undefined) {
-    reminderForm.startEditing(reminder);
-    screen.set("reminder-form");
+  if (item.kind === "reminder") {
+    openReminder(sources, item.reminderId);
+  } else {
+    dependencies.onOpenPet(item.petId);
   }
 }
 
@@ -228,7 +247,7 @@ export function reatomCalendar(dependencies: CalendarDependencies) {
     form: parts.form,
     reminderForm: parts.reminderForm,
     details: parts.details,
-    ...reatomViews(dependencies, navigation, reatomItems(data, dependencies.timeZone)),
+    ...reatomViews({ dependencies, data }, navigation, reatomItems(data, dependencies)),
     ...reatomMoves(dependencies, navigation, parts),
     edit: action(() => {
       editOpened(screen, parts);
