@@ -6,7 +6,9 @@ import type { PhotoLinks } from "@/common/photo-link";
 import type { PetRepo } from "./pet.repo.ts";
 
 // A Pet's birthday and Due Date Reminders live in the reminder module; the app wires this port.
-export type PetSchedule = { petChanged(familyId: string, petId: string): Promise<void> };
+export type PetSchedule = {
+  sourceChanged(familyId: string, source: { kind: "pet"; id: string }): Promise<void>;
+};
 
 export type PetDependencies = {
   pets: PetRepo;

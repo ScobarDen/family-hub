@@ -38,7 +38,7 @@ export async function create(
 
   const created = await pets.find(family.id, id);
 
-  await schedule.petChanged(family.id, id);
+  await schedule.sourceChanged(family.id, { kind: "pet", id });
 
   if (!created) {
     throw new Error("The Pet just added is missing");
@@ -91,7 +91,7 @@ export async function saveProfile(
     }),
   );
 
-  await dependencies.schedule.petChanged(membership.family.id, petId);
+  await dependencies.schedule.sourceChanged(membership.family.id, { kind: "pet", id: petId });
 
   return result;
 }

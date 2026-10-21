@@ -1,8 +1,8 @@
 import type { FeedUpcoming } from "@family-hub/contract";
 import { dayAfter, occurrenceMoment } from "@family-hub/recurrence";
 
-import { formatFloatingDate, openAppButton, snoozeMs } from "../reminder.lib.ts";
-import type { ReminderDependencies, Source } from "../reminder.types.ts";
+import { formatFloatingDate, openAppButton, snoozeMs, sourceIdOf } from "../reminder.lib.ts";
+import type { Owner, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DigestRow } from "../repo/source.repo.ts";
 
 function lineOf(item: FeedUpcoming, { isOverdue }: { isOverdue: boolean }): string {
@@ -38,16 +38,15 @@ export function digestText(
 }
 
 // One digest a day per Member, at the time they chose on their own clock.
-export async function digestSource(
+async function digestSource(
   dependencies: ReminderDependencies,
-  { memberId, familyId, settings }: { memberId: string; familyId: string; settings: DigestRow },
+  { memberId, settings }: { memberId: string; settings: DigestRow },
 ): Promise<Source> {
   const appUrl = await dependencies.appLinks.appLink();
 
   return {
     kind: "digest",
-    familyId,
-    sourceId: memberId,
+    sourceId: sourceIdOf(memberId),
     recipientIds: [memberId],
     homeZone: undefined,
     first: (day) => day,
@@ -66,4 +65,17 @@ export async function digestSource(
     snoozeMs,
     isSkippedWhenLate: true,
   };
+}
+
+// A Member who turned the digest off, or is no longer in the Family, has no digest to send.
+export async function digestSources(
+  dependencies: ReminderDependencies,
+  { familyId, id: memberId }: Owner,
+): Promise<Source[]> {
+  const membership = await dependencies.memberships.findByMemberId(memberId);
+  const settings = await dependencies.sources.digestOf(memberId);
+
+  return membership?.family.id !== familyId || settings?.isDigestEnabled !== true
+    ? []
+    : [await digestSource(dependencies, { memberId, settings })];
 }

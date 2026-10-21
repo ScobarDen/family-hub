@@ -63,13 +63,9 @@ async function markDone(dependencies: ReminderDependencies, press: Press) {
     occurrence: row.sentOccurrence ?? row.occurrence,
     now: dependencies.clock.now(),
   };
-  const rows = await dependencies.dispatch.ofSource({
-    familyId: row.familyId,
-    source: row.source,
-    prefix: row.sourceId,
-  });
+  const rows = await dependencies.dispatch.ofSource(row);
 
-  for (const other of rows.filter(({ sourceId }) => sourceId === row.sourceId)) {
+  for (const other of rows) {
     if (other.sentOccurrence === closing.occurrence) {
       await closeMessage(closing, other);
     }
@@ -107,7 +103,11 @@ async function pressOf(
   const row = await dependencies.dispatch.find(dispatchId);
   const presser = await dependencies.memberships.findByTelegramId(telegramId);
 
-  if (row === undefined || presser?.member.id !== row.memberId) {
+  if (
+    row === undefined ||
+    presser?.member.id !== row.memberId ||
+    presser.family.id !== row.familyId
+  ) {
     return undefined;
   }
 

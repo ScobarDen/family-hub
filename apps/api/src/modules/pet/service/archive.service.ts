@@ -19,7 +19,7 @@ export async function setArchived(
     now,
   });
 
-  await schedule.petChanged(family.id, petId);
+  await schedule.sourceChanged(family.id, { kind: "pet", id: petId });
 
   return asResult(dependencies, saved);
 }
@@ -46,7 +46,7 @@ export async function deletePet(
   }
 
   await pets.delete(family.id, petId);
-  await schedule.petChanged(family.id, petId);
+  await schedule.sourceChanged(family.id, { kind: "pet", id: petId });
 
   return { status: "deleted" };
 }

@@ -15,7 +15,7 @@ One Cloudflare Worker serving `/api/*`, `/bot/webhook` and the per-minute cron. 
 
 ## Rules
 
-- **Family isolation**: every repository method takes the session's `familyId` as a required argument and filters by it, child tables included. A query without `familyId` is a cross-Family leak. The one exception is the session Member's own `members` row (their settings), which belongs to no Family and is addressed by the session's `memberId`.
+- **Family isolation**: every repository method takes the session's `familyId` as a required argument and filters by it, child tables included. A query without `familyId` is a cross-Family leak. The exceptions: a Member's own `members` row (settings, zone), which belongs to no Family and is addressed by `memberId`; and the Reminder dispatch queue, where the cron claims due `reminder_dispatch` rows of every Family and a bot button names its row by id. Everything read after that takes the row's `family_id`, and the Recipient or presser must still be a Member of that Family.
 - **Session** ([ADR 0006](../../docs/adr/0006-session-token-carries-only-member-id.md)): a JWT (HS256, `hono/jwt`) holding only `memberId`; Family membership and Owner role are read from the database on every request. Expired → 401.
 - **Errors** are `{ code, message }` with an HTTP status; `code` comes from the enum in `@family-hub/contract`.
 - **Time** comes from the injected `Clock` as epoch ms; date math goes through `@family-hub/recurrence` (`temporal-dates` skill).

@@ -1,7 +1,7 @@
 import { planReminderMoment } from "@family-hub/recurrence";
 
-import { daySnoozeMs, formatFloatingDate, planButtons } from "../reminder.lib.ts";
-import type { ReminderDependencies, Source } from "../reminder.types.ts";
+import { daySnoozeMs, formatFloatingDate, planButtons, sourceIdOf } from "../reminder.lib.ts";
+import type { Owner, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { PlanRow } from "../repo/source.repo.ts";
 
 type PlanStep = { root: PlanRow; row: PlanRow };
@@ -26,7 +26,7 @@ async function recipientsOf({ sources }: ReminderDependencies, { root, row }: Pl
     : sources.memberIdsOf(root.familyId);
 }
 
-export async function planSource(
+async function planSource(
   dependencies: ReminderDependencies,
   step: PlanStep,
 ): Promise<Source | undefined> {
@@ -38,8 +38,7 @@ export async function planSource(
 
   return {
     kind: "plan",
-    familyId: step.root.familyId,
-    sourceId: `${step.root.id}:${id}`,
+    sourceId: sourceIdOf(step.root.id, id),
     recipientIds: await recipientsOf(dependencies, step),
     homeZone: undefined,
     first: (day) => (dueDate >= day ? dueDate : undefined),
@@ -60,10 +59,10 @@ export async function planSource(
 
 export async function planSources(
   dependencies: ReminderDependencies,
-  planId: string,
+  owner: Owner,
 ): Promise<Source[]> {
-  const rows = await dependencies.sources.planTree(planId);
-  const root = rows.find(({ id }) => id === planId);
+  const rows = await dependencies.sources.planTree(owner);
+  const root = rows.find(({ id }) => id === owner.id);
 
   if (root === undefined) {
     return [];
@@ -74,14 +73,4 @@ export async function planSources(
   );
 
   return sources.filter((source) => source !== undefined);
-}
-
-export async function planOf(
-  dependencies: ReminderDependencies,
-  sourceId: string,
-): Promise<Source | undefined> {
-  const [planId = "", stepId] = sourceId.split(":");
-  const sources = await planSources(dependencies, planId);
-
-  return sources.find((source) => source.sourceId === `${planId}:${stepId}`);
 }

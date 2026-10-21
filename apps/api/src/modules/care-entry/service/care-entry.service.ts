@@ -15,7 +15,9 @@ import type { CareEntryRepo } from "../care-entry.repo.ts";
 import { hasForeignPhotos, withPhotos } from "./entry-photo.service.ts";
 
 // A new entry may close or move a Due Date, whose Reminders live in the reminder module.
-export type CareSchedule = { petChanged(familyId: string, petId: string): Promise<void> };
+export type CareSchedule = {
+  sourceChanged(familyId: string, source: { kind: "pet"; id: string }): Promise<void>;
+};
 
 type CareEntryDependencies = {
   entries: CareEntryRepo;
@@ -96,7 +98,7 @@ async function scheduleOfEntry(
   const entry = await entries.find(family.id, entryId);
 
   if (entry !== undefined) {
-    await schedule.petChanged(family.id, entry.petId);
+    await schedule.sourceChanged(family.id, { kind: "pet", id: entry.petId });
   }
 }
 
@@ -130,7 +132,7 @@ async function create(
     entryId: id,
     photoIds: change.photoIds,
   });
-  await dependencies.schedule.petChanged(membership.family.id, petId);
+  await dependencies.schedule.sourceChanged(membership.family.id, { kind: "pet", id: petId });
 
   return current(dependencies, membership, id);
 }
@@ -179,7 +181,10 @@ async function remove(
   await dependencies.entries.delete(membership.family.id, entryId);
 
   if (entry !== undefined) {
-    await dependencies.schedule.petChanged(membership.family.id, entry.petId);
+    await dependencies.schedule.sourceChanged(membership.family.id, {
+      kind: "pet",
+      id: entry.petId,
+    });
   }
 
   return { status: "deleted" };

@@ -133,8 +133,6 @@ export function createReminderRepo(db: Db) {
     familyMembersOf: async (familyId: string) => familyMembersOf(db, familyId),
     listVisible: async (familyId: string, memberId: string) => listVisible(db, familyId, memberId),
     find: async (reminderTarget: ReminderTarget) => findWhere(db, target(reminderTarget)),
-    // The cron and the bot buttons know a Reminder by its id alone; the row names its Family.
-    findById: async (reminderId: string) => findWhere(db, eq(reminders.id, reminderId)),
     save: async (saving: Saving, recipientIds: string[]) => save(db, saving, recipientIds),
     removeDepartedRecipients: async (familyId: string) => removeDepartedRecipients(db, familyId),
     areMembers: async (familyId: string, memberIds: string[]) =>

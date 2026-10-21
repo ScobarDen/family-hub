@@ -12,7 +12,11 @@ const blockedStatus = 403;
 
 type Sent = { chatId: number; messageId: number };
 
-type Delivery = { status: "sent"; sent: Sent } | { status: "skipped" } | { status: "rate-limited" };
+type Delivery =
+  | { status: "sent"; sent: Sent }
+  | { status: "skipped" }
+  | { status: "departed" }
+  | { status: "rate-limited" };
 
 type Sending = { row: DispatchRow; source: Source; telegramId: number; timeZone: string };
 
@@ -68,7 +72,11 @@ async function attempt(
   const isLate = now - (row.nextFireAt ?? now) > latenessLimitMs;
   const recipient = await dependencies.memberships.findByMemberId(row.memberId);
 
-  if ((isLate && source.isSkippedWhenLate) || recipient?.member.canMessage !== true) {
+  if (recipient?.family.id !== row.familyId) {
+    return { status: "departed" };
+  }
+
+  if ((isLate && source.isSkippedWhenLate) || !recipient.member.canMessage) {
     return { status: "skipped" };
   }
 
@@ -106,7 +114,10 @@ async function deliver(dependencies: ReminderDependencies, row: DispatchRow, now
       ? { status: "skipped" }
       : await attempt(dependencies, { row, source, now, timeZone });
 
-  if (delivery.status !== "rate-limited") {
+  // A Recipient who left without the Family telling us still has rows there; they go now.
+  if (delivery.status === "departed") {
+    await dependencies.dispatch.removeDeparted(row.familyId);
+  } else if (delivery.status !== "rate-limited") {
     const next =
       source === undefined || row.occurrence === null
         ? undefined

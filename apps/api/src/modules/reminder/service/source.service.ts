@@ -1,132 +1,60 @@
-import { eventReminderOffset } from "@family-hub/contract";
+import type { DispatchSource } from "@/common/db";
 
-import type { ReminderDependencies, Source } from "../reminder.types.ts";
+import { ownerIdOf } from "../reminder.lib.ts";
+import type { Owner, OwnerKind, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
-import { eventSource, reminderSource } from "./calendar-source.service.ts";
-import { digestSource } from "./digest-source.service.ts";
-import { birthdaySource, dueSource, openDues } from "./pet-source.service.ts";
-import { planOf, planSources } from "./plan-source.service.ts";
+import { eventSources, reminderSources } from "./calendar-source.service.ts";
+import { digestSources } from "./digest-source.service.ts";
+import { birthdaySources, dueSources } from "./pet-source.service.ts";
+import { planSources } from "./plan-source.service.ts";
 
-async function reminderOf({ reminders }: ReminderDependencies, reminderId: string) {
-  const entry = await reminders.findById(reminderId);
+type SourceKind = {
+  owner: OwnerKind;
+  load: (dependencies: ReminderDependencies, owner: Owner) => Promise<Source[]>;
+};
 
-  return (
-    entry &&
-    reminderSource(
-      entry.reminder,
-      entry.recipients.map(({ id }) => id),
-    )
-  );
+// Every kind of source and what owns it: a new kind is one entry here plus its loader.
+const sourceKinds: Record<DispatchSource, SourceKind> = {
+  reminder: { owner: "reminder", load: reminderSources },
+  event: { owner: "event", load: eventSources },
+  pet_birthday: { owner: "pet", load: birthdaySources },
+  pet_due: { owner: "pet", load: dueSources },
+  plan: { owner: "plan", load: planSources },
+  digest: { owner: "member", load: digestSources },
+};
+
+function isSourceKind(key: string): key is DispatchSource {
+  return key in sourceKinds;
 }
 
-// An offset dropped from the Event, or the Event deleted, leaves its rows with no source.
-async function eventOf(dependencies: ReminderDependencies, sourceId: string) {
-  const [eventId = "", rawOffset] = sourceId.split(":");
-  const offset = eventReminderOffset.safeParse(rawOffset);
-  const row = await dependencies.sources.event(eventId);
-
-  return row !== undefined && offset.success && row.reminderOffsets.includes(offset.data)
-    ? eventSource(dependencies, { row, offset: offset.data })
-    : undefined;
+export function kindsOf(owner: OwnerKind): DispatchSource[] {
+  return Object.keys(sourceKinds)
+    .filter(isSourceKind)
+    .filter((kind) => sourceKinds[kind].owner === owner);
 }
 
-async function birthdayOf(dependencies: ReminderDependencies, petId: string) {
-  const pet = await dependencies.sources.pet(petId);
-
-  return pet && birthdaySource(dependencies, pet);
-}
-
-async function dueOf(
+export async function sourcesOf(
   dependencies: ReminderDependencies,
-  sourceId: string,
-): Promise<Source | undefined> {
-  const [petId = "", entryId] = sourceId.split(":");
-  const pet = await dependencies.sources.pet(petId);
-
-  if (pet === undefined || pet.archivedAt !== null) {
-    return undefined;
-  }
-
-  const entry = openDues(await dependencies.sources.dueEntriesOf(petId)).find(
-    ({ id }) => id === entryId,
+  { kind, ...owner }: Owner & { kind: OwnerKind },
+): Promise<Source[]> {
+  const groups = await Promise.all(
+    kindsOf(kind).map(async (source) => sourceKinds[source].load(dependencies, owner)),
   );
 
-  return entry && dueSource(dependencies, { pet, entry });
+  return groups.flat();
 }
 
-// A Member who turned the digest off, or left the Family, has no digest to send.
-export async function digestOf(
-  dependencies: ReminderDependencies,
-  memberId: string,
-): Promise<Source | undefined> {
-  const membership = await dependencies.memberships.findByMemberId(memberId);
-  const settings = await dependencies.sources.digestOf(memberId);
-
-  return membership === undefined || settings?.isDigestEnabled !== true
-    ? undefined
-    : digestSource(dependencies, { memberId, familyId: membership.family.id, settings });
-}
-
+// A row whose source is gone, or no longer has its id, reminds of nothing.
 export async function sourceOfRow(
   dependencies: ReminderDependencies,
-  { source, sourceId }: Pick<DispatchRow, "source" | "sourceId">,
+  { familyId, source, sourceId }: Pick<DispatchRow, "familyId" | "source" | "sourceId">,
 ): Promise<Source | undefined> {
-  if (source === "reminder") {
-    return reminderOf(dependencies, sourceId);
-  }
+  const sources = await sourceKinds[source].load(dependencies, {
+    familyId,
+    id: ownerIdOf(sourceId),
+  });
 
-  if (source === "event") {
-    return eventOf(dependencies, sourceId);
-  }
-
-  if (source === "plan") {
-    return planOf(dependencies, sourceId);
-  }
-
-  if (source === "digest") {
-    return digestOf(dependencies, sourceId);
-  }
-
-  return source === "pet_birthday"
-    ? birthdayOf(dependencies, sourceId)
-    : dueOf(dependencies, sourceId);
-}
-
-export async function eventSources(
-  dependencies: ReminderDependencies,
-  eventId: string,
-): Promise<Source[]> {
-  const row = await dependencies.sources.event(eventId);
-
-  return row === undefined
-    ? []
-    : Promise.all(
-        row.reminderOffsets.map(async (offset) => eventSource(dependencies, { row, offset })),
-      );
-}
-
-export async function dueSources(
-  dependencies: ReminderDependencies,
-  petId: string,
-): Promise<Source[]> {
-  const pet = await dependencies.sources.pet(petId);
-
-  if (pet === undefined || pet.archivedAt !== null) {
-    return [];
-  }
-
-  const dues = openDues(await dependencies.sources.dueEntriesOf(petId));
-
-  return Promise.all(dues.map(async (entry) => dueSource(dependencies, { pet, entry })));
-}
-
-async function petSources(dependencies: ReminderDependencies, petId: string): Promise<Source[]> {
-  const birthday = await birthdayOf(dependencies, petId);
-
-  return [
-    ...(birthday === undefined ? [] : [birthday]),
-    ...(await dueSources(dependencies, petId)),
-  ];
+  return sources.find((found) => found.sourceId === sourceId);
 }
 
 // Every source a Family keeps, read when its Members change; a digest belongs to its Member alone.
@@ -134,20 +62,10 @@ export async function familySources(
   dependencies: ReminderDependencies,
   familyId: string,
 ): Promise<Source[]> {
-  const { reminderIds, eventIds, petIds, planIds } =
-    await dependencies.sources.sourceIdsOf(familyId);
-  const groups = await Promise.all([
-    ...reminderIds.map(async (reminderId) => {
-      const source = await reminderOf(dependencies, reminderId);
-
-      return source === undefined ? [] : [source];
-    }),
-    ...eventIds.map(async (eventId) => eventSources(dependencies, eventId)),
-    ...petIds.map(async (petId) => petSources(dependencies, petId)),
-    ...planIds.map(async (planId) => planSources(dependencies, planId)),
-  ]);
+  const owners = await dependencies.sources.ownersOf(familyId);
+  const groups = await Promise.all(
+    owners.map(async (owner) => sourcesOf(dependencies, { ...owner, familyId })),
+  );
 
   return groups.flat();
 }
-
-export { birthdayOf };

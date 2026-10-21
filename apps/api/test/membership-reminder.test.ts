@@ -331,4 +331,27 @@ describe("a Member who is no longer in the Family", () => {
     expect(textsTo(worker, denis, "📌")).toEqual(["📌 Покрасить потолок · до 20 октября"]);
     expect(textsTo(worker, asya, "📌")).toEqual([]);
   });
+
+  test("gets none of its Reminders in the next Family even if the old one kept their rows", async () => {
+    const worker = await startWithAsya();
+    const ivan = { id: 333, first_name: "Иван" };
+
+    await createReminder(worker);
+    await worker.leaveFamily(worker.asyaId);
+    await worker.addFamily({ name: "Ивановы", owner: { telegramId: ivan.id, name: "Иван" } });
+
+    const response = await request(worker, ivan, { method: "POST", path: "/api/invites" });
+    const { link } = await response.json<InviteCreated>();
+    const token = new URL(link).searchParams.get("startapp")?.replace(/^inv_/, "") ?? "";
+
+    await worker.request(`/api/invites/${token}/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ initData: initDataOf(worker, asya) }),
+    });
+    await tickAt(worker, "2026-10-05T10:00:00Z");
+
+    expect(textsTo(worker, denis, "🔔")).toEqual(["🔔 Оплатить интернет"]);
+    expect(textsTo(worker, asya, "🔔")).toEqual([]);
+  });
 });

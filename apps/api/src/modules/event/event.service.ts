@@ -7,7 +7,9 @@ import { columnsOf, toEvent } from "./event.lib.ts";
 import type { EventRepo, EventRow } from "./event.repo.ts";
 
 // The Reminders of an Event live in the reminder module; the app wires this port to it.
-export type EventSchedule = { eventChanged(familyId: string, eventId: string): Promise<void> };
+export type EventSchedule = {
+  sourceChanged(familyId: string, source: { kind: "event"; id: string }): Promise<void>;
+};
 
 type EventDependencies = { events: EventRepo; clock: Clock; schedule: EventSchedule };
 
@@ -55,7 +57,7 @@ async function create(
     updatedAt: now,
   });
 
-  await dependencies.schedule.eventChanged(membership.family.id, id);
+  await dependencies.schedule.sourceChanged(membership.family.id, { kind: "event", id });
 
   return current(dependencies, membership, id);
 }
@@ -82,7 +84,7 @@ async function update(
     { ...columnsOf(change), updatedAt: dependencies.clock.now() },
   );
 
-  await dependencies.schedule.eventChanged(membership.family.id, eventId);
+  await dependencies.schedule.sourceChanged(membership.family.id, { kind: "event", id: eventId });
 
   return current(dependencies, membership, eventId);
 }
@@ -106,7 +108,7 @@ async function skip(
     },
   );
 
-  await dependencies.schedule.eventChanged(membership.family.id, eventId);
+  await dependencies.schedule.sourceChanged(membership.family.id, { kind: "event", id: eventId });
 
   return current(dependencies, membership, eventId);
 }
@@ -129,7 +131,7 @@ async function remove(
   }
 
   await dependencies.events.delete({ familyId: membership.family.id, eventId });
-  await dependencies.schedule.eventChanged(membership.family.id, eventId);
+  await dependencies.schedule.sourceChanged(membership.family.id, { kind: "event", id: eventId });
 
   return { status: "deleted" };
 }

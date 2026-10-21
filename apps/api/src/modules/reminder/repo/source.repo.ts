@@ -24,7 +24,13 @@ export type DueEntryRow = Pick<
   "id" | "petId" | "details" | "dueDate" | "dueKey" | "occurredAt"
 >;
 
-async function dueEntriesOf(db: Db, petId: string): Promise<DueEntryRow[]> {
+type InFamily = { familyId: string; id: string };
+
+export type FamilyOwnerKind = "reminder" | "event" | "pet" | "plan";
+
+type FamilyOwner = { kind: FamilyOwnerKind; id: string };
+
+async function dueEntriesOf(db: Db, { familyId, id }: InFamily): Promise<DueEntryRow[]> {
   return db
     .select({
       id: careEntries.id,
@@ -35,23 +41,23 @@ async function dueEntriesOf(db: Db, petId: string): Promise<DueEntryRow[]> {
       occurredAt: careEntries.occurredAt,
     })
     .from(careEntries)
-    .where(and(eq(careEntries.petId, petId), isNotNull(careEntries.dueKey)))
+    .where(
+      and(
+        eq(careEntries.familyId, familyId),
+        eq(careEntries.petId, id),
+        isNotNull(careEntries.dueKey),
+      ),
+    )
     .orderBy(desc(careEntries.occurredAt))
     .all();
 }
 
-export type FamilySourceIds = {
-  reminderIds: string[];
-  eventIds: string[];
-  petIds: string[];
-  planIds: string[];
-};
-
-function idsOf(rows: Array<{ id: string }>): string[] {
-  return rows.map(({ id }) => id);
+function ownedBy(kind: FamilyOwnerKind, rows: Array<{ id: string }>): FamilyOwner[] {
+  return rows.map(({ id }) => ({ kind, id }));
 }
 
-async function sourceIdsOf(db: Db, familyId: string): Promise<FamilySourceIds> {
+// What a Family keeps that may remind of something; a digest belongs to its Member alone.
+async function ownersOf(db: Db, familyId: string): Promise<FamilyOwner[]> {
   const [reminderRows, eventRows, petRows, planRows] = await Promise.all([
     db.select({ id: reminders.id }).from(reminders).where(eq(reminders.familyId, familyId)).all(),
     db.select({ id: events.id }).from(events).where(eq(events.familyId, familyId)).all(),
@@ -63,44 +69,58 @@ async function sourceIdsOf(db: Db, familyId: string): Promise<FamilySourceIds> {
       .all(),
   ]);
 
-  return {
-    reminderIds: idsOf(reminderRows),
-    eventIds: idsOf(eventRows),
-    petIds: idsOf(petRows),
-    planIds: idsOf(planRows),
-  };
+  return [
+    ...ownedBy("reminder", reminderRows),
+    ...ownedBy("event", eventRows),
+    ...ownedBy("pet", petRows),
+    ...ownedBy("plan", planRows),
+  ];
 }
 
-// The cron and the bot buttons know a source by its id alone; each row names its Family.
+async function eventOf(db: Db, { familyId, id }: InFamily): Promise<EventRow | undefined> {
+  return db
+    .select()
+    .from(events)
+    .where(and(eq(events.familyId, familyId), eq(events.id, id)))
+    .get();
+}
+
+async function petOf(db: Db, { familyId, id }: InFamily): Promise<PetRow | undefined> {
+  return db
+    .select()
+    .from(pets)
+    .where(and(eq(pets.familyId, familyId), eq(pets.id, id)))
+    .get();
+}
+
+async function planTree(db: Db, { familyId, id }: InFamily): Promise<PlanRow[]> {
+  return db
+    .select()
+    .from(plans)
+    .where(and(eq(plans.familyId, familyId), or(eq(plans.id, id), eq(plans.parentId, id))))
+    .all();
+}
+
+async function memberIdsOf(db: Db, familyId: string): Promise<string[]> {
+  const rows = await db
+    .select({ id: familyMembers.memberId })
+    .from(familyMembers)
+    .where(eq(familyMembers.familyId, familyId))
+    .all();
+
+  return rows.map(({ id }) => id);
+}
+
 export function createSourceRepo(db: Db) {
   return {
-    sourceIdsOf: async (familyId: string) => sourceIdsOf(db, familyId),
+    ownersOf: async (familyId: string) => ownersOf(db, familyId),
+    event: async (event: InFamily) => eventOf(db, event),
+    pet: async (pet: InFamily) => petOf(db, pet),
+    dueEntriesOf: async (pet: InFamily) => dueEntriesOf(db, pet),
+    planTree: async (plan: InFamily) => planTree(db, plan),
+    memberIdsOf: async (familyId: string) => memberIdsOf(db, familyId),
 
-    event: async (eventId: string): Promise<EventRow | undefined> =>
-      db.select().from(events).where(eq(events.id, eventId)).get(),
-
-    pet: async (petId: string): Promise<PetRow | undefined> =>
-      db.select().from(pets).where(eq(pets.id, petId)).get(),
-
-    dueEntriesOf: async (petId: string) => dueEntriesOf(db, petId),
-
-    planTree: async (planId: string): Promise<PlanRow[]> =>
-      db
-        .select()
-        .from(plans)
-        .where(or(eq(plans.id, planId), eq(plans.parentId, planId)))
-        .all(),
-
-    memberIdsOf: async (familyId: string): Promise<string[]> => {
-      const rows = await db
-        .select({ id: familyMembers.memberId })
-        .from(familyMembers)
-        .where(eq(familyMembers.familyId, familyId))
-        .all();
-
-      return rows.map(({ id }) => id);
-    },
-
+    // A Member's own settings and zone sit on their row, which belongs to no Family.
     digestOf: async (memberId: string): Promise<DigestRow | undefined> =>
       db
         .select({ isDigestEnabled: members.isDigestEnabled, digestTime: members.digestTime })
@@ -108,7 +128,6 @@ export function createSourceRepo(db: Db) {
         .where(eq(members.id, memberId))
         .get(),
 
-    // A Member's own zone sits on their row, which belongs to no Family.
     async timeZoneOf(memberId: string): Promise<string | null> {
       const row = await db
         .select({ timeZone: members.timeZone })
