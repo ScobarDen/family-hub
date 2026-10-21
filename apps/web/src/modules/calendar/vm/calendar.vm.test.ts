@@ -16,6 +16,8 @@ import { createHttpClient } from "@/common/http-client";
 import { createCalendarApi } from "../calendar.api.ts";
 import { reatomCalendar } from "./calendar.vm.ts";
 
+const phrase = { saidAt: Date.parse("2026-10-11T06:00:00Z"), timeZone: "Europe/Moscow" };
+
 const call: CalendarEvent = {
   id: "event-1",
   title: "Созвон с родителями",
@@ -426,6 +428,7 @@ describe("a Command Draft opened by «Изменить»", () => {
     await loaded(model);
     model.openReminderDraft({
       draftId: "draft-1",
+      phrase,
       draft: {
         kind: "reminder",
         text: "Оплатить интернет",
@@ -465,6 +468,7 @@ describe("an Event draft opened by «Изменить»", () => {
     await loaded(model);
     model.openEventDraft({
       draftId: "draft-2",
+      phrase,
       draft: {
         kind: "event",
         title: "День рождения мамы",

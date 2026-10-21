@@ -12,7 +12,7 @@ import {
   type EventReminderOffset,
 } from "@family-hub/contract";
 
-import { reatomEditableRecord } from "@/common/form";
+import { reatomEditableRecord, type DraftOpening } from "@/common/form";
 
 import type { CalendarApi } from "../calendar.api.ts";
 import type { CalendarData } from "../calendar.model.ts";
@@ -26,7 +26,7 @@ type EventFormDependencies = {
   onDraftSaved?: (draftId: string) => void;
 };
 
-export type EventDraftOpening = { draftId: string; draft: EventDraft };
+export type EventDraftOpening = DraftOpening<EventDraft>;
 
 const emptyEvent = {
   title: "",

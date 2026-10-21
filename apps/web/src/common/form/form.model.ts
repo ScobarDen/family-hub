@@ -1,5 +1,7 @@
 import { action, atom, computed, noop, wrap, type Atom } from "@reatom/core";
 
+import type { CommandPhrase } from "@family-hub/contract";
+
 type Fillable<Values> = {
   init: (values: Values) => void;
   fieldsList: () => Array<{ reset: () => void }>;
@@ -37,7 +39,7 @@ type Mode<Edited> =
   | { kind: "editing"; edited: Edited }
   | { kind: "drafting"; draftId: string };
 
-export type DraftOpening<Draft> = { draftId: string; draft: Draft };
+export type DraftOpening<Draft> = { draftId: string; draft: Draft; phrase: CommandPhrase };
 
 type RecordForm<Values> = Fillable<Values> &
   Submittable & { submit: (() => Promise<unknown>) & { ready: () => boolean } };
@@ -48,7 +50,7 @@ export type EditableRecordOptions<Values, Form extends RecordForm<Values>, Edite
   form: (onSubmit: (values: Values) => Promise<void>) => Form;
   failureMessage: string;
   valuesOf: (edited: Edited) => Values;
-  valuesOfDraft: (draft: Draft) => Values;
+  valuesOfDraft: (draft: Draft, phrase: CommandPhrase) => Values;
   create: (values: Values) => Promise<Saved>;
   update: (edited: Edited, values: Values) => Promise<Saved>;
   onSaved: (saved: Saved) => void;
@@ -93,8 +95,8 @@ function reatomStarts<Values, Form extends RecordForm<Values>, Edited, Draft, Sa
     startEditing: action((edited: Edited) => {
       start({ kind: "editing", edited }, options.valuesOf(edited));
     }, `${name}.startEditing`),
-    startFromDraft: action(({ draftId, draft }: DraftOpening<Draft>) => {
-      start({ kind: "drafting", draftId }, options.valuesOfDraft(draft));
+    startFromDraft: action(({ draftId, draft, phrase }: DraftOpening<Draft>) => {
+      start({ kind: "drafting", draftId }, options.valuesOfDraft(draft, phrase));
     }, `${name}.startFromDraft`),
   };
 }

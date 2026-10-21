@@ -8,7 +8,7 @@ import {
   type ReminderChange,
 } from "@family-hub/contract";
 
-import { reatomEditableRecord } from "@/common/form";
+import { reatomEditableRecord, type DraftOpening } from "@/common/form";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
@@ -25,7 +25,7 @@ type ReminderFormDependencies = {
   onDraftSaved?: (draftId: string) => void;
 };
 
-export type ReminderDraftOpening = { draftId: string; draft: ReminderDraft };
+export type ReminderDraftOpening = DraftOpening<ReminderDraft>;
 
 export type RecipientChoice = { id: string; name: string; isChosen: boolean };
 

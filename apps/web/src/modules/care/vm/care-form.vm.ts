@@ -10,7 +10,7 @@ import {
   type CareKind,
 } from "@family-hub/contract";
 
-import { reatomEditableRecord } from "@/common/form";
+import { reatomEditableRecord, type DraftOpening } from "@/common/form";
 import type { PhotoAttachmentsModel } from "@/common/photo-attachments";
 
 import type { CareApi } from "../care.api.ts";
@@ -34,7 +34,7 @@ type CareFormDependencies = {
   onDraftSaved?: (draftId: string) => void;
 };
 
-export type CareEntryDraftOpening = { draftId: string; draft: CareEntryDraft };
+export type CareEntryDraftOpening = DraftOpening<CareEntryDraft>;
 
 const fieldOfIssue: Record<string, keyof EntryValues> = {
   vaccine: "name",
@@ -122,7 +122,8 @@ function reatomCareRecord(dependencies: CareFormDependencies) {
     form: (onSubmit) => reatomForm(emptyEntry, { name: "care.form", schema, onSubmit }),
     failureMessage: "Не получилось сохранить запись. Попробуйте ещё раз.",
     valuesOf: (entry: CareEntry) => valuesOf(entry, timeZone()),
-    valuesOfDraft: (draft: CareEntryDraft) => valuesOfDraft(draft, dependencies.now()),
+    valuesOfDraft: (draft: CareEntryDraft, phrase) =>
+      valuesOfDraft(draft, { phrase, timeZone: timeZone() }),
     create: async (values) => {
       const pet = petId();
 

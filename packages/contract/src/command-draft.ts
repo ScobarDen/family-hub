@@ -128,6 +128,11 @@ export const commandFailure = z.enum([
 
 export type CommandFailure = z.infer<typeof commandFailure>;
 
+// When and in which zone the phrase was said: the draft's dates and times are read there.
+export const commandPhrase = z.object({ saidAt: z.int(), timeZone: z.string() });
+
+export type CommandPhrase = z.infer<typeof commandPhrase>;
+
 // What the Mini App gets for a recording or a draft it opens; heard is the transcript, if any.
 export const commandOutcome = z.union([
   z.object({
@@ -135,6 +140,7 @@ export const commandOutcome = z.union([
     draftId: z.string(),
     heard: z.string().nullable(),
     draft: commandDraft,
+    phrase: commandPhrase,
   }),
   z.object({ status: commandFailure, heard: z.string().nullable(), message: z.string() }),
 ]);

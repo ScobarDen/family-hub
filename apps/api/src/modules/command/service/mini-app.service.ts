@@ -1,10 +1,19 @@
 import type { CommandOutcome } from "@family-hub/contract";
+import type { Phrase } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 
 import { failureTexts } from "../command.lib.ts";
 import type { CommandDependencies } from "../command.types.ts";
-import { create, dismiss, markCreated, pick, pressOf, type Press } from "./decision.service.ts";
+import {
+  create,
+  dismiss,
+  markCreated,
+  phraseOf,
+  pick,
+  pressOf,
+  type Press,
+} from "./decision.service.ts";
 import { isOverQuota, outcomeOf, record, type Outcome } from "./draft.service.ts";
 import { listen, type Audio } from "./voice.service.ts";
 
@@ -12,10 +21,10 @@ export type DraftRefusal = "not-found";
 
 function outcomeFor(
   outcome: Outcome,
-  { draftId, heard }: { draftId: string; heard: string | null },
+  { draftId, heard, phrase }: { draftId: string; heard: string | null; phrase: Phrase },
 ): CommandOutcome {
   return outcome.status === "draft"
-    ? { status: "draft", draftId, heard, draft: outcome.draft }
+    ? { status: "draft", draftId, heard, draft: outcome.draft, phrase }
     : { status: outcome.status, heard, message: failureTexts[outcome.status] };
 }
 
@@ -34,14 +43,18 @@ export async function commandFromAudio(
     heard.status === "heard"
       ? await outcomeOf(dependencies, { membership, text: heard.text })
       : heard;
-  const draftId = await record(dependencies, {
+  const { draftId, phrase } = await record(dependencies, {
     membership,
     chatId: null,
     source: "mini_app",
     outcome,
   });
 
-  return outcomeFor(outcome, { draftId, heard: heard.status === "heard" ? heard.text : null });
+  return outcomeFor(outcome, {
+    draftId,
+    heard: heard.status === "heard" ? heard.text : null,
+    phrase,
+  });
 }
 
 // Someone else's draft is as unknown to the Mini App as one that never existed.
@@ -70,8 +83,11 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
     fromAudio: async (membership: Membership, audio: Audio) =>
       commandFromAudio(dependencies, membership, audio),
     open: async (membership: Membership, draftId: string) =>
-      withPress(membership, draftId, async ({ draft }) =>
-        outcomeFor({ status: "draft", draft }, { draftId, heard: null }),
+      withPress(membership, draftId, async (press) =>
+        outcomeFor(
+          { status: "draft", draft: press.draft },
+          { draftId, heard: null, phrase: await phraseOf(dependencies, press) },
+        ),
       ),
     create: async (membership: Membership, draftId: string) =>
       withPress(membership, draftId, async (press) => create(dependencies, press)),
@@ -81,7 +97,10 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
 
         return draft === undefined
           ? "not-found"
-          : outcomeFor({ status: "draft", draft }, { draftId, heard: null });
+          : outcomeFor(
+              { status: "draft", draft },
+              { draftId, heard: null, phrase: await phraseOf(dependencies, press) },
+            );
       }),
     dismiss: async (membership: Membership, draftId: string) =>
       withPress(membership, draftId, async (press) => dismiss(dependencies, press)),

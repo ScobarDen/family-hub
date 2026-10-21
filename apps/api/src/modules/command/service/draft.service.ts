@@ -2,7 +2,7 @@ import type { Message } from "@grammyjs/types";
 
 import { parseCommand, type CommandResult } from "@family-hub/commands";
 import { commandDraftLifetimeMs, uuidv7 } from "@family-hub/contract";
-import { dateInZone } from "@family-hub/recurrence";
+import { dateInZone, type Phrase } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 import type { CommandSource } from "@/common/db";
@@ -126,10 +126,11 @@ type Handled = {
 export async function record(
   dependencies: CommandDependencies,
   { membership, chatId, source, outcome }: Handled,
-): Promise<string> {
+): Promise<{ draftId: string; phrase: Phrase }> {
   const now = dependencies.clock.now();
   const draftId = uuidv7(now);
   const isDraft = outcome.status === "draft";
+  const timeZone = await speakerZoneOf(dependencies, membership);
 
   await dependencies.drafts.add({
     id: draftId,
@@ -139,14 +140,14 @@ export async function record(
     payload: isDraft ? outcome.draft : null,
     source,
     chatId,
-    timeZone: await speakerZoneOf(dependencies, membership),
+    timeZone,
     status: isDraft ? "pending" : "failed",
     expiresAt: now + commandDraftLifetimeMs,
     createdAt: now,
     updatedAt: now,
   });
 
-  return draftId;
+  return { draftId, phrase: { saidAt: now, timeZone } };
 }
 
 // A voice command's answer starts with what the bot heard, so a misheard word is visible.
@@ -159,7 +160,7 @@ export async function sendPreview(
   answer: Handled & { chatId: number; heard?: string },
 ): Promise<void> {
   const { membership, chatId, outcome, heard } = answer;
-  const draftId = await record(dependencies, answer);
+  const { draftId } = await record(dependencies, answer);
 
   if (outcome.status !== "draft") {
     await reply(dependencies, { chatId, text: withHeard(failureTexts[outcome.status], heard) });

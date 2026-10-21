@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { reatomEditableRecord } from "./form.model.ts";
 
+const phrase = { saidAt: Date.parse("2026-10-11T06:00:00Z"), timeZone: "Europe/Moscow" };
+
 type Note = { id: string; title: string };
 
 const failureMessage = "Не получилось сохранить заметку. Попробуйте ещё раз.";
@@ -147,7 +149,7 @@ describe("a record started from a draft", () => {
   test("is created with the draft's values and settles the draft once", async () => {
     const { notes, requests, settledDrafts } = startNotes();
 
-    notes.startFromDraft({ draftId: "draft-1", draft: { title: "Груминг" } });
+    notes.startFromDraft({ draftId: "draft-1", phrase, draft: { title: "Груминг" } });
     expect(notes.isCreating()).toBe(true);
     expect(notes.form.fields.title()).toBe("Груминг");
 
@@ -166,7 +168,7 @@ describe("a record started from a draft", () => {
   test("keeps the draft open while the server refuses it", async () => {
     const { notes, settledDrafts } = startNotes({ failSaving: true });
 
-    notes.startFromDraft({ draftId: "draft-1", draft: { title: "Груминг" } });
+    notes.startFromDraft({ draftId: "draft-1", phrase, draft: { title: "Груминг" } });
     notes.save();
 
     await vi.waitFor(() => {
@@ -178,7 +180,7 @@ describe("a record started from a draft", () => {
   test("is forgotten once another record is started", async () => {
     const { notes, saved, settledDrafts } = startNotes();
 
-    notes.startFromDraft({ draftId: "draft-1", draft: { title: null } });
+    notes.startFromDraft({ draftId: "draft-1", phrase, draft: { title: null } });
     notes.startEditing({ id: "note-1", title: "Корм" });
     notes.save();
 

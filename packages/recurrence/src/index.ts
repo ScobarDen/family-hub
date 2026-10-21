@@ -23,3 +23,4 @@ export {
   type EventStart,
   type PlanLead,
 } from "./fire-time.ts";
+export { momentOfPhrase, type Phrase, type PhraseWhen } from "./phrase.ts";

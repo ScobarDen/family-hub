@@ -5,6 +5,8 @@ import type { AppModule, CareEntryDraft, CommandDraft } from "@family-hub/contra
 
 import { reatomOpener } from "./opener.vm.ts";
 
+const phrase = { saidAt: Date.parse("2026-10-11T06:00:00Z"), timeZone: "Europe/Moscow" };
+
 function startOpener({
   startParam: startParameter = undefined as string | undefined,
   isSignedIn = true,
@@ -205,10 +207,10 @@ describe("a Command Draft handed over by «Изменить»", () => {
   test("lands in the Event or the Reminder form of the calendar", () => {
     const started = startOpener();
 
-    started.opener.editDraft({ draftId: "draft-2", draft: eventDraft });
+    started.opener.editDraft({ draftId: "draft-2", phrase, draft: eventDraft });
     expect(started.shownModule()).toBe("calendar");
 
-    started.opener.editDraft({ draftId: "draft-1", draft: reminderDraft });
+    started.opener.editDraft({ draftId: "draft-1", phrase, draft: reminderDraft });
     expect(started.opened).toEqual([
       "calendar.openEventDraft draft-2",
       "calendar.openReminderDraft draft-1",
@@ -218,7 +220,11 @@ describe("a Command Draft handed over by «Изменить»", () => {
   test("of a Care Entry opens its Pet's card and the form over it", async () => {
     const started = startOpener();
 
-    started.opener.editDraft({ draftId: "draft-3", draft: { ...careDraft, petId: "pet-1" } });
+    started.opener.editDraft({
+      draftId: "draft-3",
+      phrase,
+      draft: { ...careDraft, petId: "pet-1" },
+    });
 
     await vi.waitFor(() => {
       expect(started.opened).toEqual(["pets.open pet-1", "care.editDraft draft-3 for pet-1"]);
@@ -230,7 +236,7 @@ describe("a Command Draft handed over by «Изменить»", () => {
     const started = startOpener();
 
     started.openedPetId.set("pet-1");
-    started.opener.editDraft({ draftId: "draft-3", draft: careDraft });
+    started.opener.editDraft({ draftId: "draft-3", phrase, draft: careDraft });
     await sleep(0);
 
     expect(started.shownModule()).toBe("pet");
@@ -246,7 +252,7 @@ describe("a Command Draft handed over by «Изменить»", () => {
   test("of a Care Entry without a Pet is given up once the Member leaves the pet tab", async () => {
     const started = startOpener();
 
-    started.opener.editDraft({ draftId: "draft-3", draft: careDraft });
+    started.opener.editDraft({ draftId: "draft-3", phrase, draft: careDraft });
     await sleep(0);
     started.shownModule.set("feed");
     await sleep(0);
@@ -260,7 +266,7 @@ describe("a Command Draft handed over by «Изменить»", () => {
   test("of a Care Entry without a Pet is dropped when something else is opened meanwhile", async () => {
     const started = startOpener();
 
-    started.opener.editDraft({ draftId: "draft-3", draft: careDraft });
+    started.opener.editDraft({ draftId: "draft-3", phrase, draft: careDraft });
     started.opener.open({ kind: "goal", goalId: "goal-1" });
     started.shownModule.set("pet");
     started.openedPetId.set("pet-2");

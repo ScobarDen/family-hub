@@ -2,6 +2,7 @@ import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
 import { draftRefusalTexts } from "@family-hub/commands";
 import type { CommandDraft, DraftCreated, DraftRefusal } from "@family-hub/contract";
+import type { Phrase } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 import { ignoringBotErrors } from "@/common/telegram";
@@ -10,7 +11,7 @@ import { previewText } from "../command-preview.lib.ts";
 import { createdText, dismissedText, picked, previewButtons } from "../command.lib.ts";
 import type { CommandDraftRow } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
-import { createRecord, type Phrase } from "../draft-kind.lib.ts";
+import { createRecord } from "../draft-kind.lib.ts";
 import { editLinkOf, namesOf, speakerZoneOf } from "./draft.service.ts";
 
 export type Press = { row: CommandDraftRow; draft: CommandDraft; membership: Membership };
@@ -70,7 +71,7 @@ export async function pressOf(
 }
 
 // A draft kept from before zones were stored falls back to the speaker's zone now.
-async function phraseOf(
+export async function phraseOf(
   dependencies: CommandDependencies,
   { row, membership }: Press,
 ): Promise<Phrase> {

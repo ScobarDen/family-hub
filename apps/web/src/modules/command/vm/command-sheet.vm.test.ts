@@ -22,6 +22,8 @@ import {
   type OpenedDraft,
 } from "./command-sheet.vm.ts";
 
+const phrase = { saidAt: Date.parse("2026-10-11T06:00:00Z"), timeZone: "Europe/Moscow" };
+
 const internet: ReminderDraft = {
   kind: "reminder",
   text: "Оплатить интернет",
@@ -82,6 +84,7 @@ function fakeBackend(outcome: CommandOutcome) {
       Response.json({
         status: "draft",
         draftId: "draft-1",
+        phrase,
         heard: null,
         draft: {
           ...internet,
@@ -114,7 +117,7 @@ function fakeBackend(outcome: CommandOutcome) {
 }
 
 function startSheet(draft: ReminderDraft = internet) {
-  const backend = fakeBackend({ status: "draft", draftId: "draft-1", heard, draft });
+  const backend = fakeBackend({ status: "draft", draftId: "draft-1", phrase, heard, draft });
   const edited: OpenedDraft[] = [];
   const created: DraftCreated[] = [];
   const api = createCommandApi(
@@ -257,7 +260,7 @@ describe("the preview sheet", () => {
     await sent(model);
     model.edit();
 
-    expect(edited).toEqual([{ draftId: "draft-1", draft: internet }]);
+    expect(edited).toEqual([{ draftId: "draft-1", phrase, draft: internet }]);
     expect(model.sheet().kind).toBe("closed");
 
     await sent(model);
@@ -275,7 +278,7 @@ describe("the preview sheet", () => {
     model.openForEdit("draft-1");
 
     await vi.waitFor(() => {
-      expect(edited).toEqual([{ draftId: "draft-1", draft: internet }]);
+      expect(edited).toEqual([{ draftId: "draft-1", phrase, draft: internet }]);
     });
     expect(model.sheet().kind).toBe("closed");
 
@@ -290,6 +293,7 @@ describe("the preview sheet", () => {
     const backend = fakeBackend({
       status: "draft",
       draftId: "draft-1",
+      phrase,
       heard: null,
       draft: {
         kind: "event",
@@ -332,6 +336,7 @@ describe("the preview sheet", () => {
     const backend = fakeBackend({
       status: "draft",
       draftId: "draft-1",
+      phrase,
       heard: null,
       draft: {
         kind: "care_entry",

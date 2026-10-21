@@ -5,19 +5,15 @@ import {
   eventChange,
   reminderChange,
   type CareDetails,
-  type CareEntryDraft,
   type CommandDraft,
   type CommandKind,
   type DraftRefusal,
 } from "@family-hub/contract";
-import { occurrenceMoment, timeInZone } from "@family-hub/recurrence";
+import { momentOfPhrase, type Phrase } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 
 import type { CommandDependencies } from "./command.types.ts";
-
-// When and where the phrase was said: a draft confirmed hours later still means that day and zone.
-export type Phrase = { saidAt: number; timeZone: string };
 
 export type Creation =
   | { status: "created"; id: string }
@@ -87,13 +83,6 @@ function draftKind<Draft, Change>(parts: DraftKindParts<Draft, Change>): DraftKi
   };
 }
 
-// No date is the moment it was said; «вчера» alone keeps the time of day it was said at.
-function occurredAtOf({ date, time }: CareEntryDraft, { saidAt, timeZone }: Phrase): number {
-  return date === null
-    ? saidAt
-    : occurrenceMoment(date, { time: time ?? timeInZone(saidAt, timeZone), timeZone });
-}
-
 // Picking a candidate settles one ambiguity: a Member joins the Recipients, a Pet becomes the one;
 // an Event refers to nobody, so it has no candidates.
 const draftKinds: { [Kind in CommandKind]: DraftKind<DraftOf<Kind>> } = {
@@ -147,7 +136,7 @@ const draftKinds: { [Kind in CommandKind]: DraftKind<DraftOf<Kind>> } = {
       careEntryCreation.safeParse({
         petId: draft.petId,
         change: {
-          occurredAt: occurredAtOf(draft, phrase),
+          occurredAt: momentOfPhrase(draft, phrase),
           note: draft.note,
           details: draft.details,
           photoIds: [],

@@ -1,7 +1,13 @@
 import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { CareEntry, DueDateItem, ExpenseSummary, Photo } from "@family-hub/contract";
+import type {
+  CareEntry,
+  CommandPhrase,
+  DueDateItem,
+  ExpenseSummary,
+  Photo,
+} from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
@@ -86,6 +92,11 @@ const vetVisitDue: DueDateItem = {
   title: "Визит к ветеринару — Бьюик",
   dueDate: "2026-11-02",
   isOverdue: false,
+};
+
+const saidThisMorning: CommandPhrase = {
+  saidAt: Date.parse("2026-10-11T06:00:00Z"),
+  timeZone: "Europe/Moscow",
 };
 
 const answers: Partial<Record<string, () => Response>> = {
@@ -367,7 +378,7 @@ describe("a Care Entry's photos", () => {
 });
 
 describe("a Care Entry draft opened by «Изменить»", () => {
-  test("fills the form from yesterday at the current time and saves it for the open Pet", async () => {
+  test("fills the form from yesterday at the time of day it was said and saves it for the open Pet", async () => {
     const { model, backend } = startCare();
 
     await loaded(model);
@@ -388,11 +399,12 @@ describe("a Care Entry draft opened by «Изменить»", () => {
         missing: [],
         ambiguities: [],
       },
+      phrase: saidThisMorning,
     });
 
     expect(model.screen()).toEqual({ kind: "form", isCreating: true });
     expect(model.form.kind()).toBe("vaccination");
-    expect(model.form.form.fields.occurredAt()).toBe("2026-10-10T18:30");
+    expect(model.form.form.fields.occurredAt()).toBe("2026-10-10T09:00");
     expect(model.form.form.fields.name()).toBe("Бешенство");
     expect(model.form.form.fields.costAmount()).toBe("1800");
     expect(model.form.form.fields.dueDate()).toBe("2027-10-10");
@@ -403,8 +415,56 @@ describe("a Care Entry draft opened by «Изменить»", () => {
       expect(
         backend.requests.find(({ request }) => request === "POST /api/pets/pet-1/care-entries")
           ?.body,
-      ).toMatchObject({ details: { kind: "vaccination", vaccine: "Бешенство" }, photoIds: [] });
+      ).toMatchObject({
+        occurredAt: Date.parse("2026-10-10T06:00:00Z"),
+        details: { kind: "vaccination", vaccine: "Бешенство" },
+        photoIds: [],
+      });
     });
+  });
+
+  test("shows the moment of a phrase said in another zone on the viewer's own clock", async () => {
+    const { model } = startCare();
+
+    await loaded(model);
+    model.editDraft({
+      draftId: "draft-5",
+      draft: {
+        kind: "care_entry",
+        petId: "pet-1",
+        date: "2026-10-10",
+        time: null,
+        note: null,
+        details: { kind: "weight", weightKg: 31.5 },
+        missing: [],
+        ambiguities: [],
+      },
+      phrase: { saidAt: Date.parse("2026-10-11T00:00:00Z"), timeZone: "Asia/Vladivostok" },
+    });
+
+    expect(model.form.form.fields.occurredAt()).toBe("2026-10-10T03:00");
+  });
+
+  test("fills the form at the moment it was said when the phrase names no day", async () => {
+    const { model } = startCare();
+
+    await loaded(model);
+    model.editDraft({
+      draftId: "draft-6",
+      draft: {
+        kind: "care_entry",
+        petId: "pet-1",
+        date: null,
+        time: null,
+        note: null,
+        details: { kind: "weight", weightKg: 31.5 },
+        missing: [],
+        ambiguities: [],
+      },
+      phrase: saidThisMorning,
+    });
+
+    expect(model.form.form.fields.occurredAt()).toBe("2026-10-11T09:00");
   });
 
   test("says it could not save while no Pet is open, and saves nothing", async () => {
@@ -423,6 +483,7 @@ describe("a Care Entry draft opened by «Изменить»", () => {
         missing: ["pet"],
         ambiguities: [],
       },
+      phrase: saidThisMorning,
     });
     openedPet.set(undefined);
     model.form.save();

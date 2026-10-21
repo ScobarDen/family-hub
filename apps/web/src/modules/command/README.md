@@ -1,6 +1,6 @@
 # command
 
-The microphone in the centre of the tab bar and the sheet that previews the Command Draft it produced ([ADR 0007](../../../../../docs/adr/0007-voice-and-text-commands-through-workers-ai.md)). Nothing is created without «Создать»; «Изменить» hands the draft to the ordinary form of its kind.
+The microphone in the centre of the tab bar and the sheet that previews the Command Draft it produced ([ADR 0007](../../../../../docs/adr/0007-voice-and-text-commands-through-workers-ai.md)). Nothing is created without «Создать»; «Изменить» hands the draft to the ordinary form of its kind, together with when and in which zone its phrase was said, so the form dates it as «Создать» would.
 
 ## Microphone
 

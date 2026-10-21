@@ -9,6 +9,7 @@ import {
   type ReminderDraft,
 } from "@family-hub/contract";
 
+import type { DraftOpening } from "@/common/form";
 import type { Telegram } from "@/common/telegram";
 import type { OpenedDraft } from "@/modules/command";
 
@@ -51,12 +52,12 @@ type OpenerDependencies = {
   care: {
     openEntry: Open;
     followUp: Open;
-    editDraft: (opening: { draftId: string; draft: CareEntryDraft }) => void;
+    editDraft: (opening: DraftOpening<CareEntryDraft>) => void;
   };
   calendar: {
     openEvent: Open;
-    openEventDraft: (opening: { draftId: string; draft: EventDraft }) => void;
-    openReminderDraft: (opening: { draftId: string; draft: ReminderDraft }) => void;
+    openEventDraft: (opening: DraftOpening<EventDraft>) => void;
+    openReminderDraft: (opening: DraftOpening<ReminderDraft>) => void;
   };
   goals: { open: Open };
   albums: { open: Open };
@@ -124,26 +125,31 @@ async function isPetPicked({ navigation, pets }: OpenerDependencies): Promise<bo
 
 async function openCareDraft(
   dependencies: OpenerDependencies,
-  { draftId, draft }: { draftId: string; draft: CareEntryDraft },
+  opening: DraftOpening<CareEntryDraft>,
 ): Promise<void> {
+  const { petId } = opening.draft;
+
   dependencies.navigation.openModule("pet");
 
-  if (draft.petId === null) {
+  if (petId === null) {
     dependencies.pets.showChoice();
   } else {
-    dependencies.pets.open(draft.petId);
+    dependencies.pets.open(petId);
   }
 
   if (await wrap(isPetPicked(dependencies))) {
-    dependencies.care.editDraft({ draftId, draft });
+    dependencies.care.editDraft(opening);
   }
 }
 
-async function openDraft(dependencies: OpenerDependencies, { draftId, draft }: OpenedDraft) {
+async function openDraft(
+  dependencies: OpenerDependencies,
+  { draftId, draft, phrase }: OpenedDraft,
+) {
   const { navigation, calendar } = dependencies;
 
   if (draft.kind === "care_entry") {
-    await openCareDraft(dependencies, { draftId, draft });
+    await openCareDraft(dependencies, { draftId, draft, phrase });
 
     return;
   }
@@ -151,9 +157,9 @@ async function openDraft(dependencies: OpenerDependencies, { draftId, draft }: O
   navigation.openModule("calendar");
 
   if (draft.kind === "event") {
-    calendar.openEventDraft({ draftId, draft });
+    calendar.openEventDraft({ draftId, draft, phrase });
   } else {
-    calendar.openReminderDraft({ draftId, draft });
+    calendar.openReminderDraft({ draftId, draft, phrase });
   }
 }
 

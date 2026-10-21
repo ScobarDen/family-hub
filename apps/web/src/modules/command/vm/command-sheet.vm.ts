@@ -10,6 +10,7 @@ import {
   draftRefusal,
   type CommandDraft,
   type CommandOutcome,
+  type CommandPhrase,
   type DraftCreated,
 } from "@family-hub/contract";
 
@@ -17,7 +18,7 @@ import { HttpError } from "@/common/http-client";
 
 import type { CommandApi } from "../command.api.ts";
 
-export type OpenedDraft = { draftId: string; draft: CommandDraft };
+export type OpenedDraft = { draftId: string; draft: CommandDraft; phrase: CommandPhrase };
 
 type CommandSheetDependencies = {
   api: Pick<CommandApi, "send" | "open" | "create" | "pick" | "dismiss" | "members" | "pets">;
@@ -47,7 +48,12 @@ export const staleDraftText = "Черновик устарел или уже р�
 
 function draftOf(phase: Phase): (OpenedDraft & { heard: string | null }) | undefined {
   return phase.kind === "outcome" && phase.outcome.status === "draft"
-    ? { draftId: phase.outcome.draftId, draft: phase.outcome.draft, heard: phase.outcome.heard }
+    ? {
+        draftId: phase.outcome.draftId,
+        draft: phase.outcome.draft,
+        phrase: phase.outcome.phrase,
+        heard: phase.outcome.heard,
+      }
     : undefined;
 }
 
@@ -79,7 +85,7 @@ function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseA
       const outcome = await wrap(api.open(draftId));
 
       if (outcome.status === "draft") {
-        onEdit({ draftId, draft: outcome.draft });
+        onEdit({ draftId, draft: outcome.draft, phrase: outcome.phrase });
       }
     } catch {
       phase.set(failure(staleDraftText));
@@ -143,7 +149,7 @@ function reatomLeaving({ api, onEdit }: CommandSheetDependencies, phase: PhaseAt
       phase.set({ kind: "closed" });
 
       if (opened !== undefined) {
-        onEdit({ draftId: opened.draftId, draft: opened.draft });
+        onEdit({ draftId: opened.draftId, draft: opened.draft, phrase: opened.phrase });
       }
     }, "commandSheet.edit"),
     // «×» drops a pending draft; once created or failed there is nothing left to drop.

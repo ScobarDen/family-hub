@@ -8,7 +8,9 @@ import {
   type CareEntryChange,
   type CareEntryDraft,
   type CareKind,
+  type CommandPhrase,
 } from "@family-hub/contract";
+import { momentOfPhrase } from "@family-hub/recurrence";
 
 export const emptyEntry = {
   kind: "note",
@@ -107,29 +109,31 @@ function kindValuesOf(details: CareDetails): Partial<EntryValues> {
   };
 }
 
-export function valuesOf(entry: CareEntry, timeZone: string): EntryValues {
-  const occurredAt = Temporal.Instant.fromEpochMilliseconds(entry.occurredAt)
+function wallClockOf(moment: number, timeZone: string): string {
+  return Temporal.Instant.fromEpochMilliseconds(moment)
     .toZonedDateTimeISO(timeZone)
     .toPlainDateTime()
     .toString({ smallestUnit: "minute" });
+}
 
+export function valuesOf(entry: CareEntry, timeZone: string): EntryValues {
   return {
     ...emptyEntry,
     kind: entry.details.kind,
-    occurredAt,
+    occurredAt: wallClockOf(entry.occurredAt, timeZone),
     note: entry.note ?? "",
     ...kindValuesOf(entry.details),
   };
 }
 
-// A draft's moment is on the speaker's clock: no date is now, a date alone keeps now's time of day.
-export function valuesOfDraft(draft: CareEntryDraft, now: string): EntryValues {
-  const [, nowTime = ""] = now.split("T");
-
+export function valuesOfDraft(
+  draft: CareEntryDraft,
+  { phrase, timeZone }: { phrase: CommandPhrase; timeZone: string },
+): EntryValues {
   return {
     ...emptyEntry,
     kind: draft.details?.kind ?? "note",
-    occurredAt: draft.date === null ? now : `${draft.date}T${draft.time ?? nowTime}`,
+    occurredAt: wallClockOf(momentOfPhrase(draft, phrase), timeZone),
     note: draft.note ?? "",
     ...(draft.details === null ? {} : kindValuesOf(draft.details)),
   };
