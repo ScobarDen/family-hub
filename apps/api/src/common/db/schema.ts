@@ -30,6 +30,9 @@ export const families = sqliteTable("families", {
   ownerMemberId: text("owner_member_id")
     .notNull()
     .references(() => members.id),
+  photoChannelId: integer("photo_channel_id"),
+  photoChannelTitle: text("photo_channel_title"),
+  isPhotoChannelConnected: integer("is_photo_channel_connected", { mode: "boolean" }),
   createdAt: integer("created_at").notNull(),
   createdBy: text("created_by")
     .notNull()

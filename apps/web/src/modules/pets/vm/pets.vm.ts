@@ -23,6 +23,7 @@ type PetsDependencies = {
   api: PetsApi;
   pets: PetsModel;
   viewer: () => Viewer;
+  photoHint: () => string | undefined;
 };
 
 type Navigation = {
@@ -164,6 +165,7 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "pets.title"),
+    photoHint: computed(() => dependencies.photoHint(), "pets.photoHint"),
     ...forms,
     canGoBack: computed(
       () =>

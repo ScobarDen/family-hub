@@ -81,6 +81,12 @@ export {
   type Visibility,
 } from "./plan.ts";
 export {
+  photoStorage,
+  photoStorageStatus,
+  type PhotoStorage,
+  type PhotoStorageStatus,
+} from "./photo-storage.ts";
+export {
   pet,
   petList,
   petLongTextMaxLength,

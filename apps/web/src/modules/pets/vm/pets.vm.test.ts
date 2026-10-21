@@ -72,6 +72,7 @@ function startPets(backend = fakeBackend()) {
     api,
     pets,
     viewer: () => ({ today: "2026-10-11", timeZone: "Europe/Moscow" }),
+    photoHint: () => "Загрузка фото выключена",
   });
 
   model.screen.subscribe(noop);

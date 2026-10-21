@@ -25,5 +25,9 @@ export const webhookRoute = new Hono<AppEnv>().post("/bot/webhook", async (conte
     await context.var.familyRequests.handleCallback(update.callback_query);
   }
 
+  if (update?.my_chat_member) {
+    await context.var.photoStorage.handleChatMember(update.my_chat_member);
+  }
+
   return context.body(null);
 });

@@ -7,6 +7,7 @@ import type { FamilyRequestService } from "@/modules/family-request";
 import type { InviteService } from "@/modules/invite";
 import type { MemberService } from "@/modules/member";
 import type { PetService } from "@/modules/pet";
+import type { PhotoStorageService } from "@/modules/photo-storage";
 import type { PlanService } from "@/modules/plan";
 
 export type AppServices = {
@@ -19,6 +20,7 @@ export type AppServices = {
   invites: InviteService;
   members: MemberService;
   pets: PetService;
+  photoStorage: PhotoStorageService;
   plans: PlanService;
 };
 

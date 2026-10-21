@@ -6,6 +6,7 @@ import type { PetCard as PetCardData } from "../pets.lib.ts";
 
 type PetCardProps = {
   card: PetCardData;
+  photoHint: string | undefined;
   onEditProfile: () => void;
   onEditMemo: () => void;
 };
@@ -16,7 +17,7 @@ const memoRows = [
   ["important", "Важное"],
 ] as const;
 
-export function PetCard({ card, onEditProfile, onEditMemo }: PetCardProps) {
+export function PetCard({ card, photoHint, onEditProfile, onEditMemo }: PetCardProps) {
   return (
     <>
       <Section>
@@ -47,7 +48,7 @@ export function PetCard({ card, onEditProfile, onEditMemo }: PetCardProps) {
       <Section title="Траты за месяц">
         <SectionItem icon={Wallet} tone="green" title="Трат пока нет" />
       </Section>
-      <Section title="Фото">
+      <Section title="Фото" footer={photoHint}>
         <SectionItem icon={Images} tone="violet" title="Фото пока нет" />
       </Section>
       <Section title="Журнал">

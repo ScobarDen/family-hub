@@ -10,6 +10,7 @@ import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import { reatomNotifications } from "@/modules/notifications";
 import { createPetsApi, reatomPets, reatomPetsScreen } from "@/modules/pets";
+import { createPhotoStorageApi, reatomPhotoStorage } from "@/modules/photo-storage";
 import { createPlansApi, reatomPlans, reatomPlansScreen } from "@/modules/plans";
 import { createSessionApi, reatomSession } from "@/modules/session";
 import {
@@ -57,12 +58,17 @@ const tabBarModules = reatomTabBarModules({
   api: createTabBarApi(httpClient),
   saved: () => session.member()?.settings.tabBar,
 });
+const photoStorage = reatomPhotoStorage({
+  api: createPhotoStorageApi(httpClient),
+  isFamilyOwner: () => session.member()?.isFamilyOwner === true,
+});
 const petsApi = createPetsApi(httpClient);
 const petsModel = reatomPets({ api: petsApi });
 const pets = reatomPetsScreen({
   api: petsApi,
   pets: petsModel,
   viewer: () => ({ today: today(deviceTimeZone()), timeZone: deviceTimeZone() }),
+  photoHint: photoStorage.uploadHint,
 });
 const plansApi = createPlansApi(httpClient);
 const plans = reatomPlansScreen({
@@ -121,6 +127,7 @@ const home = {
   }),
   pets,
   plans,
+  photoStorage,
 };
 
 telegram.launch();

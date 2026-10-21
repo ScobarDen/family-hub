@@ -14,6 +14,11 @@ import {
 import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
 import { createMemberRepo, createMemberService, memberRoute } from "@/modules/member";
 import { createPetRepo, createPetService, petRoute } from "@/modules/pet";
+import {
+  createPhotoStorageRepo,
+  createPhotoStorageService,
+  photoStorageRoute,
+} from "@/modules/photo-storage";
 import { createPlanRepo, createPlanService, planRoute } from "@/modules/plan";
 import { sessionRoute } from "@/modules/session";
 
@@ -46,6 +51,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
   const db = createDb(env.DB);
   const bot = createBotApi(env.BOT_TOKEN);
   const memberships = createMembershipRepo(db);
+  const shared = { memberships, bot, clock };
   const familyRequests = createFamilyRequestService({
     requests: createFamilyRequestRepo(db),
     memberships,
@@ -76,6 +82,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
     }),
     members: createMemberService({ members: createMemberRepo(db), clock }),
     pets: createPetService({ pets: createPetRepo(db), clock }),
+    photoStorage: createPhotoStorageService({ storage: createPhotoStorageRepo(db), ...shared }),
     plans: createPlanService({ plans: createPlanRepo(db), clock }),
   };
 }
@@ -95,6 +102,7 @@ function createApp(dependencies: WorkerDependencies) {
       context.set("invites", services.invites);
       context.set("members", services.members);
       context.set("pets", services.pets);
+      context.set("photoStorage", services.photoStorage);
       context.set("plans", services.plans);
       await next();
     })
@@ -106,7 +114,8 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", memberRoute)
     .route("/", familyRoute)
     .route("/", petRoute)
-    .route("/", planRoute);
+    .route("/", planRoute)
+    .route("/", photoStorageRoute);
 }
 
 export function createWorker(dependencies: WorkerDependencies): Worker {

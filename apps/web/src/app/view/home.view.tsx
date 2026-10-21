@@ -7,6 +7,7 @@ import type { FamilyModel } from "@/modules/family";
 import type { InvitesModel } from "@/modules/invites";
 import { NotificationsBanner, type NotificationsModel } from "@/modules/notifications";
 import { Pets, type PetsScreenModel } from "@/modules/pets";
+import type { PhotoStorageModel } from "@/modules/photo-storage";
 import { Plans, type PlansScreenModel } from "@/modules/plans";
 import type { SessionModel } from "@/modules/session";
 import { TabBar, TabBarMenu, type TabBarMenuModel, type TabBarModel } from "@/modules/tab-bar";
@@ -27,6 +28,7 @@ export type HomeProps = {
   invites: InvitesModel;
   pets: PetsScreenModel;
   plans: PlansScreenModel;
+  photoStorage: PhotoStorageModel;
 };
 
 function profileOf(props: HomeProps): ReactNode {
