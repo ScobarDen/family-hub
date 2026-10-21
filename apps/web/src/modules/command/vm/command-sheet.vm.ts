@@ -1,6 +1,14 @@
 import { action, atom, computed, noop, withAsyncData, wrap, type Atom } from "@reatom/core";
 
-import type { CommandDraft, CommandOutcome, DraftCreated } from "@family-hub/contract";
+import { draftRefusalTexts } from "@family-hub/commands";
+import {
+  draftRefusal,
+  type CommandDraft,
+  type CommandOutcome,
+  type DraftCreated,
+} from "@family-hub/contract";
+
+import { HttpError } from "@/common/http-client";
 
 import type { CommandApi } from "../command.api.ts";
 import { previewOf, type DraftPreview, type FamilyNames } from "../command.lib.ts";
@@ -37,6 +45,13 @@ function draftOf(phase: Phase): (OpenedDraft & { heard: string | null }) | undef
   return phase.kind === "outcome" && phase.outcome.status === "draft"
     ? { draftId: phase.outcome.draftId, draft: phase.outcome.draft, heard: phase.outcome.heard }
     : undefined;
+}
+
+// The bot words a refused «Создать» the same way; anything else gets the general word.
+function refusalTextOf(error: unknown): string {
+  const refusal = draftRefusal.safeParse(error instanceof HttpError ? error.code : undefined);
+
+  return refusal.success ? draftRefusalTexts[refusal.data] : createFailedText;
 }
 
 function failure(message: string): Phase {
@@ -91,8 +106,8 @@ function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: Ph
 
     try {
       onCreated(await wrap(api.create(opened.draftId)));
-    } catch {
-      phase.set({ ...before, error: createFailedText });
+    } catch (error) {
+      phase.set({ ...before, error: refusalTextOf(error) });
     }
   }, "commandSheet.create");
 

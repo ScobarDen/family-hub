@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import {
   draftPick,
+  type ApiError,
   type CommandOutcome,
   type DraftCreated,
+  type DraftRefusal,
   type FamilyMember,
   type Pet,
   type ReminderDraft,
@@ -64,18 +66,17 @@ function buickPet(id: string, name: string): Pet {
 
 function fakeBackend(outcome: CommandOutcome) {
   const requests: string[] = [];
-  let isRefusesCreate = false;
+  let createFailure: Response | undefined;
   const replies: Record<string, (body: unknown) => Response> = {
     "POST /api/commands/voice": () => Response.json(outcome),
     "GET /api/family/members": () => Response.json(members),
     "GET /api/pets": () => Response.json(pets),
     "GET /api/commands/draft-1": () => Response.json(outcome),
     "POST /api/commands/draft-1/create": () =>
-      isRefusesCreate
-        ? Response.json({ code: "INVALID_REQUEST", message: "" }, { status: 409 })
-        : Response.json({ kind: "reminder", id: "reminder-1" } satisfies DraftCreated, {
-            status: 201,
-          }),
+      createFailure ??
+      Response.json({ kind: "reminder", id: "reminder-1" } satisfies DraftCreated, {
+        status: 201,
+      }),
     "POST /api/commands/draft-1/dismiss": () => Response.json({ status: "dismissed" }),
     "POST /api/commands/draft-1/pick": (body) =>
       Response.json({
@@ -103,8 +104,11 @@ function fakeBackend(outcome: CommandOutcome) {
   return {
     fetch,
     requests,
-    failCreate() {
-      isRefusesCreate = true;
+    refuseCreate(code: DraftRefusal) {
+      createFailure = Response.json({ code, message: "" } satisfies ApiError, { status: 409 });
+    },
+    breakCreate() {
+      createFailure = Response.json({}, { status: 500 });
     },
   };
 }
@@ -164,19 +168,35 @@ describe("the preview sheet", () => {
     });
   });
 
-  test("shows «Создано» at once and brings the draft back when the server refuses", async () => {
+  test("shows «Создано» at once and brings the draft back with the reason the server refused", async () => {
     const { model, backend, created } = startSheet();
 
     await sent(model);
-    backend.failCreate();
+    backend.refuseCreate("RECIPIENTS_NOT_ALLOWED");
     model.create();
 
     expect(model.sheet().kind).toBe("created");
 
     await vi.waitFor(() => {
-      expect(model.sheet()).toMatchObject({ kind: "draft", error: createFailedText });
+      expect(model.sheet()).toMatchObject({
+        kind: "draft",
+        error:
+          "Не получилось создать: кого-то из получателей уже нет в семье. Выберите получателей в «Изменить».",
+      });
     });
     expect(created).toEqual([]);
+  });
+
+  test("brings the draft back with a general word when «Создать» fails for no stated reason", async () => {
+    const { model, backend } = startSheet();
+
+    await sent(model);
+    backend.breakCreate();
+    model.create();
+
+    await vi.waitFor(() => {
+      expect(model.sheet()).toMatchObject({ kind: "draft", error: createFailedText });
+    });
   });
 
   test("tells the app what was created", async () => {

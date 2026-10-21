@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { careDetails, careNoteMaxLength } from "./care-entry.ts";
+import { errorCode } from "./error.ts";
 import {
   eventNoteMaxLength,
   eventReminderMaxCount,
@@ -36,7 +37,7 @@ export const draftAmbiguity = z.object({
 
 export type DraftAmbiguity = z.infer<typeof draftAmbiguity>;
 
-// The fields of the standalone Reminder form; the moment is on the speaker's own clock.
+// The fields of the standalone Reminder form; the moment is in the zone the phrase was said in.
 export const reminderDraft = z.object({
   kind: z.literal("reminder"),
   text: z.string().trim().min(1).max(reminderTextMaxLength).nullable(),
@@ -147,6 +148,16 @@ export type DraftPick = z.infer<typeof draftPick>;
 export const draftCreated = z.object({ kind: commandKind, id: z.string() });
 
 export type DraftCreated = z.infer<typeof draftCreated>;
+
+// Why the use case refused «Создать»: the code the Mini App gets, which the bot words the same way.
+export const draftRefusal = errorCode.extract([
+  "INVALID_REQUEST",
+  "RECIPIENTS_NOT_ALLOWED",
+  "PET_NOT_FOUND",
+  "PET_ARCHIVED",
+]);
+
+export type DraftRefusal = z.infer<typeof draftRefusal>;
 
 // Where the microphone sends a Member whose WebView cannot record: the bot chat.
 export const botChat = z.object({ url: z.url() });

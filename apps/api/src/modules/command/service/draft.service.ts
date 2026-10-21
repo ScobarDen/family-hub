@@ -78,11 +78,18 @@ export async function namesOf(
   return { members: await drafts.membersOf(familyId), pets: await drafts.petsOf(familyId) };
 }
 
+export async function speakerZoneOf(
+  { drafts }: CommandDependencies,
+  { member }: Membership,
+): Promise<string> {
+  return (await drafts.timeZoneOf(member.id)) ?? fallbackTimeZone;
+}
+
 export async function outcomeOf(
   dependencies: CommandDependencies,
   { membership, text }: { membership: Membership; text: string },
 ): Promise<Outcome> {
-  const timeZone = (await dependencies.drafts.timeZoneOf(membership.member.id)) ?? fallbackTimeZone;
+  const timeZone = await speakerZoneOf(dependencies, membership);
   const today = dateInZone(dependencies.clock.now(), timeZone);
   const { members, pets } = await namesOf(dependencies, membership.family.id);
 
@@ -115,6 +122,7 @@ type Handled = {
 };
 
 // Every command handled leaves a row, failed ones too: the rows are the Family's daily count.
+// The row's moment and zone are the phrase's, which «Создать» later reads the draft's dates in.
 export async function record(
   dependencies: CommandDependencies,
   { membership, chatId, source, outcome }: Handled,
@@ -131,6 +139,7 @@ export async function record(
     payload: isDraft ? outcome.draft : null,
     source,
     chatId,
+    timeZone: await speakerZoneOf(dependencies, membership),
     status: isDraft ? "pending" : "failed",
     expiresAt: now + commandDraftLifetimeMs,
     createdAt: now,

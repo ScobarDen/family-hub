@@ -8,7 +8,7 @@ Hold to talk, as in Telegram: `pointerdown` starts recording, `pointerup` sends,
 
 ## Sheet
 
-Shows what was heard and the draft as the bot shows it. A missing field or an unresolved Member takes «Создать» away; candidates are picked right in the sheet. «Создать» shows «Создано» at once and brings the draft back with a word if the server refuses. «×» drops a pending draft. Failures read the same as in the bot: the server sends the text.
+Shows what was heard and the draft as the bot shows it. A missing field or an unresolved Member takes «Создать» away; candidates are picked right in the sheet. «Создать» shows «Создано» at once and brings the draft back if the server refuses, with the bot's words for the refusal's reason. «×» drops a pending draft. Failures read the same as in the bot: the server sends the text.
 
 ## Injected
 

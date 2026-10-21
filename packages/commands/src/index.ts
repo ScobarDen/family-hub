@@ -11,3 +11,4 @@ export {
   type CommandPerson,
   type CommandPet,
 } from "./prompt.ts";
+export { draftRefusalTexts } from "./refusal.ts";

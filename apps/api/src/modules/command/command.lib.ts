@@ -42,7 +42,6 @@ export const notYoursText = "Это не ваш черновик";
 export const staleText = "Черновик устарел";
 export const createdText = "✅ Создано";
 export const dismissedText = "Отменено";
-export const failedText = "Не получилось создать. Попробуйте в приложении через «Изменить».";
 
 export function heardText(phrase: string): string {
   return `🎙 «${phrase}»`;

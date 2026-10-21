@@ -335,6 +335,9 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.9.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@family-hub/commands':
+        specifier: workspace:*
+        version: link:../../packages/commands
       '@family-hub/contract':
         specifier: workspace:*
         version: link:../../packages/contract

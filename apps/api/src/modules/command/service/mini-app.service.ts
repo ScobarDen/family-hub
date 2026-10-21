@@ -1,4 +1,4 @@
-import type { CommandOutcome, DraftCreated } from "@family-hub/contract";
+import type { CommandOutcome } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
 
@@ -74,11 +74,7 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
         outcomeFor({ status: "draft", draft }, { draftId, heard: null }),
       ),
     create: async (membership: Membership, draftId: string) =>
-      withPress(membership, draftId, async (press): Promise<DraftCreated | "failed"> => {
-        const created = await create(dependencies, press);
-
-        return created ?? "failed";
-      }),
+      withPress(membership, draftId, async (press) => create(dependencies, press)),
     pick: async (membership: Membership, { draftId, index }: { draftId: string; index: number }) =>
       withPress(membership, draftId, async (press) => {
         const draft = await pick(dependencies, press, index);

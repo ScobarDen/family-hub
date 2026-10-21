@@ -1,0 +1,1 @@
+ALTER TABLE `command_drafts` ADD `time_zone` text;

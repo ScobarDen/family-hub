@@ -61,6 +61,30 @@ describe("a recording from the Mini App microphone", () => {
     expect(again.status).toBe(404);
   });
 
+  test("names why «Создать» was refused and keeps the draft open", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.hear(phrase);
+    worker.ai.answer({ response: { ...internet, recipientIds: [worker.asyaId] } });
+
+    const outcome = await recorded(worker, denis);
+
+    await request(worker, denis, {
+      method: "DELETE",
+      path: `/api/family/members/${worker.asyaId}`,
+    });
+
+    const refused = await request(worker, denis, {
+      method: "POST",
+      path: `/api/commands/${draftIdOf(outcome)}/create`,
+    });
+    const opened = await request(worker, denis, { path: `/api/commands/${draftIdOf(outcome)}` });
+
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ code: "RECIPIENTS_NOT_ALLOWED" });
+    expect(opened.status).toBe(200);
+  });
+
   test("answers a failure with the bot's words and counts it towards the limit", async () => {
     const worker = await startWithFamily();
 

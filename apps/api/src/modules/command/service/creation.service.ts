@@ -1,9 +1,12 @@
+import type { z } from "zod";
+
 import {
   careEntryChange,
   eventChange,
   reminderChange,
   type CareEntryDraft,
   type CommandDraft,
+  type DraftRefusal,
   type EventDraft,
   type ReminderDraft,
 } from "@family-hub/contract";
@@ -13,32 +16,34 @@ import type { Membership } from "@/common/auth";
 
 import type { CommandDependencies } from "../command.types.ts";
 
-const fallbackTimeZone = "UTC";
+// When and where the phrase was said: a draft confirmed hours later still means that day and zone.
+export type Phrase = { saidAt: number; timeZone: string };
 
-type Creating<Draft> = { membership: Membership; draft: Draft; timeZone: string };
+export type Creation =
+  | { status: "created"; id: string }
+  | { status: "refused"; refusal: DraftRefusal };
 
-async function reminderOf(
-  { reminders }: CommandDependencies,
-  { membership, draft, timeZone }: Creating<ReminderDraft>,
-): Promise<string | undefined> {
-  const change = reminderChange.safeParse({
+type Saved = { status: string; id: string | undefined };
+
+const refusalsByStatus: Partial<Record<string, DraftRefusal>> = {
+  "recipients-not-allowed": "RECIPIENTS_NOT_ALLOWED",
+  "pet-not-found": "PET_NOT_FOUND",
+  archived: "PET_ARCHIVED",
+};
+
+function reminderChangeOf(draft: ReminderDraft, { timeZone }: Phrase) {
+  return reminderChange.safeParse({
     text: draft.text,
     start: { date: draft.date, time: draft.time, timeZone },
     recurrence: draft.recurrence,
     visibility: draft.visibility,
     recipientIds: draft.recipientIds,
   });
-  const result = change.success ? await reminders.create(membership, change.data) : undefined;
-
-  return result?.status === "ok" ? result.reminder?.id : undefined;
 }
 
-// An all-day Event keeps a floating date; a timed one is a moment in the speaker's zone.
-async function eventOf(
-  { events }: CommandDependencies,
-  { membership, draft, timeZone }: Creating<EventDraft>,
-): Promise<string | undefined> {
-  const change = eventChange.safeParse({
+// An all-day Event keeps a floating date; a timed one is a moment in the phrase's zone.
+function eventChangeOf(draft: EventDraft, { timeZone }: Phrase) {
+  return eventChange.safeParse({
     title: draft.title,
     note: draft.note,
     start: {
@@ -51,52 +56,68 @@ async function eventOf(
     visibility: draft.visibility,
     reminderOffsets: draft.reminderOffsets,
   });
-  const result = change.success ? await events.create(membership, change.data) : undefined;
-
-  return result?.status === "ok" ? result.event?.id : undefined;
 }
 
-// No date is now; «вчера» alone keeps the time of day it was said at.
-function occurredAtOf(
-  { date, time }: CareEntryDraft,
-  { now, timeZone }: { now: number; timeZone: string },
-): number {
+// No date is the moment it was said; «вчера» alone keeps the time of day it was said at.
+function occurredAtOf({ date, time }: CareEntryDraft, { saidAt, timeZone }: Phrase): number {
   return date === null
-    ? now
-    : occurrenceMoment(date, { time: time ?? timeInZone(now, timeZone), timeZone });
+    ? saidAt
+    : occurrenceMoment(date, { time: time ?? timeInZone(saidAt, timeZone), timeZone });
 }
 
-// The Care Entry use case also derives the Due Date's key, so the entry closes the one before.
-async function careEntryOf(
-  { careEntries, clock }: CommandDependencies,
-  { membership, draft, timeZone }: Creating<CareEntryDraft>,
-): Promise<string | undefined> {
-  const change = careEntryChange.safeParse({
-    occurredAt: occurredAtOf(draft, { now: clock.now(), timeZone }),
+function careEntryChangeOf(draft: CareEntryDraft, phrase: Phrase) {
+  return careEntryChange.safeParse({
+    occurredAt: occurredAtOf(draft, phrase),
     note: draft.note,
     details: draft.details,
     photoIds: [],
   });
-  const result =
-    change.success && draft.petId !== null
-      ? await careEntries.create(membership, draft.petId, change.data)
-      : undefined;
+}
 
-  return result?.status === "ok" ? result.entry?.id : undefined;
+async function saved<Change>(
+  change: z.ZodSafeParseResult<Change>,
+  save: (valid: Change) => Promise<Saved>,
+): Promise<Creation> {
+  if (!change.success) {
+    return { status: "refused", refusal: "INVALID_REQUEST" };
+  }
+
+  const { status, id } = await save(change.data);
+
+  return status === "ok" && id !== undefined
+    ? { status: "created", id }
+    : { status: "refused", refusal: refusalsByStatus[status] ?? "INVALID_REQUEST" };
 }
 
 // «Создать» goes through the same use case as the Mini App form of the draft's kind.
 export async function createRecord(
-  dependencies: CommandDependencies,
-  { membership, draft }: { membership: Membership; draft: CommandDraft },
-): Promise<string | undefined> {
-  const timeZone = (await dependencies.drafts.timeZoneOf(membership.member.id)) ?? fallbackTimeZone;
-
+  { reminders, events, careEntries }: CommandDependencies,
+  { membership, draft, phrase }: { membership: Membership; draft: CommandDraft; phrase: Phrase },
+): Promise<Creation> {
   if (draft.kind === "care_entry") {
-    return careEntryOf(dependencies, { membership, draft, timeZone });
+    const { petId } = draft;
+
+    // The Care Entry use case also derives the Due Date's key, so the entry closes the one before.
+    return petId === null
+      ? { status: "refused", refusal: "INVALID_REQUEST" }
+      : saved(careEntryChangeOf(draft, phrase), async (change) => {
+          const result = await careEntries.create(membership, petId, change);
+
+          return { status: result.status, id: result.entry?.id };
+        });
   }
 
-  return draft.kind === "event"
-    ? eventOf(dependencies, { membership, draft, timeZone })
-    : reminderOf(dependencies, { membership, draft, timeZone });
+  if (draft.kind === "event") {
+    return saved(eventChangeOf(draft, phrase), async (change) => {
+      const result = await events.create(membership, change);
+
+      return { status: result.status, id: result.event?.id };
+    });
+  }
+
+  return saved(reminderChangeOf(draft, phrase), async (change) => {
+    const result = await reminders.create(membership, change);
+
+    return { status: result.status, id: result.reminder?.id };
+  });
 }
