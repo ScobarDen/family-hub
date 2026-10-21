@@ -51,17 +51,6 @@ async function withRecipients(db: Db, row: ReminderRow): Promise<ReminderWithRec
   return { reminder: row, recipients: await recipientsOf(db, row) };
 }
 
-// A Member's own zone sits on their row, which belongs to no Family.
-async function timeZoneOf(db: Db, memberId: string): Promise<string | null> {
-  const row = await db
-    .select({ timeZone: members.timeZone })
-    .from(members)
-    .where(eq(members.id, memberId))
-    .get();
-
-  return row?.timeZone ?? null;
-}
-
 // A Private Reminder exists only for its owner.
 async function listVisible(db: Db, familyId: string, memberId: string) {
   const rows = await db
@@ -126,7 +115,6 @@ async function areMembers(db: Db, familyId: string, memberIds: string[]): Promis
 export function createReminderRepo(db: Db) {
   return {
     familyMembersOf: async (familyId: string) => familyMembersOf(db, familyId),
-    timeZoneOf: async (memberId: string) => timeZoneOf(db, memberId),
     listVisible: async (familyId: string, memberId: string) => listVisible(db, familyId, memberId),
     find: async (reminderTarget: ReminderTarget) => findWhere(db, target(reminderTarget)),
     // The cron and the bot buttons know a Reminder by its id alone; the row names its Family.

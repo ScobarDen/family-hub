@@ -156,9 +156,10 @@ export async function remove(
   }
 
   await dependencies.reminders.delete({ familyId: membership.family.id, reminderId });
-  await dependencies.dispatch.deleteOfSource({
+  await dependencies.dispatch.remove({
     familyId: membership.family.id,
-    sourceId: reminderId,
+    source: "reminder",
+    prefix: reminderId,
   });
 
   return { status: "deleted" };

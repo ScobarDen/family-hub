@@ -1,9 +1,10 @@
 import { BotApiError } from "@/common/telegram";
 
-import { fireAfter, latenessLimitMs, reminderButtons, reminderText } from "../reminder.lib.ts";
-import type { ReminderDependencies } from "../reminder.types.ts";
+import { latenessLimitMs } from "../reminder.lib.ts";
+import type { ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
-import type { ReminderRow } from "../repo/reminder.repo.ts";
+import { fireAfter, zoneOf } from "./schedule.service.ts";
+import { sourceOfRow } from "./source.service.ts";
 
 const batchSize = 50;
 const rateLimitedStatus = 429;
@@ -13,15 +14,17 @@ type Sent = { chatId: number; messageId: number };
 
 type Delivery = { status: "sent"; sent: Sent } | { status: "skipped" } | { status: "rate-limited" };
 
+type Sending = { row: DispatchRow; source: Source; telegramId: number; timeZone: string };
+
 async function send(
   { bot, memberships, clock }: ReminderDependencies,
-  { row, reminder, telegramId }: { row: DispatchRow; reminder: ReminderRow; telegramId: number },
+  { row, source, telegramId, timeZone }: Sending,
 ): Promise<Delivery> {
   try {
     const message = await bot.call("sendMessage", {
       chat_id: telegramId,
-      text: reminderText(reminder.text),
-      reply_markup: reminderButtons(row.id),
+      text: `${source.emoji} ${source.title(row.occurrence ?? "", timeZone)}`,
+      reply_markup: source.buttons(row.id),
     });
 
     return { status: "sent", sent: { chatId: telegramId, messageId: message.message_id } };
@@ -42,18 +45,24 @@ async function send(
   }
 }
 
+// A Reminder more than 12 hours late moves on without a stale message, except a Due Date.
 async function attempt(
   dependencies: ReminderDependencies,
-  { row, reminder, now }: { row: DispatchRow; reminder: ReminderRow; now: number },
+  {
+    row,
+    source,
+    now,
+    timeZone,
+  }: { row: DispatchRow; source: Source; now: number; timeZone: string },
 ): Promise<Delivery> {
   const isLate = now - (row.nextFireAt ?? now) > latenessLimitMs;
   const recipient = await dependencies.memberships.findByMemberId(row.memberId);
 
-  if (isLate || recipient?.member.canMessage !== true) {
+  if ((isLate && source.isSkippedWhenLate) || recipient?.member.canMessage !== true) {
     return { status: "skipped" };
   }
 
-  return send(dependencies, { row, reminder, telegramId: recipient.member.telegramId });
+  return send(dependencies, { row, source, telegramId: recipient.member.telegramId, timeZone });
 }
 
 // Sent or not, the row moves on to the next Occurrence; the message it sent stays answerable.
@@ -61,14 +70,10 @@ async function advance(
   { dispatch, clock }: ReminderDependencies,
   {
     row,
-    reminder,
+    next,
     delivery,
-  }: { row: DispatchRow; reminder: ReminderRow | undefined; delivery: Delivery },
+  }: { row: DispatchRow; next: ReturnType<typeof fireAfter>; delivery: Delivery },
 ): Promise<void> {
-  const next =
-    reminder === undefined || row.occurrence === null
-      ? undefined
-      : fireAfter(reminder, row.occurrence);
   const sentColumns =
     delivery.status === "sent"
       ? { sentOccurrence: row.occurrence, ...delivery.sent, doneAt: null, doneBy: null }
@@ -84,14 +89,20 @@ async function advance(
 }
 
 async function deliver(dependencies: ReminderDependencies, row: DispatchRow, now: number) {
-  const entry = await dependencies.reminders.findById(row.sourceId);
+  const source = await sourceOfRow(dependencies, row);
+  const timeZone = await zoneOf(dependencies, { memberId: row.memberId, source });
   const delivery: Delivery =
-    entry === undefined
+    source === undefined || row.occurrence === null
       ? { status: "skipped" }
-      : await attempt(dependencies, { row, reminder: entry.reminder, now });
+      : await attempt(dependencies, { row, source, now, timeZone });
 
   if (delivery.status !== "rate-limited") {
-    await advance(dependencies, { row, reminder: entry?.reminder, delivery });
+    const next =
+      source === undefined || row.occurrence === null
+        ? undefined
+        : fireAfter(source, { occurrence: row.occurrence, timeZone });
+
+    await advance(dependencies, { row, next, delivery });
   }
 
   return delivery;

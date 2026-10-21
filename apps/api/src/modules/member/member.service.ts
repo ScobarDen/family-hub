@@ -11,7 +11,10 @@ import type { Clock } from "@/common/clock";
 
 import type { MemberRepo, MemberSettingsRow } from "./member.repo.ts";
 
-type MemberServiceDependencies = { members: MemberRepo; clock: Clock };
+// Reminders of floating dates come at 09:00 on the Member's clock, so a new zone retimes them.
+export type MemberSchedule = { zoneChanged(memberId: string): Promise<void> };
+
+type MemberServiceDependencies = { members: MemberRepo; clock: Clock; schedule: MemberSchedule };
 
 function settingsFrom(row: MemberSettingsRow | undefined): MemberSettings {
   return {
@@ -24,7 +27,7 @@ function settingsFrom(row: MemberSettingsRow | undefined): MemberSettings {
   };
 }
 
-export function createMemberService({ members, clock }: MemberServiceDependencies) {
+export function createMemberService({ members, clock, schedule }: MemberServiceDependencies) {
   return {
     settings: async ({ member }: Membership) => settingsFrom(await members.settingsOf(member.id)),
 
@@ -38,6 +41,7 @@ export function createMemberService({ members, clock }: MemberServiceDependencie
 
     async saveTimeZone({ member }: Membership, change: TimeZoneSettings) {
       await members.saveTimeZone(member.id, change, clock.now());
+      await schedule.zoneChanged(member.id);
 
       return change;
     },

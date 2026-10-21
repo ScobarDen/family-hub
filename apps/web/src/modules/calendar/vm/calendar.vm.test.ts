@@ -25,6 +25,7 @@ const call: CalendarEvent = {
   visibility: "shared",
   isOwn: true,
   skippedDates: ["2026-10-08"],
+  reminderOffsets: [],
 };
 
 const buick: Pet = {
@@ -85,10 +86,12 @@ function fakeBackend() {
       ...eventChange.parse(body),
       id: "event-2",
       skippedDates: [],
+      reminderOffsets: [],
     }),
     "POST /api/events/event-1/skip": () => ({
       ...call,
       skippedDates: ["2026-10-08", "2026-10-15"],
+      reminderOffsets: [],
     }),
   };
 
@@ -280,6 +283,41 @@ describe("an Event", () => {
       start: { date: "2026-10-14", time: "20:30", timeZone: "Asia/Tbilisi" },
       recurrence: { frequency: "weekly", until: null },
     });
+  });
+
+  test("reminds at up to three chosen offsets", async () => {
+    const { model, backend } = startCalendar();
+
+    await loaded(model);
+    model.add();
+    model.form.form.fields.title.set("Созвон");
+    model.form.form.fields.timing.set("timed");
+    model.form.form.fields.time.set("19:00");
+
+    for (const offset of ["1w", "1d", "1h", "15m"] as const) {
+      model.form.toggleOffset(offset);
+    }
+
+    model.form.toggleOffset("1d");
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "event" });
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({ reminderOffsets: ["1w", "1h"] });
+  });
+
+  test("offers only whole-day offsets for an all-day Event", async () => {
+    const { model } = startCalendar();
+
+    await loaded(model);
+    model.add();
+
+    expect(model.form.offsets().map(({ title }) => title)).toEqual([
+      "В начале",
+      "За день",
+      "За неделю",
+    ]);
   });
 
   test("keeps a Shared Event Shared when edited", async () => {

@@ -3,26 +3,19 @@ import type { CallbackQuery } from "@grammyjs/types";
 import type { Membership } from "@/common/auth";
 import { ignoringBotErrors } from "@/common/telegram";
 
-import {
-  doneText,
-  fireAfter,
-  notYoursText,
-  parseCallback,
-  snoozedText,
-  snoozeMs,
-} from "../reminder.lib.ts";
-import type { ReminderDependencies } from "../reminder.types.ts";
+import { doneText, notYoursText, parseCallback, snoozedText } from "../reminder.lib.ts";
+import type { ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
-import type { ReminderRow } from "../repo/reminder.repo.ts";
+import { fireAfter, zoneOf } from "./schedule.service.ts";
+import { sourceOfRow } from "./source.service.ts";
 
-type Press = { row: DispatchRow; reminder: ReminderRow; presser: Membership };
+type Press = { row: DispatchRow; source: Source; presser: Membership };
 
 type Closing = ReminderDependencies & Press & { occurrence: string | null; now: number };
 
-async function closeMessage(
-  { dispatch, bot, reminder, presser, now }: Closing,
-  other: DispatchRow,
-) {
+async function closeMessage(closing: Closing, other: DispatchRow) {
+  const { dispatch, bot, source, presser, now, occurrence } = closing;
+
   if (other.chatId === null || other.messageId === null) {
     return;
   }
@@ -31,14 +24,27 @@ async function closeMessage(
     bot.call("editMessageText", {
       chat_id: other.chatId,
       message_id: other.messageId,
-      text: doneText({ text: reminder.text, doneBy: presser.member.name }),
+      text: doneText({
+        text: source.title(
+          occurrence ?? "",
+          await zoneOf(closing, { memberId: other.memberId, source }),
+        ),
+        doneBy: presser.member.name,
+      }),
     }),
   );
   await dispatch.update(other.id, { doneAt: now, doneBy: presser.member.id, updatedAt: now });
 }
 
-async function moveOn({ dispatch, reminder, occurrence, now }: Closing, other: DispatchRow) {
-  const next = occurrence === null ? undefined : fireAfter(reminder, occurrence);
+async function moveOn(closing: Closing, other: DispatchRow) {
+  const { dispatch, source, occurrence, now } = closing;
+  const next =
+    occurrence === null
+      ? undefined
+      : fireAfter(source, {
+          occurrence,
+          timeZone: await zoneOf(closing, { memberId: other.memberId, source }),
+        });
 
   await dispatch.update(other.id, {
     occurrence: next?.occurrence ?? null,
@@ -59,10 +65,11 @@ async function markDone(dependencies: ReminderDependencies, press: Press) {
   };
   const rows = await dependencies.dispatch.ofSource({
     familyId: row.familyId,
-    sourceId: row.sourceId,
+    source: row.source,
+    prefix: row.sourceId,
   });
 
-  for (const other of rows) {
+  for (const other of rows.filter(({ sourceId }) => sourceId === row.sourceId)) {
     if (other.sentOccurrence === closing.occurrence) {
       await closeMessage(closing, other);
     }
@@ -73,45 +80,40 @@ async function markDone(dependencies: ReminderDependencies, press: Press) {
   }
 }
 
-// «Отложить» is the presser's own: their row comes back for the same Occurrence in an hour.
-async function snooze(
-  { dispatch, reminders, bot, clock }: ReminderDependencies,
-  { row, reminder, presser }: Press,
-) {
-  const until = clock.now() + snoozeMs;
-  const timeZone = (await reminders.timeZoneOf(presser.member.id)) ?? reminder.timeZone;
+// «Отложить» is the presser's own: their row comes back for the same Occurrence later.
+async function snooze(dependencies: ReminderDependencies, { row, source, presser }: Press) {
+  const { dispatch, bot, clock } = dependencies;
+  const until = clock.now() + source.snoozeMs;
+  const occurrence = row.sentOccurrence ?? row.occurrence;
+  const timeZone = await zoneOf(dependencies, { memberId: presser.member.id, source });
 
-  await dispatch.update(row.id, {
-    occurrence: row.sentOccurrence ?? row.occurrence,
-    nextFireAt: until,
-    updatedAt: clock.now(),
-  });
+  await dispatch.update(row.id, { occurrence, nextFireAt: until, updatedAt: clock.now() });
 
   if (row.chatId !== null && row.messageId !== null) {
     await ignoringBotErrors(
       bot.call("editMessageText", {
         chat_id: row.chatId,
         message_id: row.messageId,
-        text: snoozedText({ text: reminder.text, until, timeZone }),
+        text: snoozedText({ text: source.title(occurrence ?? "", timeZone), until, timeZone }),
       }),
     );
   }
 }
 
 async function pressOf(
-  { dispatch, reminders, memberships }: ReminderDependencies,
+  dependencies: ReminderDependencies,
   { dispatchId, telegramId }: { dispatchId: string; telegramId: number },
 ): Promise<Press | undefined> {
-  const row = await dispatch.find(dispatchId);
-  const presser = await memberships.findByTelegramId(telegramId);
+  const row = await dependencies.dispatch.find(dispatchId);
+  const presser = await dependencies.memberships.findByTelegramId(telegramId);
 
   if (row === undefined || presser?.member.id !== row.memberId) {
     return undefined;
   }
 
-  const entry = await reminders.findById(row.sourceId);
+  const source = await sourceOfRow(dependencies, row);
 
-  return entry && { row, reminder: entry.reminder, presser };
+  return source && { row, source, presser };
 }
 
 export async function handleReminderCallback(
@@ -134,7 +136,9 @@ export async function handleReminderCallback(
     return;
   }
 
-  await (parsed.action === "done" ? markDone(dependencies, press) : snooze(dependencies, press));
+  await (parsed.action === "done" && press.source.closesForEveryone
+    ? markDone(dependencies, press)
+    : snooze(dependencies, press));
   await ignoringBotErrors(
     dependencies.bot.call("answerCallbackQuery", { callback_query_id: query.id }),
   );

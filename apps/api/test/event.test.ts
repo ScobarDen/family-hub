@@ -17,6 +17,7 @@ const call = {
   end: null,
   recurrence: { frequency: "weekly", until: null },
   visibility: "shared",
+  reminderOffsets: [],
 };
 
 async function request(

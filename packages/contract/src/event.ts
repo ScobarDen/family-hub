@@ -24,6 +24,17 @@ export const frequency = z.enum(["weekly", "monthly", "yearly"]);
 
 export const recurrence = z.object({ frequency, until: date.nullable() });
 
+export const eventReminderOffset = z.enum(["at-start", "15m", "1h", "1d", "1w"]);
+
+export type EventReminderOffset = z.infer<typeof eventReminderOffset>;
+
+export const eventReminderMaxCount = 3;
+
+const reminderOffsets = z
+  .array(eventReminderOffset)
+  .max(eventReminderMaxCount)
+  .refine((offsets) => new Set(offsets).size === offsets.length, "Offsets repeat");
+
 export type Recurrence = z.infer<typeof recurrence>;
 
 export const eventChange = z
@@ -34,6 +45,7 @@ export const eventChange = z
     end: eventEnd.nullable(),
     recurrence: recurrence.nullable(),
     visibility,
+    reminderOffsets: reminderOffsets.default([]),
   })
   .refine(({ start, end }) => end === null || end.date >= start.date, {
     message: "An Event ends after it starts",
@@ -50,6 +62,7 @@ export const calendarEvent = z.object({
   end: eventEnd.nullable(),
   recurrence: recurrence.nullable(),
   visibility,
+  reminderOffsets: z.array(eventReminderOffset),
   isOwn: z.boolean(),
   skippedDates: z.array(date),
 });

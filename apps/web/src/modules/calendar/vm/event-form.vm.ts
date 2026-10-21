@@ -1,7 +1,14 @@
 import { action, atom, computed, noop, reatomForm, wrap, type Atom } from "@reatom/core";
 import { z } from "zod";
 
-import { eventChange, type CalendarEvent, type EventChange } from "@family-hub/contract";
+import {
+  eventChange,
+  eventReminderMaxCount,
+  eventReminderOffset,
+  type CalendarEvent,
+  type EventChange,
+  type EventReminderOffset,
+} from "@family-hub/contract";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
 
@@ -58,7 +65,10 @@ function orNull(text: string): string | null {
 }
 
 // A timed Event keeps the zone it was set in; a new one takes the zone of whoever creates it.
-function changeOf(values: EventValues, timeZone: string): EventChange {
+function changeOf(
+  values: EventValues,
+  { timeZone, reminderOffsets }: { timeZone: string; reminderOffsets: EventReminderOffset[] },
+): EventChange {
   const isTimed = values.timing === "timed";
 
   return eventChange.parse({
@@ -76,6 +86,7 @@ function changeOf(values: EventValues, timeZone: string): EventChange {
     recurrence:
       values.frequency === "" ? null : { frequency: values.frequency, until: orNull(values.until) },
     visibility: values.visibility,
+    reminderOffsets,
   });
 }
 
@@ -107,6 +118,52 @@ function valuesOf(event: CalendarEvent): EventValues {
 
 type EventForm = ReturnType<typeof reatomForm<EventValues>>;
 
+export type OffsetChoice = { offset: EventReminderOffset; title: string; isChosen: boolean };
+
+const offsetTitles: Record<EventReminderOffset, string> = {
+  "at-start": "В начале",
+  "15m": "За 15 минут",
+  "1h": "За час",
+  "1d": "За день",
+  "1w": "За неделю",
+};
+
+// An all-day Event has no start time, so only the day-sized offsets apply to it.
+const allDayOffsets = new Set<EventReminderOffset>(["at-start", "1d", "1w"]);
+
+function offsetsFor(isTimed: boolean): EventReminderOffset[] {
+  return eventReminderOffset.options.filter((offset) => isTimed || allDayOffsets.has(offset));
+}
+
+function applicableOffsets(chosen: EventReminderOffset[], timing: string) {
+  const offsets = offsetsFor(timing === "timed");
+
+  return chosen.filter((offset) => offsets.includes(offset));
+}
+
+function reatomOffsets(form: EventForm, chosen: Atom<EventReminderOffset[]>) {
+  return {
+    offsets: computed(
+      (): OffsetChoice[] =>
+        offsetsFor(form.fields.timing() === "timed").map((offset) => ({
+          offset,
+          title: offsetTitles[offset],
+          isChosen: chosen().includes(offset),
+        })),
+      "calendar.form.offsets",
+    ),
+    toggleOffset: action((offset: EventReminderOffset) => {
+      const current = chosen();
+
+      if (current.includes(offset)) {
+        chosen.set(current.filter((other) => other !== offset));
+      } else if (current.length < eventReminderMaxCount) {
+        chosen.set([...current, offset]);
+      }
+    }, "calendar.form.toggleOffset"),
+  };
+}
+
 function reatomFlags(form: EventForm, edited: Atom<CalendarEvent | undefined>) {
   return {
     isCreating: computed(() => edited() === undefined, "calendar.form.isCreating"),
@@ -127,12 +184,16 @@ function reatomFlags(form: EventForm, edited: Atom<CalendarEvent | undefined>) {
 
 export function reatomEventForm(dependencies: EventFormDependencies) {
   const edited = atom<CalendarEvent | undefined>(undefined, "calendar.form.edited");
+  const chosenOffsets = atom<EventReminderOffset[]>([], "calendar.form.chosenOffsets");
   const form = reatomForm(emptyEvent, {
     name: "calendar.form",
     schema,
     onSubmit: async (values: EventValues) => {
       const event = edited();
-      const change = changeOf(values, event?.start.timeZone ?? dependencies.timeZone());
+      const change = changeOf(values, {
+        timeZone: event?.start.timeZone ?? dependencies.timeZone(),
+        reminderOffsets: applicableOffsets(chosenOffsets(), values.timing),
+      });
       const saved = await wrap(
         event === undefined
           ? dependencies.api.create(change)
@@ -147,12 +208,15 @@ export function reatomEventForm(dependencies: EventFormDependencies) {
   return {
     form,
     ...reatomFlags(form, edited),
+    ...reatomOffsets(form, chosenOffsets),
     startCreating: action((date: string) => {
       edited.set(undefined);
+      chosenOffsets.set([]);
       fillForm(form, { ...emptyEvent, date });
     }, "calendar.form.startCreating"),
     startEditing: action((event: CalendarEvent) => {
       edited.set(event);
+      chosenOffsets.set(event.reminderOffsets);
       fillForm(form, valuesOf(event));
     }, "calendar.form.startEditing"),
     save: action(() => {

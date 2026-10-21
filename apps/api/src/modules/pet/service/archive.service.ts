@@ -3,8 +3,9 @@ import type { Membership } from "@/common/auth";
 import { isSamePetName, toPet } from "../pet.lib.ts";
 import type { PetDependencies, PetRefusal, PetResult } from "../pet.types.ts";
 
+// An archived Pet stops nudging; bringing it back resumes the dates still ahead.
 export async function setArchived(
-  { pets, clock }: PetDependencies,
+  { pets, clock, schedule }: PetDependencies,
   { family }: Membership,
   { petId, isArchived }: { petId: string; isArchived: boolean },
 ): Promise<PetResult> {
@@ -16,13 +17,15 @@ export async function setArchived(
     now,
   });
 
+  await schedule.petChanged(family.id, petId);
+
   return saved ? { status: "ok", pet: toPet(saved) } : { status: "not-found" };
 }
 
 export type DeleteResult = { status: "deleted" } | { status: PetRefusal };
 
 export async function deletePet(
-  { pets }: PetDependencies,
+  { pets, schedule }: PetDependencies,
   { family, isFamilyOwner }: Membership,
   { petId, petName }: { petId: string; petName: string },
 ): Promise<DeleteResult> {
@@ -41,6 +44,7 @@ export async function deletePet(
   }
 
   await pets.delete(family.id, petId);
+  await schedule.petChanged(family.id, petId);
 
   return { status: "deleted" };
 }

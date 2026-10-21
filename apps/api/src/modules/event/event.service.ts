@@ -6,7 +6,10 @@ import type { Clock } from "@/common/clock";
 import { columnsOf, toEvent } from "./event.lib.ts";
 import type { EventRepo, EventRow } from "./event.repo.ts";
 
-type EventDependencies = { events: EventRepo; clock: Clock };
+// The Reminders of an Event live in the reminder module; the app wires this port to it.
+export type EventSchedule = { eventChanged(familyId: string, eventId: string): Promise<void> };
+
+type EventDependencies = { events: EventRepo; clock: Clock; schedule: EventSchedule };
 
 export type EventRefusal = "not-found" | "not-owner" | "visibility-one-way";
 
@@ -52,6 +55,8 @@ async function create(
     updatedAt: now,
   });
 
+  await dependencies.schedule.eventChanged(membership.family.id, id);
+
   return current(dependencies, membership, id);
 }
 
@@ -77,6 +82,8 @@ async function update(
     { ...columnsOf(change), updatedAt: dependencies.clock.now() },
   );
 
+  await dependencies.schedule.eventChanged(membership.family.id, eventId);
+
   return current(dependencies, membership, eventId);
 }
 
@@ -99,6 +106,8 @@ async function skip(
     },
   );
 
+  await dependencies.schedule.eventChanged(membership.family.id, eventId);
+
   return current(dependencies, membership, eventId);
 }
 
@@ -120,6 +129,7 @@ async function remove(
   }
 
   await dependencies.events.delete({ familyId: membership.family.id, eventId });
+  await dependencies.schedule.eventChanged(membership.family.id, eventId);
 
   return { status: "deleted" };
 }

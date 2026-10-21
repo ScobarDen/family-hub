@@ -15,7 +15,7 @@ export async function list({ pets }: PetDependencies, { family }: Membership): P
 }
 
 export async function create(
-  { pets, clock }: PetDependencies,
+  { pets, clock, schedule }: PetDependencies,
   { family, member }: Membership,
   profile: PetProfile,
 ): Promise<Pet> {
@@ -32,6 +32,8 @@ export async function create(
   });
 
   const created = await pets.find(family.id, id);
+
+  await schedule.petChanged(family.id, id);
 
   if (!created) {
     throw new Error("The Pet just added is missing");
@@ -70,7 +72,7 @@ export async function saveProfile(
     return pet;
   }
 
-  return asResult(
+  const result = asResult(
     await dependencies.pets.saveProfile({
       familyId: membership.family.id,
       petId,
@@ -79,6 +81,10 @@ export async function saveProfile(
       now: dependencies.clock.now(),
     }),
   );
+
+  await dependencies.schedule.petChanged(membership.family.id, petId);
+
+  return result;
 }
 
 export async function saveMemo(

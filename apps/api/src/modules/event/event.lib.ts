@@ -11,6 +11,7 @@ export function toEvent(row: EventRow, memberId: string): CalendarEvent {
     end: row.endDate === null ? null : { date: row.endDate, time: row.endTime },
     recurrence: row.frequency === null ? null : { frequency: row.frequency, until: row.until },
     visibility: row.visibility,
+    reminderOffsets: row.reminderOffsets,
     isOwn: row.ownerMemberId === memberId,
     skippedDates: row.skippedDates,
   };
@@ -31,6 +32,7 @@ export function columnsOf(change: EventChange) {
     title: change.title,
     note: change.note,
     visibility: change.visibility,
+    reminderOffsets: change.reminderOffsets,
     startDate: change.start.date,
     startTime: change.start.time,
     timeZone: change.start.timeZone,

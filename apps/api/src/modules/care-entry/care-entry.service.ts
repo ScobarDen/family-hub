@@ -12,7 +12,10 @@ import type { Clock } from "@/common/clock";
 import { columnsOf, openDueDates, summaryOf, toCareEntry, todayIn } from "./care-entry.lib.ts";
 import type { CareEntryRepo } from "./care-entry.repo.ts";
 
-type CareEntryDependencies = { entries: CareEntryRepo; clock: Clock };
+// A new entry may close or move a Due Date, whose Reminders live in the reminder module.
+export type CareSchedule = { petChanged(familyId: string, petId: string): Promise<void> };
+
+type CareEntryDependencies = { entries: CareEntryRepo; clock: Clock; schedule: CareSchedule };
 
 type Range = { from: number; to: number };
 
@@ -67,6 +70,18 @@ async function writableEntry(
   return entry ? writablePet(dependencies, membership, entry.petId) : "not-found";
 }
 
+async function scheduleOfEntry(
+  { entries, schedule }: CareEntryDependencies,
+  { family }: Membership,
+  entryId: string,
+): Promise<void> {
+  const entry = await entries.find(family.id, entryId);
+
+  if (entry !== undefined) {
+    await schedule.petChanged(family.id, entry.petId);
+  }
+}
+
 async function create(
   dependencies: CareEntryDependencies,
   membership: Membership,
@@ -90,6 +105,7 @@ async function create(
     createdBy: membership.member.id,
     updatedAt: now,
   });
+  await dependencies.schedule.petChanged(membership.family.id, petId);
 
   return current(dependencies, membership, id);
 }
@@ -110,6 +126,7 @@ async function update(
     ...valuesOf(change),
     updatedAt: dependencies.clock.now(),
   });
+  await scheduleOfEntry(dependencies, membership, entryId);
 
   return current(dependencies, membership, entryId);
 }
@@ -125,7 +142,13 @@ async function remove(
     return { status: refusal };
   }
 
+  const entry = await dependencies.entries.find(membership.family.id, entryId);
+
   await dependencies.entries.delete(membership.family.id, entryId);
+
+  if (entry !== undefined) {
+    await dependencies.schedule.petChanged(membership.family.id, entry.petId);
+  }
 
   return { status: "deleted" };
 }

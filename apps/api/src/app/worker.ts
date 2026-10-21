@@ -26,6 +26,7 @@ import {
   createDispatchRepo,
   createReminderRepo,
   createReminderService,
+  createSourceRepo,
   reminderRoute,
 } from "@/modules/reminder";
 import { sessionRoute } from "@/modules/session";
@@ -69,17 +70,24 @@ type Shared = { memberships: MembershipRepo; bot: BotApi; clock: Clock };
 // The services of what a Family keeps: its Pets, journal, Plans, Events and Reminders.
 function familyRecordServices(db: Db, shared: Shared) {
   const { clock } = shared;
+  const reminders = createReminderService({
+    reminders: createReminderRepo(db),
+    dispatch: createDispatchRepo(db),
+    sources: createSourceRepo(db),
+    ...shared,
+  });
 
   return {
-    careEntries: createCareEntryService({ entries: createCareEntryRepo(db), clock }),
-    events: createEventService({ events: createEventRepo(db), clock }),
-    pets: createPetService({ pets: createPetRepo(db), clock }),
-    plans: createPlanService({ plans: createPlanRepo(db), ...shared }),
-    reminders: createReminderService({
-      reminders: createReminderRepo(db),
-      dispatch: createDispatchRepo(db),
-      ...shared,
+    reminders,
+    careEntries: createCareEntryService({
+      entries: createCareEntryRepo(db),
+      clock,
+      schedule: reminders,
     }),
+    events: createEventService({ events: createEventRepo(db), clock, schedule: reminders }),
+    pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders }),
+    plans: createPlanService({ plans: createPlanRepo(db), ...shared }),
+    members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
   };
 }
 
@@ -88,6 +96,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
   const bot = createBotApi(env.BOT_TOKEN);
   const memberships = createMembershipRepo(db);
   const shared = { memberships, bot, clock };
+  const records = familyRecordServices(db, shared);
   const familyRequests = createFamilyRequestService({
     requests: createFamilyRequestRepo(db),
     memberships,
@@ -107,7 +116,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       botToken: env.BOT_TOKEN,
       jwtSecret: env.JWT_SECRET,
     }),
-    ...familyRecordServices(db, shared),
+    ...records,
     families: createFamilyService({ families: createFamilyRepo(db), bot, clock }),
     familyRequests,
     invites: createInviteService({
@@ -117,7 +126,6 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       bot,
       clock,
     }),
-    members: createMemberService({ members: createMemberRepo(db), clock }),
     photoStorage: createPhotoStorageService({ storage: createPhotoStorageRepo(db), ...shared }),
   };
 }

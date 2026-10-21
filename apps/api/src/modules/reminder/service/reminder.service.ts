@@ -8,6 +8,7 @@ import type { ReminderDependencies } from "../reminder.types.ts";
 import { handleReminderCallback } from "./callback.service.ts";
 import { create, list, remove, update } from "./crud.service.ts";
 import { deliverDue } from "./delivery.service.ts";
+import { eventChanged, petChanged, zoneChanged } from "./schedule.service.ts";
 
 export function createReminderService(dependencies: ReminderDependencies) {
   return {
@@ -20,6 +21,11 @@ export function createReminderService(dependencies: ReminderDependencies) {
       remove(dependencies, membership, reminderId),
     deliverDue: async () => deliverDue(dependencies),
     handleCallback: async (query: CallbackQuery) => handleReminderCallback(dependencies, query),
+    eventChanged: async (familyId: string, eventId: string) =>
+      eventChanged(dependencies, { familyId, eventId }),
+    petChanged: async (familyId: string, petId: string) =>
+      petChanged(dependencies, { familyId, petId }),
+    zoneChanged: async (memberId: string) => zoneChanged(dependencies, memberId),
   };
 }
 

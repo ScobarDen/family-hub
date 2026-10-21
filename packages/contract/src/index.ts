@@ -34,6 +34,8 @@ export {
   eventDeleted,
   eventEnd,
   eventNoteMaxLength,
+  eventReminderMaxCount,
+  eventReminderOffset,
   eventStart,
   eventTitleMaxLength,
   frequency,
@@ -43,6 +45,7 @@ export {
   type CalendarEventList,
   type EventChange,
   type EventDeleted,
+  type EventReminderOffset,
   type OccurrenceSkip,
   type Recurrence,
 } from "./event.ts";

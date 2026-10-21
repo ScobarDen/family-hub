@@ -14,6 +14,7 @@ import type {
   AppModule,
   CareDetails,
   CareKind,
+  EventReminderOffset,
   ExpenseCategory,
   PetSex,
   PetSpecies,
@@ -225,6 +226,10 @@ export const events = sqliteTable(
     frequency: text("frequency").$type<"weekly" | "monthly" | "yearly">(),
     until: text("until"),
     skippedDates: text("skipped_dates", { mode: "json" }).$type<string[]>().notNull().default([]),
+    reminderOffsets: text("reminder_offsets", { mode: "json" })
+      .$type<EventReminderOffset[]>()
+      .notNull()
+      .default([]),
     createdAt: integer("created_at").notNull(),
     createdBy: text("created_by")
       .notNull()
@@ -275,6 +280,10 @@ export const reminderRecipients = sqliteTable(
   (table) => [primaryKey({ columns: [table.reminderId, table.memberId] })],
 );
 
+// A Pet's Due Dates and an Event's offsets each get their own source id, "<pet>:<entry>" and
+// "<event>:<offset>", so a source's rows are found by that prefix.
+export type DispatchSource = "reminder" | "event" | "pet_birthday" | "pet_due";
+
 // One row per source and Recipient: services set next_fire_at whenever the source changes; the
 // cron only takes due rows, sends and moves them on to the next Occurrence.
 export const reminderDispatch = sqliteTable(
@@ -284,7 +293,7 @@ export const reminderDispatch = sqliteTable(
     familyId: text("family_id")
       .notNull()
       .references(() => families.id, { onDelete: "cascade" }),
-    source: text("source").$type<"reminder">().notNull(),
+    source: text("source").$type<DispatchSource>().notNull(),
     sourceId: text("source_id").notNull(),
     memberId: text("member_id")
       .notNull()

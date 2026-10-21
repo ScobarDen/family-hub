@@ -1,4 +1,5 @@
 export { createDb, type Db } from "./db.lib.ts";
+export type { DispatchSource } from "./schema.ts";
 export {
   careEntries,
   events,
