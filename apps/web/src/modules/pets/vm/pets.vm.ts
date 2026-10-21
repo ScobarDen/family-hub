@@ -175,6 +175,11 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "pets.title"),
+    openedPetId: computed(() => {
+      const current = screen();
+
+      return current.kind === "card" ? current.card.id : undefined;
+    }, "pets.openedPetId"),
     photoHint: computed(() => dependencies.photoHint(), "pets.photoHint"),
     openPlan: action((planId: string) => {
       dependencies.onOpenPlan(planId);

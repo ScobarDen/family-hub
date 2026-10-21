@@ -5,6 +5,7 @@ import { createAuthService, createMembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import { createDb } from "@/common/db";
 import type { BotApi } from "@/common/telegram";
+import { careEntryRoute, createCareEntryRepo, createCareEntryService } from "@/modules/care-entry";
 import { createFamilyRepo, createFamilyService, familyRoute } from "@/modules/family";
 import {
   createFamilyRequestRepo,
@@ -71,6 +72,7 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
       botToken: env.BOT_TOKEN,
       jwtSecret: env.JWT_SECRET,
     }),
+    careEntries: createCareEntryService({ entries: createCareEntryRepo(db), clock }),
     families: createFamilyService({ families: createFamilyRepo(db), bot, clock }),
     familyRequests,
     invites: createInviteService({
@@ -97,6 +99,7 @@ function createApp(dependencies: WorkerDependencies) {
       context.set("clock", services.clock);
       context.set("bot", services.bot);
       context.set("auth", services.auth);
+      context.set("careEntries", services.careEntries);
       context.set("families", services.families);
       context.set("familyRequests", services.familyRequests);
       context.set("invites", services.invites);
@@ -115,7 +118,8 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", familyRoute)
     .route("/", petRoute)
     .route("/", planRoute)
-    .route("/", photoStorageRoute);
+    .route("/", photoStorageRoute)
+    .route("/", careEntryRoute);
 }
 
 export function createWorker(dependencies: WorkerDependencies): Worker {

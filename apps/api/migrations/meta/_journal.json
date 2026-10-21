@@ -64,6 +64,13 @@
       "when": 1792572162511,
       "tag": "0008_plan_pet",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792572741543,
+      "tag": "0009_care_entries",
+      "breakpoints": true
     }
   ]
 }

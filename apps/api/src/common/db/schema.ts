@@ -4,12 +4,21 @@ import {
   index,
   integer,
   primaryKey,
+  real,
   sqliteTable,
   text,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-import type { AppModule, PetSex, PetSpecies, Visibility } from "@family-hub/contract";
+import type {
+  AppModule,
+  CareDetails,
+  CareKind,
+  ExpenseCategory,
+  PetSex,
+  PetSpecies,
+  Visibility,
+} from "@family-hub/contract";
 
 export const members = sqliteTable("members", {
   id: text("id").primaryKey(),
@@ -160,5 +169,38 @@ export const plans = sqliteTable(
   (table) => [
     index("plans_family_id_idx").on(table.familyId),
     index("plans_parent_id_idx").on(table.parentId),
+  ],
+);
+
+// Kind-specific fields live in details (ADR 0001); the columns below are what the app filters,
+// sums or charts on.
+export const careEntries = sqliteTable(
+  "care_entries",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    petId: text("pet_id")
+      .notNull()
+      .references(() => pets.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<CareKind>().notNull(),
+    occurredAt: integer("occurred_at").notNull(),
+    note: text("note"),
+    details: text("details", { mode: "json" }).$type<CareDetails>().notNull(),
+    dueDate: text("due_date"),
+    dueKey: text("due_key"),
+    weightKg: real("weight_kg"),
+    expenseAmount: integer("expense_amount"),
+    expenseCategory: text("expense_category").$type<ExpenseCategory>(),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    index("care_entries_pet_id_occurred_at_idx").on(table.petId, table.occurredAt),
+    index("care_entries_family_id_idx").on(table.familyId),
   ],
 );

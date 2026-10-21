@@ -1,4 +1,5 @@
 export { Button, buttonVariants } from "./button.view.tsx";
+export { ChartContainer, type ChartConfig } from "./chart.view.tsx";
 export { ChoiceField, type Choice } from "./choice-field.view.tsx";
 export { Chip } from "./chip.view.tsx";
 export { FieldError } from "./field-error.view.tsx";

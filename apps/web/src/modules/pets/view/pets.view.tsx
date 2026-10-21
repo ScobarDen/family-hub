@@ -9,7 +9,8 @@ import { PetCard } from "./pet-card.view.tsx";
 import { PetMemoForm } from "./pet-memo-form.view.tsx";
 import { PetProfileForm } from "./pet-profile-form.view.tsx";
 
-export type PetsProps = { model: PetsScreenModel };
+// The journal, its expenses and weight belong to the care module; the page passes them in.
+export type PetsProps = { model: PetsScreenModel; expenses: ReactNode; journal: ReactNode };
 
 type ListScreen = Extract<PetsScreen, { kind: "loading" | "failed" | "empty" | "list" }>;
 
@@ -55,9 +56,9 @@ function PetList({ model, screen }: { model: PetsScreenModel; screen: ListScreen
   );
 }
 
-function contentOf(model: PetsScreenModel, screen: PetsScreen): ReactNode {
+function contentOf({ model, expenses, journal }: PetsProps, screen: PetsScreen): ReactNode {
   if (screen.kind === "card") {
-    return <PetCard card={screen.card} model={model} />;
+    return <PetCard card={screen.card} model={model} expenses={expenses} journal={journal} />;
   }
 
   if (screen.kind === "profile-form") {
@@ -72,6 +73,6 @@ function contentOf(model: PetsScreenModel, screen: PetsScreen): ReactNode {
 }
 
 export const Pets = reatomComponent(
-  ({ model }: PetsProps) => contentOf(model, model.screen()),
+  (props: PetsProps) => contentOf(props, props.model.screen()),
   "Pets",
 );

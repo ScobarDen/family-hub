@@ -19,6 +19,8 @@
     "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
+    "react-is": "catalog:",
+    "recharts": "catalog:",
     "tailwind-merge": "catalog:",
     "temporal-polyfill": "catalog:",
     "zod": "catalog:"

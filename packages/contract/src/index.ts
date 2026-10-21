@@ -1,3 +1,27 @@
+export {
+  careCost,
+  careDetails,
+  careEntry,
+  careEntryChange,
+  careEntryDeleted,
+  careEntryList,
+  careKind,
+  careNoteMaxLength,
+  careTextMaxLength,
+  expenseCategory,
+  expenseRange,
+  expenseSummary,
+  weightMaxKg,
+  type CareCost,
+  type CareDetails,
+  type CareEntry,
+  type CareEntryChange,
+  type CareEntryDeleted,
+  type CareEntryList,
+  type CareKind,
+  type ExpenseCategory,
+  type ExpenseSummary,
+} from "./care-entry.ts";
 export { apiError, errorCode, type ApiError, type ErrorCode } from "./error.ts";
 export {
   familyDeleted,

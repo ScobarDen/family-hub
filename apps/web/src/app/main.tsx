@@ -1,11 +1,13 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { Temporal } from "temporal-polyfill";
 
 import { parseDeepLink } from "@family-hub/contract";
 
 import { deviceTimeZone, today } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { reatomTelegram } from "@/common/telegram";
+import { createCareApi, reatomCare } from "@/modules/care";
 import { createFamilyApi, reatomFamily } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
 import { createInvitesApi, reatomInvites } from "@/modules/invites";
@@ -89,12 +91,32 @@ const pets = reatomPetsScreen({
     plans.addForPet(petId);
   },
 });
+const care = reatomCare({
+  api: createCareApi(httpClient),
+  petId: () => pets.openedPetId(),
+  today: () => today(deviceTimeZone()),
+  now: () => Temporal.Now.plainDateTimeISO(deviceTimeZone()).toString({ smallestUnit: "minute" }),
+  timeZone: deviceTimeZone,
+  telegram,
+});
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,
   tabBar: tabBarModules.modules,
   isSignedIn: () => session.member() !== undefined,
   telegram,
-  nestedBack: { pet: pets, plans },
+  nestedBack: {
+    pet: {
+      canGoBack: () => care.canGoBack() || pets.canGoBack(),
+      back: () => {
+        if (care.canGoBack()) {
+          care.back();
+        } else {
+          pets.back();
+        }
+      },
+    },
+    plans,
+  },
 });
 const timeZone = reatomTimeZone({
   api: createTimeZoneApi(httpClient),
@@ -139,6 +161,7 @@ const home = {
   pets,
   plans,
   photoStorage,
+  care,
 };
 
 telegram.launch();

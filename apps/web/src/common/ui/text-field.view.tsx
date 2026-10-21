@@ -11,7 +11,7 @@ type TextFieldProps = {
   id: string;
   label: string;
   placeholder?: string;
-  type?: "text" | "date";
+  type?: "text" | "date" | "datetime-local";
 };
 
 export const TextField = reatomComponent(

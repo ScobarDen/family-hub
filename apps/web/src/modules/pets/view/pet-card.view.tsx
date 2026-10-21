@@ -1,5 +1,6 @@
 import { reatomComponent } from "@reatom/react";
-import { Images, NotebookPen, Wallet } from "lucide-react";
+import { Images } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Section, SectionItem } from "@/common/ui";
 
@@ -9,10 +10,15 @@ import { PetHeader } from "./pet-header.view.tsx";
 import { PetMemoSection } from "./pet-memo-section.view.tsx";
 import { PetSoon } from "./pet-soon.view.tsx";
 
-type PetCardProps = { card: PetCardData; model: PetsScreenModel };
+type PetCardProps = {
+  card: PetCardData;
+  model: PetsScreenModel;
+  expenses: ReactNode;
+  journal: ReactNode;
+};
 
 export const PetCard = reatomComponent(
-  ({ card, model }: PetCardProps) => (
+  ({ card, model, expenses, journal }: PetCardProps) => (
     <>
       <PetHeader card={card} onEdit={model.editProfile} />
       <PetSoon
@@ -23,15 +29,11 @@ export const PetCard = reatomComponent(
         }}
       />
       <PetMemoSection memo={card.memo} onEdit={model.editMemo} />
-      <Section title="Траты за месяц">
-        <SectionItem icon={Wallet} tone="green" title="Трат пока нет" />
-      </Section>
+      {expenses}
       <Section title="Фото" footer={model.photoHint()}>
         <SectionItem icon={Images} tone="violet" title="Фото пока нет" />
       </Section>
-      <Section title="Журнал">
-        <SectionItem icon={NotebookPen} tone="gray" title="Записей пока нет" />
-      </Section>
+      {journal}
     </>
   ),
   "PetCard",

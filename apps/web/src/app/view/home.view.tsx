@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import type { AppModule } from "@family-hub/contract";
 
+import { Care, ExpensesBlock, JournalBlock, type CareModel } from "@/modules/care";
 import type { FamilyModel } from "@/modules/family";
 import type { InvitesModel } from "@/modules/invites";
 import { NotificationsBanner, type NotificationsModel } from "@/modules/notifications";
@@ -27,6 +28,7 @@ export type HomeProps = {
   family: FamilyModel;
   invites: InvitesModel;
   pets: PetsScreenModel;
+  care: CareModel;
   plans: PlansScreenModel;
   photoStorage: PhotoStorageModel;
 };
@@ -46,9 +48,26 @@ function profileOf(props: HomeProps): ReactNode {
 
 type ModuleContent = { title: string; content: ReactNode };
 
-function contentOf({ pets, plans }: HomeProps, module: AppModule): ModuleContent | undefined {
+function petContentOf(pets: PetsScreenModel, care: CareModel): ModuleContent {
+  if (care.canGoBack()) {
+    return { title: care.title() ?? pets.title(), content: <Care model={care} /> };
+  }
+
+  return {
+    title: pets.title(),
+    content: (
+      <Pets
+        model={pets}
+        expenses={<ExpensesBlock model={care} />}
+        journal={<JournalBlock model={care} />}
+      />
+    ),
+  };
+}
+
+function contentOf({ pets, plans, care }: HomeProps, module: AppModule): ModuleContent | undefined {
   if (module === "pet") {
-    return { title: pets.title(), content: <Pets model={pets} /> };
+    return petContentOf(pets, care);
   }
 
   if (module === "plans") {
