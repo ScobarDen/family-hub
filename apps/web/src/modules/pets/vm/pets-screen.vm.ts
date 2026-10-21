@@ -8,8 +8,8 @@ import {
   toListItem,
   type PetCard,
   type PetListItem,
-  type SoonKind,
   type SoonSource,
+  type SoonTarget,
   type Viewer,
 } from "../pets.lib.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -22,7 +22,7 @@ export type PetsDependencies = {
   viewer: () => Viewer;
   isFamilyOwner: () => boolean;
   soon: (petId: string) => SoonSource[];
-  onOpenSoon: (item: { id: string; kind: SoonKind }) => void;
+  onOpenSoon: (target: SoonTarget) => void;
   onPlan: (petId: string) => void;
 };
 

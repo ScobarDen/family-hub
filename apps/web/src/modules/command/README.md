@@ -17,7 +17,7 @@ Shows what was heard and the draft as the bot shows it: both read it with `previ
 - `botChat` — the bot chat link from `GET /api/commands/bot`, since the Mini App does not know its bot's name.
 - `wait` — the one-second tick of the recording timer.
 - `onRecorded` — the composition root passes the recording to the sheet.
-- `onEdit` — opens the form of the draft's kind; the form reports back so the draft becomes `created`.
+- `onEdit` — the app's opener opens the form of the draft's kind; the form reports back so the draft becomes `created`.
 - `onCreated` — what «Создать» made, for the module that lists it.
 
-A `start_param` `cmd_<draftId>` from the bot's «Изменить» skips the sheet: the composition root opens the draft and goes straight to `onEdit`.
+A `start_param` `cmd_<draftId>` from the bot's «Изменить» skips the sheet: once signed in, the app's opener calls `openForEdit`, which fetches the draft and goes straight to `onEdit`.

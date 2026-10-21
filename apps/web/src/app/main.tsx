@@ -3,8 +3,6 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Temporal } from "temporal-polyfill";
 
-import { parseDeepLink } from "@family-hub/contract";
-
 import { deviceTimeZone, today } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { preparePhoto } from "@/common/photo";
@@ -13,16 +11,11 @@ import { createVoiceRecorder } from "@/common/voice-recorder";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCareApi, reatomCare } from "@/modules/care";
-import {
-  createCommandApi,
-  reatomCommandSheet,
-  reatomMicrophone,
-  type OpenedDraft,
-} from "@/modules/command";
+import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
 import { createDigestApi, reatomDigest } from "@/modules/digest";
 import { createFamilyApi, reatomFamily } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
-import { createFeedApi, reatomFeed, type FeedTarget } from "@/modules/feed";
+import { createFeedApi, reatomFeed } from "@/modules/feed";
 import { createGoalsApi, reatomGoals, reatomGoalsScreen } from "@/modules/goals";
 import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
@@ -41,6 +34,7 @@ import {
 import { createTimeZoneApi, reatomTimeZone } from "@/modules/time-zone";
 
 import { reatomNavigation } from "./app.route.ts";
+import { reatomOpener } from "./opener.vm.ts";
 import { App } from "./view/app.view.tsx";
 
 const root = document.getElementById("root");
@@ -113,8 +107,7 @@ const plans = reatomPlansScreen({
   self: () => session.member()?.member.id,
   timeZone: deviceTimeZone,
   onOpenAlbum: (albumId) => {
-    navigation.openModule("albums");
-    albums.open(albumId);
+    opener.open({ kind: "album", albumId });
   },
 });
 const goalsApi = createGoalsApi(httpClient);
@@ -142,17 +135,11 @@ const pets = reatomPetsScreen({
     })),
     ...care.dueSources(),
   ],
-  onOpenSoon: ({ id, kind }) => {
-    if (kind === "due") {
-      care.followUp(id);
-    } else {
-      navigation.openModule("plans");
-      plans.open(id);
-    }
+  onOpenSoon: (target) => {
+    opener.open(target);
   },
   onPlan: (petId) => {
-    navigation.openModule("plans");
-    plans.addForPet(petId);
+    opener.open({ kind: "plan-for-pet", petId });
   },
 });
 const care = reatomCare({
@@ -179,12 +166,10 @@ const calendar = reatomCalendar({
   timeZone: deviceTimeZone,
   telegram,
   onOpenPet: (petId) => {
-    navigation.openModule("pet");
-    pets.open(petId);
+    opener.open({ kind: "pet", petId });
   },
   onOpenPlan: (planId) => {
-    navigation.openModule("plans");
-    plans.open(planId);
+    opener.open({ kind: "plan", planId });
   },
   self: () => session.member()?.member.id,
   onDraftSaved: (draftId) => {
@@ -192,29 +177,13 @@ const calendar = reatomCalendar({
   },
 });
 
-function editDraft({ draftId, draft }: OpenedDraft) {
-  if (draft.kind === "care_entry") {
-    navigation.openModule("pet");
-
-    // Without a chosen Pet the form has nowhere to write; the Member picks the Pet first.
-    if (draft.petId !== null) {
-      pets.open(draft.petId);
-      care.editDraft({ draftId, draft });
-    }
-
-    return;
-  }
-
-  navigation.openModule("calendar");
-
-  if (draft.kind === "event") {
-    calendar.openEventDraft({ draftId, draft });
-  } else {
-    calendar.openReminderDraft({ draftId, draft });
-  }
-}
-
-const commandSheet = reatomCommandSheet({ api: commandApi, onEdit: editDraft, onCreated: noop });
+const commandSheet = reatomCommandSheet({
+  api: commandApi,
+  onEdit: (opened) => {
+    opener.editDraft(opened);
+  },
+  onCreated: noop,
+});
 const microphone = reatomMicrophone({
   recorder: createVoiceRecorder(),
   telegram,
@@ -227,50 +196,16 @@ const microphone = reatomMicrophone({
   onRecorded: commandSheet.send,
 });
 
-// The Pet's card opens at once; an entry's form follows once the entry is at hand.
-function openPetOf(target: Extract<FeedTarget, { petId: string }>) {
-  navigation.openModule("pet");
-  pets.open(target.petId);
-
-  if (target.kind === "care-entry") {
-    care.openEntry(target.entryId);
-  }
-}
-
-function openFromFeed(target: FeedTarget) {
-  if (target.kind === "plan") {
-    navigation.openModule("plans");
-    plans.open(target.planId);
-  } else if (target.kind === "pet" || target.kind === "care-entry") {
-    openPetOf(target);
-  } else if (target.kind === "goal") {
-    navigation.openModule("goals");
-    goals.open(target.goalId);
-  } else if (target.kind === "album") {
-    navigation.openModule("albums");
-    albums.open(target.albumId);
-  } else if (target.kind === "recipe") {
-    navigation.openModule("recipes");
-    recipes.open(target.recipeId);
-  } else {
-    navigation.openModule("calendar");
-
-    if (target.kind === "event") {
-      calendar.openEvent(target.eventId);
-    }
-  }
-}
-
 const feed = reatomFeed({
   api: createFeedApi(httpClient),
   today: () => today(deviceTimeZone()),
   timeZone: deviceTimeZone,
-  onOpen: openFromFeed,
+  onOpen: (target) => {
+    opener.open(target);
+  },
   telegram,
-  onRecord: ({ petId, entryId }) => {
-    navigation.openModule("pet");
-    pets.open(petId);
-    care.followUp(entryId);
+  onRecord: (due) => {
+    opener.open({ kind: "due-date", ...due });
   },
 });
 const navigation = reatomNavigation({
@@ -295,6 +230,19 @@ const navigation = reatomNavigation({
     albums,
     recipes,
   },
+});
+const opener = reatomOpener({
+  telegram,
+  navigation,
+  isSignedIn: () => session.member() !== undefined,
+  pets,
+  plans,
+  care,
+  calendar,
+  goals,
+  albums,
+  recipes,
+  commandSheet,
 });
 const timeZone = reatomTimeZone({
   api: createTimeZoneApi(httpClient),
@@ -357,35 +305,7 @@ telegram.launch();
 telegram.followColorScheme(document.documentElement);
 telegram.followPlatform(document.documentElement);
 navigation.start();
-
-// The navigation opens the module of a deep link; the module opens the record itself.
-const link = parseDeepLink(telegram.startParam);
-
-if (link?.kind === "plan") {
-  plans.open(link.id);
-} else if (link?.kind === "event") {
-  calendar.openEvent(link.id);
-} else if (link?.kind === "pet") {
-  pets.open(link.id);
-} else if (link?.kind === "goal") {
-  goals.open(link.id);
-}
-
-// A draft or a Care Entry is fetched by its id with the session's token, so it opens once signed in.
-function onceSignedIn(open: (id: string) => void, id: string) {
-  const stopWaiting = session.member.subscribe((member) => {
-    if (member !== undefined) {
-      stopWaiting();
-      open(id);
-    }
-  });
-}
-
-if (link?.kind === "cmd") {
-  onceSignedIn(commandSheet.openForEdit, link.id);
-} else if (link?.kind === "entry") {
-  onceSignedIn(care.openEntry, link.id);
-}
+opener.launch();
 
 timeZone.keepFollowingDevice();
 session.signIn();

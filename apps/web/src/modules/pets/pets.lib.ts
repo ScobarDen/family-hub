@@ -30,6 +30,8 @@ export type Viewer = { today: string; timeZone: string };
 
 export type SoonKind = "plan" | "due";
 
+export type SoonTarget = { kind: "plan"; planId: string } | { kind: "due-date"; entryId: string };
+
 export type SoonSource = { id: string; title: string; dueDate: string | null; kind: SoonKind };
 
 export type SoonItem = {

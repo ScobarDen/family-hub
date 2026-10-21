@@ -1,7 +1,7 @@
 import { action, atom, computed, reatomRoute } from "@reatom/core";
 import { z } from "zod";
 
-import { appModule, parseDeepLink, type AppModule, type DeepLinkKind } from "@family-hub/contract";
+import { appModule, type AppModule } from "@family-hub/contract";
 
 import type { Telegram } from "@/common/telegram";
 
@@ -16,17 +16,9 @@ type NavigationDependencies = {
   base: string;
   tabBar: () => AppModule[];
   isSignedIn: () => boolean;
-  telegram: Pick<Telegram, "startParam" | "backButton" | "settingsButton">;
+  telegram: Pick<Telegram, "backButton" | "settingsButton">;
   // Screens inside a module (a Pet's card among several, a form) step back before the app does.
   nestedBack?: Partial<Record<AppModule, NestedBack>>;
-};
-
-const deepLinkModules: Partial<Record<DeepLinkKind, AppModule>> = {
-  pet: "pet",
-  entry: "pet",
-  event: "calendar",
-  goal: "goals",
-  plan: "plans",
 };
 
 const moduleParams = z.object({ module: appModule });
@@ -108,15 +100,11 @@ function reatomMoves(routes: Routes, tabBar: () => AppModule[]) {
     openTabBarMenu: action(() => {
       routes.tabBarMenu.go();
     }, "navigation.openTabBarMenu"),
-    openDeepLink: action((startParameter: string | undefined) => {
-      const link = parseDeepLink(startParameter);
-      const module = link === undefined ? undefined : deepLinkModules[link.kind];
-
-      if (module !== undefined) {
-        lastTab.set(module);
-        routes.tab.go({ module }, true);
-      }
-    }, "navigation.openDeepLink"),
+    // The Member's tab bar may arrive after the launch, so a launch link always takes the tab's path.
+    openLaunchModule: action((module: AppModule) => {
+      lastTab.set(module);
+      routes.tab.go({ module }, true);
+    }, "navigation.openLaunchModule"),
     leaveProfile: action(() => {
       const module = lastTab();
 
@@ -161,7 +149,7 @@ export function reatomNavigation({
 }: NavigationDependencies) {
   const routes = reatomRoutes(base);
   const screen = reatomScreen(routes, tabBar);
-  const { leaveProfile, openDeepLink, ...moves } = reatomMoves(routes, tabBar);
+  const { leaveProfile, ...moves } = reatomMoves(routes, tabBar);
   const back = reatomBack({
     screen,
     nestedBack,
@@ -179,12 +167,14 @@ export function reatomNavigation({
       return current.kind === "module" && current.isOnTabBar ? current.module : undefined;
     }, "navigation.activeModule"),
     hasProfileButton: !telegram.settingsButton.isAvailable,
+    shownModule: computed(() => {
+      const current = screen();
+
+      return current.kind === "module" ? current.module : undefined;
+    }, "navigation.shownModule"),
     ...moves,
 
-    // telegram.startParam was read when the wrapper was built, before this first navigation.
     start(): () => void {
-      openDeepLink(telegram.startParam);
-
       const stopBack = telegram.backButton.follow(() => isSignedIn() && back.isVisible(), back);
       const stopSettings = telegram.settingsButton.follow(isSignedIn, moves.openProfile);
 

@@ -97,6 +97,12 @@ function reatomBrowsing(
     showAll: action(() => {
       isListShown.set(true);
     }, "pets.showAll"),
+    // The only Pet in care is the choice itself, so its card opens straight away.
+    showChoice: action(() => {
+      editing.set(undefined);
+      isListShown.set(false);
+      openedPetId.set(undefined);
+    }, "pets.showChoice"),
     canGoBack: computed(
       () =>
         editing() !== undefined ||
@@ -118,8 +124,10 @@ function reatomBrowsing(
 
 function reatomLinks(dependencies: PetsDependencies) {
   return {
-    openSoon: action((item: { id: string; kind: SoonKind }) => {
-      dependencies.onOpenSoon(item);
+    openSoon: action(({ id, kind }: { id: string; kind: SoonKind }) => {
+      dependencies.onOpenSoon(
+        kind === "plan" ? { kind: "plan", planId: id } : { kind: "due-date", entryId: id },
+      );
     }, "pets.openSoon"),
     plan: action((petId: string) => {
       dependencies.onPlan(petId);
