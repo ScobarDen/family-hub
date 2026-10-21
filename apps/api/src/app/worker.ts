@@ -20,7 +20,7 @@ import {
   createFamilyRequestService,
   familyRequestRoute,
 } from "@/modules/family-request";
-import { createFeedRepo, createFeedService, feedRoute } from "@/modules/feed";
+import { createFeedRepo, createFeedService, feedRoute, type FeedService } from "@/modules/feed";
 import { createGoalRepo, createGoalService, goalRoute } from "@/modules/goal";
 import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
 import { createMemberRepo, createMemberService, memberRoute } from "@/modules/member";
@@ -36,7 +36,7 @@ import {
   createPhotoStorageService,
   photoStorageRoute,
 } from "@/modules/photo-storage";
-import { createPlanRepo, createPlanService, planRoute } from "@/modules/plan";
+import { createPlanRepo, createPlanService, planRoute, type PlanService } from "@/modules/plan";
 import {
   createDispatchRepo,
   createReminderRepo,
@@ -106,17 +106,33 @@ function albumServiceOf(
   });
 }
 
-// The services of what a Family keeps: its Pets, journal, Plans, Events and Reminders.
-function familyRecordServices(db: Db, { links, ...shared }: Records) {
-  const { clock } = shared;
-  // A Plan's Reminder completes the Plan from the bot, and the Plan reschedules its Reminders.
-  const reminders = createReminderService({
-    plans: { completeById: async (membership, planId) => plans.completeById(membership, planId) },
+// A Plan's Reminder completes the Plan from the bot, and the Plan reschedules its Reminders;
+// the morning digest reads the Member's Feed.
+function reminderServiceOf(
+  db: Db,
+  { shared, feed, plans }: { shared: Shared; feed: FeedService; plans: () => PlanService },
+) {
+  return createReminderService({
+    plans: { completeById: async (membership, planId) => plans().completeById(membership, planId) },
+    digests: {
+      contentOf: async (memberId) => {
+        const membership = await shared.memberships.findByMemberId(memberId);
+
+        return membership && feed.digestOf(membership);
+      },
+    },
     reminders: createReminderRepo(db),
     dispatch: createDispatchRepo(db),
     sources: createSourceRepo(db),
     ...shared,
   });
+}
+
+// The services of what a Family keeps: its Pets, journal, Plans, Events and Reminders.
+function familyRecordServices(db: Db, { links, ...shared }: Records) {
+  const { clock } = shared;
+  const feed = createFeedService({ feed: createFeedRepo(db), clock, links });
+  const reminders = reminderServiceOf(db, { shared, feed, plans: () => plans });
   const plans = createPlanService({
     plans: createPlanRepo(db),
     ...shared,
@@ -138,7 +154,7 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     events: createEventService({ events: createEventRepo(db), clock, schedule: reminders }),
     pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders, links }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
-    feed: createFeedService({ feed: createFeedRepo(db), clock, links }),
+    feed,
     goals: createGoalService({ goals: createGoalRepo(db), clock }),
     photos: createPhotoService({
       photos: createPhotoRepo(db),

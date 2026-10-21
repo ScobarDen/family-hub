@@ -20,10 +20,20 @@ async function send(
   { bot, memberships, clock }: ReminderDependencies,
   { row, source, telegramId, timeZone }: Sending,
 ): Promise<Delivery> {
+  const occurrence = row.occurrence ?? "";
+  const text =
+    source.compose === undefined
+      ? `${source.emoji} ${source.title(occurrence, timeZone)}`
+      : await source.compose(occurrence, timeZone);
+
+  if (text === undefined) {
+    return { status: "skipped" };
+  }
+
   try {
     const message = await bot.call("sendMessage", {
       chat_id: telegramId,
-      text: `${source.emoji} ${source.title(row.occurrence ?? "", timeZone)}`,
+      text,
       reply_markup: source.buttons(row.id),
     });
 

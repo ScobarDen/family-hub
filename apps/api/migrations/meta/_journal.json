@@ -127,6 +127,13 @@
       "when": 1792582699738,
       "tag": "0017_plan_albums",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1792584675404,
+      "tag": "0018_digest",
+      "breakpoints": true
     }
   ]
 }

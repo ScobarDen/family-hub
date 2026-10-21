@@ -1,6 +1,7 @@
 import { PanelBottom } from "lucide-react";
 
 import { ScreenTitle, Section, SectionItem } from "@/common/ui";
+import { DigestSetting, type DigestModel } from "@/modules/digest";
 import { Family, FamilyExit, type FamilyModel } from "@/modules/family";
 import { Invites, type InvitesModel } from "@/modules/invites";
 import { NotificationsSetting, type NotificationsModel } from "@/modules/notifications";
@@ -14,6 +15,7 @@ type ProfilePageProps = {
   tabBar: TabBarModel;
   notifications: NotificationsModel;
   timeZone: TimeZoneModel;
+  digest: DigestModel;
   family: FamilyModel;
   invites: InvitesModel;
   photoStorage: PhotoStorageModel;
@@ -26,6 +28,7 @@ export function ProfilePage({
   tabBar,
   notifications,
   timeZone,
+  digest,
   family,
   invites,
   photoStorage,
@@ -45,6 +48,7 @@ export function ProfilePage({
       </Section>
       <Section title="Уведомления">
         <NotificationsSetting model={notifications} />
+        <DigestSetting model={digest} />
       </Section>
       <Section title="Время">
         <TimeZone model={timeZone} />

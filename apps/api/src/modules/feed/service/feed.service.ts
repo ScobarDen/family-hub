@@ -103,6 +103,13 @@ async function activityPage(
 
 export function createFeedService(dependencies: FeedDependencies) {
   return {
+    // What the morning digest says: what is overdue and what falls on the Member's today.
+    async digestOf(membership: Membership) {
+      const window = await windowOf(dependencies, membership.member.id);
+      const { overdue, upcoming } = await ahead(dependencies, membership, window);
+
+      return { overdue, today: upcoming.filter(({ date }) => date === window.today) };
+    },
     page: async (membership: Membership, before: string | undefined): Promise<FeedPage> => {
       const page = await activityPage(dependencies, membership, before);
 

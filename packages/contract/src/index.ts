@@ -96,6 +96,8 @@ export {
   familyMember,
   familyMemberList,
   memberSettings,
+  defaultDigestTime,
+  digestSettings,
   tabBar,
   tabBarMaxModules,
   tabBarMinModules,
@@ -105,6 +107,7 @@ export {
   type FamilyMember,
   type FamilyMemberList,
   type MemberSettings,
+  type DigestSettings,
   type TabBarSettings,
   type TimeZoneSettings,
 } from "./member.ts";

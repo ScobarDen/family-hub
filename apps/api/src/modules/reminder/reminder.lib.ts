@@ -85,6 +85,10 @@ export function planButtons(dispatchId: string): InlineKeyboardMarkup {
   };
 }
 
+export function openAppButton({ text, url }: { text: string; url: string }): InlineKeyboardMarkup {
+  return { inline_keyboard: [[{ text, url }]] };
+}
+
 export function dueButtons({ dispatchId, recordUrl }: { dispatchId: string; recordUrl: string }) {
   return {
     inline_keyboard: [

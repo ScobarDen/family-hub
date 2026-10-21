@@ -1,6 +1,6 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import type { Reminder } from "@family-hub/contract";
+import type { FeedUpcoming, Reminder } from "@family-hub/contract";
 
 import type { Membership, MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
@@ -16,7 +16,15 @@ export type PlanCompletion = {
   completeById(membership: Membership, planId: string): Promise<unknown>;
 };
 
+// The digest reads the Feed of its Member; the app wires the feed module in.
+export type DigestContent = {
+  contentOf(
+    memberId: string,
+  ): Promise<{ overdue: FeedUpcoming[]; today: FeedUpcoming[] } | undefined>;
+};
+
 export type ReminderDependencies = {
+  digests: DigestContent;
   plans: PlanCompletion;
   reminders: ReminderRepo;
   dispatch: DispatchRepo;
@@ -51,6 +59,8 @@ export type Source = {
   buttons: (dispatchId: string) => InlineKeyboardMarkup;
   closesForEveryone: boolean;
   complete?: (presser: Membership) => Promise<void>;
+  // A message built when it is due; nothing to say means nothing is sent.
+  compose?: (occurrence: string, timeZone: string) => Promise<string | undefined>;
   snoozeMs: number;
   isSkippedWhenLate: boolean;
 };

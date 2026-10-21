@@ -35,6 +35,8 @@ export const members = sqliteTable("members", {
   timeZone: text("time_zone"),
   isTimeZoneAuto: integer("is_time_zone_auto", { mode: "boolean" }).notNull().default(true),
   canMessage: integer("can_message", { mode: "boolean" }).notNull().default(true),
+  isDigestEnabled: integer("is_digest_enabled", { mode: "boolean" }).notNull().default(true),
+  digestTime: text("digest_time").notNull().default("09:00"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
@@ -294,7 +296,7 @@ export const reminderRecipients = sqliteTable(
 
 // A Pet's Due Dates and an Event's offsets each get their own source id, "<pet>:<entry>" and
 // "<event>:<offset>", so a source's rows are found by that prefix.
-export type DispatchSource = "reminder" | "event" | "pet_birthday" | "pet_due" | "plan";
+export type DispatchSource = "reminder" | "event" | "pet_birthday" | "pet_due" | "plan" | "digest";
 
 // One row per source and Recipient: services set next_fire_at whenever the source changes; the
 // cron only takes due rows, sends and moves them on to the next Occurrence.

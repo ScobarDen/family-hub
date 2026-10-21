@@ -1,12 +1,12 @@
 import { asc, eq, sql } from "drizzle-orm";
 
-import type { AppModule } from "@family-hub/contract";
+import type { AppModule, DigestSettings } from "@family-hub/contract";
 
 import { families, familyMembers, members, type Db } from "@/common/db";
 
 export type MemberSettingsRow = Pick<
   typeof members.$inferSelect,
-  "tabBar" | "timeZone" | "isTimeZoneAuto" | "canMessage"
+  "tabBar" | "timeZone" | "isTimeZoneAuto" | "canMessage" | "isDigestEnabled" | "digestTime"
 >;
 
 type TimeZoneChange = { timeZone: string; isAuto: boolean };
@@ -33,6 +33,8 @@ export function createMemberRepo(db: Db) {
           timeZone: members.timeZone,
           isTimeZoneAuto: members.isTimeZoneAuto,
           canMessage: members.canMessage,
+          isDigestEnabled: members.isDigestEnabled,
+          digestTime: members.digestTime,
         })
         .from(members)
         .where(eq(members.id, memberId))
@@ -45,6 +47,9 @@ export function createMemberRepo(db: Db) {
 
     saveTimeZone: async (memberId: string, { timeZone, isAuto }: TimeZoneChange, now: number) =>
       update(memberId, { timeZone, isTimeZoneAuto: isAuto, updatedAt: now }),
+
+    saveDigest: async (memberId: string, { isEnabled, time }: DigestSettings, now: number) =>
+      update(memberId, { isDigestEnabled: isEnabled, digestTime: time, updatedAt: now }),
 
     listFamily: async (familyId: string) =>
       db

@@ -8,6 +8,8 @@ export type PetRow = typeof pets.$inferSelect;
 
 export type PlanRow = typeof plans.$inferSelect;
 
+export type DigestRow = Pick<typeof members.$inferSelect, "isDigestEnabled" | "digestTime">;
+
 export type DueEntryRow = Pick<
   typeof careEntries.$inferSelect,
   "id" | "petId" | "details" | "dueDate" | "dueKey" | "occurredAt"
@@ -56,6 +58,13 @@ export function createSourceRepo(db: Db) {
 
       return rows.map(({ id }) => id);
     },
+
+    digestOf: async (memberId: string): Promise<DigestRow | undefined> =>
+      db
+        .select({ isDigestEnabled: members.isDigestEnabled, digestTime: members.digestTime })
+        .from(members)
+        .where(eq(members.id, memberId))
+        .get(),
 
     // A Member's own zone sits on their row, which belongs to no Family.
     async timeZoneOf(memberId: string): Promise<string | null> {

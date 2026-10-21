@@ -3,6 +3,7 @@ import { eventReminderOffset } from "@family-hub/contract";
 import type { ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
 import { eventSource, reminderSource } from "./calendar-source.service.ts";
+import { digestSource } from "./digest-source.service.ts";
 import { birthdaySource, dueSource, openDues } from "./pet-source.service.ts";
 import { planOf } from "./plan-source.service.ts";
 
@@ -53,6 +54,19 @@ async function dueOf(
   return entry && dueSource(dependencies, { pet, entry });
 }
 
+// A Member who turned the digest off, or left the Family, has no digest to send.
+export async function digestOf(
+  dependencies: ReminderDependencies,
+  memberId: string,
+): Promise<Source | undefined> {
+  const membership = await dependencies.memberships.findByMemberId(memberId);
+  const settings = await dependencies.sources.digestOf(memberId);
+
+  return membership === undefined || settings?.isDigestEnabled !== true
+    ? undefined
+    : digestSource(dependencies, { memberId, familyId: membership.family.id, settings });
+}
+
 export async function sourceOfRow(
   dependencies: ReminderDependencies,
   { source, sourceId }: Pick<DispatchRow, "source" | "sourceId">,
@@ -67,6 +81,10 @@ export async function sourceOfRow(
 
   if (source === "plan") {
     return planOf(dependencies, sourceId);
+  }
+
+  if (source === "digest") {
+    return digestOf(dependencies, sourceId);
   }
 
   return source === "pet_birthday"

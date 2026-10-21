@@ -6,6 +6,7 @@ import type { AppModule } from "@family-hub/contract";
 import { Albums, type AlbumsScreenModel } from "@/modules/albums";
 import { Calendar, type CalendarModel } from "@/modules/calendar";
 import { Care, ExpensesBlock, JournalBlock, PhotosBlock, type CareModel } from "@/modules/care";
+import type { DigestModel } from "@/modules/digest";
 import type { FamilyModel } from "@/modules/family";
 import { Feed, type FeedModel } from "@/modules/feed";
 import { Goals, type GoalsScreenModel } from "@/modules/goals";
@@ -29,6 +30,7 @@ export type HomeProps = {
   tabBarMenu: TabBarMenuModel;
   notifications: NotificationsModel;
   timeZone: TimeZoneModel;
+  digest: DigestModel;
   family: FamilyModel;
   invites: InvitesModel;
   pets: PetsScreenModel;

@@ -9,7 +9,7 @@ import type { DispatchPlan } from "../repo/dispatch.repo.ts";
 import type { ReminderWithRecipients } from "../repo/reminder.repo.ts";
 import { reminderSource } from "./calendar-source.service.ts";
 import { planSources } from "./plan-source.service.ts";
-import { birthdayOf, dueSources, eventSources, sourceOfRow } from "./source.service.ts";
+import { birthdayOf, digestOf, dueSources, eventSources, sourceOfRow } from "./source.service.ts";
 
 export type Fire = { occurrence: string; fireAt: number };
 
@@ -149,9 +149,26 @@ export async function planChanged(
   });
 }
 
+export async function digestChanged(dependencies: ReminderDependencies, memberId: string) {
+  const membership = await dependencies.memberships.findByMemberId(memberId);
+  const digest = await digestOf(dependencies, memberId);
+
+  if (membership !== undefined) {
+    await scheduleRows(dependencies, {
+      familyId: membership.family.id,
+      kind: "digest",
+      prefix: memberId,
+      sources: digest === undefined ? [] : [digest],
+    });
+  }
+}
+
 // A new zone moves every Reminder of the Member to its time on their new clock.
 export async function zoneChanged(dependencies: ReminderDependencies, memberId: string) {
   const now = dependencies.clock.now();
+
+  // The first zone a Member reports is also when their digest gets its row.
+  await digestChanged(dependencies, memberId);
 
   for (const row of await dependencies.dispatch.ofMember(memberId)) {
     const source = await sourceOfRow(dependencies, row);

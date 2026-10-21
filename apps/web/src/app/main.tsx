@@ -11,6 +11,7 @@ import { reatomTelegram } from "@/common/telegram";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCareApi, reatomCare } from "@/modules/care";
+import { createDigestApi, reatomDigest } from "@/modules/digest";
 import { createFamilyApi, reatomFamily } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
 import { createFeedApi, reatomFeed, type FeedTarget } from "@/modules/feed";
@@ -243,6 +244,10 @@ const home = {
     telegram,
   }),
   timeZone,
+  digest: reatomDigest({
+    api: createDigestApi(httpClient),
+    saved: () => session.member()?.settings.digest,
+  }),
   family: reatomFamily({
     api: createFamilyApi(httpClient),
     telegram,
