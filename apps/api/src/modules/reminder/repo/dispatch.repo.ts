@@ -14,11 +14,11 @@ export type NewRow = {
   nextFireAt: number;
 };
 
-export type OwnerRows = { familyId: string; sources: DispatchSource[]; ownerId: string };
+export type HolderRows = { familyId: string; sources: DispatchSource[]; holderId: string };
 
 type SourceRows = { familyId: string; source: DispatchSource; sourceId: string };
 
-type Replacement = OwnerRows & { rows: NewRow[]; now: number };
+type Replacement = HolderRows & { rows: NewRow[]; now: number };
 
 type Addition = { familyId: string; rows: NewRow[]; now: number };
 
@@ -28,13 +28,13 @@ function isUnlocked(now: number) {
   return or(isNull(reminderDispatch.lockedUntil), lt(reminderDispatch.lockedUntil, now));
 }
 
-function ofOwner({ familyId, sources, ownerId }: OwnerRows) {
+function ofHolder({ familyId, sources, holderId }: HolderRows) {
   return and(
     eq(reminderDispatch.familyId, familyId),
     inArray(reminderDispatch.source, sources),
     or(
-      eq(reminderDispatch.sourceId, ownerId),
-      like(reminderDispatch.sourceId, sourceIdOf(ownerId, "%")),
+      eq(reminderDispatch.sourceId, holderId),
+      like(reminderDispatch.sourceId, sourceIdOf(holderId, "%")),
     ),
   );
 }
@@ -61,10 +61,10 @@ function insertOf(db: Db, { familyId, now }: Addition, { row, id }: { row: NewRo
     .values({ id, familyId, ...row, createdAt: now, updatedAt: now });
 }
 
-// Only the rows of the changed owner are rewritten: D1 writes are the scarce resource.
+// Only the rows of the changed holder are rewritten: D1 writes are the scarce resource.
 async function replace(db: Db, replacement: Replacement, newId: () => string) {
   await db.batch([
-    db.delete(reminderDispatch).where(ofOwner(replacement)),
+    db.delete(reminderDispatch).where(ofHolder(replacement)),
     ...replacement.rows.map((row) => insertOf(db, replacement, { row, id: newId() })),
   ] as const);
 }

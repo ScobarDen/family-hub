@@ -13,7 +13,7 @@ import {
   snoozeMs,
   sourceIdOf,
 } from "../reminder.lib.ts";
-import type { Owner, ReminderDependencies, Source } from "../reminder.types.ts";
+import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { ReminderRow } from "../repo/reminder.repo.ts";
 import type { EventRow } from "../repo/source.repo.ts";
 
@@ -35,7 +35,7 @@ function seriesSteps({ start, frequency, until }: Series, skipped: string[] = []
 
 export async function reminderSources(
   { reminders }: ReminderDependencies,
-  { familyId, id }: Owner,
+  { familyId, id }: SourceHolder,
 ): Promise<Source[]> {
   const found = await reminders.find({ familyId, reminderId: id });
 
@@ -113,9 +113,9 @@ function eventSource(
 // Each offset of an Event is a source of its own, so «Готово» on one leaves the others.
 export async function eventSources(
   dependencies: ReminderDependencies,
-  owner: Owner,
+  holder: SourceHolder,
 ): Promise<Source[]> {
-  const row = await dependencies.sources.event(owner);
+  const row = await dependencies.sources.event(holder);
 
   if (row === undefined) {
     return [];

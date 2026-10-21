@@ -10,13 +10,13 @@ import {
   snoozeMs,
   sourceIdOf,
 } from "../reminder.lib.ts";
-import type { Owner, ReminderDependencies, Source } from "../reminder.types.ts";
+import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";
 
 export async function birthdaySources(
   dependencies: ReminderDependencies,
-  owner: Owner,
+  holder: SourceHolder,
 ): Promise<Source[]> {
-  const pet = await dependencies.sources.pet(owner);
+  const pet = await dependencies.sources.pet(holder);
   const birthDate = pet?.birthDate ?? null;
 
   if (pet === undefined || pet.archivedAt !== null || birthDate === null) {
@@ -72,9 +72,9 @@ async function dueSource(
 
 export async function dueSources(
   dependencies: ReminderDependencies,
-  owner: Owner,
+  holder: SourceHolder,
 ): Promise<Source[]> {
-  const pet = await dependencies.sources.pet(owner);
+  const pet = await dependencies.sources.pet(holder);
 
   if (pet === undefined) {
     return [];
@@ -82,7 +82,7 @@ export async function dueSources(
 
   const dues = openDueDates({
     pets: [pet],
-    entries: await dependencies.sources.dueEntriesOf(owner),
+    entries: await dependencies.sources.dueEntriesOf(holder),
   });
   const recipientIds = await dependencies.sources.memberIdsOf(pet.familyId);
 

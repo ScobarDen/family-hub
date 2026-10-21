@@ -1,7 +1,7 @@
 import { planReminderMoment } from "@family-hub/recurrence";
 
 import { daySnoozeMs, formatFloatingDate, planButtons, sourceIdOf } from "../reminder.lib.ts";
-import type { Owner, ReminderDependencies, Source } from "../reminder.types.ts";
+import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { PlanRow } from "../repo/source.repo.ts";
 
 type PlanStep = { root: PlanRow; row: PlanRow };
@@ -59,10 +59,10 @@ async function planSource(
 
 export async function planSources(
   dependencies: ReminderDependencies,
-  owner: Owner,
+  holder: SourceHolder,
 ): Promise<Source[]> {
-  const rows = await dependencies.sources.planTree(owner);
-  const root = rows.find(({ id }) => id === owner.id);
+  const rows = await dependencies.sources.planTree(holder);
+  const root = rows.find(({ id }) => id === holder.id);
 
   if (root === undefined) {
     return [];

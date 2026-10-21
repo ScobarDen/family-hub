@@ -26,9 +26,9 @@ export type DueEntryRow = Pick<
 
 type InFamily = { familyId: string; id: string };
 
-export type FamilyOwnerKind = "reminder" | "event" | "pet" | "plan";
+export type FamilyHolderKind = "reminder" | "event" | "pet" | "plan";
 
-type FamilyOwner = { kind: FamilyOwnerKind; id: string };
+type FamilyHolder = { kind: FamilyHolderKind; id: string };
 
 async function dueEntriesOf(db: Db, { familyId, id }: InFamily): Promise<DueEntryRow[]> {
   return db
@@ -52,12 +52,12 @@ async function dueEntriesOf(db: Db, { familyId, id }: InFamily): Promise<DueEntr
     .all();
 }
 
-function ownedBy(kind: FamilyOwnerKind, rows: Array<{ id: string }>): FamilyOwner[] {
+function heldBy(kind: FamilyHolderKind, rows: Array<{ id: string }>): FamilyHolder[] {
   return rows.map(({ id }) => ({ kind, id }));
 }
 
 // What a Family keeps that may remind of something; a digest belongs to its Member alone.
-async function ownersOf(db: Db, familyId: string): Promise<FamilyOwner[]> {
+async function holdersOf(db: Db, familyId: string): Promise<FamilyHolder[]> {
   const [reminderRows, eventRows, petRows, planRows] = await Promise.all([
     db.select({ id: reminders.id }).from(reminders).where(eq(reminders.familyId, familyId)).all(),
     db.select({ id: events.id }).from(events).where(eq(events.familyId, familyId)).all(),
@@ -70,10 +70,10 @@ async function ownersOf(db: Db, familyId: string): Promise<FamilyOwner[]> {
   ]);
 
   return [
-    ...ownedBy("reminder", reminderRows),
-    ...ownedBy("event", eventRows),
-    ...ownedBy("pet", petRows),
-    ...ownedBy("plan", planRows),
+    ...heldBy("reminder", reminderRows),
+    ...heldBy("event", eventRows),
+    ...heldBy("pet", petRows),
+    ...heldBy("plan", planRows),
   ];
 }
 
@@ -113,7 +113,7 @@ async function memberIdsOf(db: Db, familyId: string): Promise<string[]> {
 
 export function createSourceRepo(db: Db) {
   return {
-    ownersOf: async (familyId: string) => ownersOf(db, familyId),
+    holdersOf: async (familyId: string) => holdersOf(db, familyId),
     event: async (event: InFamily) => eventOf(db, event),
     pet: async (pet: InFamily) => petOf(db, pet),
     dueEntriesOf: async (pet: InFamily) => dueEntriesOf(db, pet),

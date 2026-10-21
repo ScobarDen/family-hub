@@ -2,7 +2,7 @@ import { uuidv7 } from "@family-hub/contract";
 import { dateInZone, dayBefore } from "@family-hub/recurrence";
 
 import { fallbackTimeZone } from "../reminder.lib.ts";
-import type { Owner, OwnerKind, ReminderDependencies, Source } from "../reminder.types.ts";
+import type { SourceHolder, HolderKind, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow, NewRow } from "../repo/dispatch.repo.ts";
 import { familySources, kindsOf, sourceOfRow, sourcesOf } from "./source.service.ts";
 
@@ -72,10 +72,10 @@ async function rowsOf(
 // Called whenever an owner of sources changes: its rows are rewritten for the Recipients it has now.
 export async function sourceChanged(
   dependencies: ReminderDependencies,
-  owner: Owner & { kind: OwnerKind },
+  holder: SourceHolder & { kind: HolderKind },
 ): Promise<void> {
   const now = dependencies.clock.now();
-  const sources = await sourcesOf(dependencies, owner);
+  const sources = await sourcesOf(dependencies, holder);
   const rows = await Promise.all(
     sources.map(async (source) =>
       rowsOf(dependencies, { source, memberIds: source.recipientIds, now }),
@@ -84,9 +84,9 @@ export async function sourceChanged(
 
   await dependencies.dispatch.replace(
     {
-      familyId: owner.familyId,
-      sources: kindsOf(owner.kind),
-      ownerId: owner.id,
+      familyId: holder.familyId,
+      sources: kindsOf(holder.kind),
+      holderId: holder.id,
       rows: rows.flat(),
       now,
     },

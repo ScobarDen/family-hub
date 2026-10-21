@@ -10,7 +10,7 @@ import type { BotApi } from "@/common/telegram";
 
 import type { DispatchRepo } from "./repo/dispatch.repo.ts";
 import type { ReminderRepo } from "./repo/reminder.repo.ts";
-import type { FamilyOwnerKind, SourceRepo } from "./repo/source.repo.ts";
+import type { FamilyHolderKind, SourceRepo } from "./repo/source.repo.ts";
 
 // «✅ Выполнено» on a Plan's Reminder completes it in the plan module, which the app wires in.
 export type PlanCompletion = {
@@ -45,9 +45,9 @@ export type ReminderRefusal =
 export type ReminderResult = { status: "ok"; reminder: Reminder } | { status: ReminderRefusal };
 
 // A source belongs to a record of the Family, or to a Member for their own digest.
-export type OwnerKind = FamilyOwnerKind | "member";
+export type HolderKind = FamilyHolderKind | "member";
 
-export type Owner = { familyId: string; id: string };
+export type SourceHolder = { familyId: string; id: string };
 
 export type ChangedSource = { kind: "event" | "pet" | "plan"; id: string };
 

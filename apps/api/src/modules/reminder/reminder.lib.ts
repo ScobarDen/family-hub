@@ -19,13 +19,13 @@ const callbackPattern = new RegExp(`^${callbackPrefix}:(done|snooze):(.+)$`);
 
 const sourceIdSeparator = ":";
 
-// An owner with several sources, an Event's offsets or a Pet's Due Dates, tells them apart by a part
+// A holder with several sources, an Event's offsets or a Pet's Due Dates, tells them apart by a part
 // after its own id.
-export function sourceIdOf(ownerId: string, part?: string): string {
-  return part === undefined ? ownerId : `${ownerId}${sourceIdSeparator}${part}`;
+export function sourceIdOf(holderId: string, part?: string): string {
+  return part === undefined ? holderId : `${holderId}${sourceIdSeparator}${part}`;
 }
 
-export function ownerIdOf(sourceId: string): string {
+export function holderIdOf(sourceId: string): string {
   return sourceId.split(sourceIdSeparator)[0] ?? sourceId;
 }
 

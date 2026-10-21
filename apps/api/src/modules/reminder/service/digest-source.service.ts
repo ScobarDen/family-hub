@@ -2,7 +2,7 @@ import type { FeedUpcoming } from "@family-hub/contract";
 import { dayAfter, occurrenceMoment } from "@family-hub/recurrence";
 
 import { formatFloatingDate, openAppButton, snoozeMs, sourceIdOf } from "../reminder.lib.ts";
-import type { Owner, ReminderDependencies, Source } from "../reminder.types.ts";
+import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DigestRow } from "../repo/source.repo.ts";
 
 function lineOf(item: FeedUpcoming, { isOverdue }: { isOverdue: boolean }): string {
@@ -70,7 +70,7 @@ async function digestSource(
 // A Member who turned the digest off, or is no longer in the Family, has no digest to send.
 export async function digestSources(
   dependencies: ReminderDependencies,
-  { familyId, id: memberId }: Owner,
+  { familyId, id: memberId }: SourceHolder,
 ): Promise<Source[]> {
   const membership = await dependencies.memberships.findByMemberId(memberId);
   const settings = await dependencies.sources.digestOf(memberId);
