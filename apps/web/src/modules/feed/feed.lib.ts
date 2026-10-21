@@ -3,7 +3,7 @@ import { dateInZone, dayBefore, timeInZone } from "@family-hub/recurrence";
 
 import { formatDate } from "@/common/format-date";
 
-export type FeedFilter = "all" | "plans" | "calendar" | "pet";
+export type FeedFilter = "all" | "plans" | "calendar" | "pet" | "goals";
 
 export type FeedItem = FeedUpcoming | FeedActivity;
 
@@ -34,6 +34,7 @@ const modules: Record<FeedItem["kind"], FeedFilter> = {
   due: "pet",
   birthday: "pet",
   care: "pet",
+  goal: "goals",
   joined: "all",
 };
 

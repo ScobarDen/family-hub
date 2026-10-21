@@ -5,7 +5,13 @@ import type {
   FeedUpcoming,
 } from "@family-hub/contract";
 
-import type { FeedCareRow, FeedJoinRow, FeedPlanRow } from "./feed.repo.ts";
+import type {
+  FeedCareRow,
+  FeedGoalRow,
+  FeedJoinRow,
+  FeedMovementRow,
+  FeedPlanRow,
+} from "./feed.repo.ts";
 
 export type Cursor = { at: number; key: string };
 
@@ -114,6 +120,60 @@ export function careActivity(rows: FeedCareRow[], petNames: Map<string, string>)
     petId: row.petId,
     entryId: row.id,
   }));
+}
+
+const outcomeTitles = { fulfilled: "Цель исполнена", cancelled: "Цель отменена" } as const;
+
+function movementActivity(movements: FeedMovementRow[], visible: Map<string, FeedGoalRow>) {
+  return movements.flatMap((movement): FeedActivity[] => {
+    const goal = visible.get(movement.goalId);
+    const sign = movement.kind === "contribution" ? "+" : "−";
+
+    return goal === undefined
+      ? []
+      : [
+          {
+            kind: "goal",
+            key: `movement-${movement.id}`,
+            at: movement.createdAt,
+            memberName: movement.memberName,
+            title: `${sign}${rubles.format(movement.amount)} · ${goal.title}`,
+            goalId: goal.id,
+          },
+        ];
+  });
+}
+
+function closedGoalActivity(goals: FeedGoalRow[]): FeedActivity[] {
+  return goals.flatMap((goal): FeedActivity[] =>
+    goal.completedAt === null || goal.outcome === null
+      ? []
+      : [
+          {
+            kind: "goal",
+            key: `goal-${goal.id}`,
+            at: goal.completedAt,
+            memberName: goal.completedByName ?? "",
+            title: `${outcomeTitles[goal.outcome]}: ${goal.title}`,
+            goalId: goal.id,
+          },
+        ],
+  );
+}
+
+// A Private Goal and its money exist only for its owner.
+export function goalActivity(
+  { goals, movements }: { goals: FeedGoalRow[]; movements: FeedMovementRow[] },
+  memberId: string,
+): FeedActivity[] {
+  const visible = goals.filter(
+    ({ visibility, ownerMemberId }) => visibility !== "private" || ownerMemberId === memberId,
+  );
+
+  return [
+    ...movementActivity(movements, new Map(visible.map((goal) => [goal.id, goal]))),
+    ...closedGoalActivity(visible),
+  ];
 }
 
 export function joinActivity(rows: FeedJoinRow[]): FeedActivity[] {

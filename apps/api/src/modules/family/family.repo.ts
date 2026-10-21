@@ -4,6 +4,7 @@ import {
   events,
   families,
   familyMembers,
+  goals,
   invites,
   members,
   plans,
@@ -81,6 +82,21 @@ function departFromReminders(db: Db, { familyId, memberId, now }: Departure) {
   ] as const;
 }
 
+function departFromGoals(db: Db, { familyId, memberId, now }: Departure) {
+  const ofFamily = eq(goals.familyId, familyId);
+  const familyOwner = sql`(select ${families.ownerMemberId} from ${families} where ${families.id} = ${familyId})`;
+
+  return [
+    db
+      .delete(goals)
+      .where(and(ofFamily, eq(goals.ownerMemberId, memberId), eq(goals.visibility, "private"))),
+    db
+      .update(goals)
+      .set({ ownerMemberId: familyOwner, updatedAt: now })
+      .where(and(ofFamily, eq(goals.ownerMemberId, memberId))),
+  ] as const;
+}
+
 // Private records of the one who leaves go, their Shared ones pass to the Family Owner and their
 // reminder_dispatch rows go: every table with owner_member_id or a Recipient joins this batch.
 async function depart(db: Db, departure: Departure): Promise<void> {
@@ -90,6 +106,7 @@ async function depart(db: Db, departure: Departure): Promise<void> {
     ...departFromPlans(db, departure),
     ...departFromEvents(db, departure),
     ...departFromReminders(db, departure),
+    ...departFromGoals(db, departure),
     db
       .delete(familyMembers)
       .where(and(eq(familyMembers.familyId, familyId), eq(familyMembers.memberId, memberId))),

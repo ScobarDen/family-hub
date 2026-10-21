@@ -27,6 +27,12 @@ export const errorCode = z.enum([
   "NOT_REMINDER_OWNER",
   "RECIPIENTS_NOT_ALLOWED",
   "NOT_EVENT_OWNER",
+  "GOAL_NOT_FOUND",
+  "GOAL_COMPLETED",
+  "MOVEMENT_NOT_FOUND",
+  "NOT_MOVEMENT_AUTHOR",
+  "BALANCE_NEGATIVE",
+  "CONTRIBUTOR_NOT_ALLOWED",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

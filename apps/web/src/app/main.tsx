@@ -12,6 +12,7 @@ import { createCareApi, reatomCare } from "@/modules/care";
 import { createFamilyApi, reatomFamily } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
 import { createFeedApi, reatomFeed, type FeedTarget } from "@/modules/feed";
+import { createGoalsApi, reatomGoals, reatomGoalsScreen } from "@/modules/goals";
 import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import { reatomNotifications } from "@/modules/notifications";
@@ -76,6 +77,15 @@ const plans = reatomPlansScreen({
   self: () => session.member()?.member.id,
   timeZone: deviceTimeZone,
 });
+const goalsApi = createGoalsApi(httpClient);
+const goals = reatomGoalsScreen({
+  api: goalsApi,
+  goals: reatomGoals({ api: goalsApi }),
+  telegram,
+  self: () => session.member()?.member.id,
+  today: () => today(deviceTimeZone()),
+  timeZone: deviceTimeZone,
+});
 const petsApi = createPetsApi(httpClient);
 const petsModel = reatomPets({ api: petsApi });
 const pets = reatomPetsScreen({
@@ -138,6 +148,9 @@ function openFromFeed(target: FeedTarget) {
   } else if (target.kind === "pet") {
     navigation.openModule("pet");
     pets.open(target.petId);
+  } else if (target.kind === "goal") {
+    navigation.openModule("goals");
+    goals.open(target.goalId);
   } else {
     navigation.openModule("calendar");
 
@@ -176,6 +189,7 @@ const navigation = reatomNavigation({
     },
     plans,
     calendar,
+    goals,
   },
 });
 const timeZone = reatomTimeZone({
@@ -224,6 +238,7 @@ const home = {
   care,
   calendar,
   feed,
+  goals,
 };
 
 telegram.launch();
@@ -240,6 +255,8 @@ if (link?.kind === "plan") {
   calendar.openEvent(link.id);
 } else if (link?.kind === "pet") {
   pets.open(link.id);
+} else if (link?.kind === "goal") {
+  goals.open(link.id);
 }
 
 timeZone.keepFollowingDevice();

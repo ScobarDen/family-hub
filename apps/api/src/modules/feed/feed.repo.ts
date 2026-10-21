@@ -4,6 +4,8 @@ import {
   careEntries,
   events,
   familyMembers,
+  goalMovements,
+  goals,
   members,
   pets,
   plans,
@@ -22,6 +24,11 @@ export type FeedDueRow = Pick<
 export type FeedCareRow = Pick<
   typeof careEntries.$inferSelect,
   "id" | "petId" | "details" | "createdAt"
+> & { memberName: string };
+export type FeedGoalRow = typeof goals.$inferSelect & { completedByName: string | null };
+export type FeedMovementRow = Pick<
+  typeof goalMovements.$inferSelect,
+  "id" | "goalId" | "kind" | "amount" | "createdAt"
 > & { memberName: string };
 export type FeedJoinRow = { memberId: string; memberName: string; createdAt: number };
 
@@ -95,6 +102,33 @@ async function joinsOf(db: Db, familyId: string): Promise<FeedJoinRow[]> {
     .all();
 }
 
+async function goalsOf(db: Db, familyId: string): Promise<FeedGoalRow[]> {
+  const rows = await db
+    .select({ goal: goals, completedByName: members.name })
+    .from(goals)
+    .leftJoin(members, eq(members.id, goals.completedBy))
+    .where(eq(goals.familyId, familyId))
+    .all();
+
+  return rows.map(({ goal, completedByName }) => ({ ...goal, completedByName }));
+}
+
+async function movementsOf(db: Db, familyId: string): Promise<FeedMovementRow[]> {
+  return db
+    .select({
+      id: goalMovements.id,
+      goalId: goalMovements.goalId,
+      kind: goalMovements.kind,
+      amount: goalMovements.amount,
+      createdAt: goalMovements.createdAt,
+      memberName: members.name,
+    })
+    .from(goalMovements)
+    .innerJoin(members, eq(members.id, goalMovements.memberId))
+    .where(eq(goalMovements.familyId, familyId))
+    .all();
+}
+
 export function createFeedRepo(db: Db) {
   return {
     events: async (viewer: Viewer) =>
@@ -114,6 +148,8 @@ export function createFeedRepo(db: Db) {
     careBefore: async (query: { familyId: string; before: number; limit: number }) =>
       careBefore(db, query),
     joins: async (familyId: string) => joinsOf(db, familyId),
+    goals: async (familyId: string) => goalsOf(db, familyId),
+    movements: async (familyId: string) => movementsOf(db, familyId),
 
     async timeZoneOf(memberId: string): Promise<string | null> {
       const row = await db

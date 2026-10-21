@@ -14,6 +14,7 @@ import {
   familyRequestRoute,
 } from "@/modules/family-request";
 import { createFeedRepo, createFeedService, feedRoute } from "@/modules/feed";
+import { createGoalRepo, createGoalService, goalRoute } from "@/modules/goal";
 import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
 import { createMemberRepo, createMemberService, memberRoute } from "@/modules/member";
 import { createPetRepo, createPetService, petRoute } from "@/modules/pet";
@@ -93,6 +94,7 @@ function familyRecordServices(db: Db, shared: Shared) {
     pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
     feed: createFeedService({ feed: createFeedRepo(db), clock }),
+    goals: createGoalService({ goals: createGoalRepo(db), clock }),
   };
 }
 
@@ -159,6 +161,7 @@ function createApp(dependencies: WorkerDependencies) {
       context.set("photoStorage", services.photoStorage);
       context.set("plans", services.plans);
       context.set("feed", services.feed);
+      context.set("goals", services.goals);
       context.set("reminders", services.reminders);
       await next();
     })
@@ -172,6 +175,7 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", petRoute)
     .route("/", planRoute)
     .route("/", feedRoute)
+    .route("/", goalRoute)
     .route("/", photoStorageRoute)
     .route("/", careEntryRoute)
     .route("/", eventRoute)

@@ -16,6 +16,10 @@ import type {
   CareKind,
   EventReminderOffset,
   ExpenseCategory,
+  GoalColor,
+  GoalIcon,
+  GoalOutcome,
+  MovementKind,
   PetSex,
   PetSpecies,
   PlanReminder,
@@ -315,4 +319,58 @@ export const reminderDispatch = sqliteTable(
     index("reminder_dispatch_next_fire_at_idx").on(table.nextFireAt),
     index("reminder_dispatch_source_idx").on(table.source, table.sourceId),
   ],
+);
+
+// Balance and Achieved are computed from the movements; only closing a Goal by hand is stored.
+export const goals = sqliteTable(
+  "goals",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    ownerMemberId: text("owner_member_id").references(() => members.id),
+    visibility: text("visibility").$type<Visibility>().notNull(),
+    title: text("title").notNull(),
+    target: integer("target").notNull(),
+    deadline: text("deadline"),
+    icon: text("icon").$type<GoalIcon>().notNull(),
+    color: text("color").$type<GoalColor>().notNull(),
+    note: text("note"),
+    completedAt: integer("completed_at"),
+    completedBy: text("completed_by").references(() => members.id),
+    outcome: text("outcome").$type<GoalOutcome>(),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("goals_family_id_idx").on(table.familyId)],
+);
+
+export const goalMovements = sqliteTable(
+  "goal_movements",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    goalId: text("goal_id")
+      .notNull()
+      .references(() => goals.id, { onDelete: "cascade" }),
+    kind: text("kind").$type<MovementKind>().notNull(),
+    amount: integer("amount").notNull(),
+    date: text("date").notNull(),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id),
+    comment: text("comment"),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [index("goal_movements_goal_id_idx").on(table.goalId)],
 );

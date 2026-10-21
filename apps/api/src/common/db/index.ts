@@ -6,6 +6,8 @@ export {
   families,
   familyMembers,
   familyRequests,
+  goalMovements,
+  goals,
   invites,
   members,
   pets,

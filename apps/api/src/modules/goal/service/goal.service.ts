@@ -1,0 +1,32 @@
+import type { GoalChange, GoalOutcome, MovementChange } from "@family-hub/contract";
+
+import type { Membership } from "@/common/auth";
+
+import type { GoalDependencies } from "../goal.types.ts";
+import { complete, create, list, update } from "./goal-root.service.ts";
+import { addMovement, removeMovement, updateMovement } from "./movement.service.ts";
+
+type MovementTarget = { goalId: string; movementId: string };
+
+export function createGoalService(dependencies: GoalDependencies) {
+  return {
+    list: async (membership: Membership) => list(dependencies, membership),
+    create: async (membership: Membership, change: GoalChange) =>
+      create(dependencies, membership, change),
+    update: async (membership: Membership, goalId: string, change: GoalChange) =>
+      update(dependencies, membership, { goalId, change }),
+    complete: async (membership: Membership, goalId: string, outcome: GoalOutcome) =>
+      complete(dependencies, membership, { goalId, outcome }),
+    addMovement: async (membership: Membership, goalId: string, change: MovementChange) =>
+      addMovement(dependencies, membership, { goalId, change }),
+    updateMovement: async (
+      membership: Membership,
+      target: MovementTarget,
+      change: MovementChange,
+    ) => updateMovement(dependencies, membership, { ...target, change }),
+    removeMovement: async (membership: Membership, target: MovementTarget) =>
+      removeMovement(dependencies, membership, target),
+  };
+}
+
+export type GoalService = ReturnType<typeof createGoalService>;

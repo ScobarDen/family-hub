@@ -7,6 +7,7 @@ import type { Clock } from "@/common/clock";
 import {
   byDateAndTime,
   careActivity,
+  goalActivity,
   joinActivity,
   pageOf,
   parseCursor,
@@ -69,7 +70,7 @@ async function activityPage(
   before: string | undefined,
 ) {
   const cursor = parseCursor(before);
-  const [care, pets, plans, joins] = await Promise.all([
+  const [care, pets, plans, joins, goals, movements] = await Promise.all([
     feed.careBefore({
       familyId: family.id,
       before: cursor?.at ?? clock.now(),
@@ -78,6 +79,8 @@ async function activityPage(
     feed.petsOf(family.id),
     feed.plans(family.id),
     feed.joins(family.id),
+    feed.goals(family.id),
+    feed.movements(family.id),
   ]);
   const petNames = new Map(pets.map(({ id, name }) => [id, name]));
 
@@ -85,6 +88,7 @@ async function activityPage(
     [
       ...careActivity(care, petNames),
       ...planActivity(visibleTrees(plans, member.id)),
+      ...goalActivity({ goals, movements }, member.id),
       ...joinActivity(joins),
     ],
     { cursor, size: feedPageSize },

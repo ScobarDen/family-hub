@@ -9,7 +9,8 @@ export type FeedTarget =
   | { kind: "plan"; planId: string }
   | { kind: "event"; eventId: string }
   | { kind: "calendar" }
-  | { kind: "pet"; petId: string };
+  | { kind: "pet"; petId: string }
+  | { kind: "goal"; goalId: string };
 
 export type FeedDependencies = {
   api: FeedApi;
@@ -24,6 +25,7 @@ export const feedFilters: Array<{ value: FeedFilter; title: string }> = [
   { value: "plans", title: "Планы" },
   { value: "calendar", title: "Календарь" },
   { value: "pet", title: "Питомец" },
+  { value: "goals", title: "Цели" },
 ];
 
 function targetOf(item: FeedItem): FeedTarget | undefined {
@@ -37,6 +39,10 @@ function targetOf(item: FeedItem): FeedTarget | undefined {
 
   if (item.kind === "reminder") {
     return { kind: "calendar" };
+  }
+
+  if (item.kind === "goal") {
+    return { kind: "goal", goalId: item.goalId };
   }
 
   return item.kind === "joined" ? undefined : { kind: "pet", petId: item.petId };

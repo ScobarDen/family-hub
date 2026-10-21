@@ -9,6 +9,7 @@ import {
   ListTodo,
   NotebookPen,
   PawPrint,
+  PiggyBank,
   Syringe,
   TriangleAlert,
   UserPlus,
@@ -27,6 +28,7 @@ const icons: Record<FeedRow["kind"], LucideIcon> = {
   due: Syringe,
   birthday: Cake,
   care: PawPrint,
+  goal: PiggyBank,
   done: CircleCheck,
   joined: UserPlus,
 };
@@ -38,6 +40,7 @@ const tones: Record<FeedRow["kind"], IconTone> = {
   due: "orange",
   birthday: "pink",
   care: "orange",
+  goal: "teal",
   done: "green",
   joined: "blue",
 };
