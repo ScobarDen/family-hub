@@ -3,7 +3,14 @@ import { action, atom, computed, type Atom } from "@reatom/core";
 import type { Pet } from "@family-hub/contract";
 
 import type { PetsApi } from "../pets.api.ts";
-import { toCard, toListItem, type PetCard, type PetListItem, type Viewer } from "../pets.lib.ts";
+import {
+  toCard,
+  toListItem,
+  type PetCard,
+  type PetListItem,
+  type SoonSource,
+  type Viewer,
+} from "../pets.lib.ts";
 import type { PetsModel } from "../pets.model.ts";
 import { reatomPetMemoForm } from "./pet-memo-form.vm.ts";
 import { reatomPetProfileForm } from "./pet-profile-form.vm.ts";
@@ -24,6 +31,9 @@ type PetsDependencies = {
   pets: PetsModel;
   viewer: () => Viewer;
   photoHint: () => string | undefined;
+  soonPlans: (petId: string) => SoonSource[];
+  onOpenPlan: (planId: string) => void;
+  onPlan: (petId: string) => void;
 };
 
 type Navigation = {
@@ -40,7 +50,7 @@ function reatomOpenedPet({ pets }: PetsDependencies, { openedPetId }: Navigation
 }
 
 function reatomScreen(
-  { pets, viewer }: PetsDependencies,
+  { pets, viewer, soonPlans }: PetsDependencies,
   { editing }: Navigation,
   { openedPet, isCreating }: { openedPet: () => Pet | undefined; isCreating: () => boolean },
 ) {
@@ -66,7 +76,7 @@ function reatomScreen(
     const pet = openedPet();
 
     if (pet !== undefined) {
-      return { kind: "card", card: toCard(pet, viewer()) };
+      return { kind: "card", card: toCard(pet, viewer(), soonPlans(pet.id)) };
     }
 
     const active = pets.active();
@@ -166,6 +176,12 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
     screen,
     title: computed(() => titleOf(screen()), "pets.title"),
     photoHint: computed(() => dependencies.photoHint(), "pets.photoHint"),
+    openPlan: action((planId: string) => {
+      dependencies.onOpenPlan(planId);
+    }, "pets.openPlan"),
+    plan: action((petId: string) => {
+      dependencies.onPlan(petId);
+    }, "pets.plan"),
     ...forms,
     canGoBack: computed(
       () =>

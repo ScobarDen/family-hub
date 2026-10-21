@@ -57,14 +57,7 @@ function PetList({ model, screen }: { model: PetsScreenModel; screen: ListScreen
 
 function contentOf(model: PetsScreenModel, screen: PetsScreen): ReactNode {
   if (screen.kind === "card") {
-    return (
-      <PetCard
-        card={screen.card}
-        photoHint={model.photoHint()}
-        onEditProfile={model.editProfile}
-        onEditMemo={model.editMemo}
-      />
-    );
+    return <PetCard card={screen.card} model={model} />;
   }
 
   if (screen.kind === "profile-form") {

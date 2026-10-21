@@ -1,11 +1,12 @@
 import { and, asc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
-import { familyMembers, members, plans, type Db } from "@/common/db";
+import { familyMembers, members, pets, plans, type Db } from "@/common/db";
 
 export type PlanRow = typeof plans.$inferSelect & {
   assigneeName: string | null;
   completedByName: string | null;
+  petName: string | null;
 };
 
 export type PlanTree = { root: PlanRow; subplans: PlanRow[] };
@@ -17,18 +18,25 @@ const completers = alias(members, "completers");
 
 async function selectWhere(db: Db, condition: SQL | undefined): Promise<PlanRow[]> {
   const rows = await db
-    .select({ plan: plans, assigneeName: assignees.name, completedByName: completers.name })
+    .select({
+      plan: plans,
+      assigneeName: assignees.name,
+      completedByName: completers.name,
+      petName: pets.name,
+    })
     .from(plans)
     .leftJoin(assignees, eq(assignees.id, plans.assigneeMemberId))
     .leftJoin(completers, eq(completers.id, plans.completedBy))
+    .leftJoin(pets, eq(pets.id, plans.petId))
     .where(condition)
     .orderBy(asc(plans.createdAt))
     .all();
 
-  return rows.map(({ plan, assigneeName, completedByName }) => ({
+  return rows.map(({ plan, assigneeName, completedByName, petName }) => ({
     ...plan,
     assigneeName,
     completedByName,
+    petName,
   }));
 }
 
@@ -81,6 +89,16 @@ async function findTree(db: Db, familyId: string, planId: string): Promise<PlanT
   return { root, subplans: await selectWhere(db, inFamily(familyId, eq(plans.parentId, planId))) };
 }
 
+async function hasPet(db: Db, familyId: string, petId: string): Promise<boolean> {
+  const row = await db
+    .select({ id: pets.id })
+    .from(pets)
+    .where(and(eq(pets.familyId, familyId), eq(pets.id, petId)))
+    .get();
+
+  return row !== undefined;
+}
+
 async function isInFamily(db: Db, familyId: string, memberId: string): Promise<boolean> {
   const row = await db
     .select({ memberId: familyMembers.memberId })
@@ -113,6 +131,7 @@ export function createPlanRepo(db: Db) {
     findTree: async (familyId: string, planId: string) => findTree(db, familyId, planId),
 
     isInFamily: async (familyId: string, memberId: string) => isInFamily(db, familyId, memberId),
+    hasPet: async (familyId: string, petId: string) => hasPet(db, familyId, petId),
 
     async add(plan: typeof plans.$inferInsert): Promise<void> {
       await db.insert(plans).values(plan);

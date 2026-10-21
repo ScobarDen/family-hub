@@ -17,12 +17,19 @@ import type { PlansModel } from "../plans.model.ts";
 
 type PlanFormDependencies = {
   api: PlansApi;
-  plans: Pick<PlansModel, "keep" | "members">;
+  plans: Pick<PlansModel, "keep" | "members" | "pets">;
   self: () => string | undefined;
   onSaved: (plan: Plan) => void;
 };
 
-const emptyPlan = { title: "", note: "", dueDate: "", assigneeId: "", visibility: "shared" };
+const emptyPlan = {
+  title: "",
+  note: "",
+  dueDate: "",
+  assigneeId: "",
+  visibility: "shared",
+  petId: "",
+};
 
 type PlanValues = typeof emptyPlan;
 
@@ -32,6 +39,7 @@ const schema = z.object({
   dueDate: z.string(),
   assigneeId: z.string(),
   visibility: z.string(),
+  petId: z.string(),
 });
 
 function valuesOf(plan: Plan): PlanValues {
@@ -41,6 +49,7 @@ function valuesOf(plan: Plan): PlanValues {
     dueDate: plan.dueDate ?? "",
     assigneeId: plan.assignee?.id ?? "",
     visibility: plan.visibility,
+    petId: plan.pet?.id ?? "",
   };
 }
 
@@ -51,6 +60,7 @@ function changeOf(values: PlanValues): PlanChange {
     dueDate: values.dueDate === "" ? null : values.dueDate,
     assigneeId: values.assigneeId === "" ? null : values.assigneeId,
     visibility: visibility.parse(values.visibility),
+    petId: values.petId === "" ? null : values.petId,
   };
 }
 
@@ -108,6 +118,15 @@ function reatomChoices(
         }),
       "plans.planForm.assignees",
     ),
+    pets: computed(
+      (): Choice[] => [
+        { value: "", title: "Без питомца" },
+        ...(dependencies.plans.pets.data() ?? [])
+          .filter(({ archivedAt }) => archivedAt === null)
+          .map(({ id, name }) => ({ value: id, title: name })),
+      ],
+      "plans.planForm.pets",
+    ),
   };
 }
 
@@ -131,9 +150,9 @@ export function reatomPlanFormModel(dependencies: PlanFormDependencies) {
         form.fields.assigneeId.set("");
       }
     }, "plans.planForm.chooseVisibility"),
-    startCreating: action(() => {
+    startCreating: action((petId?: string) => {
       editedPlan.set(undefined);
-      fillForm(form, emptyPlan);
+      fillForm(form, { ...emptyPlan, petId: petId ?? "" });
     }, "plans.planForm.startCreating"),
     startEditing: action((plan: Plan) => {
       editedPlan.set(plan);

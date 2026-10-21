@@ -64,14 +64,6 @@ const photoStorage = reatomPhotoStorage({
   api: createPhotoStorageApi(httpClient),
   isFamilyOwner: () => session.member()?.isFamilyOwner === true,
 });
-const petsApi = createPetsApi(httpClient);
-const petsModel = reatomPets({ api: petsApi });
-const pets = reatomPetsScreen({
-  api: petsApi,
-  pets: petsModel,
-  viewer: () => ({ today: today(deviceTimeZone()), timeZone: deviceTimeZone() }),
-  photoHint: photoStorage.uploadHint,
-});
 const plansApi = createPlansApi(httpClient);
 const plans = reatomPlansScreen({
   api: plansApi,
@@ -79,6 +71,23 @@ const plans = reatomPlansScreen({
   telegram,
   self: () => session.member()?.member.id,
   timeZone: deviceTimeZone,
+});
+const petsApi = createPetsApi(httpClient);
+const petsModel = reatomPets({ api: petsApi });
+const pets = reatomPetsScreen({
+  api: petsApi,
+  pets: petsModel,
+  viewer: () => ({ today: today(deviceTimeZone()), timeZone: deviceTimeZone() }),
+  photoHint: photoStorage.uploadHint,
+  soonPlans: plans.openPlansOf,
+  onOpenPlan: (planId) => {
+    navigation.openModule("plans");
+    plans.open(planId);
+  },
+  onPlan: (petId) => {
+    navigation.openModule("plans");
+    plans.addForPet(petId);
+  },
 });
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,

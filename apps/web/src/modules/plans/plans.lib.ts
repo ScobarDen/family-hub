@@ -73,7 +73,7 @@ export function toDetails(plan: Plan, timeZone: string): PlanDetails {
     id: plan.id,
     title: plan.title,
     note: plan.note ?? undefined,
-    facts: joined([dueOf(plan.dueDate), plan.assignee?.name]),
+    facts: joined([dueOf(plan.dueDate), plan.assignee?.name, plan.pet?.name]),
     progress: progressOf(plan),
     completed: completedOf(plan.completed, timeZone),
     isCompleted: plan.completed !== null,

@@ -21,9 +21,45 @@ export type PetCard = {
   subtitle: string;
   facts: PetFact[];
   memo: PetMemoView;
+  soon: SoonItem[];
 };
 
 export type Viewer = { today: string; timeZone: string };
+
+export type SoonSource = { id: string; title: string; dueDate: string | null };
+
+export type SoonItem = {
+  id: string;
+  title: string;
+  subtitle: string | undefined;
+  isOverdue: boolean;
+};
+
+function byDueDate(left: SoonSource, right: SoonSource): number {
+  if (left.dueDate === right.dueDate) {
+    return 0;
+  }
+
+  if (left.dueDate === null || right.dueDate === null) {
+    return left.dueDate === null ? 1 : -1;
+  }
+
+  return left.dueDate < right.dueDate ? -1 : 1;
+}
+
+export function toSoon(sources: SoonSource[], today: string): SoonItem[] {
+  return sources.toSorted(byDueDate).map(({ id, title, dueDate }) => {
+    const isOverdue = dueDate !== null && dueDate < today;
+
+    return {
+      id,
+      title,
+      subtitle:
+        dueDate === null ? undefined : `${isOverdue ? "просрочено · " : ""}${formatDate(dueDate)}`,
+      isOverdue,
+    };
+  });
+}
 
 function subtitleOf(pet: Pet, today: string): string {
   const age = pet.birthDate === null ? undefined : formatAge(pet.birthDate, today);
@@ -62,12 +98,13 @@ export function toListItem(pet: Pet, { today }: Viewer): PetListItem {
   return { id: pet.id, name: pet.name, subtitle: subtitleOf(pet, today) };
 }
 
-export function toCard(pet: Pet, { today, timeZone }: Viewer): PetCard {
+export function toCard(pet: Pet, { today, timeZone }: Viewer, soonSources: SoonSource[]): PetCard {
   return {
     id: pet.id,
     name: pet.name,
     subtitle: subtitleOf(pet, today),
     facts: factsOf(pet),
     memo: memoOf(pet.memo, timeZone),
+    soon: toSoon(soonSources, today),
   };
 }

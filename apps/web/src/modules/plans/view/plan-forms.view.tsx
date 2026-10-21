@@ -64,6 +64,9 @@ export const PlanForm = reatomComponent(({ model, onCancel }: PlanFormProps) => 
         />
       )}
       <ChoiceField field={fields.assigneeId} label="Исполнитель" choices={model.assignees()} />
+      {model.pets().length > 1 && (
+        <ChoiceField field={fields.petId} label="Питомец" choices={model.pets()} />
+      )}
       <FieldError>{model.failure()}</FieldError>
       <FormButtons isSaving={model.isSaving()} onCancel={onCancel} />
     </form>

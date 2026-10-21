@@ -125,6 +125,10 @@ function reatomEditing(
       planForm.startCreating();
       editing.set("plan");
     }, "plans.add"),
+    addForPet: action((petId: string) => {
+      planForm.startCreating(petId);
+      editing.set("plan");
+    }, "plans.addForPet"),
     edit: action(() => {
       editWith(planForm.startEditing, "plan");
     }, "plans.edit"),
@@ -175,6 +179,11 @@ export function reatomPlansScreen(dependencies: PlansDependencies) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "plans.title"),
+    // The pet card shows its open Plans in «Скоро»; the plans module stays their only source.
+    openPlansOf: (petId: string) =>
+      (dependencies.plans.list.data() ?? []).filter(
+        ({ pet, completed }) => pet?.id === petId && completed === null,
+      ),
     canGoBack: computed(
       () => navigation.editing() !== undefined || openedPlan() !== undefined,
       "plans.canGoBack",

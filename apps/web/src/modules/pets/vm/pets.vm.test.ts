@@ -64,7 +64,14 @@ function fakeBackend(list: PetList | Error = [buick], { failSaving = false } = {
   return { fetch, requests };
 }
 
+const soonPlans = [
+  { id: "plan-2", title: "К ветеринару", dueDate: null },
+  { id: "plan-1", title: "Груминг", dueDate: "2026-10-20" },
+  { id: "plan-3", title: "Купить корм", dueDate: "2026-10-01" },
+];
+
 function startPets(backend = fakeBackend()) {
+  const opened: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const api = createPetsApi(client);
   const pets = reatomPets({ api });
@@ -73,11 +80,18 @@ function startPets(backend = fakeBackend()) {
     pets,
     viewer: () => ({ today: "2026-10-11", timeZone: "Europe/Moscow" }),
     photoHint: () => "Загрузка фото выключена",
+    soonPlans: (petId) => (petId === "pet-1" ? soonPlans : []),
+    onOpenPlan: (planId) => {
+      opened.push(`plan ${planId}`);
+    },
+    onPlan: (petId) => {
+      opened.push(`new plan for ${petId}`);
+    },
   });
 
   model.screen.subscribe(noop);
 
-  return { model, pets, backend };
+  return { model, pets, backend, opened };
 }
 
 type Model = ReturnType<typeof startPets>["model"];
@@ -115,6 +129,21 @@ describe("the pet tab", () => {
           { label: "Дата рождения", value: "14 мая 2022 г." },
         ],
         memo: { food: undefined, clinic: undefined, important: undefined, updated: undefined },
+        soon: [
+          {
+            id: "plan-3",
+            title: "Купить корм",
+            subtitle: "просрочено · 1 октября 2026 г.",
+            isOverdue: true,
+          },
+          {
+            id: "plan-1",
+            title: "Груминг",
+            subtitle: "20 октября 2026 г.",
+            isOverdue: false,
+          },
+          { id: "plan-2", title: "К ветеринару", subtitle: undefined, isOverdue: false },
+        ],
       },
     });
     expect(model.title()).toBe("Бьюик");
@@ -338,5 +367,17 @@ describe("the tab title", () => {
       expect(pets.list.data()).toBeDefined();
     });
     expect(pets.tabTitle()).toBe(title);
+  });
+});
+
+describe("«Скоро» on the card", () => {
+  test("opens a Plan and plans a new one for this Pet through the plans module", async () => {
+    const { model, opened } = startPets();
+
+    await loaded(model);
+    model.openPlan("plan-1");
+    model.plan("pet-1");
+
+    expect(opened).toEqual(["plan plan-1", "new plan for pet-1"]);
   });
 });

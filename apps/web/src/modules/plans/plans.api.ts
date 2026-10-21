@@ -1,5 +1,6 @@
 import {
   familyMemberList,
+  petList,
   plan,
   planDeleted,
   planList,
@@ -19,6 +20,7 @@ export function createPlansApi(client: HttpClient) {
   return {
     list: async () => client.request("/api/plans", { schema: planList }),
     members: async () => client.request("/api/family/members", { schema: familyMemberList }),
+    pets: async () => client.request("/api/pets", { schema: petList }),
 
     create: async (change: PlanChange) => post("/api/plans", change),
     update: async (planId: string, change: PlanChange) =>

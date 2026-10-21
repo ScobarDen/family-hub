@@ -22,6 +22,7 @@ export type SubplanChange = z.infer<typeof subplanChange>;
 export const planChange = subplanChange.extend({
   note: optionalText(planNoteMaxLength),
   visibility,
+  petId: z.string().nullable().default(null),
 });
 
 export type PlanChange = z.infer<typeof planChange>;
@@ -44,8 +45,11 @@ export const subplan = z.object({
 
 export type Subplan = z.infer<typeof subplan>;
 
+export const planPet = z.object({ id: z.string(), name: z.string() });
+
 export const plan = subplan.extend({
   note: z.string().nullable(),
+  pet: planPet.nullable(),
   visibility,
   isOwn: z.boolean(),
   subplans: z.array(subplan),

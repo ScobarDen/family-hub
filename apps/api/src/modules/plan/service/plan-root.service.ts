@@ -3,7 +3,7 @@ import { uuidv7, type Plan, type PlanChange } from "@family-hub/contract";
 import type { Membership } from "@/common/auth";
 
 import { toPlan } from "../plan.lib.ts";
-import type { PlanDependencies, PlanResult } from "../plan.types.ts";
+import type { PlanDependencies, PlanRefusal, PlanResult } from "../plan.types.ts";
 import { currentPlan, isAssigneeAllowed, visibleTree } from "./access.service.ts";
 import { notifyAssignee } from "./assignment.service.ts";
 
@@ -17,6 +17,21 @@ function byDueDate(left: Plan, right: Plan): number {
   }
 
   return left.dueDate < right.dueDate ? -1 : 1;
+}
+
+async function refusalOf(
+  dependencies: PlanDependencies,
+  membership: Membership,
+  { change, ownerId }: { change: PlanChange; ownerId: string },
+): Promise<PlanRefusal | undefined> {
+  if (!(await isAssigneeAllowed(dependencies, membership, { ...change, ownerId }))) {
+    return "assignee-not-allowed";
+  }
+
+  const isPetMissing =
+    change.petId !== null && !(await dependencies.plans.hasPet(membership.family.id, change.petId));
+
+  return isPetMissing ? "pet-not-found" : undefined;
 }
 
 export async function list(
@@ -35,8 +50,10 @@ export async function create(
 ): Promise<PlanResult> {
   const ownerId = membership.member.id;
 
-  if (!(await isAssigneeAllowed(dependencies, membership, { ...change, ownerId }))) {
-    return { status: "assignee-not-allowed" };
+  const refusal = await refusalOf(dependencies, membership, { change, ownerId });
+
+  if (refusal !== undefined) {
+    return { status: refusal };
   }
 
   const now = dependencies.clock.now();
@@ -51,6 +68,7 @@ export async function create(
     note: change.note,
     dueDate: change.dueDate,
     assigneeMemberId: change.assigneeId,
+    petId: change.petId,
     createdAt: now,
     createdBy: ownerId,
     updatedAt: now,
@@ -84,8 +102,10 @@ export async function update(
 
   const ownerId = tree.root.ownerMemberId ?? membership.member.id;
 
-  if (!(await isAssigneeAllowed(dependencies, membership, { ...change, ownerId }))) {
-    return { status: "assignee-not-allowed" };
+  const refusal = await refusalOf(dependencies, membership, { change, ownerId });
+
+  if (refusal !== undefined) {
+    return { status: refusal };
   }
 
   await dependencies.plans.update(membership.family.id, planId, {
@@ -94,6 +114,7 @@ export async function update(
     dueDate: change.dueDate,
     assigneeMemberId: change.assigneeId,
     visibility: change.visibility,
+    petId: change.petId,
     updatedAt: dependencies.clock.now(),
   });
   await notifyAssignee(dependencies, membership, {

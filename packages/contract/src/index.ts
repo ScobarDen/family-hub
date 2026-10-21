@@ -65,6 +65,7 @@ export {
   planDeleted,
   planList,
   planMember,
+  planPet,
   planNoteMaxLength,
   planTitleMaxLength,
   subplan,

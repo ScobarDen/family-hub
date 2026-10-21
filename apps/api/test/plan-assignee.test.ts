@@ -15,6 +15,7 @@ const ceiling: PlanChange = {
   dueDate: "2026-10-20",
   assigneeId: null,
   visibility: "shared",
+  petId: null,
 };
 
 async function call(

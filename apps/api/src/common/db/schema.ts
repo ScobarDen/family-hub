@@ -148,6 +148,7 @@ export const plans = sqliteTable(
     note: text("note"),
     dueDate: text("due_date"),
     assigneeMemberId: text("assignee_member_id").references(() => members.id),
+    petId: text("pet_id").references(() => pets.id, { onDelete: "set null" }),
     completedAt: integer("completed_at"),
     completedBy: text("completed_by").references(() => members.id),
     createdAt: integer("created_at").notNull(),

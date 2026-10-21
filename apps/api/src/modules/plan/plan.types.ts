@@ -13,7 +13,12 @@ export type PlanDependencies = {
   clock: Clock;
 };
 
-export type PlanRefusal = "not-found" | "not-owner" | "assignee-not-allowed" | "visibility-one-way";
+export type PlanRefusal =
+  | "not-found"
+  | "not-owner"
+  | "assignee-not-allowed"
+  | "visibility-one-way"
+  | "pet-not-found";
 
 export type PlanResult = { status: "ok"; plan: Plan } | { status: PlanRefusal };
 

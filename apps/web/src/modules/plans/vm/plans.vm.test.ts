@@ -20,6 +20,7 @@ const bedroom: Plan = {
   id: "plan-1",
   title: "Ремонт в спальне",
   note: null,
+  pet: null,
   dueDate: "2026-11-30",
   assignee: { id: "member-2", name: "Ася" },
   visibility: "shared",
@@ -63,6 +64,20 @@ function fakeBackend(
   const answers: Record<string, Reply> = {
     "GET /api/plans": () => list,
     "GET /api/family/members": () => members,
+    "GET /api/pets": () => [
+      {
+        id: "pet-1",
+        name: "Бьюик",
+        species: "dog",
+        breed: null,
+        sex: null,
+        birthDate: null,
+        chipNumber: null,
+        notes: null,
+        archivedAt: null,
+        memo: { food: null, clinic: null, important: null, updatedAt: null, updatedBy: null },
+      },
+    ],
     "POST /api/plans": (body) => ({ ...vacation, ...planChange.parse(body), id: "plan-new" }),
     "POST /api/plans/plan-1/complete": () => ({
       ...bedroom,
@@ -338,5 +353,39 @@ describe("the Subplan form", () => {
     model.subplanForm.form.fields.dueDate.set("2026-11-10");
 
     expect(model.subplanForm.warning()).toBeUndefined();
+  });
+});
+
+describe("a Pet's Plans", () => {
+  test("are the open Plans linked to it", async () => {
+    const grooming: Plan = {
+      ...vacation,
+      id: "plan-4",
+      title: "Груминг",
+      pet: { id: "pet-1", name: "Бьюик" },
+    };
+    const done: Plan = { ...grooming, id: "plan-5", completed: { at: doneAt, by: "Ася" } };
+    const { model } = startPlans(fakeBackend([bedroom, grooming, done]));
+
+    await loaded(model);
+
+    expect(model.openPlansOf("pet-1").map(({ id }) => id)).toEqual(["plan-4"]);
+  });
+
+  test("start from the pet card with the Pet already chosen", async () => {
+    const { model } = startPlans();
+
+    model.planForm.pets.subscribe(noop);
+    await loaded(model);
+    model.addForPet("pet-1");
+
+    expect(model.screen()).toEqual({ kind: "plan-form", isCreating: true });
+    expect(model.planForm.form.fields.petId()).toBe("pet-1");
+    await vi.waitFor(() => {
+      expect(model.planForm.pets()).toEqual([
+        { value: "", title: "Без питомца" },
+        { value: "pet-1", title: "Бьюик" },
+      ]);
+    });
   });
 });

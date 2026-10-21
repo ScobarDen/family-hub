@@ -57,6 +57,13 @@
       "when": 1792571278875,
       "tag": "0007_photo_storage",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792572162511,
+      "tag": "0008_plan_pet",
+      "breakpoints": true
     }
   ]
 }

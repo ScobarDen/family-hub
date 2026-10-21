@@ -18,6 +18,7 @@ const bedroom: PlanChange = {
   dueDate: "2026-11-30",
   assigneeId: null,
   visibility: "shared",
+  petId: null,
 };
 
 async function call(
@@ -136,6 +137,7 @@ describe("a Plan", () => {
       id: created.id,
       title: "Ремонт в спальне",
       note: null,
+      pet: null,
       dueDate: "2026-11-30",
       assignee: { id: worker.asyaId, name: "Ася" },
       visibility: "shared",
@@ -379,6 +381,70 @@ describe("a Member leaving", () => {
 
     expect(await plansOf(worker, denis)).toEqual([
       expect.objectContaining({ title: "Отпуск", isOwn: true }),
+    ]);
+  });
+});
+
+async function addBuick(worker: Worker, user: TelegramUserFixture = denis) {
+  const response = await call(worker, user, {
+    method: "POST",
+    path: "/api/pets",
+    body: {
+      name: "Бьюик",
+      species: "dog",
+      breed: null,
+      sex: null,
+      birthDate: null,
+      chipNumber: null,
+      notes: null,
+    },
+  });
+
+  return response.json<{ id: string }>();
+}
+
+describe("a Pet's Plan", () => {
+  test("is linked to the Pet when created and can be unlinked", async () => {
+    const worker = await startWithFamily();
+    const buick = await addBuick(worker);
+    const grooming = await createPlan(worker, asya, { title: "Груминг", petId: buick.id });
+    const unlinked = await planOf(
+      await call(worker, asya, {
+        method: "PUT",
+        path: `/api/plans/${grooming.id}`,
+        body: { ...bedroom, title: "Груминг", petId: null },
+      }),
+    );
+
+    expect(grooming.pet).toEqual({ id: buick.id, name: "Бьюик" });
+    expect(unlinked.pet).toBeNull();
+  });
+
+  test("cannot be linked to a Pet of another Family", async () => {
+    const worker = await startWithFamily();
+
+    await worker.addFamily({ name: "Соседи", owner: { telegramId: vika.id, name: "Вика" } });
+    const stranger = await addBuick(worker, vika);
+
+    const response = await call(worker, denis, {
+      method: "POST",
+      path: "/api/plans",
+      body: { ...bedroom, petId: stranger.id },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "PET_NOT_FOUND" });
+  });
+
+  test("stays in Plans without its link when the Pet is deleted", async () => {
+    const worker = await startWithFamily();
+    const buick = await addBuick(worker);
+
+    await createPlan(worker, denis, { title: "Груминг", petId: buick.id });
+    await worker.deletePet(buick.id);
+
+    expect(await plansOf(worker, denis)).toEqual([
+      expect.objectContaining({ title: "Груминг", pet: null }),
     ]);
   });
 });

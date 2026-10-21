@@ -32,6 +32,7 @@ export function toPlan({ root, subplans }: PlanTree, memberId: string): Plan {
   return {
     ...toSubplan(root),
     note: root.note,
+    pet: memberOf(root.petId, root.petName),
     visibility: root.visibility ?? "shared",
     isOwn: root.ownerMemberId === memberId,
     subplans: subplans.map(toSubplan),

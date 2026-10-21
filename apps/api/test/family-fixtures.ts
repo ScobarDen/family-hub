@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { createDb, families, familyMembers, invites, members, type Db } from "@/common/db";
+import { createDb, families, familyMembers, invites, members, pets, type Db } from "@/common/db";
 
 import type { FakeClock } from "./fake-clock.ts";
 
@@ -67,6 +67,10 @@ export function createFamilyFixtures(d1: D1Database, clock: FakeClock) {
       await db.delete(familyMembers).where(eq(familyMembers.memberId, memberId));
     },
     countInvites: async () => db.$count(invites),
+    // Pet deletion arrives with the Pet archive; until then the cascade is checked straight in the database.
+    async deletePet(petId: string) {
+      await db.delete(pets).where(eq(pets.id, petId));
+    },
     async rowCounts() {
       return {
         members: await db.$count(members),

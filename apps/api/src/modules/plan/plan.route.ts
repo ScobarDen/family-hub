@@ -36,6 +36,11 @@ const refusals = {
     message: "The Assignee is a Member of the Family; of a Private Plan, only its owner",
     status: httpStatus.badRequest,
   },
+  "pet-not-found": {
+    code: "PET_NOT_FOUND",
+    message: "The Plan's Pet is not a Pet of the Family",
+    status: httpStatus.badRequest,
+  },
   "visibility-one-way": {
     code: "VISIBILITY_ONE_WAY",
     message: "A Shared Plan cannot become Private",
