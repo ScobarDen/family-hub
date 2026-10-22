@@ -259,8 +259,6 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
 
   return {
     db,
-    clock,
-    bot,
     auth: authServiceOf(env, { memberships, clock }),
     ...records,
     ...membershipServicesOf(db, { shared, familyRequests, schedule: records.reminders }),
@@ -270,30 +268,14 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
   };
 }
 
-function exposeInfrastructure(context: Context<AppEnv>, services: AppServices): void {
-  context.set("db", services.db);
-  context.set("clock", services.clock);
-  context.set("bot", services.bot);
-  context.set("auth", services.auth);
-  context.set("commands", services.commands);
+function isServiceName(services: AppServices, key: string): key is keyof AppServices {
+  return key in services;
 }
 
-function exposeRecords(context: Context<AppEnv>, services: AppServices): void {
-  context.set("careEntries", services.careEntries);
-  context.set("events", services.events);
-  context.set("families", services.families);
-  context.set("familyRequests", services.familyRequests);
-  context.set("invites", services.invites);
-  context.set("members", services.members);
-  context.set("pets", services.pets);
-  context.set("photoStorage", services.photoStorage);
-  context.set("plans", services.plans);
-  context.set("feed", services.feed);
-  context.set("goals", services.goals);
-  context.set("photos", services.photos);
-  context.set("albums", services.albums);
-  context.set("recipes", services.recipes);
-  context.set("reminders", services.reminders);
+function expose(context: Context<AppEnv>, services: AppServices): void {
+  for (const key of Object.keys(services).filter((name) => isServiceName(services, name))) {
+    context.set(key, services[key]);
+  }
 }
 
 function createApp(dependencies: WorkerDependencies) {
@@ -302,8 +284,7 @@ function createApp(dependencies: WorkerDependencies) {
     .use(async (context, next) => {
       const services = servicesFor(context.env, dependencies);
 
-      exposeInfrastructure(context, services);
-      exposeRecords(context, services);
+      expose(context, services);
       await next();
     })
     .route("/", healthRoute)
