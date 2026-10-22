@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 
 import type { AppModule } from "@family-hub/contract";
 
-import { deviceTimeZone } from "@/common/format-date";
 import { Albums, type AlbumsScreenModel } from "@/modules/albums";
 import { Calendar, type CalendarModel } from "@/modules/calendar";
 import { Care, ExpensesBlock, JournalBlock, PhotosBlock, type CareModel } from "@/modules/care";
@@ -87,49 +86,19 @@ function petContentOf(pets: PetsScreenModel, care: CareModel): ModuleContent {
   };
 }
 
-function contentOf(
-  { pets, plans, care, calendar, feed, goals, albums, recipes, photoStorage }: HomeProps,
-  module: AppModule,
-): ModuleContent | undefined {
-  if (module === "recipes") {
-    return {
-      title: recipes.title(),
-      content: (
-        <Recipes
-          model={recipes}
-          photoHint={photoStorage.uploadHint()}
-          timeZone={deviceTimeZone()}
-        />
-      ),
-    };
-  }
-
-  if (module === "albums") {
-    return { title: albums.title(), content: <Albums model={albums} /> };
-  }
-
-  if (module === "goals") {
-    return { title: goals.title(), content: <Goals model={goals} /> };
-  }
-
-  if (module === "feed") {
-    return { title: "Лента", subtitle: feed.summary(), content: <Feed model={feed} /> };
-  }
-
-  if (module === "calendar") {
-    return { title: calendar.title(), content: <Calendar model={calendar} /> };
-  }
-
-  if (module === "pet") {
-    return petContentOf(pets, care);
-  }
-
-  if (module === "plans") {
-    return { title: plans.title(), content: <Plans model={plans} /> };
-  }
-
-  return undefined;
-}
+const contents: Record<AppModule, (props: HomeProps) => ModuleContent> = {
+  feed: ({ feed }) => ({
+    title: "Лента",
+    subtitle: feed.summary(),
+    content: <Feed model={feed} />,
+  }),
+  plans: ({ plans }) => ({ title: plans.title(), content: <Plans model={plans} /> }),
+  calendar: ({ calendar }) => ({ title: calendar.title(), content: <Calendar model={calendar} /> }),
+  pet: ({ pets, care }) => petContentOf(pets, care),
+  goals: ({ goals }) => ({ title: goals.title(), content: <Goals model={goals} /> }),
+  albums: ({ albums }) => ({ title: albums.title(), content: <Albums model={albums} /> }),
+  recipes: ({ recipes }) => ({ title: recipes.title(), content: <Recipes model={recipes} /> }),
+};
 
 function screenOf(props: HomeProps): ReactNode {
   const { navigation, tabBar, tabBarMenu, notifications } = props;
@@ -143,16 +112,17 @@ function screenOf(props: HomeProps): ReactNode {
     return profileOf(props);
   }
 
+  const { title, subtitle, content } = contents[screen.module](props);
+
   return (
     <>
       <ModulePage
-        module={screen.module}
-        title={contentOf(props, screen.module)?.title}
-        subtitle={contentOf(props, screen.module)?.subtitle}
+        title={title}
+        subtitle={subtitle}
         banner={<NotificationsBanner model={notifications} />}
         onOpenProfile={navigation.hasProfileButton ? navigation.openProfile : undefined}
       >
-        {contentOf(props, screen.module)?.content}
+        {content}
       </ModulePage>
       {screen.isOnTabBar && (
         <TabBar model={tabBar} center={<Microphone model={props.microphone} />} />

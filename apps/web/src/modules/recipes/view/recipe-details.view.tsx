@@ -1,25 +1,19 @@
 import { reatomComponent } from "@reatom/react";
 import { Pencil, Star, Trash2 } from "lucide-react";
 
-import type { Recipe } from "@family-hub/contract";
-
 import { PhotoViewer } from "@/common/photo-viewer";
 import { Section, SectionItem } from "@/common/ui";
 
+import type { RecipeDetails as RecipeDetailsData } from "../recipes.lib.ts";
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { RecipeCooked } from "./recipe-cooked.view.tsx";
 import { RecipeIngredients } from "./recipe-ingredients.view.tsx";
 import { RecipePhotos } from "./recipe-photos.view.tsx";
 
-type DetailsProps = {
-  model: RecipesScreenModel;
-  recipe: Recipe;
-  checked: number[];
-  timeZone: string;
-};
+type DetailsProps = { model: RecipesScreenModel; recipe: RecipeDetailsData; checked: number[] };
 
 export const RecipeDetails = reatomComponent(
-  ({ model, recipe, checked, timeZone }: DetailsProps) => (
+  ({ model, recipe, checked }: DetailsProps) => (
     <>
       <RecipePhotos
         photos={recipe.photos}
@@ -28,7 +22,7 @@ export const RecipeDetails = reatomComponent(
         }}
       />
       <RecipeIngredients model={model} ingredients={recipe.ingredients} checked={checked} />
-      <RecipeCooked model={model} recipe={recipe} timeZone={timeZone} />
+      <RecipeCooked model={model} recipe={recipe} />
       {recipe.method !== null && (
         <Section title="Как готовить">
           <p className="px-4 py-3 whitespace-pre-line">{recipe.method}</p>

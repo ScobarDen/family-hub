@@ -1,5 +1,4 @@
 export { createTabBarApi } from "./tab-bar.api.ts";
-export { moduleTitles } from "./tab-bar.config.ts";
 export { reatomTabBarModules, type TabBarModules } from "./tab-bar.model.ts";
 export { HiddenModules, type HiddenModulesProps } from "./view/hidden-modules.view.tsx";
 export { TabBarMenu, type TabBarMenuProps } from "./view/tab-bar-menu.view.tsx";

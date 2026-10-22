@@ -10,7 +10,7 @@ import {
   wrap,
 } from "@reatom/core";
 
-import type { Recipe, RecipeTag } from "@family-hub/contract";
+import type { RecipeTag } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
@@ -18,6 +18,12 @@ import { detached, readOnly } from "@/common/state";
 import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
+import {
+  toRecipeDetails,
+  toRecipeItem,
+  type RecipeDetails,
+  type RecipeItem,
+} from "../recipes.lib.ts";
 import { reatomRecipesData, type RecipesData } from "../recipes.model.ts";
 import { reatomRecipeCooks } from "./recipe-cooks.vm.ts";
 import { reatomRecipeForm } from "./recipe-form.vm.ts";
@@ -26,8 +32,8 @@ import { reatomTagEditing } from "./recipe-tags.vm.ts";
 export type RecipesScreen =
   | { kind: "loading" }
   | { kind: "failed" }
-  | { kind: "list"; recipes: Recipe[]; tags: RecipeTag[] }
-  | { kind: "recipe"; recipe: Recipe; checked: number[] }
+  | { kind: "list"; recipes: RecipeItem[]; tags: RecipeTag[] }
+  | { kind: "recipe"; recipe: RecipeDetails; checked: number[] }
   | { kind: "form"; isCreating: boolean; tags: RecipeTag[] }
   | { kind: "tags"; tags: RecipeTag[] };
 
@@ -72,11 +78,13 @@ function reatomScreen({
   navigation,
   opened,
   form,
+  timeZone,
 }: {
   data: RecipesData;
   navigation: Navigation;
   opened: Opened;
   form: { isCreating: () => boolean };
+  timeZone: () => string;
 }) {
   return computed((): RecipesScreen => {
     const tags = data.tags.data() ?? [];
@@ -91,7 +99,11 @@ function reatomScreen({
     const recipe = opened.data();
 
     if (navigation.openedId() !== undefined && recipe !== undefined) {
-      return { kind: "recipe", recipe, checked: [...navigation.checked()] };
+      return {
+        kind: "recipe",
+        recipe: toRecipeDetails(recipe, timeZone()),
+        checked: [...navigation.checked()],
+      };
     }
 
     const list = data.list.data();
@@ -100,7 +112,7 @@ function reatomScreen({
       return data.list.error() === undefined ? { kind: "loading" } : { kind: "failed" };
     }
 
-    return { kind: "list", recipes: list, tags };
+    return { kind: "list", recipes: list.map(toRecipeItem), tags };
   }, "recipes.screen");
 }
 
@@ -235,11 +247,12 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
       data.reload();
     },
   });
-  const screen = reatomScreen({ data, navigation, opened, form });
+  const screen = reatomScreen({ data, navigation, opened, form, timeZone: dependencies.timeZone });
 
   return {
     screen,
     form,
+    photoHint: readOnly(dependencies.photoHint),
     title: computed(() => titleOf(screen()), "recipes.title"),
     canGoBack: computed(
       () => navigation.editing() !== undefined || navigation.openedId() !== undefined,

@@ -1,29 +1,18 @@
 import { Settings } from "lucide-react";
 import type { ReactNode } from "react";
 
-import type { AppModule } from "@family-hub/contract";
-
-import { Button, ScreenTitle, Section, SectionItem } from "@/common/ui";
-import { moduleTitles } from "@/modules/tab-bar";
+import { Button, ScreenTitle } from "@/common/ui";
 
 type ModulePageProps = {
-  module: AppModule;
-  title?: string;
+  title: string;
   subtitle?: string | undefined;
-  children?: ReactNode;
+  children: ReactNode;
   banner: ReactNode;
   // Telegram before 7.0 has no «⋯ → Настройки», so the Profile needs a button of its own.
   onOpenProfile?: () => void;
 };
 
-export function ModulePage({
-  module,
-  title = moduleTitles[module],
-  subtitle,
-  children,
-  banner,
-  onOpenProfile,
-}: ModulePageProps) {
+export function ModulePage({ title, subtitle, children, banner, onOpenProfile }: ModulePageProps) {
   return (
     <>
       <div className="flex items-start justify-between">
@@ -41,11 +30,7 @@ export function ModulePage({
         )}
       </div>
       {banner}
-      {children ?? (
-        <Section>
-          <SectionItem title={`Раздел «${title}» скоро появится`} />
-        </Section>
-      )}
+      {children}
     </>
   );
 }
