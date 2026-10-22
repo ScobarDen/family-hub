@@ -2,9 +2,7 @@ import { z } from "zod";
 
 import { familyRequestStatus } from "./family-request.ts";
 import { memberSettings } from "./member.ts";
-import { named, telegramLogin } from "./primitive.ts";
-
-export const sessionRequest = telegramLogin;
+import { named } from "./primitive.ts";
 
 export const sessionResponse = z.discriminatedUnion("status", [
   z.object({ status: z.literal("member"), token: z.string() }),

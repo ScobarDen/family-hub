@@ -2,8 +2,7 @@ import type { FeedUpcoming } from "@family-hub/contract";
 import {
   birthdaysIn,
   dateInZone,
-  dayAfter,
-  dayBefore,
+  daysAfter,
   occurrenceDates,
   occurrenceMoment,
   timeInZone,
@@ -34,7 +33,7 @@ function seriesOf(row: Pick<FeedEventRow, "frequency" | "until">) {
 
 // A timed Occurrence is a moment in the creator's zone, so it may fall on the viewer's next day.
 function widened({ today, last }: Window) {
-  return { from: dayBefore(today), to: dayAfter(last) };
+  return { from: daysAfter(today, -1), to: daysAfter(last, 1) };
 }
 
 type Placed<Moment> = { occurrence: string; date: string; moment: Moment };

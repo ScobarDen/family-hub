@@ -4,7 +4,7 @@ import {
   planChange,
   subplanChange,
   type Plan,
-  type PlanDeleted,
+  type Deleted,
   type PlanList,
 } from "@family-hub/contract";
 
@@ -97,7 +97,7 @@ export const planRoute = new Hono<PlanEnv>()
     const result = await context.var.plans.remove(context.var.membership, context.req.param("id"));
 
     return result.status === "deleted"
-      ? context.json<PlanDeleted>(result)
+      ? context.json<Deleted>(result)
       : refuse(context, result.status);
   })
   .post("/api/plans/:id/complete", async (context) =>

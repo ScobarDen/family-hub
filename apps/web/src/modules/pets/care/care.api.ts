@@ -1,6 +1,6 @@
 import {
   careEntry,
-  careEntryDeleted,
+  deleted,
   careEntryList,
   dueDateList,
   expenseSummary,
@@ -53,7 +53,7 @@ export function createCareApi(client: HttpClient) {
     remove: async (entryId: string) =>
       client.request(`/api/care-entries/${entryId}`, {
         method: "DELETE",
-        schema: careEntryDeleted,
+        schema: deleted,
       }),
     dueDates: async (petId: string) =>
       client.request(`/api/pets/${petId}/due-dates`, { schema: dueDateList }),

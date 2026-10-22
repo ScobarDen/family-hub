@@ -5,7 +5,7 @@ import {
   careEntryChange,
   expenseRange,
   type CareEntry,
-  type CareEntryDeleted,
+  type Deleted,
   type CareEntryList,
   type DueDateList,
   type ExpenseSummary,
@@ -116,6 +116,6 @@ export const careEntryRoute = new Hono<CareEntryEnv>()
     );
 
     return result.status === "deleted"
-      ? context.json<CareEntryDeleted>(result)
+      ? context.json<Deleted>(result)
       : refuse(context, result.status);
   });

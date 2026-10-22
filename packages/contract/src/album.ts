@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 import { photo, photoUrls } from "./photo.ts";
-import { deleted } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const albumTitleMaxLength = 100;
@@ -46,7 +45,5 @@ export type Album = z.infer<typeof album>;
 export const albumPhotos = z.object({
   photoIds: z.array(z.string()).min(1).max(albumBatchMax),
 });
-
-export const albumDeleted = deleted;
 
 export const photoList = z.array(photo);

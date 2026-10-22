@@ -68,14 +68,6 @@ export function daysAfter(date: string, days: number): string {
   return Temporal.PlainDate.from(date).add({ days }).toString();
 }
 
-export function dayAfter(date: string): string {
-  return Temporal.PlainDate.from(date).add({ days: 1 }).toString();
-}
-
-export function dayBefore(date: string): string {
-  return Temporal.PlainDate.from(date).subtract({ days: 1 }).toString();
-}
-
 // The dates of a series inside a range of calendar days, both ends included, skipped dates left out.
 function singleDate(start: string, { range, skipped }: { range: DateRange; skipped: string[] }) {
   const isOutside = isBefore(start, range.from) || isBefore(range.to, start);

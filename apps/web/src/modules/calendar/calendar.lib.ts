@@ -245,10 +245,6 @@ export function shiftMonth(month: string, months: number): string {
   return Temporal.PlainYearMonth.from(month).add({ months }).toString();
 }
 
-export function daysAfter(date: string, days: number): string {
-  return Temporal.PlainDate.from(date).add({ days }).toString();
-}
-
 // The day's list leads with the time, the month's with the date, shown once for a run of one day.
 export type AgendaMark =
   | { kind: "time"; text: string }

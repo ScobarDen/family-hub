@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import {
   familyDeletion,
   familyOwnerChange,
-  type FamilyDeleted,
+  type Deleted,
   type FamilyLeft,
   type FamilyOwnerChanged,
   type MemberRemoved,
@@ -96,6 +96,6 @@ export const familyRoute = new Hono<FamilyEnv>()
         return refuse(context, result.status);
       }
 
-      return context.json<FamilyDeleted>(result);
+      return context.json<Deleted>(result);
     },
   );

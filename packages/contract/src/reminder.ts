@@ -2,8 +2,8 @@ import { z } from "zod";
 
 import { recurrence } from "./event.ts";
 import { isTimeZone } from "./member.ts";
-import { planMember, visibility } from "./plan.ts";
-import { date, deleted, time } from "./primitive.ts";
+import { visibility } from "./plan.ts";
+import { date, named, time } from "./primitive.ts";
 
 export const reminderTextMaxLength = 500;
 
@@ -30,7 +30,7 @@ export const reminder = z.object({
   visibility,
   isOwn: z.boolean(),
   isForEveryone: z.boolean(),
-  recipients: z.array(planMember),
+  recipients: z.array(named),
 });
 
 export type Reminder = z.infer<typeof reminder>;
@@ -38,7 +38,3 @@ export type Reminder = z.infer<typeof reminder>;
 export const reminderList = z.array(reminder);
 
 export type ReminderList = z.infer<typeof reminderList>;
-
-export const reminderDeleted = deleted;
-
-export type ReminderDeleted = z.infer<typeof reminderDeleted>;

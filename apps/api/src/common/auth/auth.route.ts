@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 
 import {
-  sessionRequest,
+  telegramLogin,
   type FamilyRequestStatus,
   type SessionResponse,
 } from "@family-hub/contract";
@@ -45,7 +45,7 @@ type SessionEnv = {
 
 export const sessionRoute = new Hono<SessionEnv>().post(
   "/api/session",
-  jsonBody(sessionRequest, "initData is required"),
+  jsonBody(telegramLogin, "initData is required"),
   async (context) => {
     const result = await context.var.auth.signIn(context.req.valid("json").initData);
 

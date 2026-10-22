@@ -5,7 +5,7 @@ import {
   occurrenceSkip,
   type CalendarEvent,
   type CalendarEventList,
-  type EventDeleted,
+  type Deleted,
 } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
@@ -90,6 +90,6 @@ export const eventRoute = new Hono<EventEnv>()
     const result = await context.var.events.remove(context.var.membership, context.req.param("id"));
 
     return result.status === "deleted"
-      ? context.json<EventDeleted>(result)
+      ? context.json<Deleted>(result)
       : refuse(context, result.status);
   });

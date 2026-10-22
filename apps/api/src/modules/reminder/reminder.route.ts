@@ -3,7 +3,7 @@ import { Hono, type Context } from "hono";
 import {
   reminderChange,
   type Reminder,
-  type ReminderDeleted,
+  type Deleted,
   type ReminderList,
 } from "@family-hub/contract";
 
@@ -81,6 +81,6 @@ export const reminderRoute = new Hono<ReminderEnv>()
     );
 
     return result.status === "deleted"
-      ? context.json<ReminderDeleted>(result)
+      ? context.json<Deleted>(result)
       : refuse(context, result.status);
   });

@@ -1,5 +1,5 @@
 import { uuidv7 } from "@family-hub/contract";
-import { dateInZone, dayBefore } from "@family-hub/recurrence";
+import { dateInZone, daysAfter } from "@family-hub/recurrence";
 
 import { fallbackTimeZone } from "@/common/clock";
 
@@ -22,6 +22,8 @@ export async function zoneOf(
   return (await sources.timeZoneOf(memberId)) ?? source?.homeZone ?? fallbackTimeZone;
 }
 
+const searchLeadDays = 2;
+
 // The first Occurrence that still fires ahead of now on this Recipient's clock; the search starts
 // two days early, as zones lie up to 26 hours apart and a moment set in another zone may fall on
 // the Recipient's day after next.
@@ -29,7 +31,7 @@ export function upcoming(
   source: Source,
   { timeZone, now }: { timeZone: string; now: number },
 ): Fire | undefined {
-  let occurrence = source.first(dayBefore(dayBefore(dateInZone(now, timeZone))));
+  let occurrence = source.first(daysAfter(dateInZone(now, timeZone), -searchLeadDays));
 
   while (occurrence !== undefined && source.fireAt(occurrence, timeZone) < now) {
     occurrence = source.next(occurrence);

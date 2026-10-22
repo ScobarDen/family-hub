@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { deleted } from "./primitive.ts";
-
 export const photoMaxBytes = 10_485_760;
 export const photoMaxSide = 2560;
 export const careEntryPhotoMax = 5;
@@ -23,5 +21,3 @@ export const photo = z.object({
 });
 
 export type Photo = z.infer<typeof photo>;
-
-export const photoDeleted = deleted;

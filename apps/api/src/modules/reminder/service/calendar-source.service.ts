@@ -1,6 +1,6 @@
 import type { EventReminderOffset } from "@family-hub/contract";
 import {
-  dayAfter,
+  daysAfter,
   eventReminderMoment,
   firstOccurrenceFrom,
   occurrenceMoment,
@@ -26,11 +26,11 @@ function seriesSteps({ start, frequency, until }: Series, skipped: string[] = []
     const occurrence = firstOccurrenceFrom(start, recurrence, day);
 
     return occurrence !== undefined && skipped.includes(occurrence)
-      ? from(dayAfter(occurrence))
+      ? from(daysAfter(occurrence, 1))
       : occurrence;
   }
 
-  return { first: from, next: (occurrence: string) => from(dayAfter(occurrence)) };
+  return { first: from, next: (occurrence: string) => from(daysAfter(occurrence, 1)) };
 }
 
 export async function reminderSources(

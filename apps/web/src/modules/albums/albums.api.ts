@@ -1,6 +1,6 @@
 import {
   album,
-  albumDeleted,
+  deleted,
   albumList,
   photoList,
   type Album,
@@ -59,7 +59,7 @@ export function createAlbumsApi(client: HttpClient) {
     remove: async (albumId: string, scope: "album-only" | "with-photos") =>
       client.request(`/api/albums/${albumId}${scope === "with-photos" ? "?withPhotos=true" : ""}`, {
         method: "DELETE",
-        schema: albumDeleted,
+        schema: deleted,
       }),
     addPhotos: async (albumId: string, photoIds: string[]) =>
       one(`/api/albums/${albumId}/photos`, { method: "POST", body: { photoIds } }),

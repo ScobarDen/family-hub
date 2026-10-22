@@ -1,5 +1,5 @@
 import type { FeedUpcoming } from "@family-hub/contract";
-import { dayAfter, occurrenceMoment } from "@family-hub/recurrence";
+import { daysAfter, occurrenceMoment } from "@family-hub/recurrence";
 
 import { formatFloatingDate, openAppButton, snoozeMs, sourceIdOf } from "../reminder.lib.ts";
 import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";
@@ -71,7 +71,7 @@ async function digestSource(
     recipientIds: [memberId],
     homeZone: undefined,
     first: (day) => day,
-    next: dayAfter,
+    next: (occurrence) => daysAfter(occurrence, 1),
     fireAt: (occurrence, timeZone) =>
       occurrenceMoment(occurrence, { time: settings.digestTime, timeZone }),
     emoji: "☀️",

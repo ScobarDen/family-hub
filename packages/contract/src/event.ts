@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { isTimeZone } from "./member.ts";
 import { visibility } from "./plan.ts";
-import { date, deleted, time } from "./primitive.ts";
+import { date, time } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const eventTitleMaxLength = 200;
@@ -89,7 +89,3 @@ export const calendarEventList = z.array(calendarEvent);
 export type CalendarEventList = z.infer<typeof calendarEventList>;
 
 export const occurrenceSkip = z.object({ date });
-
-export const eventDeleted = deleted;
-
-export type EventDeleted = z.infer<typeof eventDeleted>;

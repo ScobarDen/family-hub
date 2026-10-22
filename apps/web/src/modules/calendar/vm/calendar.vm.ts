@@ -1,5 +1,7 @@
 import { action, atom, type Atom, computed } from "@reatom/core";
 
+import { daysAfter } from "@family-hub/recurrence";
+
 import { formatNearDate } from "@/common/format-date";
 import { readOnly } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
@@ -7,7 +9,6 @@ import type { Dialogs } from "@/common/telegram";
 import type { CalendarApi } from "../calendar.api.ts";
 import {
   agendaRowsOf,
-  daysAfter,
   itemsIn,
   monthGrid,
   monthRangeOf,

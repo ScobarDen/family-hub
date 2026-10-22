@@ -1,6 +1,6 @@
 import {
   pet,
-  petDeleted,
+  deleted,
   petList,
   type Pet,
   type PetDeletion,
@@ -59,7 +59,7 @@ export function createPetsApi(client: HttpClient) {
       client.request(`/api/pets/${petId}`, {
         method: "DELETE",
         body: { petName } satisfies PetDeletion,
-        schema: petDeleted,
+        schema: deleted,
       }),
   };
 }

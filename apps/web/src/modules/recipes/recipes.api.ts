@@ -1,6 +1,6 @@
 import {
   recipe,
-  recipeDeleted,
+  deleted,
   recipeList,
   recipeTag,
   recipeTagList,
@@ -58,7 +58,7 @@ function tagCalls(client: HttpClient) {
         schema: recipeTag,
       }),
     removeTag: async (tagId: string) =>
-      client.request(`/api/recipe-tags/${tagId}`, { method: "DELETE", schema: recipeDeleted }),
+      client.request(`/api/recipe-tags/${tagId}`, { method: "DELETE", schema: deleted }),
   };
 }
 
@@ -83,7 +83,7 @@ export function createRecipesApi(client: HttpClient) {
     update: async (recipeId: string, change: RecipeChange) =>
       one(`/api/recipes/${recipeId}`, { method: "PUT", body: change }),
     remove: async (recipeId: string) =>
-      client.request(`/api/recipes/${recipeId}`, { method: "DELETE", schema: recipeDeleted }),
+      client.request(`/api/recipes/${recipeId}`, { method: "DELETE", schema: deleted }),
     setFavorite: async (recipeId: string, isFavorite: boolean) =>
       one(`/api/recipes/${recipeId}/favorite`, { method: "PUT", body: { isFavorite } }),
     cook: async (recipeId: string, cookedAt: number | null) =>

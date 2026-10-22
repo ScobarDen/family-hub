@@ -1,4 +1,4 @@
-import { photo, photoDeleted } from "@family-hub/contract";
+import { photo, deleted } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
 
@@ -24,6 +24,6 @@ export function createPhotoCalls(client: HttpClient) {
       return resolvedPhoto(uploaded, client.url);
     },
     deletePhoto: async (photoId: string) =>
-      client.request(`/api/photos/${photoId}`, { method: "DELETE", schema: photoDeleted }),
+      client.request(`/api/photos/${photoId}`, { method: "DELETE", schema: deleted }),
   };
 }

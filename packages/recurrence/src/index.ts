@@ -1,7 +1,5 @@
 export {
   dateInZone,
-  dayAfter,
-  dayBefore,
   daysAfter,
   firstOccurrenceFrom,
   occurrenceDates,

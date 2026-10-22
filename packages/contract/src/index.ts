@@ -1,7 +1,6 @@
 export {
   careEntry,
   careEntryChange,
-  careEntryDeleted,
   careEntryList,
   careKind,
   careKindTitles,
@@ -13,7 +12,6 @@ export {
   type CareDetails,
   type CareEntry,
   type CareEntryChange,
-  type CareEntryDeleted,
   type CareEntryList,
   type CareKind,
   type DueDateItem,
@@ -22,11 +20,11 @@ export {
   type ExpenseSummary,
 } from "./care-entry.ts";
 export { apiError, errorCode, type ApiError, type ErrorCode } from "./error.ts";
+export { deleted, named, telegramLogin, type Deleted, type Named } from "./primitive.ts";
 export {
   calendarEvent,
   calendarEventList,
   eventChange,
-  eventDeleted,
   eventReminderMaxCount,
   eventReminderOffset,
   frequency,
@@ -35,18 +33,15 @@ export {
   type CalendarEvent,
   type CalendarEventList,
   type EventChange,
-  type EventDeleted,
   type EventReminderOffset,
   type Recurrence,
 } from "./event.ts";
 export {
-  familyDeleted,
   familyDeletion,
   familyLeft,
   familyOwnerChange,
   familyOwnerChanged,
   memberRemoved,
-  type FamilyDeleted,
   type FamilyDeletion,
   type FamilyLeft,
   type FamilyOwnerChange,
@@ -67,7 +62,6 @@ export {
   inviteCreated,
   inviteList,
   invitePreview,
-  inviteRequest,
   inviteRevoked,
   inviteToken,
   inviteTokenPattern,
@@ -102,7 +96,6 @@ export {
   plan,
   planAlbumPreview,
   planChange,
-  planDeleted,
   planList,
   planNoteMaxLength,
   planReminder,
@@ -114,9 +107,7 @@ export {
   type Plan,
   type PlanAlbum,
   type PlanChange,
-  type PlanDeleted,
   type PlanList,
-  type PlanMember,
   type PlanReminder,
   type Subplan,
   type SubplanChange,
@@ -126,18 +117,15 @@ export { photoStorage, type PhotoStorage } from "./photo-storage.ts";
 export {
   reminder,
   reminderChange,
-  reminderDeleted,
   reminderList,
   type Reminder,
   type ReminderChange,
-  type ReminderDeleted,
   type ReminderList,
 } from "./reminder.ts";
 export {
   pet,
   petList,
   petLongTextMaxLength,
-  petDeleted,
   petAvatar,
   petDeletion,
   petMemoChange,
@@ -147,7 +135,6 @@ export {
   type Pet,
   type PetList,
   type PetMemo,
-  type PetDeleted,
   type PetDeletion,
   type PetMemoChange,
   type PetProfile,
@@ -156,7 +143,6 @@ export {
 } from "./pet.ts";
 export {
   currentMember,
-  sessionRequest,
   sessionResponse,
   type CurrentMember,
   type SessionResponse,
@@ -199,7 +185,6 @@ export {
 export {
   careEntryPhotoMax,
   photo,
-  photoDeleted,
   photoMaxBytes,
   photoMaxSide,
   photoVariant,
@@ -211,7 +196,6 @@ export {
   album,
   albumBatchMax,
   albumChange,
-  albumDeleted,
   albumDescriptionMaxLength,
   albumList,
   albumPhotos,
@@ -227,7 +211,6 @@ export {
   cookedChange,
   recipe,
   recipeChange,
-  recipeDeleted,
   recipeFavorite,
   recipeList,
   recipePhotoMax,

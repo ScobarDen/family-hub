@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { photo } from "./photo.ts";
-import { deleted, named } from "./primitive.ts";
+import { named } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const visibility = z.enum(["shared", "private"]);
@@ -35,10 +35,6 @@ export const planChange = subplanChange.extend({
 
 export type PlanChange = z.infer<typeof planChange>;
 
-export const planMember = named;
-
-export type PlanMember = z.infer<typeof planMember>;
-
 export const completion = z.object({ at: z.number(), by: z.string().nullable() });
 
 export type Completion = z.infer<typeof completion>;
@@ -48,13 +44,11 @@ export const subplan = z.object({
   title: z.string(),
   dueDate: z.string().nullable(),
   reminder: planReminder.nullable(),
-  assignee: planMember.nullable(),
+  assignee: named.nullable(),
   completed: completion.nullable(),
 });
 
 export type Subplan = z.infer<typeof subplan>;
-
-const planPet = named;
 
 export const planAlbumPreview = 10;
 
@@ -70,7 +64,7 @@ export type PlanAlbum = z.infer<typeof planAlbum>;
 
 export const plan = subplan.extend({
   note: z.string().nullable(),
-  pet: planPet.nullable(),
+  pet: named.nullable(),
   album: planAlbum.nullable(),
   visibility,
   isOwn: z.boolean(),
@@ -82,7 +76,3 @@ export type Plan = z.infer<typeof plan>;
 export const planList = z.array(plan);
 
 export type PlanList = z.infer<typeof planList>;
-
-export const planDeleted = deleted;
-
-export type PlanDeleted = z.infer<typeof planDeleted>;

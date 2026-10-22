@@ -1,7 +1,7 @@
 import {
   albumList,
   plan,
-  planDeleted,
+  deleted,
   planList,
   type Plan,
   type PlanChange,
@@ -76,7 +76,7 @@ export function createPlansApi(client: HttpClient) {
       return resolvedPlan(client, saved);
     },
     remove: async (planId: string) =>
-      client.request(`/api/plans/${planId}`, { method: "DELETE", schema: planDeleted }),
+      client.request(`/api/plans/${planId}`, { method: "DELETE", schema: deleted }),
     complete: async (planId: string) => post(`/api/plans/${planId}/complete`),
     reopen: async (planId: string) => post(`/api/plans/${planId}/reopen`),
 

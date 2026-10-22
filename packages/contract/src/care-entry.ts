@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { careEntryPhotoMax, photo } from "./photo.ts";
-import { deleted, rubles } from "./primitive.ts";
+import { rubles } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const careKind = z.enum([
@@ -108,10 +108,6 @@ export type CareEntry = z.infer<typeof careEntry>;
 export const careEntryList = z.array(careEntry);
 
 export type CareEntryList = z.infer<typeof careEntryList>;
-
-export const careEntryDeleted = deleted;
-
-export type CareEntryDeleted = z.infer<typeof careEntryDeleted>;
 
 export const expenseRange = z.object({
   from: z.coerce.number().int(),

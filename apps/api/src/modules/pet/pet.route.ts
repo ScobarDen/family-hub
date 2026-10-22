@@ -6,7 +6,7 @@ import {
   petMemoChange,
   petProfile,
   type Pet,
-  type PetDeleted,
+  type Deleted,
   type PetList,
 } from "@family-hub/contract";
 
@@ -120,6 +120,6 @@ export const petRoute = new Hono<PetEnv>()
     );
 
     return result.status === "deleted"
-      ? context.json<PetDeleted>({ status: "deleted" })
+      ? context.json<Deleted>({ status: "deleted" })
       : refuse(context, result.status);
   });

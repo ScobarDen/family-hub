@@ -2,10 +2,9 @@ import {
   calendarEvent,
   calendarEventList,
   dueDateList,
-  eventDeleted,
+  deleted,
   planList,
   reminder,
-  reminderDeleted,
   reminderList,
   type EventChange,
   type ReminderChange,
@@ -34,7 +33,7 @@ export function createCalendarApi(client: HttpClient) {
         schema: calendarEvent,
       }),
     remove: async (eventId: string) =>
-      client.request(`/api/events/${eventId}`, { method: "DELETE", schema: eventDeleted }),
+      client.request(`/api/events/${eventId}`, { method: "DELETE", schema: deleted }),
 
     plans: async () => client.request("/api/plans", { schema: planList }),
     reminders: async () => client.request("/api/reminders", { schema: reminderList }),
@@ -47,7 +46,7 @@ export function createCalendarApi(client: HttpClient) {
         schema: reminder,
       }),
     removeReminder: async (reminderId: string) =>
-      client.request(`/api/reminders/${reminderId}`, { method: "DELETE", schema: reminderDeleted }),
+      client.request(`/api/reminders/${reminderId}`, { method: "DELETE", schema: deleted }),
   };
 }
 

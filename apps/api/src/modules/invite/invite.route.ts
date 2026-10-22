@@ -3,7 +3,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import {
-  inviteRequest,
+  telegramLogin,
   inviteToken,
   type InviteAccepted,
   type InviteCreated,
@@ -42,7 +42,7 @@ const byInitData = [
   sValidator("param", z.object({ token: inviteToken }), (result, context) =>
     result.success ? undefined : context.json(invalidRequest, httpStatus.badRequest),
   ),
-  sValidator("json", inviteRequest, (result, context) =>
+  sValidator("json", telegramLogin, (result, context) =>
     result.success ? undefined : context.json(invalidRequest, httpStatus.badRequest),
   ),
 ] as const;

@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { telegramLogin } from "./primitive.ts";
-
 export const inviteTokenPattern = /^[A-Za-z0-9_-]{22}$/;
 
 export const inviteToken = z.string().regex(inviteTokenPattern);
@@ -25,8 +23,6 @@ export type InviteList = z.infer<typeof inviteList>;
 export const inviteRevoked = z.object({ status: z.literal("revoked") });
 
 export type InviteRevoked = z.infer<typeof inviteRevoked>;
-
-export const inviteRequest = telegramLogin;
 
 export const invitePreview = z.discriminatedUnion("status", [
   z.object({ status: z.literal("open"), inviterName: z.string(), familyName: z.string() }),
