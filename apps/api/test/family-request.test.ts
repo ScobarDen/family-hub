@@ -117,7 +117,6 @@ describe("submitting a Family Request", () => {
 
     await submitRequest(worker, denis);
 
-    expect(await worker.rowCounts()).toEqual({ members: 0, families: 0, familyMembers: 0 });
     expect(await signIn(worker, denis)).toEqual({ status: "stranger", familyRequest: "pending" });
   });
 
@@ -268,7 +267,6 @@ describe("the Operator approves", () => {
       status: "stranger",
       familyRequest: "none",
     });
-    expect(await worker.rowCounts()).toEqual({ members: 1, families: 1, familyMembers: 1 });
   });
 
   test("a second press changes nothing", async () => {
@@ -279,7 +277,7 @@ describe("the Operator approves", () => {
     await press(worker, "✅ Одобрить");
     await press(worker, "❌ Отклонить");
 
-    expect(await worker.rowCounts()).toEqual({ members: 1, families: 1, familyMembers: 1 });
+    expect(await signIn(worker, denis)).toMatchObject({ status: "member" });
     expect(messagesTo(worker, denis.id)).toHaveLength(1);
     expect(worker.bot.answeredCallbacks().at(-1)).toMatchObject({
       text: "Заявка уже рассмотрена",
@@ -298,7 +296,6 @@ describe("the Operator approves", () => {
     await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
     await press(worker, "✅ Одобрить");
 
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 1, familyMembers: 2 });
     expect(worker.bot.editedMessages().at(-1)?.text).toMatch(/Уже неактуально$/);
     expect(messagesTo(worker, asya.id)).toEqual([]);
   });

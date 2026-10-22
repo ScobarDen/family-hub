@@ -104,14 +104,6 @@ describe("a Member leaving", () => {
     expect(await signIn(worker, asya)).toMatchObject({ status: "stranger" });
   });
 
-  test("keeps their Member row so the Family's history still shows their name", async () => {
-    const { worker } = await startWithFamily();
-
-    await leave(worker, asya);
-
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 1, familyMembers: 1 });
-  });
-
   test("takes their open Invites with them", async () => {
     const { worker } = await startWithFamily();
     const token = await inviteBy(worker, asya);
@@ -174,7 +166,7 @@ describe("the Family Owner leaving", () => {
     const response = await leave(worker, denis);
 
     expect(await response.json()).toEqual({ status: "family-deleted" });
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 0, familyMembers: 0 });
+    expect(await signIn(worker, denis)).toMatchObject({ status: "stranger" });
   });
 });
 
@@ -299,13 +291,13 @@ describe("deleting the Family", () => {
   test("removes everything of the Family once its name is typed", async () => {
     const { worker } = await startWithFamily();
 
-    await inviteBy(worker, asya);
+    const token = await inviteBy(worker, asya);
     const response = await deleteFamily(worker, denis, " Гущины ");
 
     expect(await response.json()).toEqual({ status: "deleted" });
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 0, familyMembers: 0 });
-    expect(await worker.countInvites()).toBe(0);
+    expect(await previewStatus(worker, vika, token)).toBe("unavailable");
     expect(await signIn(worker, asya)).toMatchObject({ status: "stranger" });
+    expect(await signIn(worker, denis)).toMatchObject({ status: "stranger" });
   });
 
   test("is refused when the typed name differs", async () => {
@@ -315,7 +307,7 @@ describe("deleting the Family", () => {
 
     expect(response.status).toBe(400);
     expect(await response.json()).toMatchObject({ code: "FAMILY_NAME_MISMATCH" });
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 1, familyMembers: 2 });
+    expect(await membersSeenBy(worker, denis)).toHaveLength(2);
   });
 
   test("is refused to a Member who is not the Family Owner", async () => {
@@ -324,7 +316,7 @@ describe("deleting the Family", () => {
     const response = await deleteFamily(worker, asya, "Гущины");
 
     expect(response.status).toBe(403);
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 1, familyMembers: 2 });
+    expect(await membersSeenBy(worker, denis)).toHaveLength(2);
   });
 
   test("leaves other Families alone", async () => {

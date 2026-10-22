@@ -294,8 +294,7 @@ describe("joining by Invite", () => {
     await worker.leaveFamily(asyaId);
     await joinByNewInvite(worker, asya);
 
-    expect(await familyOf(worker, asya)).toMatchObject({ family: "Гущины" });
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 1, familyMembers: 2 });
+    expect(await familyOf(worker, asya)).toMatchObject({ family: "Гущины", memberId: asyaId });
   });
 
   test("works only once", async () => {
@@ -390,7 +389,6 @@ describe("a pending Family Request of the invited person", () => {
     await approve(worker);
 
     expect(await signIn(worker, asya)).toMatchObject({ status: "member" });
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 1, familyMembers: 2 });
     expect(worker.bot.editedMessages().at(-1)?.text).toMatch(/Уже неактуально$/);
     expect(worker.bot.sentMessages().filter((sent) => sent.chat_id === asya.id)).toEqual([]);
   });

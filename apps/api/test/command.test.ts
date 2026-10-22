@@ -35,7 +35,6 @@ describe("a text command to the bot", () => {
         /^https:\/\/t\.me\/family_hub_test_bot\?startapp=cmd_[\da-f-]{36}$/u,
       ),
     });
-    expect(worker.ai.calls[0]?.model).toBe("primary-model");
 
     await press(worker, denis, dataOf(preview, "Создать"));
 

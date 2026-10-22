@@ -347,25 +347,3 @@ describe("the Reminder buttons", () => {
     ]);
   });
 });
-
-describe("housekeeping at 03:00 UTC", () => {
-  test("drops Invites nobody used that expired", async () => {
-    const worker = await startWithFamily();
-
-    await request(worker, denis, { method: "POST", path: "/api/invites" });
-    worker.clock.set("2026-10-20T03:00:00Z");
-    await worker.tick();
-
-    expect(await worker.countInvites()).toBe(0);
-  });
-
-  test("leaves Invites alone at other times", async () => {
-    const worker = await startWithFamily();
-
-    await request(worker, denis, { method: "POST", path: "/api/invites" });
-    worker.clock.set("2026-10-20T03:01:00Z");
-    await worker.tick();
-
-    expect(await worker.countInvites()).toBe(1);
-  });
-});

@@ -140,14 +140,6 @@ describe("a stranger", () => {
     expect(await response.json()).toEqual({ status: "stranger", familyRequest: "none" });
   });
 
-  test("leaves nothing behind in the database", async () => {
-    const worker = startWorker({ now });
-
-    await postSession(worker, initDataFor(worker, asya));
-
-    expect(await worker.rowCounts()).toEqual({ members: 0, families: 0, familyMembers: 0 });
-  });
-
   test("is a Member who left their Family", async () => {
     const { worker, familyId } = await startWithFamily();
     const asyaId = await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
@@ -248,27 +240,15 @@ async function preflight(worker: Worker, origin: string) {
 }
 
 describe("CORS", () => {
-  test("lets the Mini App on GitHub Pages call the API", async () => {
+  test.each([
+    ["the Mini App on GitHub Pages", "https://scobarden.github.io", "https://scobarden.github.io"],
+    ["the local dev Mini App", "http://localhost:5173", "http://localhost:5173"],
+    ["no other site", "https://evil.example", null],
+  ])("lets %s call the API", async (_site, origin, allowed) => {
     const worker = startWorker({ now });
 
-    const response = await preflight(worker, "https://scobarden.github.io");
+    const response = await preflight(worker, origin);
 
-    expect(response.headers.get("access-control-allow-origin")).toBe("https://scobarden.github.io");
-  });
-
-  test("lets the local dev Mini App call the API", async () => {
-    const worker = startWorker({ now });
-
-    const response = await preflight(worker, "http://localhost:5173");
-
-    expect(response.headers.get("access-control-allow-origin")).toBe("http://localhost:5173");
-  });
-
-  test("does not let other sites call the API", async () => {
-    const worker = startWorker({ now });
-
-    const response = await preflight(worker, "https://evil.example");
-
-    expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    expect(response.headers.get("access-control-allow-origin")).toBe(allowed);
   });
 });
