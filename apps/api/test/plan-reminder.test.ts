@@ -172,3 +172,53 @@ describe("a Plan's deadline Reminder", () => {
     expect(textsTo(worker, asya)).toEqual([]);
   });
 });
+
+describe("another Family's Member", () => {
+  const stranger = { id: 333, first_name: "Пётр" };
+
+  async function startWithStranger() {
+    const worker = await startWithFamily();
+
+    await worker.addFamily({ name: "Соседи", owner: { telegramId: stranger.id, name: "Пётр" } });
+    await request(worker, stranger, {
+      method: "PUT",
+      path: "/api/me/time-zone",
+      body: { timeZone: "Europe/Moscow", isAuto: true },
+    });
+
+    return worker;
+  }
+
+  test("cannot touch a Plan by its id, nor double its Reminder", async () => {
+    const worker = await startWithStranger();
+    const plan = await createPlan(worker, { assigneeId: worker.asyaId });
+    const calls = [
+      { method: "PUT", path: `/api/plans/${plan.id}`, body: ceiling },
+      { method: "POST", path: `/api/plans/${plan.id}/complete` },
+      { method: "DELETE", path: `/api/plans/${plan.id}` },
+    ];
+    const statuses: number[] = [];
+
+    for (const call of calls) {
+      const response = await request(worker, stranger, call);
+
+      statuses.push(response.status);
+    }
+
+    await tickAt(worker, "2026-10-19T06:00:00Z");
+
+    expect(statuses).toEqual([404, 404, 404]);
+    expect(textsTo(worker, asya)).toEqual(["📌 Покрасить потолок · до 20 октября"]);
+    expect(textsTo(worker, stranger)).toEqual([]);
+  });
+
+  test("never hears of the Family's deadlines", async () => {
+    const worker = await startWithStranger();
+
+    await createPlan(worker, { reminder: "on-day" });
+    await tickAt(worker, "2026-10-20T06:00:00Z");
+
+    expect(textsTo(worker, denis)).toHaveLength(1);
+    expect(textsTo(worker, stranger)).toEqual([]);
+  });
+});

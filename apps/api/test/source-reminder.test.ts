@@ -1,7 +1,7 @@
 import type { InlineKeyboardMarkup, Update } from "@grammyjs/types";
 import { describe, expect, test } from "vite-plus/test";
 
-import type { CalendarEvent, Pet } from "@family-hub/contract";
+import type { CalendarEvent, CareEntry, Pet } from "@family-hub/contract";
 
 import { signInitData, type TelegramUserFixture } from "./init-data.ts";
 import { startWorker } from "./worker-harness.ts";
@@ -241,10 +241,18 @@ describe("a Due Date", () => {
     const worker = await startWithFamily();
     const buick = await addBuick(worker, null);
 
-    await vaccinate(worker, buick.id, { vaccine: "Бешенство", dueDate: "2026-10-20" });
+    const response = await vaccinate(worker, buick.id, {
+      vaccine: "Бешенство",
+      dueDate: "2026-10-20",
+    });
+    const entry = await response.json<CareEntry>();
+
     await tickAt(worker, "2026-10-13T06:00:00Z");
 
     expect(textsTo(worker, denis)).toEqual(["💉 Прививка: Бешенство — Бьюик: срок 20 октября"]);
+    expect(buttonsOfLast(worker, denis)[0]).toMatchObject({
+      url: expect.stringContaining(`startapp=entry_${entry.id}`),
+    });
     expect(buttonsOfLast(worker, denis).map(({ text }) => text)).toEqual([
       "📝 Записать",
       "⏰ Отложить на день",
@@ -291,5 +299,28 @@ describe("a Due Date", () => {
     await tickAt(worker, "2026-10-20T06:00:00Z");
 
     expect(worker.bot.sentMessages()).toEqual([]);
+  });
+});
+
+describe("another Family's Member", () => {
+  test("never hears of the Family's Pet birthdays and Due Dates", async () => {
+    const worker = await startWithFamily();
+    const stranger = { id: 333, first_name: "Пётр" };
+
+    await worker.addFamily({ name: "Соседи", owner: { telegramId: stranger.id, name: "Пётр" } });
+    await request(worker, stranger, {
+      method: "PUT",
+      path: "/api/me/time-zone",
+      body: { timeZone: "Europe/Moscow", isAuto: true },
+    });
+
+    const buick = await addBuick(worker);
+
+    await vaccinate(worker, buick.id, { vaccine: "Бешенство", dueDate: "2026-10-20" });
+    await tickAt(worker, "2026-10-13T06:00:00Z");
+    await tickAt(worker, "2026-10-20T06:00:00Z");
+
+    expect(textsTo(worker, denis)).toHaveLength(3);
+    expect(textsTo(worker, stranger)).toEqual([]);
   });
 });

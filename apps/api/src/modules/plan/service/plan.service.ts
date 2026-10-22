@@ -10,11 +10,13 @@ import { addSubplan, removeSubplan, updateSubplan } from "./subplan.service.ts";
 type SubplanTarget = { planId: string; subplanId: string };
 
 function scheduling({ schedule }: PlanDependencies) {
-  return async function rescheduled<Result>(
+  return async function rescheduled<Result extends { status: string }>(
     { family }: Membership,
     { planId, result }: { planId: string; result: Result },
   ): Promise<Result> {
-    await schedule.sourceChanged(family.id, { kind: "plan", id: planId });
+    if (result.status === "ok" || result.status === "deleted") {
+      await schedule.sourceChanged(family.id, { kind: "plan", id: planId });
+    }
 
     return result;
   };
