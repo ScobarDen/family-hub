@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, lt, sql, type SQL } from "drizzle-orm";
 
 import { careEntries, careEntryPhotos, members, pets, photos, type Db } from "@/common/db";
+import { knownPhotoIds } from "@/modules/photo";
 
 export type CareEntryRow = typeof careEntries.$inferSelect & { authorName: string | null };
 
@@ -78,20 +79,6 @@ async function photosOf(db: Db, familyId: string, entryIds: string[]): Promise<E
     )
     .orderBy(asc(careEntryPhotos.position))
     .all();
-}
-
-async function knownPhotoIds(db: Db, familyId: string, photoIds: string[]): Promise<string[]> {
-  if (photoIds.length === 0) {
-    return [];
-  }
-
-  const rows = await db
-    .select({ id: photos.id })
-    .from(photos)
-    .where(and(eq(photos.familyId, familyId), inArray(photos.id, photoIds)))
-    .all();
-
-  return rows.map(({ id }) => id);
 }
 
 async function setPhotos(db: Db, { familyId, entryId, photoIds }: PhotoLinks): Promise<void> {

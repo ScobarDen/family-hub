@@ -1,10 +1,29 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { families, photos, type Db } from "@/common/db";
 
 export type PhotoRow = typeof photos.$inferSelect;
 
 type PhotoTarget = { familyId: string; photoId: string };
+
+// The ones among the given ids that are the Family's photos; Albums, Care Entries and Recipes link only those.
+export async function knownPhotoIds(
+  db: Db,
+  familyId: string,
+  photoIds: string[],
+): Promise<string[]> {
+  if (photoIds.length === 0) {
+    return [];
+  }
+
+  const rows = await db
+    .select({ id: photos.id })
+    .from(photos)
+    .where(and(eq(photos.familyId, familyId), inArray(photos.id, photoIds)))
+    .all();
+
+  return rows.map(({ id }) => id);
+}
 
 export function createPhotoRepo(db: Db) {
   return {

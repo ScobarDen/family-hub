@@ -11,6 +11,7 @@ import {
   recipes,
   type Db,
 } from "@/common/db";
+import { knownPhotoIds } from "@/modules/photo";
 
 export type RecipeRow = typeof recipes.$inferSelect;
 export type TagRow = typeof recipeTags.$inferSelect;
@@ -98,22 +99,15 @@ async function setFavorite(
         ));
 }
 
-async function knownIds(
-  db: Db,
-  {
-    familyId,
-    table,
-    ids,
-  }: { familyId: string; table: typeof photos | typeof recipeTags; ids: string[] },
-): Promise<string[]> {
+async function knownTagIds(db: Db, { familyId, ids }: Links): Promise<string[]> {
   if (ids.length === 0) {
     return [];
   }
 
   const rows = await db
-    .select({ id: table.id })
-    .from(table)
-    .where(and(eq(table.familyId, familyId), inArray(table.id, ids)))
+    .select({ id: recipeTags.id })
+    .from(recipeTags)
+    .where(and(eq(recipeTags.familyId, familyId), inArray(recipeTags.id, ids)))
     .all();
 
   return rows.map(({ id }) => id);
@@ -162,10 +156,8 @@ export function createRecipeRepo(db: Db) {
       db.select().from(recipeTags).where(eq(recipeTags.familyId, familyId)).all(),
     find: async (target: RecipeTarget) => db.select().from(recipes).where(ofRecipe(target)).get(),
     findTag: async (target: TagTarget) => db.select().from(recipeTags).where(ofTag(target)).get(),
-    knownTagIds: async ({ familyId, ids }: Links) =>
-      knownIds(db, { familyId, table: recipeTags, ids }),
-    knownPhotoIds: async ({ familyId, ids }: Links) =>
-      knownIds(db, { familyId, table: photos, ids }),
+    knownTagIds: async (links: Links) => knownTagIds(db, links),
+    knownPhotoIds: async ({ familyId, ids }: Links) => knownPhotoIds(db, familyId, ids),
 
     async add(row: typeof recipes.$inferInsert): Promise<void> {
       await db.insert(recipes).values(row);

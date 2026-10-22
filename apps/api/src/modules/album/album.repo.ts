@@ -10,6 +10,7 @@ import {
   recipePhotos,
   type Db,
 } from "@/common/db";
+import { knownPhotoIds } from "@/modules/photo";
 
 export type AlbumRow = typeof albums.$inferSelect;
 export type PhotoRow = typeof photos.$inferSelect;
@@ -76,16 +77,6 @@ async function deleteOwnPhotos(db: Db, { familyId, albumId }: AlbumTarget): Prom
         notInArray(photos.id, inEntries),
       ),
     );
-}
-
-async function knownPhotoIds(db: Db, familyId: string, photoIds: string[]): Promise<string[]> {
-  const rows = await db
-    .select({ id: photos.id })
-    .from(photos)
-    .where(and(eq(photos.familyId, familyId), inArray(photos.id, photoIds)))
-    .all();
-
-  return rows.map(({ id }) => id);
 }
 
 async function removePhoto(
