@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import type { Pet } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { fillForm, matchingName, reatomSubmitFailure } from "@/common/form";
 import { detached, reatomFailure } from "@/common/state";
 
 import type { PetsApi } from "../pets.api.ts";
@@ -17,12 +17,7 @@ type PetArchiveDependencies = {
 };
 
 function reatomDeletion({ api, pets, openedPet, onDeleted }: PetArchiveDependencies) {
-  const petName = z
-    .string()
-    .refine(
-      (typed) => typed.trim() !== "" && typed.trim() === openedPet()?.name.trim(),
-      "Имя не совпадает",
-    );
+  const petName = matchingName(() => openedPet()?.name, "Имя не совпадает");
 
   return reatomForm(
     { petName: "" },

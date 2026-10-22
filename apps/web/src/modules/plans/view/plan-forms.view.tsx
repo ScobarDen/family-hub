@@ -1,14 +1,16 @@
 import { reatomComponent } from "@reatom/react";
 
-import { type Choice, ChoiceField, FormShell, TextAreaField, TextField } from "@/common/ui";
+import {
+  type Choice,
+  ChoiceField,
+  FormShell,
+  TextAreaField,
+  TextField,
+  visibilityChoices,
+} from "@/common/ui";
 
 import type { PlanFormModel } from "../vm/plan-form.vm.ts";
 import type { SubplanFormModel } from "../vm/subplan-form.vm.ts";
-
-const visibilityChoices: Choice[] = [
-  { value: "shared", title: "Для всей семьи" },
-  { value: "private", title: "Только я" },
-];
 
 const reminderChoices: Choice[] = [
   { value: "", title: "Не напоминать" },

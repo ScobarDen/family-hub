@@ -2,7 +2,7 @@ import { wrap } from "@reatom/core";
 
 import { inviteAccepted, invitePreview, type ErrorCode } from "@family-hub/contract";
 
-import { HttpError, type HttpClient } from "@/common/http-client";
+import { refusalOf, type HttpClient } from "@/common/http-client";
 
 export type AcceptOutcome = "joined" | "unavailable" | "already-member";
 
@@ -10,10 +10,6 @@ const refusals: Partial<Record<ErrorCode, AcceptOutcome>> = {
   INVITE_UNAVAILABLE: "unavailable",
   ALREADY_MEMBER: "already-member",
 };
-
-function refusalOf(error: unknown): AcceptOutcome | undefined {
-  return error instanceof HttpError && error.code !== undefined ? refusals[error.code] : undefined;
-}
 
 export function createJoinFamilyApi(client: HttpClient) {
   return {
@@ -36,7 +32,7 @@ export function createJoinFamilyApi(client: HttpClient) {
 
         return "joined";
       } catch (error) {
-        const refusal = refusalOf(error);
+        const refusal = refusalOf(error, refusals);
 
         if (refusal === undefined) {
           throw error;

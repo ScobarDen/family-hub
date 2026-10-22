@@ -1,6 +1,4 @@
 import {
-  photo,
-  photoDeleted,
   recipe,
   recipeDeleted,
   recipeList,
@@ -11,7 +9,7 @@ import {
 } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
-import { resolvedPhoto, type PreparedPhoto } from "@/common/photo";
+import { createPhotoCalls, resolvedPhoto } from "@/common/photo";
 
 export type RecipeQuery = {
   text: string;
@@ -64,30 +62,6 @@ function tagCalls(client: HttpClient) {
   };
 }
 
-function photoCalls(client: HttpClient) {
-  return {
-    async uploadPhoto({ file, takenAt }: PreparedPhoto) {
-      const form = new FormData();
-
-      form.append("file", file, "photo.jpg");
-
-      if (takenAt !== null) {
-        form.append("takenAt", String(takenAt));
-      }
-
-      const uploaded = await client.request("/api/photos", {
-        method: "POST",
-        body: form,
-        schema: photo,
-      });
-
-      return resolvedPhoto(uploaded, client.url);
-    },
-    deletePhoto: async (photoId: string) =>
-      client.request(`/api/photos/${photoId}`, { method: "DELETE", schema: photoDeleted }),
-  };
-}
-
 export function createRecipesApi(client: HttpClient) {
   async function one(
     path: string,
@@ -117,7 +91,7 @@ export function createRecipesApi(client: HttpClient) {
     uncook: async (recipeId: string, cookId: string) =>
       one(`/api/recipes/${recipeId}/cooked/${cookId}`, { method: "DELETE" }),
     ...tagCalls(client),
-    ...photoCalls(client),
+    ...createPhotoCalls(client),
   };
 }
 

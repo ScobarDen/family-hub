@@ -11,16 +11,12 @@ import {
   Label,
   TextAreaField,
   TextField,
+  visibilityChoices,
 } from "@/common/ui";
 
 import { goalIcons } from "../goals.config.ts";
 import type { GoalFormModel } from "../vm/goal-form.vm.ts";
 import type { MovementFormModel } from "../vm/movement-form.vm.ts";
-
-const visibilityChoices: Choice[] = [
-  { value: "shared", title: "Для всей семьи" },
-  { value: "private", title: "Только я" },
-];
 
 const kindChoices: Choice[] = [
   { value: "contribution", title: "Пополнение" },

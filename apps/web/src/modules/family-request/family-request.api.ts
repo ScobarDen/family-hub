@@ -2,7 +2,7 @@ import { wrap } from "@reatom/core";
 
 import { familyRequestCreated, type ErrorCode } from "@family-hub/contract";
 
-import { HttpError, type HttpClient } from "@/common/http-client";
+import { refusalOf, type HttpClient } from "@/common/http-client";
 
 export type SubmitOutcome = "sent" | "already-pending" | "cooldown" | "already-member";
 
@@ -11,10 +11,6 @@ const refusals: Partial<Record<ErrorCode, SubmitOutcome>> = {
   FAMILY_REQUEST_COOLDOWN: "cooldown",
   ALREADY_MEMBER: "already-member",
 };
-
-function refusalOf(error: unknown): SubmitOutcome | undefined {
-  return error instanceof HttpError && error.code !== undefined ? refusals[error.code] : undefined;
-}
 
 export function createFamilyRequestApi(client: HttpClient) {
   return {
@@ -30,7 +26,7 @@ export function createFamilyRequestApi(client: HttpClient) {
 
         return "sent";
       } catch (error) {
-        const refusal = refusalOf(error);
+        const refusal = refusalOf(error, refusals);
 
         if (refusal === undefined) {
           throw error;

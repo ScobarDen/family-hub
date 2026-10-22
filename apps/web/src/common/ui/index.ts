@@ -19,4 +19,5 @@ export { Switch } from "./switch.view.tsx";
 export { TextAreaField } from "./text-area-field.view.tsx";
 export { TextField } from "./text-field.view.tsx";
 export { Textarea } from "./textarea.view.tsx";
+export { visibilityChoices } from "./ui.config.ts";
 export { cn } from "./ui.lib.ts";

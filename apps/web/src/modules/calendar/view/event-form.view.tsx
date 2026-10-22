@@ -8,24 +8,17 @@ import {
   Label,
   TextAreaField,
   TextField,
+  visibilityChoices,
 } from "@/common/ui";
 
+import { repeatChoices } from "../calendar.config.ts";
 import type { EventFormModel } from "../vm/event-form.vm.ts";
 
 const timings: Choice[] = [
   { value: "all-day", title: "Весь день" },
   { value: "timed", title: "Со временем" },
 ];
-const frequencies: Choice[] = [
-  { value: "", title: "Не повторять" },
-  { value: "weekly", title: "Каждую неделю" },
-  { value: "monthly", title: "Каждый месяц" },
-  { value: "yearly", title: "Каждый год" },
-];
-const visibilities: Choice[] = [
-  { value: "shared", title: "Для всей семьи" },
-  { value: "private", title: "Только я" },
-];
+const frequencies: Choice[] = [{ value: "", title: "Не повторять" }, ...repeatChoices];
 
 type EventFormProps = { model: EventFormModel; onCancel: () => void };
 
@@ -86,7 +79,7 @@ export const EventForm = reatomComponent(({ model, onCancel }: EventFormProps) =
       )}
       <ReminderOffsets model={model} />
       {model.canChooseVisibility() && (
-        <ChoiceField field={fields.visibility} label="Кто видит" choices={visibilities} />
+        <ChoiceField field={fields.visibility} label="Кто видит" choices={visibilityChoices} />
       )}
       <TextAreaField field={fields.note} id="event-note" label="Заметка" />
     </FormShell>

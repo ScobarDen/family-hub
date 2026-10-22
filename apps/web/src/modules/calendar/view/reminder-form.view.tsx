@@ -2,14 +2,10 @@ import { reatomComponent } from "@reatom/react";
 
 import { Button, Chip, type Choice, ChoiceField, FormShell, Label, TextField } from "@/common/ui";
 
+import { repeatChoices } from "../calendar.config.ts";
 import type { ReminderFormModel } from "../vm/reminder-form.vm.ts";
 
-const frequencies: Choice[] = [
-  { value: "", title: "Один раз" },
-  { value: "weekly", title: "Каждую неделю" },
-  { value: "monthly", title: "Каждый месяц" },
-  { value: "yearly", title: "Каждый год" },
-];
+const frequencies: Choice[] = [{ value: "", title: "Один раз" }, ...repeatChoices];
 const visibilities: Choice[] = [
   { value: "shared", title: "Для всей семьи" },
   { value: "private", title: "Только мне" },

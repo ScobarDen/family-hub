@@ -8,6 +8,7 @@ import { reatomFailure } from "@/common/state";
 import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
+import { repeatTitles } from "../calendar.config.ts";
 import type { CalendarData } from "../calendar.model.ts";
 
 export type OpenedOccurrence = { eventId: string; occurrence: string | undefined };
@@ -30,8 +31,6 @@ type EventDetailsDependencies = {
   opened: Atom<OpenedOccurrence | undefined>;
   onClosed: () => void;
 };
-
-const repeatTitles = { weekly: "Каждую неделю", monthly: "Каждый месяц", yearly: "Каждый год" };
 
 const confirmations: Record<"skip" | "delete", Confirmation> = {
   skip: {

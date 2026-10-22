@@ -22,6 +22,14 @@ export class HttpError extends Error {
   }
 }
 
+// A refusal the server names by its code becomes the caller's outcome; anything else stays an error.
+export function refusalOf<Outcome>(
+  error: unknown,
+  refusals: Partial<Record<ErrorCode, Outcome>>,
+): Outcome | undefined {
+  return error instanceof HttpError && error.code !== undefined ? refusals[error.code] : undefined;
+}
+
 function retryAfterOf(response: Response): number | undefined {
   const seconds = Number(response.headers.get("retry-after"));
 
