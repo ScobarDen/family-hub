@@ -29,6 +29,13 @@ describe("parsing", () => {
     });
   });
 
+  test("reads a Care Entry link", () => {
+    expect(parseDeepLink("entry_0199b4d2-6c00-7abc-8def-0123456789ab")).toEqual({
+      kind: "entry",
+      id: "0199b4d2-6c00-7abc-8def-0123456789ab",
+    });
+  });
+
   test("reads a Command Draft link the bot's «Изменить» opens", () => {
     expect(parseDeepLink("cmd_0199b4d2-6c00-7abc-8def-0123456789ab")).toEqual({
       kind: "cmd",
