@@ -57,7 +57,7 @@ export const memberSettings = z.object({
 
 export type MemberSettings = z.infer<typeof memberSettings>;
 
-export const familyMember = named.extend({ isFamilyOwner: z.boolean() });
+const familyMember = named.extend({ isFamilyOwner: z.boolean() });
 
 export type FamilyMember = z.infer<typeof familyMember>;
 

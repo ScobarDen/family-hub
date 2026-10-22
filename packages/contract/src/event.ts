@@ -10,13 +10,13 @@ export const eventNoteMaxLength = 2000;
 
 // An all-day Event has a date only; a timed one also has the wall-clock time and the zone it was
 // set in, which its Occurrences keep.
-export const eventStart = z
+const eventStart = z
   .object({ date, time: time.nullable(), timeZone: z.string().refine(isTimeZone).nullable() })
   .refine(({ time: startTime, timeZone }) => (startTime === null) === (timeZone === null), {
     message: "A timed start needs its zone, an all-day one has none",
   });
 
-export const eventEnd = z.object({ date, time: time.nullable() });
+const eventEnd = z.object({ date, time: time.nullable() });
 
 export const frequency = z.enum(["weekly", "monthly", "yearly"]);
 
@@ -89,8 +89,6 @@ export const calendarEventList = z.array(calendarEvent);
 export type CalendarEventList = z.infer<typeof calendarEventList>;
 
 export const occurrenceSkip = z.object({ date });
-
-export type OccurrenceSkip = z.infer<typeof occurrenceSkip>;
 
 export const eventDeleted = deleted;
 

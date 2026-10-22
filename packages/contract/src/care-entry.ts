@@ -19,9 +19,10 @@ export const expenseCategory = z.enum(["food", "vet", "medicine", "grooming", "t
 
 export type ExpenseCategory = z.infer<typeof expenseCategory>;
 
-export const careTextMaxLength = 200;
+const careTextMaxLength = 200;
+
 export const careNoteMaxLength = 2000;
-export const weightMaxKg = 200;
+const weightMaxKg = 200;
 
 const weightStepsPerKg = 10;
 const roundingTolerance = 1e-9;
@@ -30,9 +31,7 @@ const name = z.string().trim().min(1).max(careTextMaxLength);
 const dueDate = z.iso.date().nullable();
 
 // The cost of a medical Care Entry is a Pet Expense of the vet or of medicine.
-export const careCost = z.object({ amount: rubles, category: z.enum(["vet", "medicine"]) });
-
-export type CareCost = z.infer<typeof careCost>;
+const careCost = z.object({ amount: rubles, category: z.enum(["vet", "medicine"]) });
 
 export const careDetails = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("vaccination"), vaccine: name, cost: careCost.nullable(), dueDate }),
@@ -117,7 +116,7 @@ export const expenseSummary = z.object({
 
 export type ExpenseSummary = z.infer<typeof expenseSummary>;
 
-export const dueDateItem = z.object({
+const dueDateItem = z.object({
   entryId: z.string(),
   kind: z.enum(["vaccination", "treatment", "vet_visit"]),
   label: z.string(),

@@ -28,8 +28,6 @@ export type InviteRevoked = z.infer<typeof inviteRevoked>;
 
 export const inviteRequest = telegramLogin;
 
-export type InviteRequest = z.infer<typeof inviteRequest>;
-
 export const invitePreview = z.discriminatedUnion("status", [
   z.object({ status: z.literal("open"), inviterName: z.string(), familyName: z.string() }),
   z.object({ status: z.literal("unavailable") }),

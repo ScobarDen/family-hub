@@ -13,7 +13,7 @@ export const feedUpcomingDays = 14;
 
 const dated = { key: z.string(), title: z.string(), date: z.iso.date() };
 
-export const feedUpcoming = z.discriminatedUnion("kind", [
+const feedUpcoming = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("event"),
     ...dated,
@@ -38,7 +38,7 @@ const done = { key: z.string(), at: z.number(), memberName: z.string() };
 // Up to three thumbnails come along; photoCount says how many there are in all.
 const withPhotos = { photos: z.array(photo), photoCount: z.number() };
 
-export const feedActivity = z.discriminatedUnion("kind", [
+const feedActivity = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("care"),
     ...done,

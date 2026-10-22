@@ -54,12 +54,12 @@ export const subplan = z.object({
 
 export type Subplan = z.infer<typeof subplan>;
 
-export const planPet = named;
+const planPet = named;
 
 export const planAlbumPreview = 10;
 
 // A trip's Plan shows a strip of its Album and opens the Album itself.
-export const planAlbum = z.object({
+const planAlbum = z.object({
   id: z.string(),
   title: z.string(),
   photos: z.array(photo),

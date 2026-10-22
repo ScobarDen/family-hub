@@ -9,7 +9,7 @@ export const reminderTextMaxLength = 500;
 
 // A standalone Reminder fires at one moment for all its Recipients: its wall-clock time in the
 // zone it was set in.
-export const reminderStart = z.object({ date, time, timeZone: z.string().refine(isTimeZone) });
+const reminderStart = z.object({ date, time, timeZone: z.string().refine(isTimeZone) });
 
 export const reminderChange = z.object({
   text: z.string().trim().min(1).max(reminderTextMaxLength),

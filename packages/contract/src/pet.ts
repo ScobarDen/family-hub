@@ -4,11 +4,11 @@ import { photoUrls } from "./photo.ts";
 import { deleted } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
-export const petSpecies = z.enum(["dog", "cat", "bird", "rodent", "fish", "reptile", "other"]);
+const petSpecies = z.enum(["dog", "cat", "bird", "rodent", "fish", "reptile", "other"]);
 
 export type PetSpecies = z.infer<typeof petSpecies>;
 
-export const petSex = z.enum(["male", "female"]);
+const petSex = z.enum(["male", "female"]);
 
 export type PetSex = z.infer<typeof petSex>;
 
@@ -36,7 +36,7 @@ export const petMemoChange = z.object({
 
 export type PetMemoChange = z.infer<typeof petMemoChange>;
 
-export const petMemo = petMemoChange.extend({
+const petMemo = petMemoChange.extend({
   updatedAt: z.number().nullable(),
   updatedBy: z.string().nullable(),
 });

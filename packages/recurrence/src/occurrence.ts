@@ -1,6 +1,6 @@
 import { Temporal } from "temporal-polyfill";
 
-export type Frequency = "weekly" | "monthly" | "yearly";
+type Frequency = "weekly" | "monthly" | "yearly";
 
 export type Recurrence = { frequency: Frequency; until: string | null };
 

@@ -42,7 +42,7 @@ export const goalChange = z.object({
 
 export type GoalChange = z.infer<typeof goalChange>;
 
-export const movementKind = z.enum(["contribution", "withdrawal"]);
+const movementKind = z.enum(["contribution", "withdrawal"]);
 
 export type MovementKind = z.infer<typeof movementKind>;
 
@@ -57,7 +57,7 @@ export const movementChange = z.object({
 
 export type MovementChange = z.infer<typeof movementChange>;
 
-export const goalOutcome = z.enum(["fulfilled", "cancelled"]);
+const goalOutcome = z.enum(["fulfilled", "cancelled"]);
 
 export type GoalOutcome = z.infer<typeof goalOutcome>;
 
@@ -76,7 +76,7 @@ export const movement = z.object({
 
 export type Movement = z.infer<typeof movement>;
 
-export const goalShare = named.extend({ contributed: z.number(), withdrawn: z.number() });
+const goalShare = named.extend({ contributed: z.number(), withdrawn: z.number() });
 
 export type GoalShare = z.infer<typeof goalShare>;
 
