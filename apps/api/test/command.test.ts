@@ -170,6 +170,47 @@ describe("a text command to the bot", () => {
     expect(worker.bot.answeredCallbacks().at(-1)?.text).toBe("Черновик устарел");
     expect(await reminders(worker, denis)).toEqual([]);
   });
+
+  test("keeps the phrase's day and zone when «Создать» comes the next day in another zone", async () => {
+    const worker = await startWithFamily();
+
+    worker.clock.set("2026-10-13T20:00:00Z");
+    worker.ai.answer({ response: { ...internet, date: "2026-10-14", time: "09:00" } });
+    await say(worker, denis, "напомни завтра в 9 оплатить интернет");
+    worker.clock.set("2026-10-14T06:00:00Z");
+    await request(worker, denis, {
+      method: "PUT",
+      path: "/api/me/time-zone",
+      body: { timeZone: "Asia/Vladivostok", isAuto: true },
+    });
+    await press(worker, denis, dataOf(lastTo(worker, denis), "Создать"));
+
+    expect(worker.ai.calls[0]?.input).toMatchObject({
+      messages: expect.arrayContaining([
+        expect.objectContaining({ content: expect.stringContaining("Сегодня 2026-10-13") }),
+      ]),
+    });
+    expect(await reminders(worker, denis)).toMatchObject([
+      { start: { date: "2026-10-14", time: "09:00", timeZone: "Europe/Moscow" } },
+    ]);
+  });
+
+  test("says a Recipient has left the Family and keeps the draft to change", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.answer({ response: { ...internet, recipientIds: [worker.asyaId] } });
+    await say(worker, denis, "напомни Асе в пятницу в 19:00 оплатить интернет");
+    await request(worker, denis, {
+      method: "DELETE",
+      path: `/api/family/members/${worker.asyaId}`,
+    });
+    await press(worker, denis, dataOf(lastTo(worker, denis), "Создать"));
+
+    expect(worker.bot.editedMessages().at(-1)?.text).toMatch(
+      /\n\nНе получилось создать: кого-то из получателей уже нет в семье\. Выберите получателей в «Изменить»\.$/u,
+    );
+    expect(await reminders(worker, denis)).toEqual([]);
+  });
 });
 
 const grooming = {
@@ -233,6 +274,38 @@ describe("an Event command to the bot", () => {
 
     expect(lastTo(worker, denis)?.text).toBe(
       "📅 День рождения мамы · ср 3 мар, весь день · каждый год",
+    );
+  });
+
+  test("keeps the zone the phrase was said in when the Member changes zone before «Создать»", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.answer({ response: grooming });
+    await say(worker, denis, "в субботу в 12 груминг Бьюика");
+    worker.clock.set("2026-10-13T19:00:01Z");
+    await request(worker, denis, {
+      method: "PUT",
+      path: "/api/me/time-zone",
+      body: { timeZone: "Asia/Vladivostok", isAuto: true },
+    });
+    await press(worker, denis, dataOf(lastTo(worker, denis), "Создать"));
+
+    const events = await request(worker, denis, { path: "/api/events" });
+
+    expect(await events.json()).toMatchObject([
+      { start: { date: "2026-10-17", time: "12:00", timeZone: "Europe/Moscow" } },
+    ]);
+  });
+
+  test("says what does not add up in a draft the Event form would refuse", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.answer({ response: { ...grooming, endDate: "2026-10-16", endTime: "14:00" } });
+    await say(worker, denis, "в субботу в 12 груминг Бьюика до пятницы");
+    await press(worker, denis, dataOf(lastTo(worker, denis), "Создать"));
+
+    expect(worker.bot.editedMessages().at(-1)?.text).toMatch(
+      /\n\nНе получилось создать: в черновике не сходятся даты или поля\. Поправьте его в «Изменить»\.$/u,
     );
   });
 });

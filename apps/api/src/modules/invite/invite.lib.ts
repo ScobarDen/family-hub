@@ -1,7 +1,5 @@
 import type { InlineQueryResultArticle } from "@grammyjs/types";
 
-import { encodeDeepLink } from "@family-hub/contract";
-
 import { inviteTokenBytes } from "./invite.config.ts";
 
 export function newInviteToken(): string {
@@ -11,15 +9,6 @@ export function newInviteToken(): string {
     .replaceAll("+", "-")
     .replaceAll("/", "_")
     .replace(/=+$/, "");
-}
-
-// The bot's Main Mini App opens from t.me/<bot>, so no app short name is needed.
-export function inviteLink(botUsername: string, token: string): string {
-  const link = new URL(`https://t.me/${botUsername}`);
-
-  link.searchParams.set("startapp", encodeDeepLink({ kind: "inv", id: token }));
-
-  return link.toString();
 }
 
 type ShareCard = { inviteId: string; link: string; inviterName: string; familyName: string };

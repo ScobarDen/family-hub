@@ -1,13 +1,6 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import {
-  encodeDeepLink,
-  type Completion,
-  type Plan,
-  type PlanAlbum,
-  type PlanMember,
-  type Subplan,
-} from "@family-hub/contract";
+import type { Completion, Plan, PlanAlbum, PlanMember, Subplan } from "@family-hub/contract";
 
 import type { PlanRow, PlanTree } from "./plan.repo.ts";
 
@@ -70,11 +63,6 @@ export function assignedText({ assignerName, title, dueDate }: AssignedText): st
   return `🧑 ${assignerName} назначил(а) тебе: ${title}${due}`;
 }
 
-// The bot's Main Mini App opens from t.me/<bot>, so the link needs no app short name.
-export function openPlanButton(botUsername: string, planId: string): InlineKeyboardMarkup {
-  const link = new URL(`https://t.me/${botUsername}`);
-
-  link.searchParams.set("startapp", encodeDeepLink({ kind: "plan", id: planId }));
-
-  return { inline_keyboard: [[{ text: "Открыть", url: link.toString() }]] };
+export function openPlanButton(url: string): InlineKeyboardMarkup {
+  return { inline_keyboard: [[{ text: "Открыть", url }]] };
 }

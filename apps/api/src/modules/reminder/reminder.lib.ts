@@ -17,6 +17,18 @@ export type ReminderAction = "done" | "snooze";
 
 const callbackPattern = new RegExp(`^${callbackPrefix}:(done|snooze):(.+)$`);
 
+const sourceIdSeparator = ":";
+
+// A holder with several sources, an Event's offsets or a Pet's Due Dates, tells them apart by a part
+// after its own id.
+export function sourceIdOf(holderId: string, part?: string): string {
+  return part === undefined ? holderId : `${holderId}${sourceIdSeparator}${part}`;
+}
+
+export function holderIdOf(sourceId: string): string {
+  return sourceId.split(sourceIdSeparator)[0] ?? sourceId;
+}
+
 export function toReminder(
   { reminder, recipients }: ReminderWithRecipients,
   memberId: string,

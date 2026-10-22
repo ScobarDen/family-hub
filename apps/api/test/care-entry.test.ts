@@ -189,6 +189,30 @@ describe("the Care Entry journal", () => {
     expect(await journalOf(worker)).toEqual([]);
   });
 
+  test("opens one entry with its Pet until it is deleted", async () => {
+    const worker = await startWithBuick();
+    const entry = await addedEntry(
+      worker,
+      denis,
+      entryAt("2026-10-02T15:00:00Z", {
+        kind: "vaccination",
+        vaccine: "Нобивак DHPPi",
+        cost: null,
+        dueDate: "2027-10-02",
+      }),
+    );
+
+    const opened = await call(worker, asya, { path: `/api/care-entries/${entry.id}` });
+
+    expect(await opened.json()).toEqual(entry);
+
+    await call(worker, denis, { method: "DELETE", path: `/api/care-entries/${entry.id}` });
+    const gone = await call(worker, asya, { path: `/api/care-entries/${entry.id}` });
+
+    expect(gone.status).toBe(404);
+    expect(await gone.json()).toMatchObject({ code: "CARE_ENTRY_NOT_FOUND" });
+  });
+
   test("stays out of other Families", async () => {
     const worker = await startWithBuick();
 
@@ -196,6 +220,7 @@ describe("the Care Entry journal", () => {
     const entry = await addedEntry(worker, denis, entryAt(now, { kind: "note" }, "Чихает"));
 
     const listed = await call(worker, vika, { path: `/api/pets/${worker.buickId}/care-entries` });
+    const opened = await call(worker, vika, { path: `/api/care-entries/${entry.id}` });
     const added = await addEntry(worker, vika, entryAt(now, { kind: "note" }));
     const deleted = await call(worker, vika, {
       method: "DELETE",
@@ -203,6 +228,7 @@ describe("the Care Entry journal", () => {
     });
 
     expect(await listed.json()).toEqual([]);
+    expect(opened.status).toBe(404);
     expect(added.status).toBe(404);
     expect(deleted.status).toBe(404);
     expect(await journalOf(worker)).toHaveLength(1);

@@ -1,5 +1,6 @@
-import { encodeDeepLink } from "@family-hub/contract";
-import { dayAfter, dueStepFrom, firstOccurrenceFrom, morningOf } from "@family-hub/recurrence";
+import { birthdayFrom, dayAfter, dueStepFrom, morningOf } from "@family-hub/recurrence";
+
+import { openDueDates, type OpenDueDate } from "@/modules/care-entry";
 
 import {
   daySnoozeMs,
@@ -7,115 +8,83 @@ import {
   formatFloatingDate,
   reminderButtons,
   snoozeMs,
+  sourceIdOf,
 } from "../reminder.lib.ts";
-import type { ReminderDependencies, Source } from "../reminder.types.ts";
-import type { DueEntryRow, PetRow } from "../repo/source.repo.ts";
+import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";
 
-const dueTitles = {
-  vaccination: "Прививка",
-  treatment: "Обработка",
-  vet_visit: "Визит к ветеринару",
-};
+export async function birthdaySources(
+  dependencies: ReminderDependencies,
+  holder: SourceHolder,
+): Promise<Source[]> {
+  const pet = await dependencies.sources.pet(holder);
+  const birthDate = pet?.birthDate ?? null;
 
-export async function birthdaySource(
-  { sources }: ReminderDependencies,
-  pet: PetRow,
-): Promise<Source | undefined> {
-  const { birthDate } = pet;
-
-  if (birthDate === null || pet.archivedAt !== null) {
-    return undefined;
+  if (pet === undefined || pet.archivedAt !== null || birthDate === null) {
+    return [];
   }
 
-  const yearly = { frequency: "yearly" as const, until: null };
-
-  // The day of birth itself is no birthday to congratulate on.
-  function from(day: string): string | undefined {
-    const occurrence = firstOccurrenceFrom(birthDate ?? day, yearly, day);
-
-    return occurrence === birthDate
-      ? firstOccurrenceFrom(birthDate, yearly, dayAfter(birthDate))
-      : occurrence;
-  }
-
-  return {
-    kind: "pet_birthday",
-    familyId: pet.familyId,
-    sourceId: pet.id,
-    recipientIds: await sources.memberIdsOf(pet.familyId),
-    homeZone: undefined,
-    first: from,
-    next: (occurrence) => from(dayAfter(occurrence)),
-    fireAt: morningOf,
-    emoji: "🎂",
-    title: () => `Сегодня день рождения у ${pet.name}!`,
-    buttons: reminderButtons,
-    closesForEveryone: true,
-    snoozeMs,
-    isSkippedWhenLate: true,
-  };
-}
-
-// The newest entry of each due key holds its Due Date; a later one of the same key closes it.
-export function openDues(entries: DueEntryRow[]): Array<DueEntryRow & { dueDate: string }> {
-  const newest = new Map<string, DueEntryRow>();
-
-  for (const entry of entries) {
-    if (entry.dueKey !== null && !newest.has(entry.dueKey)) {
-      newest.set(entry.dueKey, entry);
-    }
-  }
-
-  return [...newest.values()].flatMap((entry) =>
-    entry.dueDate === null ? [] : [{ ...entry, dueDate: entry.dueDate }],
-  );
-}
-
-function dueTitleOf({ details }: DueEntryRow): string {
-  if (details.kind === "vaccination") {
-    return `${dueTitles.vaccination}: ${details.vaccine}`;
-  }
-
-  return details.kind === "treatment"
-    ? `${dueTitles.treatment}: ${details.target}`
-    : dueTitles.vet_visit;
-}
-
-async function recordUrlOf({ bot }: ReminderDependencies, entryId: string): Promise<string> {
-  // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
-  const { username } = await bot.call("getMe", undefined);
-  const link = new URL(`https://t.me/${username}`);
-
-  link.searchParams.set("startapp", encodeDeepLink({ kind: "entry", id: entryId }));
-
-  return link.toString();
+  return [
+    {
+      kind: "pet_birthday",
+      sourceId: sourceIdOf(pet.id),
+      recipientIds: await dependencies.sources.memberIdsOf(pet.familyId),
+      homeZone: undefined,
+      first: (day) => birthdayFrom(birthDate, day),
+      next: (occurrence) => birthdayFrom(birthDate, dayAfter(occurrence)),
+      fireAt: morningOf,
+      emoji: "🎂",
+      title: () => `Сегодня день рождения у ${pet.name}!`,
+      buttons: reminderButtons,
+      closesForEveryone: true,
+      snoozeMs,
+      isSkippedWhenLate: true,
+    },
+  ];
 }
 
 // A Due Date nudges a week ahead, on the day and then weekly while open, and is never skipped as late.
-export async function dueSource(
+async function dueSource(
   dependencies: ReminderDependencies,
-  { pet, entry }: { pet: PetRow; entry: DueEntryRow & { dueDate: string } },
+  { due, recipientIds }: { due: OpenDueDate; recipientIds: string[] },
 ): Promise<Source> {
-  const recordUrl = await recordUrlOf(dependencies, entry.id);
-  const title = `${dueTitleOf(entry)} — ${pet.name}`;
+  const { dueDate, title } = due;
+  const recordUrl = await dependencies.appLinks.appLink({ kind: "entry", id: due.entryId });
 
   return {
     kind: "pet_due",
-    familyId: pet.familyId,
-    sourceId: `${pet.id}:${entry.id}`,
-    recipientIds: await dependencies.sources.memberIdsOf(pet.familyId),
+    sourceId: sourceIdOf(due.petId, due.entryId),
+    recipientIds,
     homeZone: undefined,
-    first: (day) => dueStepFrom(entry.dueDate, day),
-    next: (occurrence) => dueStepFrom(entry.dueDate, dayAfter(occurrence)),
+    first: (day) => dueStepFrom(dueDate, day),
+    next: (occurrence) => dueStepFrom(dueDate, dayAfter(occurrence)),
     fireAt: morningOf,
     emoji: "💉",
     title: (occurrence) =>
-      occurrence > entry.dueDate
-        ? `${title}: просрочено с ${formatFloatingDate(entry.dueDate)}`
-        : `${title}: срок ${formatFloatingDate(entry.dueDate)}`,
+      occurrence > dueDate
+        ? `${title}: просрочено с ${formatFloatingDate(dueDate)}`
+        : `${title}: срок ${formatFloatingDate(dueDate)}`,
     buttons: (dispatchId) => dueButtons({ dispatchId, recordUrl }),
     closesForEveryone: false,
     snoozeMs: daySnoozeMs,
     isSkippedWhenLate: false,
   };
+}
+
+export async function dueSources(
+  dependencies: ReminderDependencies,
+  holder: SourceHolder,
+): Promise<Source[]> {
+  const pet = await dependencies.sources.pet(holder);
+
+  if (pet === undefined) {
+    return [];
+  }
+
+  const dues = openDueDates({
+    pets: [pet],
+    entries: await dependencies.sources.dueEntriesOf(holder),
+  });
+  const recipientIds = await dependencies.sources.memberIdsOf(pet.familyId);
+
+  return Promise.all(dues.map(async (due) => dueSource(dependencies, { due, recipientIds })));
 }

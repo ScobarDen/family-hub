@@ -80,7 +80,7 @@ const soon = [
 ];
 
 function startPets(backend = fakeBackend(), { isFamilyOwner = true } = {}) {
-  const opened: string[] = [];
+  const opened: unknown[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const api = createPetsApi(client);
   const pets = reatomPets({ api });
@@ -90,8 +90,8 @@ function startPets(backend = fakeBackend(), { isFamilyOwner = true } = {}) {
     viewer: () => ({ today: "2026-10-11", timeZone: "Europe/Moscow" }),
     isFamilyOwner: () => isFamilyOwner,
     soon: (petId) => (petId === "pet-1" ? soon : []),
-    onOpenSoon: ({ id, kind }) => {
-      opened.push(`${kind} ${id}`);
+    onOpenSoon: (target) => {
+      opened.push(target);
     },
     onPlan: (petId) => {
       opened.push(`new plan for ${petId}`);
@@ -193,6 +193,21 @@ describe("the pet tab", () => {
     model.back();
 
     expect(model.screen().kind).toBe("list");
+  });
+
+  test("asks for a Pet again from an open card, unless the Family has only one", async () => {
+    const several = startPets(fakeBackend([buick, kesha]));
+    const single = startPets();
+
+    await loaded(several.model);
+    await loaded(single.model);
+    several.model.open("pet-2");
+    several.model.showChoice();
+    single.model.showChoice();
+
+    expect(several.model.screen().kind).toBe("list");
+    expect(several.model.openedPetId()).toBeUndefined();
+    expect(single.model.openedPetId()).toBe("pet-1");
   });
 
   test("invites to add a Pet while the Family has none", async () => {
@@ -397,9 +412,14 @@ describe("«Скоро» on the card", () => {
 
     await loaded(model);
     model.openSoon({ id: "plan-1", kind: "plan" });
+    model.openSoon({ id: "entry-1", kind: "due" });
     model.plan("pet-1");
 
-    expect(opened).toEqual(["plan plan-1", "new plan for pet-1"]);
+    expect(opened).toEqual([
+      { kind: "plan", planId: "plan-1" },
+      { kind: "due-date", entryId: "entry-1" },
+      "new plan for pet-1",
+    ]);
   });
 });
 

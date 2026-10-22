@@ -1,6 +1,7 @@
-import { action, atom, computed, noop, reatomForm, wrap, type Atom } from "@reatom/core";
+import { action, atom, computed, reatomForm, type Atom } from "@reatom/core";
 import { z } from "zod";
 
+import { offsetTitles } from "@family-hub/commands";
 import {
   eventChange,
   eventReminderMaxCount,
@@ -11,7 +12,7 @@ import {
   type EventReminderOffset,
 } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { reatomEditableRecord, type DraftOpening } from "@/common/form";
 
 import type { CalendarApi } from "../calendar.api.ts";
 import type { CalendarData } from "../calendar.model.ts";
@@ -25,7 +26,7 @@ type EventFormDependencies = {
   onDraftSaved?: (draftId: string) => void;
 };
 
-export type EventDraftOpening = { draftId: string; draft: EventDraft };
+export type EventDraftOpening = DraftOpening<EventDraft>;
 
 const emptyEvent = {
   title: "",
@@ -69,7 +70,6 @@ function orNull(text: string): string | null {
   return text === "" ? null : text;
 }
 
-// A timed Event keeps the zone it was set in; a new one takes the zone of whoever creates it.
 function changeOf(
   values: EventValues,
   { timeZone, reminderOffsets }: { timeZone: string; reminderOffsets: EventReminderOffset[] },
@@ -141,17 +141,13 @@ function valuesOfDraft(draft: EventDraft): EventValues {
   };
 }
 
-type EventForm = ReturnType<typeof reatomForm<EventValues>>;
-
 export type OffsetChoice = { offset: EventReminderOffset; title: string; isChosen: boolean };
 
-const offsetTitles: Record<EventReminderOffset, string> = {
-  "at-start": "В начале",
-  "15m": "За 15 минут",
-  "1h": "За час",
-  "1d": "За день",
-  "1w": "За неделю",
-};
+function chipTitleOf(offset: EventReminderOffset): string {
+  const title = offsetTitles[offset];
+
+  return title.charAt(0).toUpperCase() + title.slice(1);
+}
 
 // An all-day Event has no start time, so only the day-sized offsets apply to it.
 const allDayOffsets = new Set<EventReminderOffset>(["at-start", "1d", "1w"]);
@@ -172,7 +168,7 @@ function reatomOffsets(form: EventForm, chosen: Atom<EventReminderOffset[]>) {
       (): OffsetChoice[] =>
         offsetsFor(form.fields.timing() === "timed").map((offset) => ({
           offset,
-          title: offsetTitles[offset],
+          title: chipTitleOf(offset),
           isChosen: chosen().includes(offset),
         })),
       "calendar.form.offsets",
@@ -189,9 +185,12 @@ function reatomOffsets(form: EventForm, chosen: Atom<EventReminderOffset[]>) {
   };
 }
 
-function reatomFlags(form: EventForm, edited: Atom<CalendarEvent | undefined>) {
+type EventRecord = ReturnType<typeof reatomEventRecord>;
+
+type EventForm = EventRecord["form"];
+
+function reatomFlags({ form, edited }: EventRecord) {
   return {
-    isCreating: computed(() => edited() === undefined, "calendar.form.isCreating"),
     isTimed: computed(() => form.fields.timing() === "timed", "calendar.form.isTimed"),
     isRecurring: computed(() => form.fields.frequency() !== "", "calendar.form.isRecurring"),
     // A Shared Event never turns Private, so editing one offers no choice.
@@ -199,88 +198,69 @@ function reatomFlags(form: EventForm, edited: Atom<CalendarEvent | undefined>) {
       () => edited()?.visibility !== "shared",
       "calendar.form.canChooseVisibility",
     ),
-    isSaving: computed(() => !form.submit.ready(), "calendar.form.isSaving"),
-    failure: reatomSubmitFailure(form, {
-      message: "Не получилось сохранить событие. Попробуйте ещё раз.",
-      name: "calendar.form.failure",
-    }),
   };
 }
 
-type Editing = {
-  edited: Atom<CalendarEvent | undefined>;
-  chosenOffsets: Atom<EventReminderOffset[]>;
-  fromDraft: Atom<string | undefined>;
-};
-
-function reatomStarts(form: EventForm, { edited, chosenOffsets, fromDraft }: Editing) {
+function reatomStarts(record: EventRecord, chosenOffsets: Atom<EventReminderOffset[]>) {
   return {
     startCreating: action((date: string) => {
-      edited.set(undefined);
       chosenOffsets.set([]);
-      fromDraft.set(undefined);
-      fillForm(form, { ...emptyEvent, date });
+      record.startCreating({ ...emptyEvent, date });
     }, "calendar.form.startCreating"),
-    startFromDraft: action(({ draftId, draft }: EventDraftOpening) => {
-      edited.set(undefined);
-      chosenOffsets.set(draft.reminderOffsets);
-      fromDraft.set(draftId);
-      fillForm(form, valuesOfDraft(draft));
+    startFromDraft: action((opening: EventDraftOpening) => {
+      chosenOffsets.set(opening.draft.reminderOffsets);
+      record.startFromDraft(opening);
     }, "calendar.form.startFromDraft"),
     startEditing: action((event: CalendarEvent) => {
-      edited.set(event);
       chosenOffsets.set(event.reminderOffsets);
-      fromDraft.set(undefined);
-      fillForm(form, valuesOf(event));
+      record.startEditing(event);
     }, "calendar.form.startEditing"),
   };
 }
 
-function settleDraft(
-  { onDraftSaved }: EventFormDependencies,
-  fromDraft: Atom<string | undefined>,
-): void {
-  const draftId = fromDraft();
-
-  if (draftId !== undefined) {
-    fromDraft.set(undefined);
-    onDraftSaved?.(draftId);
+// A timed Event keeps the zone it was set in; a new one takes the zone of whoever creates it,
+// or of the phrase its Command Draft was said in.
+function reatomEventRecord(
+  dependencies: EventFormDependencies,
+  chosenOffsets: Atom<EventReminderOffset[]>,
+) {
+  function changeFor(values: EventValues, timeZone: string): EventChange {
+    return changeOf(values, {
+      timeZone,
+      reminderOffsets: applicableOffsets(chosenOffsets(), values.timing),
+    });
   }
+
+  return reatomEditableRecord({
+    name: "calendar.eventRecord",
+    form: (onSubmit) => reatomForm(emptyEvent, { name: "calendar.form", schema, onSubmit }),
+    failureMessage: "Не получилось сохранить событие. Попробуйте ещё раз.",
+    valuesOf,
+    valuesOfDraft,
+    create: async (values, { phrase }) =>
+      dependencies.api.create(changeFor(values, phrase?.timeZone ?? dependencies.timeZone())),
+    update: async (event: CalendarEvent, values) =>
+      dependencies.api.update(
+        event.id,
+        changeFor(values, event.start.timeZone ?? dependencies.timeZone()),
+      ),
+    onSaved: (saved) => {
+      dependencies.data.keep(saved);
+      dependencies.onSaved(saved);
+    },
+    onDraftSaved: dependencies.onDraftSaved,
+  });
 }
 
 export function reatomEventForm(dependencies: EventFormDependencies) {
-  const edited = atom<CalendarEvent | undefined>(undefined, "calendar.form.edited");
   const chosenOffsets = atom<EventReminderOffset[]>([], "calendar.form.chosenOffsets");
-  const fromDraft = atom<string | undefined>(undefined, "calendar.form.fromDraft");
-  const form = reatomForm(emptyEvent, {
-    name: "calendar.form",
-    schema,
-    onSubmit: async (values: EventValues) => {
-      const event = edited();
-      const change = changeOf(values, {
-        timeZone: event?.start.timeZone ?? dependencies.timeZone(),
-        reminderOffsets: applicableOffsets(chosenOffsets(), values.timing),
-      });
-      const saved = await wrap(
-        event === undefined
-          ? dependencies.api.create(change)
-          : dependencies.api.update(event.id, change),
-      );
-
-      dependencies.data.keep(saved);
-      settleDraft(dependencies, fromDraft);
-      dependencies.onSaved(saved);
-    },
-  });
+  const record = reatomEventRecord(dependencies, chosenOffsets);
 
   return {
-    form,
-    ...reatomFlags(form, edited),
-    ...reatomOffsets(form, chosenOffsets),
-    ...reatomStarts(form, { edited, chosenOffsets, fromDraft }),
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "calendar.form.save"),
+    ...record,
+    ...reatomFlags(record),
+    ...reatomOffsets(record.form, chosenOffsets),
+    ...reatomStarts(record, chosenOffsets),
   };
 }
 

@@ -1,13 +1,9 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import {
-  encodeDeepLink,
-  type CommandDraft,
-  type CommandFailure,
-  type DraftAmbiguity,
-} from "@family-hub/contract";
+import { previewOf, type FamilyNames } from "@family-hub/commands";
+import type { CommandDraft, CommandFailure } from "@family-hub/contract";
 
-import type { FamilyNames } from "./command.repo.ts";
+import { withCandidate } from "./draft-kind.lib.ts";
 
 export const commandCallbackPrefix = "cd";
 
@@ -47,7 +43,6 @@ export const notYoursText = "Это не ваш черновик";
 export const staleText = "Черновик устарел";
 export const createdText = "✅ Создано";
 export const dismissedText = "Отменено";
-export const failedText = "Не получилось создать. Попробуйте в приложении через «Изменить».";
 
 export function heardText(phrase: string): string {
   return `🎙 «${phrase}»`;
@@ -63,37 +58,19 @@ export function parseCallback(data: string | undefined) {
     : { action, draftId, index: index === undefined ? undefined : Number(index) };
 }
 
-// The bot's Main Mini App opens from t.me/<bot>, so the link needs no app short name.
-export function editLink(botUsername: string, draftId: string): string {
-  const link = new URL(`https://t.me/${botUsername}`);
-
-  link.searchParams.set("startapp", encodeDeepLink({ kind: "cmd", id: draftId }));
-
-  return link.toString();
-}
-
-function candidateNameOf({ field }: DraftAmbiguity, id: string, names: FamilyNames): string {
-  const people = field === "pet" ? names.pets : names.members;
-
-  return people.find((person) => person.id === id)?.name ?? id;
-}
-
 export function previewButtons(
   { draft, draftId, editLink: link }: { draft: CommandDraft; draftId: string; editLink: string },
   names: FamilyNames,
 ): InlineKeyboardMarkup {
   const dismiss = { text: "×", callback_data: `${commandCallbackPrefix}:dismiss:${draftId}` };
   const change = { text: "Изменить", url: link };
-  const ambiguity = draft.ambiguities[0];
+  const { question, canCreate } = previewOf(draft, names);
 
-  if (ambiguity !== undefined) {
+  if (question !== undefined) {
     return {
       inline_keyboard: [
-        ...ambiguity.candidateIds.map((id, index) => [
-          {
-            text: candidateNameOf(ambiguity, id, names),
-            callback_data: `${commandCallbackPrefix}:pick:${draftId}:${index}`,
-          },
+        ...question.candidates.map(({ index, name }) => [
+          { text: name, callback_data: `${commandCallbackPrefix}:pick:${draftId}:${index}` },
         ]),
         [change, dismiss],
       ],
@@ -102,21 +79,15 @@ export function previewButtons(
 
   const create = { text: "Создать", callback_data: `${commandCallbackPrefix}:create:${draftId}` };
 
-  return {
-    inline_keyboard: [draft.missing.length > 0 ? [change, dismiss] : [create, change, dismiss]],
-  };
+  return { inline_keyboard: [canCreate ? [create, change, dismiss] : [change, dismiss]] };
 }
 
-// Picking a candidate settles one ambiguity: a Member joins the Recipients, a Pet becomes the one.
+// Picking a candidate settles the first ambiguity; the draft's kind says what the choice fills.
 export function picked(draft: CommandDraft, index: number): CommandDraft | undefined {
   const [ambiguity, ...rest] = draft.ambiguities;
   const chosenId = ambiguity?.candidateIds[index];
 
-  if (chosenId === undefined || draft.kind === "event") {
-    return undefined;
-  }
-
-  return draft.kind === "care_entry"
-    ? { ...draft, ambiguities: rest, petId: chosenId }
-    : { ...draft, ambiguities: rest, recipientIds: [...(draft.recipientIds ?? []), chosenId] };
+  return chosenId === undefined
+    ? undefined
+    : withCandidate({ ...draft, ambiguities: rest }, chosenId);
 }

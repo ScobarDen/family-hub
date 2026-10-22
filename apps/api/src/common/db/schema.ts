@@ -587,6 +587,7 @@ export const commandDrafts = sqliteTable(
     source: text("source").$type<CommandSource>().notNull(),
     chatId: integer("chat_id"),
     messageId: integer("message_id"),
+    timeZone: text("time_zone"),
     status: text("status").$type<CommandStatus>().notNull(),
     expiresAt: integer("expires_at").notNull(),
     createdAt: integer("created_at").notNull(),

@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import {
   draftPick,
+  type ApiError,
   type CommandOutcome,
   type DraftCreated,
+  type DraftRefusal,
   type FamilyMember,
   type Pet,
   type ReminderDraft,
@@ -19,6 +21,8 @@ import {
   staleDraftText,
   type OpenedDraft,
 } from "./command-sheet.vm.ts";
+
+const phrase = { saidAt: Date.parse("2026-10-11T06:00:00Z"), timeZone: "Europe/Moscow" };
 
 const internet: ReminderDraft = {
   kind: "reminder",
@@ -64,23 +68,23 @@ function buickPet(id: string, name: string): Pet {
 
 function fakeBackend(outcome: CommandOutcome) {
   const requests: string[] = [];
-  let isRefusesCreate = false;
+  let createFailure: Response | undefined;
   const replies: Record<string, (body: unknown) => Response> = {
     "POST /api/commands/voice": () => Response.json(outcome),
     "GET /api/family/members": () => Response.json(members),
     "GET /api/pets": () => Response.json(pets),
     "GET /api/commands/draft-1": () => Response.json(outcome),
     "POST /api/commands/draft-1/create": () =>
-      isRefusesCreate
-        ? Response.json({ code: "INVALID_REQUEST", message: "" }, { status: 409 })
-        : Response.json({ kind: "reminder", id: "reminder-1" } satisfies DraftCreated, {
-            status: 201,
-          }),
+      createFailure ??
+      Response.json({ kind: "reminder", id: "reminder-1" } satisfies DraftCreated, {
+        status: 201,
+      }),
     "POST /api/commands/draft-1/dismiss": () => Response.json({ status: "dismissed" }),
     "POST /api/commands/draft-1/pick": (body) =>
       Response.json({
         status: "draft",
         draftId: "draft-1",
+        phrase,
         heard: null,
         draft: {
           ...internet,
@@ -103,14 +107,17 @@ function fakeBackend(outcome: CommandOutcome) {
   return {
     fetch,
     requests,
-    failCreate() {
-      isRefusesCreate = true;
+    refuseCreate(code: DraftRefusal) {
+      createFailure = Response.json({ code, message: "" } satisfies ApiError, { status: 409 });
+    },
+    breakCreate() {
+      createFailure = Response.json({}, { status: 500 });
     },
   };
 }
 
 function startSheet(draft: ReminderDraft = internet) {
-  const backend = fakeBackend({ status: "draft", draftId: "draft-1", heard, draft });
+  const backend = fakeBackend({ status: "draft", draftId: "draft-1", phrase, heard, draft });
   const edited: OpenedDraft[] = [];
   const created: DraftCreated[] = [];
   const api = createCommandApi(
@@ -153,7 +160,7 @@ describe("the preview sheet", () => {
       kind: "draft",
       heard,
       preview: {
-        text: "Оплатить интернет",
+        title: "Оплатить интернет",
         details: ["пт 16 окт, 19:00", "каждый месяц", "Денис, Ася, Ася"],
         missing: undefined,
         question: undefined,
@@ -164,19 +171,35 @@ describe("the preview sheet", () => {
     });
   });
 
-  test("shows «Создано» at once and brings the draft back when the server refuses", async () => {
+  test("shows «Создано» at once and brings the draft back with the reason the server refused", async () => {
     const { model, backend, created } = startSheet();
 
     await sent(model);
-    backend.failCreate();
+    backend.refuseCreate("RECIPIENTS_NOT_ALLOWED");
     model.create();
 
     expect(model.sheet().kind).toBe("created");
 
     await vi.waitFor(() => {
-      expect(model.sheet()).toMatchObject({ kind: "draft", error: createFailedText });
+      expect(model.sheet()).toMatchObject({
+        kind: "draft",
+        error:
+          "Не получилось создать: кого-то из получателей уже нет в семье. Выберите получателей в «Изменить».",
+      });
     });
     expect(created).toEqual([]);
+  });
+
+  test("brings the draft back with a general word when «Создать» fails for no stated reason", async () => {
+    const { model, backend } = startSheet();
+
+    await sent(model);
+    backend.breakCreate();
+    model.create();
+
+    await vi.waitFor(() => {
+      expect(model.sheet()).toMatchObject({ kind: "draft", error: createFailedText });
+    });
   });
 
   test("tells the app what was created", async () => {
@@ -237,7 +260,7 @@ describe("the preview sheet", () => {
     await sent(model);
     model.edit();
 
-    expect(edited).toEqual([{ draftId: "draft-1", draft: internet }]);
+    expect(edited).toEqual([{ draftId: "draft-1", phrase, draft: internet }]);
     expect(model.sheet().kind).toBe("closed");
 
     await sent(model);
@@ -255,7 +278,7 @@ describe("the preview sheet", () => {
     model.openForEdit("draft-1");
 
     await vi.waitFor(() => {
-      expect(edited).toEqual([{ draftId: "draft-1", draft: internet }]);
+      expect(edited).toEqual([{ draftId: "draft-1", phrase, draft: internet }]);
     });
     expect(model.sheet().kind).toBe("closed");
 
@@ -270,6 +293,7 @@ describe("the preview sheet", () => {
     const backend = fakeBackend({
       status: "draft",
       draftId: "draft-1",
+      phrase,
       heard: null,
       draft: {
         kind: "event",
@@ -300,7 +324,7 @@ describe("the preview sheet", () => {
       expect(model.sheet()).toMatchObject({
         kind: "draft",
         preview: {
-          text: "Груминг Бьюика",
+          title: "Груминг Бьюика",
           details: ["сб 17 окт, 12:00", "каждый месяц", "напомнить за час, за день", "только мне"],
           canCreate: true,
         },
@@ -312,6 +336,7 @@ describe("the preview sheet", () => {
     const backend = fakeBackend({
       status: "draft",
       draftId: "draft-1",
+      phrase,
       heard: null,
       draft: {
         kind: "care_entry",
@@ -343,7 +368,7 @@ describe("the preview sheet", () => {
       expect(model.sheet()).toMatchObject({
         kind: "draft",
         preview: {
-          text: "Прививка «Бешенство»",
+          title: "Прививка «Бешенство»",
           details: ["сейчас", expect.stringMatching(/^1\s800\s₽$/u), "следующий срок ср 13 окт"],
           question: {
             title: "Для какого питомца запись?",

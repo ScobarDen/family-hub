@@ -1,1 +1,6 @@
-export { fillForm, reatomSubmitFailure } from "./form.model.ts";
+export {
+  fillForm,
+  reatomEditableRecord,
+  reatomSubmitFailure,
+  type DraftOpening,
+} from "./form.model.ts";

@@ -4,19 +4,16 @@ import type { Membership } from "@/common/auth";
 import { BotApiError } from "@/common/telegram";
 
 import { inviteLifetimeMs } from "../invite.config.ts";
-import { inviteLink, newInviteToken, shareCard } from "../invite.lib.ts";
+import { newInviteToken, shareCard } from "../invite.lib.ts";
 import type { InviteRow } from "../invite.repo.ts";
 import type { InviteDependencies } from "../invite.types.ts";
 
-async function botUsername({ bot }: InviteDependencies): Promise<string> {
-  // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
-  const { username } = await bot.call("getMe", undefined);
-
-  return username;
-}
-
-function toInvite(username: string, row: InviteRow): Invite {
-  return { id: row.id, link: inviteLink(username, row.token), expiresAt: row.expiresAt };
+async function toInvite({ appLinks }: InviteDependencies, row: InviteRow): Promise<Invite> {
+  return {
+    id: row.id,
+    link: await appLinks.appLink({ kind: "inv", id: row.token }),
+    expiresAt: row.expiresAt,
+  };
 }
 
 // Without a prepared message the Mini App still shares the bare link.
@@ -52,7 +49,6 @@ export async function create(
   dependencies: InviteDependencies,
   membership: Membership,
 ): Promise<InviteCreated> {
-  const username = await botUsername(dependencies);
   const now = dependencies.clock.now();
   const row: InviteRow = {
     id: uuidv7(now),
@@ -69,7 +65,7 @@ export async function create(
 
   await dependencies.invites.add(row);
 
-  const invite = toInvite(username, row);
+  const invite = await toInvite(dependencies, row);
 
   return {
     ...invite,
@@ -83,13 +79,7 @@ export async function listOpen(
 ): Promise<Invite[]> {
   const rows = await dependencies.invites.listOpen(family.id, member.id, dependencies.clock.now());
 
-  if (rows.length === 0) {
-    return [];
-  }
-
-  const username = await botUsername(dependencies);
-
-  return rows.map((row) => toInvite(username, row));
+  return Promise.all(rows.map(async (row) => toInvite(dependencies, row)));
 }
 
 export type RevokeResult = { status: "revoked" } | { status: "not-found" };

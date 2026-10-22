@@ -16,11 +16,12 @@ export type RemoveResult =
 
 // The last Member leaving takes the Family with them; an Owner among others hands over first.
 export async function leave(
-  { families, clock }: FamilyDependencies,
+  { families, schedule, clock }: FamilyDependencies,
   { family, member, isFamilyOwner }: Membership,
 ): Promise<LeaveResult> {
   if (!isFamilyOwner) {
     await families.depart({ familyId: family.id, memberId: member.id, now: clock.now() });
+    await schedule.membershipChanged(family.id);
 
     return { status: "left" };
   }
@@ -35,7 +36,7 @@ export async function leave(
 }
 
 export async function remove(
-  { families, bot, clock }: FamilyDependencies,
+  { families, schedule, bot, clock }: FamilyDependencies,
   { family, member, isFamilyOwner }: Membership,
   memberId: string,
 ): Promise<RemoveResult> {
@@ -51,6 +52,7 @@ export async function remove(
   }
 
   await families.depart({ familyId: family.id, memberId, now: clock.now() });
+  await schedule.membershipChanged(family.id);
   await ignoringBotErrors(
     bot.call("sendMessage", { chat_id: removed.telegramId, text: removedText(family.name) }),
   );

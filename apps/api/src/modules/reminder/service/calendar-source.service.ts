@@ -6,8 +6,14 @@ import {
   occurrenceMoment,
 } from "@family-hub/recurrence";
 
-import { formatFloatingDate, formatMomentIn, reminderButtons, snoozeMs } from "../reminder.lib.ts";
-import type { ReminderDependencies, Source } from "../reminder.types.ts";
+import {
+  formatFloatingDate,
+  formatMomentIn,
+  reminderButtons,
+  snoozeMs,
+  sourceIdOf,
+} from "../reminder.lib.ts";
+import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { ReminderRow } from "../repo/reminder.repo.ts";
 import type { EventRow } from "../repo/source.repo.ts";
 
@@ -27,24 +33,36 @@ function seriesSteps({ start, frequency, until }: Series, skipped: string[] = []
   return { first: from, next: (occurrence: string) => from(dayAfter(occurrence)) };
 }
 
-export function reminderSource(row: ReminderRow, recipientIds: string[]): Source {
-  return {
-    kind: "reminder",
-    familyId: row.familyId,
-    sourceId: row.id,
-    recipientIds,
-    homeZone: row.timeZone,
-    ...seriesSteps({ start: row.startDate, frequency: row.frequency, until: row.until }),
-    // A standalone Reminder is one moment for everyone, set on its creator's clock.
-    fireAt: (occurrence) =>
-      occurrenceMoment(occurrence, { time: row.startTime, timeZone: row.timeZone }),
-    emoji: "🔔",
-    title: () => row.text,
-    buttons: reminderButtons,
-    closesForEveryone: true,
-    snoozeMs,
-    isSkippedWhenLate: true,
-  };
+export async function reminderSources(
+  { reminders }: ReminderDependencies,
+  { familyId, id }: SourceHolder,
+): Promise<Source[]> {
+  const found = await reminders.find({ familyId, reminderId: id });
+
+  if (found === undefined) {
+    return [];
+  }
+
+  const { reminder: row, recipients } = found;
+
+  return [
+    {
+      kind: "reminder",
+      sourceId: sourceIdOf(row.id),
+      recipientIds: recipients.map((recipient) => recipient.id),
+      homeZone: row.timeZone,
+      ...seriesSteps({ start: row.startDate, frequency: row.frequency, until: row.until }),
+      // A standalone Reminder is one moment for everyone, set on its creator's clock.
+      fireAt: (occurrence) =>
+        occurrenceMoment(occurrence, { time: row.startTime, timeZone: row.timeZone }),
+      emoji: "🔔",
+      title: () => row.text,
+      buttons: reminderButtons,
+      closesForEveryone: true,
+      snoozeMs,
+      isSkippedWhenLate: true,
+    },
+  ];
 }
 
 function eventTitle(
@@ -66,18 +84,16 @@ async function eventRecipients({ sources }: ReminderDependencies, row: EventRow)
     : sources.memberIdsOf(row.familyId);
 }
 
-// Each offset of an Event is a source of its own, so «Готово» on one leaves the others.
-export async function eventSource(
-  dependencies: ReminderDependencies,
-  { row, offset }: { row: EventRow; offset: EventReminderOffset },
-): Promise<Source> {
+function eventSource(
+  row: EventRow,
+  { offset, recipientIds }: { offset: EventReminderOffset; recipientIds: string[] },
+): Source {
   const start = { date: row.startDate, time: row.startTime, timeZone: row.timeZone };
 
   return {
     kind: "event",
-    familyId: row.familyId,
-    sourceId: `${row.id}:${offset}`,
-    recipientIds: await eventRecipients(dependencies, row),
+    sourceId: sourceIdOf(row.id, offset),
+    recipientIds,
     homeZone: row.timeZone ?? undefined,
     ...seriesSteps(
       { start: row.startDate, frequency: row.frequency, until: row.until },
@@ -92,4 +108,20 @@ export async function eventSource(
     snoozeMs,
     isSkippedWhenLate: true,
   };
+}
+
+// Each offset of an Event is a source of its own, so «Готово» on one leaves the others.
+export async function eventSources(
+  dependencies: ReminderDependencies,
+  holder: SourceHolder,
+): Promise<Source[]> {
+  const row = await dependencies.sources.event(holder);
+
+  if (row === undefined) {
+    return [];
+  }
+
+  const recipientIds = await eventRecipients(dependencies, row);
+
+  return row.reminderOffsets.map((offset) => eventSource(row, { offset, recipientIds }));
 }

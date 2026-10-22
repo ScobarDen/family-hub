@@ -2,6 +2,7 @@ import { Temporal } from "temporal-polyfill";
 
 import type { CalendarEvent, DueDateItem, Pet, Plan, Reminder } from "@family-hub/contract";
 import {
+  birthdaysIn,
   dateInZone,
   occurrenceDates,
   occurrenceMoment,
@@ -11,7 +12,7 @@ import {
 
 import { formatAge } from "@/common/format-date";
 
-export type PetDue = DueDateItem & { petId: string; petName: string };
+export type PetDue = DueDateItem & { petId: string };
 
 export type CalendarItem =
   | {
@@ -55,12 +56,6 @@ export type DayCell = {
 };
 
 const daysPerWeek = 7;
-
-const dueTitles = {
-  vaccination: "Прививка",
-  treatment: "Обработка",
-  vet_visit: "Ветеринар",
-} as const;
 
 function widened({ from, to }: DateRange): DateRange {
   return {
@@ -128,16 +123,16 @@ function birthdayItems(pet: Pet, range: DateRange): CalendarItem[] {
     return [];
   }
 
-  return occurrenceDates(pet.birthDate, { frequency: "yearly", until: null }, { range })
-    .filter((date) => date !== pet.birthDate)
-    .map((date) => ({
-      kind: "birthday",
-      key: `birthday-${pet.id}-${date}`,
-      date,
-      time: undefined,
-      title: `День рождения: ${pet.name}, ${formatAge(pet.birthDate ?? date, date)}`,
-      petId: pet.id,
-    }));
+  const { birthDate } = pet;
+
+  return birthdaysIn(birthDate, range).map((date) => ({
+    kind: "birthday",
+    key: `birthday-${pet.id}-${date}`,
+    date,
+    time: undefined,
+    title: `День рождения: ${pet.name}, ${formatAge(birthDate, date)}`,
+    petId: pet.id,
+  }));
 }
 
 function dueItems(dues: PetDue[], range: DateRange): CalendarItem[] {
@@ -148,7 +143,7 @@ function dueItems(dues: PetDue[], range: DateRange): CalendarItem[] {
       key: `due-${due.entryId}`,
       date: due.dueDate,
       time: undefined,
-      title: `${dueTitles[due.kind]}: ${due.petName}${due.kind === "vet_visit" ? "" : `, ${due.title}`}`,
+      title: due.title,
       petId: due.petId,
       isOverdue: due.isOverdue,
     }));

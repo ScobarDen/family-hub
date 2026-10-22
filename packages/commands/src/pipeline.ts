@@ -8,12 +8,9 @@ import {
   type CareEntryDraft,
   type CareEntryDraftField,
   type CommandAnswer,
-  type DraftAmbiguity,
   type CommandDraft,
-  type EventDraft,
-  type EventDraftField,
-  type ReminderDraft,
-  type ReminderDraftField,
+  type CommandKind,
+  type DraftAmbiguity,
 } from "@family-hub/contract";
 
 import { promptOf, type CommandContext } from "./prompt.ts";
@@ -70,14 +67,43 @@ function jsonOf(raw: unknown): unknown {
   }
 }
 
-function missingEventFields(draft: Omit<EventDraft, "kind">): EventDraftField[] {
-  return eventDraftField.options.filter(
-    (field) => draft[field] === null || draft.missing.includes(field),
-  );
+type AnswerOf<Kind extends CommandKind> = Extract<CommandAnswer, { outcome: Kind }>;
+
+// The model may fill a field it also lists as missing; the listing wins.
+function absentFieldsOf<Field extends string>(
+  fields: Record<Field, unknown> & { missing: Field[] },
+  options: readonly Field[],
+): Field[] {
+  return options.filter((field) => fields[field] === null || fields.missing.includes(field));
+}
+
+// Only ids from the Family's list count; a private Reminder goes to its speaker alone.
+function reminderDraftOf(answer: AnswerOf<"reminder">, context: CommandContext): CommandResult {
+  const { outcome: _outcome, ...fields } = answer;
+  const known = new Set(context.members.map(({ id }) => id));
+  const mentioned = [
+    ...(fields.recipientIds ?? []),
+    ...fields.ambiguities.flatMap(({ candidateIds }) => candidateIds),
+  ];
+
+  if (mentioned.some((id) => !known.has(id))) {
+    return { status: "unrecognized" };
+  }
+
+  return {
+    status: "draft",
+    draft: {
+      kind: "reminder",
+      ...fields,
+      recipientIds: fields.visibility === "private" ? [context.speaker.id] : fields.recipientIds,
+      ambiguities: fields.visibility === "private" ? [] : fields.ambiguities,
+      missing: absentFieldsOf(fields, reminderDraftField.options),
+    },
+  };
 }
 
 // An Event refers to nobody, so it has nothing to be ambiguous about.
-function eventDraftOf(answer: Extract<CommandAnswer, { outcome: "event" }>): CommandResult {
+function eventDraftOf(answer: AnswerOf<"event">): CommandResult {
   const { outcome: _outcome, ...fields } = answer;
   const hasEnd = fields.endDate !== null;
 
@@ -88,7 +114,7 @@ function eventDraftOf(answer: Extract<CommandAnswer, { outcome: "event" }>): Com
       ...fields,
       endTime: hasEnd && fields.time !== null ? fields.endTime : null,
       ambiguities: [],
-      missing: missingEventFields(fields),
+      missing: absentFieldsOf(fields, eventDraftField.options),
     },
   };
 }
@@ -118,10 +144,7 @@ function petChoiceOf(
   };
 }
 
-function careDraftOf(
-  answer: Extract<CommandAnswer, { outcome: "care_entry" }>,
-  context: CommandContext,
-): CommandResult {
+function careDraftOf(answer: AnswerOf<"care_entry">, context: CommandContext): CommandResult {
   const { outcome: _outcome, ...fields } = answer;
   const known = new Set(context.pets.map(({ id }) => id));
   const mentioned = [
@@ -145,59 +168,16 @@ function careDraftOf(
   return { status: "draft", draft: { kind: "care_entry", ...fields, ...choice, missing } };
 }
 
-function missingOf(draft: Omit<ReminderDraft, "kind">): ReminderDraftField[] {
-  const absent: ReminderDraftField[] = [];
+type KindReading<Answer> = (answer: Answer, context: CommandContext) => CommandResult;
 
-  for (const field of reminderDraftField.options) {
-    if (draft[field] === null || draft.missing.includes(field)) {
-      absent.push(field);
-    }
-  }
+const kindReadings: { [Kind in CommandKind]: KindReading<AnswerOf<Kind>> } = {
+  reminder: reminderDraftOf,
+  event: eventDraftOf,
+  care_entry: careDraftOf,
+};
 
-  return absent;
-}
-
-// Only ids from the Family's list count; a private Reminder goes to its speaker alone.
-function draftOf(
-  answer: Extract<CommandAnswer, { outcome: "reminder" }>,
-  context: CommandContext,
-): CommandResult {
-  const { outcome: _outcome, ...fields } = answer;
-  const known = new Set(context.members.map(({ id }) => id));
-  const mentioned = [
-    ...(fields.recipientIds ?? []),
-    ...fields.ambiguities.flatMap(({ candidateIds }) => candidateIds),
-  ];
-
-  if (mentioned.some((id) => !known.has(id))) {
-    return { status: "unrecognized" };
-  }
-
-  return {
-    status: "draft",
-    draft: {
-      kind: "reminder",
-      ...fields,
-      recipientIds: fields.visibility === "private" ? [context.speaker.id] : fields.recipientIds,
-      ambiguities: fields.visibility === "private" ? [] : fields.ambiguities,
-      missing: missingOf(fields),
-    },
-  };
-}
-
-function resultOf(
-  answer: Exclude<CommandAnswer, { outcome: "unrecognized" }>,
-  context: CommandContext,
-): CommandResult {
-  if (answer.outcome === "unsupported") {
-    return { status: "unsupported" };
-  }
-
-  if (answer.outcome === "care_entry") {
-    return careDraftOf(answer, context);
-  }
-
-  return answer.outcome === "event" ? eventDraftOf(answer) : draftOf(answer, context);
+function kindReadingOf<Kind extends CommandKind>(kind: Kind): KindReading<AnswerOf<Kind>> {
+  return kindReadings[kind];
 }
 
 export async function parseCommand(
@@ -223,5 +203,9 @@ export async function parseCommand(
     return { status: "unrecognized" };
   }
 
-  return resultOf(answer.data, context);
+  if (answer.data.outcome === "unsupported") {
+    return { status: "unsupported" };
+  }
+
+  return kindReadingOf(answer.data.outcome)(answer.data, context);
 }

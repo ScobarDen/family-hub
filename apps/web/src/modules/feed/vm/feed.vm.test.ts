@@ -234,6 +234,15 @@ describe("the Feed", () => {
       { kind: "plan", planId: "plan-2" },
     ]);
   });
+
+  test("opens a Care Entry tapped in the Activity, not only its Pet", async () => {
+    const { model, opened } = startFeed();
+
+    await loaded(model);
+    model.open("care-entry-2");
+
+    expect(opened).toEqual([{ kind: "care-entry", petId: "pet-1", entryId: "entry-2" }]);
+  });
 });
 
 describe("an Activity with photos", () => {

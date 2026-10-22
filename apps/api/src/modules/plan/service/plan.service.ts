@@ -14,7 +14,7 @@ function scheduling({ schedule }: PlanDependencies) {
     { family }: Membership,
     { planId, result }: { planId: string; result: Result },
   ): Promise<Result> {
-    await schedule.planChanged(family.id, planId);
+    await schedule.sourceChanged(family.id, { kind: "plan", id: planId });
 
     return result;
   };

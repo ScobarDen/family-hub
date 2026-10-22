@@ -181,6 +181,43 @@ describe("the Feed", () => {
     ]);
   });
 
+  test("names a Due Date as the bot's reminder of it does", async () => {
+    const worker = await startWithFamily();
+    const buick = await addBuick(worker);
+
+    await addEntry(worker, buick.id, {
+      kind: "vet_visit",
+      reason: "Хромает",
+      cost: null,
+      dueDate: "2026-10-08",
+    });
+    worker.clock.set("2026-10-08T06:00:00Z");
+    await worker.tick();
+
+    const feed = await feedOf(worker, denis);
+    const reminder = worker.bot.sentMessages().find(({ chat_id: chatId }) => chatId === denis.id);
+
+    expect(titles(feed.upcoming)).toEqual(["Визит к ветеринару — Бьюик"]);
+    expect(reminder?.text).toBe("💉 Визит к ветеринару — Бьюик: срок 8 октября");
+  });
+
+  test("shows no Due Dates of an archived Pet", async () => {
+    const worker = await startWithFamily();
+    const buick = await addBuick(worker);
+
+    await addEntry(worker, buick.id, {
+      kind: "vaccination",
+      vaccine: "Бешенство",
+      cost: null,
+      dueDate: "2026-09-25",
+    });
+    await request(worker, asya, { method: "POST", path: `/api/pets/${buick.id}/archive` });
+
+    const feed = await feedOf(worker, denis);
+
+    expect(feed.overdue).toEqual([]);
+  });
+
   test("keeps Private records for their owner", async () => {
     const worker = await startWithFamily();
     const surprise = await addPlan(worker, asya, {

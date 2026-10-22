@@ -106,21 +106,24 @@ describe("Due Dates", () => {
       {
         entryId: expect.any(String),
         kind: "treatment",
-        title: "Клещи",
+        label: "Обработка: Клещи",
+        title: "Обработка: Клещи — Бьюик",
         dueDate: "2026-12-10",
         isOverdue: false,
       },
       {
         entryId: expect.any(String),
         kind: "vet_visit",
-        title: "Визит к ветеринару",
+        label: "Визит к ветеринару",
+        title: "Визит к ветеринару — Бьюик",
         dueDate: "2027-03-20",
         isOverdue: false,
       },
       {
         entryId: expect.any(String),
         kind: "vaccination",
-        title: "Бешенство",
+        label: "Прививка: Бешенство",
+        title: "Прививка: Бешенство — Бьюик",
         dueDate: "2027-09-01",
         isOverdue: false,
       },
@@ -140,7 +143,7 @@ describe("Due Dates", () => {
     });
 
     expect(await dueDatesOf(worker)).toEqual([
-      expect.objectContaining({ title: "НОБИВАК", dueDate: "2027-10-03" }),
+      expect.objectContaining({ label: "Прививка: НОБИВАК", dueDate: "2027-10-03" }),
     ]);
   });
 
@@ -231,6 +234,22 @@ describe("archiving a Pet", () => {
 
     expect(await unarchived.json()).toMatchObject({ archivedAt: null });
     expect(accepted.status).toBe(201);
+  });
+
+  test("leaves it no open Due Dates until it is unarchived", async () => {
+    const worker = await startWithBuick();
+
+    await record(worker, {
+      at: "2026-09-01T10:00:00Z",
+      details: vaccination("Бешенство", "2026-10-20"),
+    });
+    await call(worker, asya, { method: "POST", path: `/api/pets/${worker.buickId}/archive` });
+    const whileArchived = await dueDatesOf(worker);
+
+    await call(worker, asya, { method: "POST", path: `/api/pets/${worker.buickId}/unarchive` });
+
+    expect(whileArchived).toEqual([]);
+    expect(await dueDatesOf(worker)).toMatchObject([{ label: "Прививка: Бешенство" }]);
   });
 });
 

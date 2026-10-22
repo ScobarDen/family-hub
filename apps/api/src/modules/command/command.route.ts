@@ -104,9 +104,9 @@ export const commandRoute = new Hono<CommandEnv>()
       return notFound(context);
     }
 
-    return result === "failed"
+    return typeof result === "string"
       ? context.json(
-          apiError("INVALID_REQUEST", "The draft did not make a valid record"),
+          apiError(result, "The record's use case refused the draft"),
           httpStatus.conflict,
         )
       : context.json<DraftCreated>(result, httpStatus.created);

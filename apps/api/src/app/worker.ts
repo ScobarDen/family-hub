@@ -4,6 +4,7 @@ import { cors } from "hono/cors";
 import { createAuthService, createMembershipRepo, type MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import { createDb, type Db } from "@/common/db";
+import { createMiniAppLinks, type MiniAppLinks } from "@/common/mini-app-link";
 import { createPhotoLinks, type PhotoLinks } from "@/common/photo-link";
 import type { BotApi } from "@/common/telegram";
 import { albumRoute, createAlbumRepo, createAlbumService } from "@/modules/album";
@@ -20,6 +21,7 @@ import {
   createFamilyRequestRepo,
   createFamilyRequestService,
   familyRequestRoute,
+  type FamilyRequestService,
 } from "@/modules/family-request";
 import { createFeedRepo, createFeedService, feedRoute, type FeedService } from "@/modules/feed";
 import { createGoalRepo, createGoalService, goalRoute } from "@/modules/goal";
@@ -45,6 +47,7 @@ import {
   createReminderService,
   createSourceRepo,
   reminderRoute,
+  type ReminderService,
 } from "@/modules/reminder";
 import { sessionRoute } from "@/modules/session";
 
@@ -82,7 +85,7 @@ function allowedOrigin(origin: string, env: Env): string | null {
   return env.ALLOWED_ORIGINS.split(",").includes(origin) ? origin : null;
 }
 
-type Shared = { memberships: MembershipRepo; bot: BotApi; clock: Clock };
+type Shared = { memberships: MembershipRepo; bot: BotApi; appLinks: MiniAppLinks; clock: Clock };
 
 type Records = Shared & { links: PhotoLinks };
 
@@ -217,11 +220,30 @@ function authServiceOf(
   });
 }
 
+function membershipServicesOf(
+  db: Db,
+  {
+    shared,
+    familyRequests,
+    schedule,
+  }: { shared: Shared; familyRequests: FamilyRequestService; schedule: ReminderService },
+) {
+  return {
+    families: createFamilyService({ families: createFamilyRepo(db), schedule, ...shared }),
+    invites: createInviteService({
+      invites: createInviteRepo(db),
+      familyRequests,
+      schedule,
+      ...shared,
+    }),
+  };
+}
+
 function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): AppServices {
   const db = createDb(env.DB);
   const bot = createBotApi(env.BOT_TOKEN);
   const memberships = createMembershipRepo(db);
-  const shared = { memberships, bot, clock };
+  const shared = { memberships, bot, appLinks: createMiniAppLinks(bot), clock };
   const records = familyRecordServices(db, {
     ...shared,
     links: createPhotoLinks({ secret: env.JWT_SECRET, clock }),
@@ -241,15 +263,8 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
     bot,
     auth: authServiceOf(env, { memberships, clock }),
     ...records,
-    families: createFamilyService({ families: createFamilyRepo(db), bot, clock }),
+    ...membershipServicesOf(db, { shared, familyRequests, schedule: records.reminders }),
     familyRequests,
-    invites: createInviteService({
-      invites: createInviteRepo(db),
-      memberships,
-      familyRequests,
-      bot,
-      clock,
-    }),
     photoStorage: createPhotoStorageService({ storage: createPhotoStorageRepo(db), ...shared }),
     commands: commandServiceOf(env, { db, shared, records }),
   };

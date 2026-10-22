@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { careDetails, careNoteMaxLength } from "./care-entry.ts";
+import { errorCode } from "./error.ts";
 import {
   eventNoteMaxLength,
   eventReminderMaxCount,
@@ -36,7 +37,7 @@ export const draftAmbiguity = z.object({
 
 export type DraftAmbiguity = z.infer<typeof draftAmbiguity>;
 
-// The fields of the standalone Reminder form; the moment is on the speaker's own clock.
+// The fields of the standalone Reminder form; the moment is in the zone the phrase was said in.
 export const reminderDraft = z.object({
   kind: z.literal("reminder"),
   text: z.string().trim().min(1).max(reminderTextMaxLength).nullable(),
@@ -127,6 +128,11 @@ export const commandFailure = z.enum([
 
 export type CommandFailure = z.infer<typeof commandFailure>;
 
+// When and in which zone the phrase was said: the draft's dates and times are read there.
+export const commandPhrase = z.object({ saidAt: z.int(), timeZone: z.string() });
+
+export type CommandPhrase = z.infer<typeof commandPhrase>;
+
 // What the Mini App gets for a recording or a draft it opens; heard is the transcript, if any.
 export const commandOutcome = z.union([
   z.object({
@@ -134,6 +140,7 @@ export const commandOutcome = z.union([
     draftId: z.string(),
     heard: z.string().nullable(),
     draft: commandDraft,
+    phrase: commandPhrase,
   }),
   z.object({ status: commandFailure, heard: z.string().nullable(), message: z.string() }),
 ]);
@@ -147,6 +154,16 @@ export type DraftPick = z.infer<typeof draftPick>;
 export const draftCreated = z.object({ kind: commandKind, id: z.string() });
 
 export type DraftCreated = z.infer<typeof draftCreated>;
+
+// Why the use case refused «Создать»: the code the Mini App gets, which the bot words the same way.
+export const draftRefusal = errorCode.extract([
+  "INVALID_REQUEST",
+  "RECIPIENTS_NOT_ALLOWED",
+  "PET_NOT_FOUND",
+  "PET_ARCHIVED",
+]);
+
+export type DraftRefusal = z.infer<typeof draftRefusal>;
 
 // Where the microphone sends a Member whose WebView cannot record: the bot chat.
 export const botChat = z.object({ url: z.url() });

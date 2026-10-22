@@ -120,6 +120,7 @@ export type ExpenseSummary = z.infer<typeof expenseSummary>;
 export const dueDateItem = z.object({
   entryId: z.string(),
   kind: z.enum(["vaccination", "treatment", "vet_visit"]),
+  label: z.string(),
   title: z.string(),
   dueDate: z.iso.date(),
   isOverdue: z.boolean(),

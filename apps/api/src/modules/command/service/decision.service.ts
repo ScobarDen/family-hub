@@ -1,16 +1,18 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import type { CommandDraft, DraftCreated } from "@family-hub/contract";
+import { draftRefusalTexts } from "@family-hub/commands";
+import type { CommandDraft, DraftCreated, DraftRefusal } from "@family-hub/contract";
+import type { Phrase } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 import { ignoringBotErrors } from "@/common/telegram";
 
 import { previewText } from "../command-preview.lib.ts";
-import { createdText, dismissedText, failedText, picked, previewButtons } from "../command.lib.ts";
+import { createdText, dismissedText, picked, previewButtons } from "../command.lib.ts";
 import type { CommandDraftRow } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
-import { createRecord } from "./creation.service.ts";
-import { editLinkOf, namesOf } from "./draft.service.ts";
+import { createRecord } from "../draft-kind.lib.ts";
+import { editLinkOf, namesOf, speakerZoneOf } from "./draft.service.ts";
 
 export type Press = { row: CommandDraftRow; draft: CommandDraft; membership: Membership };
 
@@ -29,6 +31,23 @@ async function edit(
       }),
     );
   }
+}
+
+async function showDraft(
+  dependencies: CommandDependencies,
+  { row, draft, note }: { row: CommandDraftRow; draft: CommandDraft; note?: string },
+) {
+  const names = await namesOf(dependencies, row.familyId);
+  const preview = previewText(draft, names);
+
+  await edit(dependencies, {
+    row,
+    text: note === undefined ? preview : `${preview}\n\n${note}`,
+    markup: previewButtons(
+      { draft, draftId: row.id, editLink: await editLinkOf(dependencies, row.id) },
+      names,
+    ),
+  });
 }
 
 // Only the Member who said it may act on a draft, and only while it is fresh and undecided.
@@ -51,6 +70,17 @@ export async function pressOf(
   return isFresh && row.payload !== null ? { row, draft: row.payload, membership } : "stale";
 }
 
+// A draft kept from before zones were stored falls back to the speaker's zone now.
+export async function phraseOf(
+  dependencies: CommandDependencies,
+  { row, membership }: Press,
+): Promise<Phrase> {
+  return {
+    saidAt: row.createdAt,
+    timeZone: row.timeZone ?? (await speakerZoneOf(dependencies, membership)),
+  };
+}
+
 async function settleCreated(dependencies: CommandDependencies, { row, draft }: Press) {
   await dependencies.drafts.update(row.id, {
     status: "created",
@@ -62,26 +92,27 @@ async function settleCreated(dependencies: CommandDependencies, { row, draft }: 
   });
 }
 
+// A refused draft stays pending, so «Изменить» can still fix what the use case objected to.
 export async function create(
   dependencies: CommandDependencies,
   press: Press,
-): Promise<DraftCreated | undefined> {
-  const { row, draft } = press;
-  const id = await createRecord(dependencies, press);
+): Promise<DraftCreated | DraftRefusal> {
+  const { row, draft, membership } = press;
+  const creation = await createRecord(dependencies, {
+    membership,
+    draft,
+    phrase: await phraseOf(dependencies, press),
+  });
 
-  if (id === undefined) {
-    await dependencies.drafts.update(row.id, {
-      status: "failed",
-      updatedAt: dependencies.clock.now(),
-    });
-    await edit(dependencies, { row, text: failedText });
+  if (creation.status === "refused") {
+    await showDraft(dependencies, { row, draft, note: draftRefusalTexts[creation.refusal] });
 
-    return undefined;
+    return creation.refusal;
   }
 
   await settleCreated(dependencies, press);
 
-  return { kind: draft.kind, id };
+  return { kind: draft.kind, id: creation.id };
 }
 
 // The Member fixed the draft in the ordinary form, which created the record itself.
@@ -100,17 +131,8 @@ export async function pick(
     return undefined;
   }
 
-  const names = await namesOf(dependencies, row.familyId);
-
   await dependencies.drafts.update(row.id, { payload: next, updatedAt: dependencies.clock.now() });
-  await edit(dependencies, {
-    row,
-    text: previewText(next, names),
-    markup: previewButtons(
-      { draft: next, draftId: row.id, editLink: await editLinkOf(dependencies, row.id) },
-      names,
-    ),
-  });
+  await showDraft(dependencies, { row, draft: next });
 
   return next;
 }

@@ -1,20 +1,28 @@
-import { and, asc, eq, inArray, isNull, like, lt, lte, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, like, lt, lte, notInArray, or } from "drizzle-orm";
 
-import { reminderDispatch, type DispatchSource, type Db } from "@/common/db";
+import { familyMembers, reminderDispatch, type DispatchSource, type Db } from "@/common/db";
+
+import { sourceIdOf } from "../reminder.lib.ts";
 
 export type DispatchRow = typeof reminderDispatch.$inferSelect;
 
-export type DispatchPlan = {
+export type NewRow = {
+  source: DispatchSource;
   sourceId: string;
   memberId: string;
   occurrence: string;
   nextFireAt: number;
 };
 
-// A source's rows share its id, or its id as a prefix for a Pet's Due Dates and an Event's offsets.
-export type SourceRows = { familyId: string; source: DispatchSource; prefix: string };
+export type HolderRows = { familyId: string; sources: DispatchSource[]; holderId: string };
 
-type Replacement = SourceRows & { plans: DispatchPlan[]; now: number };
+type DispatchValues = Partial<typeof reminderDispatch.$inferInsert>;
+
+type SourceRows = { familyId: string; source: DispatchSource; sourceId: string };
+
+type Replacement = HolderRows & { rows: NewRow[]; now: number };
+
+type Addition = { familyId: string; rows: NewRow[]; now: number };
 
 const lockMs = 60_000;
 
@@ -22,11 +30,14 @@ function isUnlocked(now: number) {
   return or(isNull(reminderDispatch.lockedUntil), lt(reminderDispatch.lockedUntil, now));
 }
 
-function ofSource({ familyId, source, prefix }: SourceRows) {
+function ofHolder({ familyId, sources, holderId }: HolderRows) {
   return and(
     eq(reminderDispatch.familyId, familyId),
-    eq(reminderDispatch.source, source),
-    like(reminderDispatch.sourceId, `${prefix}%`),
+    inArray(reminderDispatch.source, sources),
+    or(
+      eq(reminderDispatch.sourceId, holderId),
+      like(reminderDispatch.sourceId, sourceIdOf(holderId, "%")),
+    ),
   );
 }
 
@@ -46,21 +57,40 @@ async function claimDue(db: Db, { now, limit }: { now: number; limit: number }) 
     .returning();
 }
 
-// Only the rows of the changed source are rewritten: D1 writes are the scarce resource.
-async function replace(db: Db, { plans, now, ...rows }: Replacement, newId: () => string) {
+function insertOf(db: Db, { familyId, now }: Addition, { row, id }: { row: NewRow; id: string }) {
+  return db
+    .insert(reminderDispatch)
+    .values({ id, familyId, ...row, createdAt: now, updatedAt: now });
+}
+
+// Only the rows of the changed holder are rewritten: D1 writes are the scarce resource.
+async function replace(db: Db, replacement: Replacement, newId: () => string) {
   await db.batch([
-    db.delete(reminderDispatch).where(ofSource(rows)),
-    ...plans.map((plan) =>
-      db.insert(reminderDispatch).values({
-        id: newId(),
-        familyId: rows.familyId,
-        source: rows.source,
-        ...plan,
-        createdAt: now,
-        updatedAt: now,
-      }),
-    ),
+    db.delete(reminderDispatch).where(ofHolder(replacement)),
+    ...replacement.rows.map((row) => insertOf(db, replacement, { row, id: newId() })),
   ] as const);
+}
+
+async function add(db: Db, addition: Addition, newId: () => string) {
+  // One statement per row, as D1 caps the bound parameters of a single statement.
+  const [first, ...rest] = addition.rows.map((row) => insertOf(db, addition, { row, id: newId() }));
+
+  if (first !== undefined) {
+    await db.batch([first, ...rest]);
+  }
+}
+
+async function removeDeparted(db: Db, familyId: string): Promise<void> {
+  const stayed = db
+    .select({ memberId: familyMembers.memberId })
+    .from(familyMembers)
+    .where(eq(familyMembers.familyId, familyId));
+
+  await db
+    .delete(reminderDispatch)
+    .where(
+      and(eq(reminderDispatch.familyId, familyId), notInArray(reminderDispatch.memberId, stayed)),
+    );
 }
 
 async function release(db: Db, dispatchIds: string[]): Promise<void> {
@@ -72,26 +102,53 @@ async function release(db: Db, dispatchIds: string[]): Promise<void> {
   }
 }
 
+async function update(
+  db: Db,
+  { familyId, dispatchId }: { familyId: string; dispatchId: string },
+  values: DispatchValues,
+): Promise<void> {
+  await db
+    .update(reminderDispatch)
+    .set(values)
+    .where(and(eq(reminderDispatch.familyId, familyId), eq(reminderDispatch.id, dispatchId)));
+}
+
 export function createDispatchRepo(db: Db) {
   return {
     claimDue: async (claim: { now: number; limit: number }) => claimDue(db, claim),
+    // A bot button names its row by id alone; the row names its Family.
     find: async (dispatchId: string): Promise<DispatchRow | undefined> =>
       db.select().from(reminderDispatch).where(eq(reminderDispatch.id, dispatchId)).get(),
-    ofSource: async (rows: SourceRows): Promise<DispatchRow[]> =>
-      db.select().from(reminderDispatch).where(ofSource(rows)).all(),
-    // A Member's own rows are found by the Member alone, whose zone they follow.
-    ofMember: async (memberId: string): Promise<DispatchRow[]> =>
-      db.select().from(reminderDispatch).where(eq(reminderDispatch.memberId, memberId)).all(),
+    ofSource: async ({ familyId, source, sourceId }: SourceRows): Promise<DispatchRow[]> =>
+      db
+        .select()
+        .from(reminderDispatch)
+        .where(
+          and(
+            eq(reminderDispatch.familyId, familyId),
+            eq(reminderDispatch.source, source),
+            eq(reminderDispatch.sourceId, sourceId),
+          ),
+        )
+        .all(),
+    ofMember: async ({ familyId, memberId }: { familyId: string; memberId: string }) =>
+      db
+        .select()
+        .from(reminderDispatch)
+        .where(
+          and(eq(reminderDispatch.familyId, familyId), eq(reminderDispatch.memberId, memberId)),
+        )
+        .all(),
+    ofFamily: async (familyId: string): Promise<DispatchRow[]> =>
+      db.select().from(reminderDispatch).where(eq(reminderDispatch.familyId, familyId)).all(),
+    add: async (addition: Addition, newId: () => string) => add(db, addition, newId),
+    removeDeparted: async (familyId: string) => removeDeparted(db, familyId),
     replace: async (replacement: Replacement, newId: () => string) =>
       replace(db, replacement, newId),
-    remove: async (rows: SourceRows) => {
-      await db.delete(reminderDispatch).where(ofSource(rows));
-    },
+    // The rest of a claimed batch spans Families, as the claim did.
     release: async (dispatchIds: string[]) => release(db, dispatchIds),
-
-    async update(dispatchId: string, values: Partial<typeof reminderDispatch.$inferInsert>) {
-      await db.update(reminderDispatch).set(values).where(eq(reminderDispatch.id, dispatchId));
-    },
+    update: async (familyId: string, dispatchId: string, values: DispatchValues) =>
+      update(db, { familyId, dispatchId }, values),
   };
 }
 

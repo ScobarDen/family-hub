@@ -12,6 +12,7 @@ export {
   type Frequency,
   type Recurrence,
 } from "./occurrence.ts";
+export { birthdayFrom, birthdaysIn } from "./birthday.ts";
 export {
   dueStepFrom,
   eventReminderMoment,
@@ -22,3 +23,4 @@ export {
   type EventStart,
   type PlanLead,
 } from "./fire-time.ts";
+export { momentOfPhrase, type Phrase, type PhraseWhen } from "./phrase.ts";

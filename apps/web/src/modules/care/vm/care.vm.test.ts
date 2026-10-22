@@ -1,7 +1,13 @@
-import { context, noop } from "@reatom/core";
+import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { CareEntry, ExpenseSummary, Photo } from "@family-hub/contract";
+import type {
+  CareEntry,
+  CommandPhrase,
+  DueDateItem,
+  ExpenseSummary,
+  Photo,
+} from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
@@ -44,6 +50,21 @@ const entries: CareEntry[] = [
   },
 ];
 
+const buickVaccine: CareEntry = {
+  id: "entry-7",
+  petId: "pet-2",
+  occurredAt: Date.parse("2025-10-02T15:00:00Z"),
+  note: null,
+  details: {
+    kind: "vaccination",
+    vaccine: "Нобивак DHPPi",
+    cost: { amount: 1800, category: "vet" },
+    dueDate: "2026-10-02",
+  },
+  author: "Ася",
+  photos: [],
+};
+
 const month: ExpenseSummary = {
   total: 6500,
   byCategory: [
@@ -64,6 +85,27 @@ const walk: Photo = {
   canDelete: true,
 };
 
+const vetVisitDue: DueDateItem = {
+  entryId: "entry-2",
+  kind: "vet_visit",
+  label: "Визит к ветеринару",
+  title: "Визит к ветеринару — Бьюик",
+  dueDate: "2026-11-02",
+  isOverdue: false,
+};
+
+const saidThisMorning: CommandPhrase = {
+  saidAt: Date.parse("2026-10-11T06:00:00Z"),
+  timeZone: "Europe/Moscow",
+};
+
+const answers: Partial<Record<string, () => Response>> = {
+  "POST /api/photos": () => Response.json(walk, { status: 201 }),
+  "GET /api/care-entries/entry-7": () => Response.json(buickVaccine),
+  "GET /api/pets/pet-2/care-entries": () => Response.json([buickVaccine]),
+  "GET /api/pets/pet-1/due-dates": () => Response.json([vetVisitDue]),
+};
+
 function fakeBackend() {
   const requests: Array<{ request: string; body: unknown }> = [];
 
@@ -81,8 +123,17 @@ function fakeBackend() {
       return Response.json({ status: "deleted" });
     }
 
-    if (request === "POST /api/photos") {
-      return Response.json(walk, { status: 201 });
+    const answer = answers[request];
+
+    if (answer !== undefined) {
+      return answer();
+    }
+
+    if (request.startsWith("GET /api/care-entries/")) {
+      return Response.json(
+        { code: "CARE_ENTRY_NOT_FOUND", message: "No such Care Entry in the Family" },
+        { status: 404 },
+      );
     }
 
     return request === "GET /api/pets/pet-1/care-entries"
@@ -100,17 +151,18 @@ const connectedStorage: string | undefined = undefined;
 function startCare(choices: string[] = []) {
   const backend = fakeBackend();
   const avatars: string[] = [];
-  const savedDrafts: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const pending = [...choices];
+  const openedPet = atom<string | undefined>("pet-1", "test.openedPet");
+  const isArchived = atom(false, "test.isArchived");
   const model = reatomCare({
     api: createCareApi(client),
-    petId: () => "pet-1",
+    petId: () => openedPet(),
     today: () => "2026-10-11",
     now: () => "2026-10-11T18:30",
     timeZone: () => "Europe/Moscow",
     telegram: { showPopup: async () => pending.shift() },
-    isReadOnly: () => false,
+    isReadOnly: () => isArchived(),
     preparePhoto: async (file) => {
       if (file === tooLarge) {
         throw new PhotoTooLargeError();
@@ -122,8 +174,8 @@ function startCare(choices: string[] = []) {
     onMakeAvatar: (photoId) => {
       avatars.push(photoId);
     },
-    onDraftSaved: (draftId) => {
-      savedDrafts.push(draftId);
+    onOpenPet: (petId) => {
+      openedPet.set(petId);
     },
   });
 
@@ -131,7 +183,7 @@ function startCare(choices: string[] = []) {
   model.month.subscribe(noop);
   model.weight.subscribe(noop);
 
-  return { model, backend, avatars, savedDrafts };
+  return { model, backend, avatars, openedPet, isArchived };
 }
 
 type Model = ReturnType<typeof startCare>["model"];
@@ -159,6 +211,20 @@ describe("the journal", () => {
       subtitle: "2 октября · Денис · 2 500 ₽",
       note: "Перенёс спокойно",
       photos: [],
+    });
+  });
+});
+
+describe("«Скоро» on the pet card", () => {
+  test("names each open Due Date the way the server labels it", async () => {
+    const { model } = startCare();
+
+    model.dueSources.subscribe(noop);
+
+    await vi.waitFor(() => {
+      expect(model.dueSources()).toEqual([
+        { id: "entry-2", title: "Визит к ветеринару", dueDate: "2026-11-02", kind: "due" },
+      ]);
     });
   });
 });
@@ -324,8 +390,8 @@ describe("a Care Entry's photos", () => {
 });
 
 describe("a Care Entry draft opened by «Изменить»", () => {
-  test("fills the form from yesterday at the current time and settles the draft once saved", async () => {
-    const { model, backend, savedDrafts } = startCare();
+  test("fills the form from yesterday at the time of day it was said and saves it for the open Pet", async () => {
+    const { model, backend } = startCare();
 
     await loaded(model);
     model.editDraft({
@@ -345,11 +411,12 @@ describe("a Care Entry draft opened by «Изменить»", () => {
         missing: [],
         ambiguities: [],
       },
+      phrase: saidThisMorning,
     });
 
     expect(model.screen()).toEqual({ kind: "form", isCreating: true });
     expect(model.form.kind()).toBe("vaccination");
-    expect(model.form.form.fields.occurredAt()).toBe("2026-10-10T18:30");
+    expect(model.form.form.fields.occurredAt()).toBe("2026-10-10T09:00");
     expect(model.form.form.fields.name()).toBe("Бешенство");
     expect(model.form.form.fields.costAmount()).toBe("1800");
     expect(model.form.form.fields.dueDate()).toBe("2027-10-10");
@@ -357,10 +424,165 @@ describe("a Care Entry draft opened by «Изменить»", () => {
     model.form.save();
 
     await vi.waitFor(() => {
-      expect(savedDrafts).toEqual(["draft-3"]);
+      expect(
+        backend.requests.find(({ request }) => request === "POST /api/pets/pet-1/care-entries")
+          ?.body,
+      ).toMatchObject({
+        occurredAt: Date.parse("2026-10-10T06:00:00Z"),
+        details: { kind: "vaccination", vaccine: "Бешенство" },
+        photoIds: [],
+      });
     });
-    expect(
-      backend.requests.find(({ request }) => request === "POST /api/pets/pet-1/care-entries")?.body,
-    ).toMatchObject({ details: { kind: "vaccination", vaccine: "Бешенство" }, photoIds: [] });
+  });
+
+  test("shows the moment of a phrase said in another zone on the viewer's own clock", async () => {
+    const { model } = startCare();
+
+    await loaded(model);
+    model.editDraft({
+      draftId: "draft-5",
+      draft: {
+        kind: "care_entry",
+        petId: "pet-1",
+        date: "2026-10-10",
+        time: null,
+        note: null,
+        details: { kind: "weight", weightKg: 31.5 },
+        missing: [],
+        ambiguities: [],
+      },
+      phrase: { saidAt: Date.parse("2026-10-11T00:00:00Z"), timeZone: "Asia/Vladivostok" },
+    });
+
+    expect(model.form.form.fields.occurredAt()).toBe("2026-10-10T03:00");
+  });
+
+  test("fills the form at the moment it was said when the phrase names no day", async () => {
+    const { model } = startCare();
+
+    await loaded(model);
+    model.editDraft({
+      draftId: "draft-6",
+      draft: {
+        kind: "care_entry",
+        petId: "pet-1",
+        date: null,
+        time: null,
+        note: null,
+        details: { kind: "weight", weightKg: 31.5 },
+        missing: [],
+        ambiguities: [],
+      },
+      phrase: saidThisMorning,
+    });
+
+    expect(model.form.form.fields.occurredAt()).toBe("2026-10-11T09:00");
+  });
+
+  test("says it could not save while no Pet is open, and saves nothing", async () => {
+    const { model, backend, openedPet } = startCare();
+
+    await loaded(model);
+    model.editDraft({
+      draftId: "draft-4",
+      draft: {
+        kind: "care_entry",
+        petId: null,
+        date: null,
+        time: null,
+        note: null,
+        details: { kind: "weight", weightKg: 31.5 },
+        missing: ["pet"],
+        ambiguities: [],
+      },
+      phrase: saidThisMorning,
+    });
+    openedPet.set(undefined);
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(model.form.failure()).toBe("Не получилось сохранить запись. Попробуйте ещё раз.");
+    });
+    expect(model.screen()).toEqual({ kind: "form", isCreating: true });
+    expect(backend.requests.map(({ request }) => request)).not.toContain(
+      "POST /api/pets/pet-1/care-entries",
+    );
+  });
+});
+
+describe("a Care Entry opened from outside the card", () => {
+  test("opens its Pet and its form when nothing is open yet, as a Due Date reminder's link does", async () => {
+    const { model, openedPet } = startCare();
+
+    openedPet.set(undefined);
+    model.openEntry("entry-7");
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "form", isCreating: false });
+    });
+    expect(openedPet()).toBe("pet-2");
+    expect(model.form.form.fields.name()).toBe("Нобивак DHPPi");
+    expect(model.form.form.fields.dueDate()).toBe("2026-10-02");
+  });
+
+  test("opens an entry of another Pet than the open one and saves it in place", async () => {
+    const { model, backend, openedPet } = startCare();
+
+    await loaded(model);
+    model.openEntry("entry-7");
+    await vi.waitFor(() => {
+      expect(model.form.form.fields.name()).toBe("Нобивак DHPPi");
+    });
+
+    expect(openedPet()).toBe("pet-2");
+
+    model.form.save();
+    await vi.waitFor(() => {
+      expect(model.canGoBack()).toBe(false);
+    });
+    expect(backend.requests.map(({ request }) => request)).toContain(
+      "PUT /api/care-entries/entry-7",
+    );
+  });
+
+  test("opens an archived Pet's entry to read, without taking photos", async () => {
+    const { model, isArchived } = startCare();
+
+    isArchived.set(true);
+    model.openEntry("entry-7");
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "form", isCreating: false });
+    });
+    expect(model.isReadOnly()).toBe(true);
+    expect(model.attachments.canAdd()).toBe(false);
+  });
+
+  test("leaves the card as it is when the entry is gone", async () => {
+    const { model, backend, openedPet } = startCare();
+
+    await loaded(model);
+    model.openEntry("entry-gone");
+    await vi.waitFor(() => {
+      expect(backend.requests.map(({ request }) => request)).toContain(
+        "GET /api/care-entries/entry-gone",
+      );
+    });
+
+    expect(model.screen()).toEqual({ kind: "blocks" });
+    expect(openedPet()).toBe("pet-1");
+  });
+
+  test("follows up a Due Date before the Pet's journal has loaded", async () => {
+    const { model, openedPet } = startCare();
+
+    openedPet.set("pet-2");
+    model.followUp("entry-7");
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "form", isCreating: true });
+    });
+    expect(model.form.kind()).toBe("vaccination");
+    expect(model.form.form.fields.name()).toBe("Нобивак DHPPi");
   });
 });

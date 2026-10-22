@@ -58,6 +58,8 @@ export function createCareApi(client: HttpClient) {
 
   return {
     list: async (petId: string) => entriesOf(client, petId),
+    get: async (entryId: string) =>
+      saved(client.request(`/api/care-entries/${entryId}`, { schema: careEntry })),
     create: async (petId: string, change: CareEntryChange) =>
       saved(
         client.request(`/api/pets/${petId}/care-entries`, {

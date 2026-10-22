@@ -5,7 +5,7 @@ import type { Membership } from "@/common/auth";
 import { toReminder } from "../reminder.lib.ts";
 import type { ReminderDependencies, ReminderRefusal, ReminderResult } from "../reminder.types.ts";
 import type { ReminderWithRecipients } from "../repo/reminder.repo.ts";
-import { reschedule } from "./schedule.service.ts";
+import { sourceChanged } from "./schedule.service.ts";
 
 type Recipients = { isForEveryone: boolean; ids: string[] };
 
@@ -42,6 +42,13 @@ async function visible(
     found?.reminder.visibility === "private" && found.reminder.ownerMemberId !== member.id;
 
   return isHidden ? undefined : found;
+}
+
+async function reminderChanged(
+  dependencies: ReminderDependencies,
+  { familyId, reminderId }: { familyId: string; reminderId: string },
+) {
+  await sourceChanged(dependencies, { kind: "reminder", familyId, id: reminderId });
 }
 
 type Saving = { reminderId: string; ownerId: string; isNew: boolean; change: ReminderChange };
@@ -88,7 +95,7 @@ async function save(
     return { status: "not-found" };
   }
 
-  await reschedule(dependencies, saved);
+  await reminderChanged(dependencies, { familyId: membership.family.id, reminderId });
 
   return { status: "ok", reminder: toReminder(saved, membership.member.id) };
 }
@@ -156,11 +163,7 @@ export async function remove(
   }
 
   await dependencies.reminders.delete({ familyId: membership.family.id, reminderId });
-  await dependencies.dispatch.remove({
-    familyId: membership.family.id,
-    source: "reminder",
-    prefix: reminderId,
-  });
+  await reminderChanged(dependencies, { familyId: membership.family.id, reminderId });
 
   return { status: "deleted" };
 }

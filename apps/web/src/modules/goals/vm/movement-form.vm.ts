@@ -1,4 +1,4 @@
-import { action, atom, computed, noop, reatomForm, wrap, type Atom } from "@reatom/core";
+import { action, atom, computed, reatomForm, type Atom } from "@reatom/core";
 import { z } from "zod";
 
 import {
@@ -9,7 +9,7 @@ import {
   type MovementKind,
 } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { reatomEditableRecord } from "@/common/form";
 import type { Choice } from "@/common/ui";
 
 import type { GoalsApi } from "../goals.api.ts";
@@ -22,8 +22,6 @@ type MovementFormDependencies = {
   self: () => string | undefined;
   onSaved: (before: Goal, saved: Goal) => void;
 };
-
-type Editing = { goal: Goal; movementId: string | undefined };
 
 const emptyMovement = { kind: "contribution", amount: "", date: "", memberId: "", comment: "" };
 
@@ -53,53 +51,27 @@ function changeOf(values: MovementValues): MovementChange {
   });
 }
 
-type MovementForm = ReturnType<typeof reatomForm<MovementValues>>;
+type Movement = Goal["movements"][number];
 
-function reatomMovementSubmit(
-  { api, goals, onSaved, today }: MovementFormDependencies,
-  editing: Atom<Editing | undefined>,
-): MovementForm {
-  return reatomForm(emptyMovement, {
-    name: "goals.movementForm",
-    schema: schemaFor(today),
-    onSubmit: async (values: MovementValues) => {
-      const target = editing();
+type Edited = { goal: Goal; movement: Movement };
 
-      if (target === undefined) {
-        return;
-      }
-
-      const { goal, movementId } = target;
-      const change = changeOf(values);
-      const saved = await wrap(
-        movementId === undefined
-          ? api.addMovement(goal.id, change)
-          : api.updateMovement({ goalId: goal.id, movementId }, change),
-      );
-
-      goals.keep(saved);
-      onSaved(goal, saved);
-    },
-  });
-}
+type Saved = { before: Goal; saved: Goal };
 
 // A Private Goal takes only its owner's money, so it offers nobody else.
 function reatomContributors(
   { goals, self }: MovementFormDependencies,
-  editing: Atom<Editing | undefined>,
+  goal: Atom<Goal | undefined>,
 ) {
   return computed((): Choice[] => {
     const members = goals.members.data() ?? [];
     const allowed =
-      editing()?.goal.visibility === "private"
-        ? members.filter(({ id }) => id === self())
-        : members;
+      goal()?.visibility === "private" ? members.filter(({ id }) => id === self()) : members;
 
     return allowed.map(({ id, name }) => ({ value: id, title: name }));
   }, "goals.movementForm.contributors");
 }
 
-function valuesOf(movement: Goal["movements"][number]): MovementValues {
+function valuesOf({ movement }: Edited): MovementValues {
   return {
     kind: movement.kind,
     amount: String(movement.amount),
@@ -109,43 +81,68 @@ function valuesOf(movement: Goal["movements"][number]): MovementValues {
   };
 }
 
+function reatomMovementRecord(
+  { api, goals, today, onSaved }: MovementFormDependencies,
+  goal: Atom<Goal | undefined>,
+) {
+  return reatomEditableRecord({
+    name: "goals.movementRecord",
+    form: (onSubmit) =>
+      reatomForm(emptyMovement, {
+        name: "goals.movementForm",
+        schema: schemaFor(today),
+        onSubmit,
+      }),
+    failureMessage: "Не получилось сохранить. Баланс цели не может уйти в минус.",
+    valuesOf,
+    create: async (values): Promise<Saved> => {
+      const before = goal();
+
+      if (before === undefined) {
+        throw new Error("No Goal is open to add the movement to");
+      }
+
+      return { before, saved: await api.addMovement(before.id, changeOf(values)) };
+    },
+    update: async ({ goal: before, movement }: Edited, values): Promise<Saved> => ({
+      before,
+      saved: await api.updateMovement(
+        { goalId: before.id, movementId: movement.id },
+        changeOf(values),
+      ),
+    }),
+    onSaved: ({ before, saved }) => {
+      goals.keep(saved);
+      onSaved(before, saved);
+    },
+  });
+}
+
 export function reatomMovementForm(dependencies: MovementFormDependencies) {
-  const editing = atom<Editing | undefined>(undefined, "goals.movementForm.editing");
-  const form = reatomMovementSubmit(dependencies, editing);
+  const goal = atom<Goal | undefined>(undefined, "goals.movementForm.goal");
+  const { startCreating, startEditing, ...record } = reatomMovementRecord(dependencies, goal);
 
   return {
-    form,
-    isCreating: computed(
-      () => editing()?.movementId === undefined,
-      "goals.movementForm.isCreating",
-    ),
-    isSaving: computed(() => !form.submit.ready(), "goals.movementForm.isSaving"),
-    contributors: reatomContributors(dependencies, editing),
-    failure: reatomSubmitFailure(form, {
-      message: "Не получилось сохранить. Баланс цели не может уйти в минус.",
-      name: "goals.movementForm.failure",
-    }),
+    ...record,
+    contributors: reatomContributors(dependencies, goal),
 
-    startAdding: action((goal: Goal, kind: MovementKind) => {
-      editing.set({ goal, movementId: undefined });
-      fillForm(form, {
+    startAdding: action((target: Goal, kind: MovementKind) => {
+      goal.set(target);
+      startCreating({
         ...emptyMovement,
         kind,
         date: dependencies.today(),
         memberId: dependencies.self() ?? "",
       });
     }, "goals.movementForm.startAdding"),
-    startEditing: action((goal: Goal, movementId: string) => {
-      const movement = goal.movements.find(({ id }) => id === movementId);
+    startEditing: action((target: Goal, movementId: string) => {
+      const movement = target.movements.find(({ id }) => id === movementId);
 
       if (movement !== undefined) {
-        editing.set({ goal, movementId });
-        fillForm(form, valuesOf(movement));
+        goal.set(target);
+        startEditing({ goal: target, movement });
       }
     }, "goals.movementForm.startEditing"),
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "goals.movementForm.save"),
   };
 }
 

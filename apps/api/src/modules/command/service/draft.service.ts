@@ -2,14 +2,14 @@ import type { Message } from "@grammyjs/types";
 
 import { parseCommand, type CommandResult } from "@family-hub/commands";
 import { commandDraftLifetimeMs, uuidv7 } from "@family-hub/contract";
-import { dateInZone } from "@family-hub/recurrence";
+import { dateInZone, type Phrase } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 import type { CommandSource } from "@/common/db";
 import { ignoringBotErrors } from "@/common/telegram";
 
 import { previewText } from "../command-preview.lib.ts";
-import { editLink, failureTexts, heardText, previewButtons, strangerText } from "../command.lib.ts";
+import { failureTexts, heardText, previewButtons, strangerText } from "../command.lib.ts";
 import type { FamilyNames } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
 
@@ -64,11 +64,11 @@ export async function showTyping({ bot }: CommandDependencies, chatId: number): 
   await ignoringBotErrors(bot.call("sendChatAction", { chat_id: chatId, action: "typing" }));
 }
 
-export async function editLinkOf({ bot }: CommandDependencies, draftId: string): Promise<string> {
-  // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
-  const { username } = await bot.call("getMe", undefined);
-
-  return editLink(username, draftId);
+export async function editLinkOf(
+  { appLinks }: CommandDependencies,
+  draftId: string,
+): Promise<string> {
+  return appLinks.appLink({ kind: "cmd", id: draftId });
 }
 
 export async function namesOf(
@@ -78,11 +78,18 @@ export async function namesOf(
   return { members: await drafts.membersOf(familyId), pets: await drafts.petsOf(familyId) };
 }
 
+export async function speakerZoneOf(
+  { drafts }: CommandDependencies,
+  { member }: Membership,
+): Promise<string> {
+  return (await drafts.timeZoneOf(member.id)) ?? fallbackTimeZone;
+}
+
 export async function outcomeOf(
   dependencies: CommandDependencies,
   { membership, text }: { membership: Membership; text: string },
 ): Promise<Outcome> {
-  const timeZone = (await dependencies.drafts.timeZoneOf(membership.member.id)) ?? fallbackTimeZone;
+  const timeZone = await speakerZoneOf(dependencies, membership);
   const today = dateInZone(dependencies.clock.now(), timeZone);
   const { members, pets } = await namesOf(dependencies, membership.family.id);
 
@@ -115,13 +122,15 @@ type Handled = {
 };
 
 // Every command handled leaves a row, failed ones too: the rows are the Family's daily count.
+// The row's moment and zone are the phrase's, which «Создать» later reads the draft's dates in.
 export async function record(
   dependencies: CommandDependencies,
   { membership, chatId, source, outcome }: Handled,
-): Promise<string> {
+): Promise<{ draftId: string; phrase: Phrase }> {
   const now = dependencies.clock.now();
   const draftId = uuidv7(now);
   const isDraft = outcome.status === "draft";
+  const timeZone = await speakerZoneOf(dependencies, membership);
 
   await dependencies.drafts.add({
     id: draftId,
@@ -131,13 +140,14 @@ export async function record(
     payload: isDraft ? outcome.draft : null,
     source,
     chatId,
+    timeZone,
     status: isDraft ? "pending" : "failed",
     expiresAt: now + commandDraftLifetimeMs,
     createdAt: now,
     updatedAt: now,
   });
 
-  return draftId;
+  return { draftId, phrase: { saidAt: now, timeZone } };
 }
 
 // A voice command's answer starts with what the bot heard, so a misheard word is visible.
@@ -150,7 +160,7 @@ export async function sendPreview(
   answer: Handled & { chatId: number; heard?: string },
 ): Promise<void> {
   const { membership, chatId, outcome, heard } = answer;
-  const draftId = await record(dependencies, answer);
+  const { draftId } = await record(dependencies, answer);
 
   if (outcome.status !== "draft") {
     await reply(dependencies, { chatId, text: withHeard(failureTexts[outcome.status], heard) });

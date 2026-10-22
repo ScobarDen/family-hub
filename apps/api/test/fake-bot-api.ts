@@ -142,6 +142,7 @@ export function createFakeBotApi() {
     answeredCallbacks: () => paramsOf("answerCallbackQuery"),
     preparedMessages: () => paramsOf("savePreparedInlineMessage"),
     sentPhotos: () => paramsOf("sendPhoto"),
+    countCalls: (method: BotMethod) => paramsOf(method).length,
     downloadedFiles: () => [...state.files],
     blockChat(chatId: ChatId) {
       state.blockedChats.add(String(chatId));

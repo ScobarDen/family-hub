@@ -62,6 +62,7 @@ export const Care = reatomComponent(({ model }: CareProps) => {
       <CareForm
         model={model.form}
         photos={<PhotoAttachments model={model.attachments} hint={model.photoHint()} />}
+        isReadOnly={model.isReadOnly()}
         onCancel={model.back}
         onRemove={model.remove}
       />

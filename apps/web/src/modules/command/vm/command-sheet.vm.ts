@@ -1,11 +1,24 @@
 import { action, atom, computed, noop, withAsyncData, wrap, type Atom } from "@reatom/core";
 
-import type { CommandDraft, CommandOutcome, DraftCreated } from "@family-hub/contract";
+import {
+  draftRefusalTexts,
+  previewOf,
+  type DraftPreview,
+  type FamilyNames,
+} from "@family-hub/commands";
+import {
+  draftRefusal,
+  type CommandDraft,
+  type CommandOutcome,
+  type CommandPhrase,
+  type DraftCreated,
+} from "@family-hub/contract";
+
+import { HttpError } from "@/common/http-client";
 
 import type { CommandApi } from "../command.api.ts";
-import { previewOf, type DraftPreview, type FamilyNames } from "../command.lib.ts";
 
-export type OpenedDraft = { draftId: string; draft: CommandDraft };
+export type OpenedDraft = { draftId: string; draft: CommandDraft; phrase: CommandPhrase };
 
 type CommandSheetDependencies = {
   api: Pick<CommandApi, "send" | "open" | "create" | "pick" | "dismiss" | "members" | "pets">;
@@ -35,8 +48,20 @@ export const staleDraftText = "Черновик устарел или уже р�
 
 function draftOf(phase: Phase): (OpenedDraft & { heard: string | null }) | undefined {
   return phase.kind === "outcome" && phase.outcome.status === "draft"
-    ? { draftId: phase.outcome.draftId, draft: phase.outcome.draft, heard: phase.outcome.heard }
+    ? {
+        draftId: phase.outcome.draftId,
+        draft: phase.outcome.draft,
+        phrase: phase.outcome.phrase,
+        heard: phase.outcome.heard,
+      }
     : undefined;
+}
+
+// The bot words a refused «Создать» the same way; anything else gets the general word.
+function refusalTextOf(error: unknown): string {
+  const refusal = draftRefusal.safeParse(error instanceof HttpError ? error.code : undefined);
+
+  return refusal.success ? draftRefusalTexts[refusal.data] : createFailedText;
 }
 
 function failure(message: string): Phase {
@@ -60,7 +85,7 @@ function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseA
       const outcome = await wrap(api.open(draftId));
 
       if (outcome.status === "draft") {
-        onEdit({ draftId, draft: outcome.draft });
+        onEdit({ draftId, draft: outcome.draft, phrase: outcome.phrase });
       }
     } catch {
       phase.set(failure(staleDraftText));
@@ -91,8 +116,8 @@ function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: Ph
 
     try {
       onCreated(await wrap(api.create(opened.draftId)));
-    } catch {
-      phase.set({ ...before, error: createFailedText });
+    } catch (error) {
+      phase.set({ ...before, error: refusalTextOf(error) });
     }
   }, "commandSheet.create");
 
@@ -124,7 +149,7 @@ function reatomLeaving({ api, onEdit }: CommandSheetDependencies, phase: PhaseAt
       phase.set({ kind: "closed" });
 
       if (opened !== undefined) {
-        onEdit({ draftId: opened.draftId, draft: opened.draft });
+        onEdit({ draftId: opened.draftId, draft: opened.draft, phrase: opened.phrase });
       }
     }, "commandSheet.edit"),
     // «×» drops a pending draft; once created or failed there is nothing left to drop.

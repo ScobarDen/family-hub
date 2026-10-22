@@ -6,15 +6,19 @@ import {
   reminderChange,
   type CalendarEvent,
   type DueDateItem,
+  type EventDraft,
   type Pet,
   type Plan,
   type Reminder,
+  type ReminderDraft,
 } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 
 import { createCalendarApi } from "../calendar.api.ts";
 import { reatomCalendar } from "./calendar.vm.ts";
+
+const phrase = { saidAt: Date.parse("2026-10-11T06:00:00Z"), timeZone: "Europe/Moscow" };
 
 const call: CalendarEvent = {
   id: "event-1",
@@ -60,7 +64,8 @@ const internet: Reminder = {
 const rabies: DueDateItem = {
   entryId: "entry-1",
   kind: "vaccination",
-  title: "Бешенство",
+  label: "Прививка: Бешенство",
+  title: "Прививка: Бешенство — Бьюик",
   dueDate: "2026-10-25",
   isOverdue: false,
 };
@@ -150,7 +155,6 @@ function startCalendar({
   const backend = fakeBackend(plans);
   const opened: string[] = [];
   const openedPlans: string[] = [];
-  const savedDrafts: string[] = [];
   const pending = [...choices];
   const model = reatomCalendar({
     api: createCalendarApi(
@@ -166,9 +170,6 @@ function startCalendar({
       openedPlans.push(planId);
     },
     self: () => "member-1",
-    onDraftSaved: (draftId) => {
-      savedDrafts.push(draftId);
-    },
   });
 
   model.grid.subscribe(noop);
@@ -176,7 +177,7 @@ function startCalendar({
   model.dayItems.subscribe(noop);
   model.reminderForm.recipients.subscribe(noop);
 
-  return { model, backend, opened, openedPlans, savedDrafts };
+  return { model, backend, opened, openedPlans };
 }
 
 type Model = ReturnType<typeof startCalendar>["model"];
@@ -244,7 +245,7 @@ describe("«Ближайшее»", () => {
       ["2026-10-16", "10:00", "Оплатить интернет"],
       ["2026-10-20", undefined, "День рождения: Бьюик, 4 года"],
       ["2026-10-22", "19:00", "Созвон с родителями"],
-      ["2026-10-25", undefined, "Прививка: Бьюик, Бешенство"],
+      ["2026-10-25", undefined, "Прививка: Бешенство — Бьюик"],
       ["2026-10-29", "19:00", "Созвон с родителями"],
       ["2026-11-05", "19:00", "Созвон с родителями"],
       ["2026-11-12", "19:00", "Созвон с родителями"],
@@ -362,7 +363,7 @@ describe("an Event", () => {
     model.add();
 
     expect(model.form.offsets().map(({ title }) => title)).toEqual([
-      "В начале",
+      "В момент начала",
       "За день",
       "За неделю",
     ]);
@@ -422,24 +423,27 @@ describe("a standalone Reminder", () => {
   });
 });
 
+const internetReminder: ReminderDraft = {
+  kind: "reminder",
+  text: "Оплатить интернет",
+  date: "2026-10-16",
+  time: null,
+  recurrence: { frequency: "monthly", until: null },
+  visibility: "shared",
+  recipientIds: ["member-2"],
+  missing: ["time"],
+  ambiguities: [],
+};
+
 describe("a Command Draft opened by «Изменить»", () => {
-  test("fills the Reminder form and settles the draft once saved", async () => {
-    const { model, backend, savedDrafts } = startCalendar();
+  test("fills the Reminder form and saves what it shows", async () => {
+    const { model, backend } = startCalendar();
 
     await loaded(model);
     model.openReminderDraft({
       draftId: "draft-1",
-      draft: {
-        kind: "reminder",
-        text: "Оплатить интернет",
-        date: "2026-10-16",
-        time: null,
-        recurrence: { frequency: "monthly", until: null },
-        visibility: "shared",
-        recipientIds: ["member-2"],
-        missing: ["time"],
-        ambiguities: [],
-      },
+      phrase,
+      draft: internetReminder,
     });
 
     expect(model.screen()).toEqual({ kind: "reminder-form" });
@@ -452,7 +456,7 @@ describe("a Command Draft opened by «Изменить»", () => {
     model.reminderForm.save();
 
     await vi.waitFor(() => {
-      expect(savedDrafts).toEqual(["draft-1"]);
+      expect(model.screen()).toEqual({ kind: "calendar" });
     });
     expect(backend.requests.at(-1)?.body).toMatchObject({
       start: { date: "2026-10-16", time: "19:00" },
@@ -461,27 +465,30 @@ describe("a Command Draft opened by «Изменить»", () => {
   });
 });
 
+const mumsBirthday: EventDraft = {
+  kind: "event",
+  title: "День рождения мамы",
+  note: null,
+  date: "2027-03-03",
+  time: null,
+  endDate: null,
+  endTime: null,
+  recurrence: { frequency: "yearly", until: null },
+  visibility: "shared",
+  reminderOffsets: ["1d"],
+  missing: [],
+  ambiguities: [],
+};
+
 describe("an Event draft opened by «Изменить»", () => {
-  test("fills the Event form, all day with its Reminders, and settles the draft once saved", async () => {
-    const { model, backend, savedDrafts } = startCalendar();
+  test("fills the Event form, all day with its Reminders, and saves what it shows", async () => {
+    const { model, backend } = startCalendar();
 
     await loaded(model);
     model.openEventDraft({
       draftId: "draft-2",
-      draft: {
-        kind: "event",
-        title: "День рождения мамы",
-        note: null,
-        date: "2027-03-03",
-        time: null,
-        endDate: null,
-        endTime: null,
-        recurrence: { frequency: "yearly", until: null },
-        visibility: "shared",
-        reminderOffsets: ["1d"],
-        missing: [],
-        ambiguities: [],
-      },
+      phrase,
+      draft: mumsBirthday,
     });
 
     expect(model.screen()).toEqual({ kind: "event-form" });
@@ -494,13 +501,55 @@ describe("an Event draft opened by «Изменить»", () => {
     model.form.save();
 
     await vi.waitFor(() => {
-      expect(savedDrafts).toEqual(["draft-2"]);
+      expect(model.screen()).toEqual({ kind: "event" });
     });
     expect(backend.requests.at(-1)?.body).toMatchObject({
       title: "День рождения мамы",
       start: { date: "2027-03-03", time: null, timeZone: null },
       recurrence: { frequency: "yearly", until: null },
       reminderOffsets: ["1d"],
+    });
+  });
+});
+
+describe("a draft said in another zone", () => {
+  const saidInVladivostok = { ...phrase, timeZone: "Asia/Vladivostok" };
+
+  test("keeps a timed Event at its time in the zone it was said in", async () => {
+    const { model, backend } = startCalendar({ timeZone: "Europe/Moscow" });
+
+    await loaded(model);
+    model.openEventDraft({
+      draftId: "draft-3",
+      phrase: saidInVladivostok,
+      draft: { ...mumsBirthday, time: "10:00", recurrence: null, reminderOffsets: [] },
+    });
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "event" });
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({
+      start: { date: "2027-03-03", time: "10:00", timeZone: "Asia/Vladivostok" },
+    });
+  });
+
+  test("keeps a Reminder at its time in the zone it was said in", async () => {
+    const { model, backend } = startCalendar({ timeZone: "Europe/Moscow" });
+
+    await loaded(model);
+    model.openReminderDraft({
+      draftId: "draft-4",
+      phrase: saidInVladivostok,
+      draft: { ...internetReminder, time: "08:30", missing: [] },
+    });
+    model.reminderForm.save();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "calendar" });
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({
+      start: { date: "2026-10-16", time: "08:30", timeZone: "Asia/Vladivostok" },
     });
   });
 });

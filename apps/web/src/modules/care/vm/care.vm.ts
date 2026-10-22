@@ -1,6 +1,6 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, atom, computed, noop, withAbort, withAsync, wrap, type Atom } from "@reatom/core";
 
-import type { CareKind } from "@family-hub/contract";
+import type { CareEntry, CareKind } from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
@@ -8,7 +8,7 @@ import type { PreparedPhoto } from "@/common/photo";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
-import { categoryTitles, kindTitles, type WeightRange } from "../care.config.ts";
+import { categoryTitles, type WeightRange } from "../care.config.ts";
 import {
   toExpensesView,
   toJournalItem,
@@ -40,6 +40,7 @@ type CareDependencies = {
   // Why photos cannot be added now, from photo-storage; undefined when they can.
   photoHint: () => string | undefined;
   onMakeAvatar: (photoId: string) => void;
+  onOpenPet: (petId: string) => void;
   onDraftSaved?: (draftId: string) => void;
 };
 
@@ -151,20 +152,42 @@ function reatomDraftEditing({ form, screen }: Sources) {
   };
 }
 
+// A link or the Feed may name an entry before its Pet's journal has loaded, or of another Pet.
+function reatomOpening({ api, data, form, screen, onOpenPet }: Sources) {
+  async function entryOf(entryId: string): Promise<CareEntry> {
+    return data.entries.data()?.find(({ id }) => id === entryId) ?? api.get(entryId);
+  }
+
+  const openEntry = action(async (entryId: string) => {
+    const entry = await wrap(entryOf(entryId));
+
+    onOpenPet(entry.petId);
+    form.startEditing(entry);
+    screen.set("form");
+  }, "care.openEntryOfPet").extend(withAbort());
+  const followUp = action(async (entryId: string) => {
+    const entry = await wrap(entryOf(entryId));
+
+    form.startFollowUp(entry);
+    screen.set("form");
+  }, "care.followUpEntry").extend(withAbort());
+
+  return {
+    openEntry: action((entryId: string) => {
+      openEntry(entryId).catch(noop);
+    }, "care.openEntry"),
+    followUp: action((entryId: string) => {
+      followUp(entryId).catch(noop);
+    }, "care.followUp"),
+  };
+}
+
 function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRange>) {
   return {
     add: action((kind: CareKind) => {
       form.startCreating(kind);
       screen.set("form");
     }, "care.add"),
-    followUp: action((entryId: string) => {
-      const entry = data.entries.data()?.find(({ id }) => id === entryId);
-
-      if (entry !== undefined) {
-        form.startFollowUp(entry);
-        screen.set("form");
-      }
-    }, "care.followUp"),
     edit: action((entryId: string) => {
       const entry = data.entries.data()?.find(({ id }) => id === entryId);
 
@@ -201,9 +224,9 @@ function reatomTitle(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
 function reatomDueSources(data: CareData) {
   return computed(
     (): DueSource[] =>
-      (data.dueDates.data() ?? []).map(({ entryId, kind, title, dueDate }) => ({
+      (data.dueDates.data() ?? []).map(({ entryId, label, dueDate }) => ({
         id: entryId,
-        title: kind === "vet_visit" ? title : `${kindTitles[kind]}: ${title}`,
+        title: label,
         dueDate,
         kind: "due",
       })),
@@ -252,6 +275,7 @@ export function reatomCare(dependencies: CareDependencies) {
     ...photos,
     ...reatomViews(sources, weightRange),
     ...reatomMoves(sources, weightRange),
+    ...reatomOpening(sources),
     ...reatomDraftEditing(sources),
     remove: action(() => {
       remove().catch(noop);

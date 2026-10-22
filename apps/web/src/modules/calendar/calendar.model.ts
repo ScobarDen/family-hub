@@ -8,7 +8,7 @@ import type { PetDue } from "./calendar.lib.ts";
 async function duesOf(api: CalendarApi, pet: Pet): Promise<PetDue[]> {
   const dues = await api.dueDates(pet.id);
 
-  return dues.map((due) => ({ ...due, petId: pet.id, petName: pet.name }));
+  return dues.map((due) => ({ ...due, petId: pet.id }));
 }
 
 export function reatomCalendarData({ api }: { api: CalendarApi }) {

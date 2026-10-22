@@ -41,6 +41,7 @@ describe("a recording from the Mini App microphone", () => {
       status: "draft",
       heard: phrase,
       draft: { kind: "reminder", text: "Оплатить интернет", date: "2026-10-16", time: "19:00" },
+      phrase: { saidAt: Date.parse("2026-10-13T09:00:01Z"), timeZone: "Europe/Moscow" },
     });
     expect(audio.contentType).toBe("audio/mp4");
     expect(await new Response(audio.body).text()).toBe("mp4:recording");
@@ -59,6 +60,30 @@ describe("a recording from the Mini App microphone", () => {
     expect(await created.json<DraftCreated>()).toEqual({ kind: "reminder", id: reminder?.id });
     expect(reminder).toMatchObject({ text: "Оплатить интернет", isForEveryone: true });
     expect(again.status).toBe(404);
+  });
+
+  test("names why «Создать» was refused and keeps the draft open", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.hear(phrase);
+    worker.ai.answer({ response: { ...internet, recipientIds: [worker.asyaId] } });
+
+    const outcome = await recorded(worker, denis);
+
+    await request(worker, denis, {
+      method: "DELETE",
+      path: `/api/family/members/${worker.asyaId}`,
+    });
+
+    const refused = await request(worker, denis, {
+      method: "POST",
+      path: `/api/commands/${draftIdOf(outcome)}/create`,
+    });
+    const opened = await request(worker, denis, { path: `/api/commands/${draftIdOf(outcome)}` });
+
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ code: "RECIPIENTS_NOT_ALLOWED" });
+    expect(opened.status).toBe(200);
   });
 
   test("answers a failure with the bot's words and counts it towards the limit", async () => {
@@ -183,5 +208,29 @@ describe("a bot draft opened in the Mini App by «Изменить»", () => {
     const settled = await request(worker, denis, { path: `/api/commands/${draftId}` });
 
     expect(settled.status).toBe(404);
+  });
+
+  test("tells when and in which zone the phrase was said, however late and wherever it opens", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.answer({ response: internet });
+    await say(worker, denis, phrase);
+
+    const preview = lastTo(worker, denis);
+    const button = buttonsOf(preview).find((each) => each.text === "Изменить");
+    const draftId = draftIdInLink(button !== undefined && "url" in button ? button.url : "");
+
+    worker.clock.set("2026-10-13T19:00:01Z");
+    await request(worker, denis, {
+      method: "PUT",
+      path: "/api/me/time-zone",
+      body: { timeZone: "Asia/Vladivostok", isAuto: true },
+    });
+    const opened = await request(worker, denis, { path: `/api/commands/${draftId}` });
+
+    expect(await opened.json<CommandOutcome>()).toMatchObject({
+      status: "draft",
+      phrase: { saidAt: Date.parse("2026-10-13T09:00:01Z"), timeZone: "Europe/Moscow" },
+    });
   });
 });

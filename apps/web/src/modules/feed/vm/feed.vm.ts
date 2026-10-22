@@ -19,6 +19,7 @@ export type FeedTarget =
   | { kind: "event"; eventId: string }
   | { kind: "calendar" }
   | { kind: "pet"; petId: string }
+  | { kind: "care-entry"; petId: string; entryId: string }
   | { kind: "goal"; goalId: string }
   | { kind: "album"; albumId: string }
   | { kind: "recipe"; recipeId: string };
@@ -41,6 +42,12 @@ export const feedFilters: Array<{ value: FeedFilter; title: string }> = [
   { value: "albums", title: "Альбомы" },
   { value: "recipes", title: "Рецепты" },
 ];
+
+function petTargetOf(item: Extract<FeedItem, { petId: string }>): FeedTarget {
+  return item.kind === "care"
+    ? { kind: "care-entry", petId: item.petId, entryId: item.entryId }
+    : { kind: "pet", petId: item.petId };
+}
 
 function targetOf(item: FeedItem): FeedTarget | undefined {
   if (item.kind === "plan") {
@@ -67,7 +74,7 @@ function targetOf(item: FeedItem): FeedTarget | undefined {
     return { kind: "recipe", recipeId: item.recipeId };
   }
 
-  return item.kind === "joined" ? undefined : { kind: "pet", petId: item.petId };
+  return item.kind === "joined" ? undefined : petTargetOf(item);
 }
 
 function reatomPages(api: FeedApi) {

@@ -15,18 +15,17 @@ export type AssignmentChange = {
 };
 
 async function send(
-  { bot, memberships, clock }: PlanDependencies,
+  { bot, appLinks, memberships, clock }: PlanDependencies,
   assignee: Membership,
   { text, planId }: { text: string; planId: string },
 ): Promise<void> {
   try {
-    // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
-    const { username } = await bot.call("getMe", undefined);
+    const url = await appLinks.appLink({ kind: "plan", id: planId });
 
     await bot.call("sendMessage", {
       chat_id: assignee.member.telegramId,
       text,
-      reply_markup: openPlanButton(username, planId),
+      reply_markup: openPlanButton(url),
     });
   } catch (error) {
     if (!(error instanceof BotApiError)) {
