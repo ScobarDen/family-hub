@@ -13,12 +13,12 @@ import type { ReminderRepo } from "./repo/reminder.repo.ts";
 import type { FamilyHolderKind, SourceRepo } from "./repo/source.repo.ts";
 
 // «✅ Выполнено» on a Plan's Reminder completes it in the plan module, which the app wires in.
-export type PlanCompletion = {
+type PlanCompletion = {
   completeById(membership: Membership, planId: string): Promise<unknown>;
 };
 
 // The digest reads the Feed of its Member; the app wires the feed module in.
-export type DigestContent = {
+type DigestContent = {
   contentOf(
     memberId: string,
   ): Promise<{ overdue: FeedUpcoming[]; today: FeedUpcoming[] } | undefined>;

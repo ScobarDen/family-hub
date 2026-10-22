@@ -1,22 +1,35 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
-import { families, photos, type Db } from "@/common/db";
+import { photos, type Db } from "@/common/db";
+import { storageChannelOf } from "@/modules/photo-storage";
 
 export type PhotoRow = typeof photos.$inferSelect;
 
 type PhotoTarget = { familyId: string; photoId: string };
 
+// The ones among the given ids that are the Family's photos; Albums, Care Entries and Recipes link only those.
+export async function knownPhotoIds(
+  db: Db,
+  familyId: string,
+  photoIds: string[],
+): Promise<string[]> {
+  if (photoIds.length === 0) {
+    return [];
+  }
+
+  const rows = await db
+    .select({ id: photos.id })
+    .from(photos)
+    .where(and(eq(photos.familyId, familyId), inArray(photos.id, photoIds)))
+    .all();
+
+  return rows.map(({ id }) => id);
+}
+
 export function createPhotoRepo(db: Db) {
   return {
     async channelOf(familyId: string): Promise<number | undefined> {
-      const row = await db
-        .select({
-          channelId: families.photoChannelId,
-          isConnected: families.isPhotoChannelConnected,
-        })
-        .from(families)
-        .where(eq(families.id, familyId))
-        .get();
+      const row = await storageChannelOf(db, familyId);
 
       return row?.isConnected === true && row.channelId !== null ? row.channelId : undefined;
     },
@@ -37,7 +50,7 @@ export function createPhotoRepo(db: Db) {
       db.select().from(photos).where(eq(photos.id, photoId)).get(),
 
     async add(photo: typeof photos.$inferInsert): Promise<void> {
-      await db.insert(photos).values(photo);
+      await db.insert(photos).values(photo).onConflictDoNothing();
     },
     async delete({ familyId, photoId }: PhotoTarget): Promise<void> {
       await db.delete(photos).where(and(eq(photos.familyId, familyId), eq(photos.id, photoId)));

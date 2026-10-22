@@ -5,7 +5,7 @@ import type { BotApi } from "@/common/telegram";
 
 import type { InviteRepo } from "./invite.repo.ts";
 
-export type InviteSchedule = { membershipChanged(familyId: string): Promise<void> };
+type InviteSchedule = { membershipChanged(familyId: string): Promise<void> };
 
 export type InviteDependencies = {
   invites: InviteRepo;

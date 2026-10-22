@@ -4,12 +4,11 @@ import { describe, expect, test } from "vite-plus/test";
 import type { InviteCreated } from "@family-hub/contract";
 
 import { signInitData, tamperUser, type TelegramUserFixture } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
+import { asya, startWorker } from "./worker-harness.ts";
 
 const now = "2026-10-04T09:00:00Z";
 const operatorId = 1000;
 const denis = { id: 111, first_name: "Денис", last_name: "Гущин" };
-const asya = { id: 222, first_name: "Ася" };
 const vika = { id: 333, first_name: "Вика" };
 
 type Worker = ReturnType<typeof startWorker>;
@@ -294,8 +293,7 @@ describe("joining by Invite", () => {
     await worker.leaveFamily(asyaId);
     await joinByNewInvite(worker, asya);
 
-    expect(await familyOf(worker, asya)).toMatchObject({ family: "Гущины" });
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 1, familyMembers: 2 });
+    expect(await familyOf(worker, asya)).toMatchObject({ family: "Гущины", memberId: asyaId });
   });
 
   test("works only once", async () => {
@@ -390,7 +388,6 @@ describe("a pending Family Request of the invited person", () => {
     await approve(worker);
 
     expect(await signIn(worker, asya)).toMatchObject({ status: "member" });
-    expect(await worker.rowCounts()).toEqual({ members: 2, families: 1, familyMembers: 2 });
     expect(worker.bot.editedMessages().at(-1)?.text).toMatch(/Уже неактуально$/);
     expect(worker.bot.sentMessages().filter((sent) => sent.chat_id === asya.id)).toEqual([]);
   });

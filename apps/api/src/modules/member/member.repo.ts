@@ -2,6 +2,7 @@ import { asc, eq, sql } from "drizzle-orm";
 
 import type { AppModule, DigestSettings } from "@family-hub/contract";
 
+import { bindFirst } from "@/common/bind";
 import { families, familyMembers, members, type Db } from "@/common/db";
 
 export type MemberSettingsRow = Pick<
@@ -26,6 +27,7 @@ export function createMemberRepo(db: Db) {
   }
 
   return {
+    ...bindFirst(db, { allowMessages }),
     settingsOf: async (memberId: string): Promise<MemberSettingsRow | undefined> =>
       db
         .select({
@@ -39,8 +41,6 @@ export function createMemberRepo(db: Db) {
         .from(members)
         .where(eq(members.id, memberId))
         .get(),
-
-    allowMessages: async (telegramId: number, now: number) => allowMessages(db, telegramId, now),
 
     saveTabBar: async (memberId: string, tabBar: AppModule[], now: number) =>
       update(memberId, { tabBar, updatedAt: now }),

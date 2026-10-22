@@ -1,5 +1,6 @@
-import { and, asc, eq, inArray, isNull, like, lt, lte, notInArray, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, lte, notInArray, or } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import { familyMembers, reminderDispatch, type DispatchSource, type Db } from "@/common/db";
 
 import { sourceIdOf } from "../reminder.lib.ts";
@@ -14,15 +15,22 @@ export type NewRow = {
   nextFireAt: number;
 };
 
-export type HolderRows = { familyId: string; sources: DispatchSource[]; holderId: string };
+type HolderRows = { familyId: string; sources: DispatchSource[]; holderId: string };
 
 type DispatchValues = Partial<typeof reminderDispatch.$inferInsert>;
 
 type SourceRows = { familyId: string; source: DispatchSource; sourceId: string };
 
-type Replacement = HolderRows & { rows: NewRow[]; now: number };
+export type MovedRow = Pick<DispatchRow, "id" | "occurrence" | "nextFireAt">;
 
-type Addition = { familyId: string; rows: NewRow[]; now: number };
+// One statement per row, as D1 caps the bound parameters of a single statement.
+export type DispatchChanges = {
+  familyId: string;
+  now: number;
+  added: NewRow[];
+  moved: MovedRow[];
+  removedIds: string[];
+};
 
 const lockMs = 60_000;
 
@@ -30,14 +38,14 @@ function isUnlocked(now: number) {
   return or(isNull(reminderDispatch.lockedUntil), lt(reminderDispatch.lockedUntil, now));
 }
 
+// A holder's id and its ids with a part after it sort next to each other, so the (source,
+// source_id) index reads them as one range; a LIKE would scan, as LIKE ignores case.
 function ofHolder({ familyId, sources, holderId }: HolderRows) {
   return and(
     eq(reminderDispatch.familyId, familyId),
     inArray(reminderDispatch.source, sources),
-    or(
-      eq(reminderDispatch.sourceId, holderId),
-      like(reminderDispatch.sourceId, sourceIdOf(holderId, "%")),
-    ),
+    gte(reminderDispatch.sourceId, holderId),
+    lte(reminderDispatch.sourceId, sourceIdOf(holderId, "￿")),
   );
 }
 
@@ -57,23 +65,44 @@ async function claimDue(db: Db, { now, limit }: { now: number; limit: number }) 
     .returning();
 }
 
-function insertOf(db: Db, { familyId, now }: Addition, { row, id }: { row: NewRow; id: string }) {
+function insertOf(
+  db: Db,
+  { familyId, now }: { familyId: string; now: number },
+  { row, id }: { row: NewRow; id: string },
+) {
   return db
     .insert(reminderDispatch)
     .values({ id, familyId, ...row, createdAt: now, updatedAt: now });
 }
 
-// Only the rows of the changed holder are rewritten: D1 writes are the scarce resource.
-async function replace(db: Db, replacement: Replacement, newId: () => string) {
-  await db.batch([
-    db.delete(reminderDispatch).where(ofHolder(replacement)),
-    ...replacement.rows.map((row) => insertOf(db, replacement, { row, id: newId() })),
-  ] as const);
-}
-
-async function add(db: Db, addition: Addition, newId: () => string) {
-  // One statement per row, as D1 caps the bound parameters of a single statement.
-  const [first, ...rest] = addition.rows.map((row) => insertOf(db, addition, { row, id: newId() }));
+// Only the rows that differ are written: D1 writes are the scarce resource.
+async function write(
+  db: Db,
+  { familyId, now, added, moved, removedIds }: DispatchChanges,
+  newId: () => string,
+) {
+  const statements = [
+    ...added.map((row) => insertOf(db, { familyId, now }, { row, id: newId() })),
+    ...moved.map(({ id, occurrence, nextFireAt }) =>
+      db
+        .update(reminderDispatch)
+        .set({ occurrence, nextFireAt, updatedAt: now })
+        .where(and(eq(reminderDispatch.familyId, familyId), eq(reminderDispatch.id, id))),
+    ),
+    ...(removedIds.length > 0
+      ? [
+          db
+            .delete(reminderDispatch)
+            .where(
+              and(
+                eq(reminderDispatch.familyId, familyId),
+                inArray(reminderDispatch.id, removedIds),
+              ),
+            ),
+        ]
+      : []),
+  ];
+  const [first, ...rest] = statements;
 
   if (first !== undefined) {
     await db.batch([first, ...rest]);
@@ -115,7 +144,7 @@ async function update(
 
 export function createDispatchRepo(db: Db) {
   return {
-    claimDue: async (claim: { now: number; limit: number }) => claimDue(db, claim),
+    ...bindFirst(db, { claimDue, removeDeparted, release }),
     // A bot button names its row by id alone; the row names its Family.
     find: async (dispatchId: string): Promise<DispatchRow | undefined> =>
       db.select().from(reminderDispatch).where(eq(reminderDispatch.id, dispatchId)).get(),
@@ -141,12 +170,10 @@ export function createDispatchRepo(db: Db) {
         .all(),
     ofFamily: async (familyId: string): Promise<DispatchRow[]> =>
       db.select().from(reminderDispatch).where(eq(reminderDispatch.familyId, familyId)).all(),
-    add: async (addition: Addition, newId: () => string) => add(db, addition, newId),
-    removeDeparted: async (familyId: string) => removeDeparted(db, familyId),
-    replace: async (replacement: Replacement, newId: () => string) =>
-      replace(db, replacement, newId),
+    ofHolder: async (holder: HolderRows): Promise<DispatchRow[]> =>
+      db.select().from(reminderDispatch).where(ofHolder(holder)).all(),
+    write: async (changes: DispatchChanges, newId: () => string) => write(db, changes, newId),
     // The rest of a claimed batch spans Families, as the claim did.
-    release: async (dispatchIds: string[]) => release(db, dispatchIds),
     update: async (familyId: string, dispatchId: string, values: DispatchValues) =>
       update(db, { familyId, dispatchId }, values),
   };

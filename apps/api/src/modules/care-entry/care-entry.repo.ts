@@ -1,10 +1,12 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, lt, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, sql, type SQL } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import { careEntries, careEntryPhotos, members, pets, photos, type Db } from "@/common/db";
+import { knownPhotoIds } from "@/modules/photo";
 
 export type CareEntryRow = typeof careEntries.$inferSelect & { authorName: string | null };
 
-export type EntryPhotoRow = { careEntryId: string; photo: typeof photos.$inferSelect };
+type EntryPhotoRow = { careEntryId: string; photo: typeof photos.$inferSelect };
 
 type PhotoLinks = { familyId: string; entryId: string; photoIds: string[] };
 
@@ -16,7 +18,7 @@ async function selectWhere(db: Db, condition: SQL | undefined): Promise<CareEntr
     .from(careEntries)
     .leftJoin(members, eq(members.id, careEntries.createdBy))
     .where(condition)
-    .orderBy(desc(careEntries.occurredAt))
+    .orderBy(desc(careEntries.occurredAt), desc(sql`${careEntries}.rowid`))
     .all();
 
   return rows.map(({ entry, authorName }) => ({ ...entry, authorName }));
@@ -51,17 +53,6 @@ async function dueCandidates(db: Db, familyId: string, petId: string) {
   );
 }
 
-// A Member's own zone sits on their row, which belongs to no Family.
-async function timeZoneOf(db: Db, memberId: string): Promise<string | null> {
-  const row = await db
-    .select({ timeZone: members.timeZone })
-    .from(members)
-    .where(eq(members.id, memberId))
-    .get();
-
-  return row?.timeZone ?? null;
-}
-
 async function expenses(db: Db, { familyId, petId, from, to }: ExpenseQuery) {
   return selectWhere(
     db,
@@ -91,23 +82,11 @@ async function photosOf(db: Db, familyId: string, entryIds: string[]): Promise<E
     .all();
 }
 
-async function knownPhotoIds(db: Db, familyId: string, photoIds: string[]): Promise<string[]> {
-  if (photoIds.length === 0) {
-    return [];
-  }
-
-  const rows = await db
-    .select({ id: photos.id })
-    .from(photos)
-    .where(and(eq(photos.familyId, familyId), inArray(photos.id, photoIds)))
-    .all();
-
-  return rows.map(({ id }) => id);
-}
-
 async function setPhotos(db: Db, { familyId, entryId, photoIds }: PhotoLinks): Promise<void> {
   await db.batch([
-    db.delete(careEntryPhotos).where(eq(careEntryPhotos.careEntryId, entryId)),
+    db
+      .delete(careEntryPhotos)
+      .where(and(eq(careEntryPhotos.familyId, familyId), eq(careEntryPhotos.careEntryId, entryId))),
     ...photoIds.map((photoId, position) =>
       db.insert(careEntryPhotos).values({ careEntryId: entryId, photoId, familyId, position }),
     ),
@@ -116,17 +95,9 @@ async function setPhotos(db: Db, { familyId, entryId, photoIds }: PhotoLinks): P
 
 export function createCareEntryRepo(db: Db) {
   return {
+    ...bindFirst(db, { find, petOf, dueCandidates, expenses, photosOf, knownPhotoIds, setPhotos }),
     list: async (familyId: string, petId: string) =>
       selectWhere(db, and(eq(careEntries.familyId, familyId), eq(careEntries.petId, petId))),
-    find: async (familyId: string, entryId: string) => find(db, familyId, entryId),
-    petOf: async (familyId: string, petId: string) => petOf(db, familyId, petId),
-    dueCandidates: async (familyId: string, petId: string) => dueCandidates(db, familyId, petId),
-    timeZoneOf: async (memberId: string) => timeZoneOf(db, memberId),
-    expenses: async (query: ExpenseQuery) => expenses(db, query),
-    photosOf: async (familyId: string, entryIds: string[]) => photosOf(db, familyId, entryIds),
-    knownPhotoIds: async (familyId: string, photoIds: string[]) =>
-      knownPhotoIds(db, familyId, photoIds),
-    setPhotos: async (links: PhotoLinks) => setPhotos(db, links),
 
     async add(entry: typeof careEntries.$inferInsert): Promise<void> {
       await db.insert(careEntries).values(entry);

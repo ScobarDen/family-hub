@@ -1,11 +1,13 @@
 import { photoMaxBytes, uuidv7, type Photo, type PhotoVariant } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 import type { Clock } from "@/common/clock";
+import { httpStatus } from "@/common/errors";
 import type { PhotoLinks } from "@/common/photo-link";
 import { BotApiError } from "@/common/telegram";
 
-import type { PhotoFiles } from "./photo-file.repo.ts";
+import type { PhotoFiles } from "./photo-file.api.ts";
 import type { PhotoRepo } from "./photo.repo.ts";
 
 export type PhotoDependencies = {
@@ -17,12 +19,11 @@ export type PhotoDependencies = {
 
 export type PhotoRefusal = "storage-unavailable" | "too-large" | "not-found" | "not-uploader";
 
-export type UploadResult =
+type UploadResult =
   | { status: "ok"; photo: Photo }
   | { status: "rate-limited"; retryAfterSeconds: number }
   | { status: PhotoRefusal };
 
-const rateLimitedStatus = 429;
 const defaultRetryAfterSeconds = 3;
 
 export type DeleteResult = { status: "deleted" } | { status: PhotoRefusal };
@@ -34,7 +35,9 @@ export type SignedRequest = {
   signature: string;
 };
 
-export type ServedPhoto = { status: "ok"; body: Response } | { status: "forbidden" | "gone" };
+type ServedPhoto =
+  | { status: "ok"; open: () => Promise<Response> }
+  | { status: "forbidden" | "gone" };
 
 function viewerOf({ member, isFamilyOwner }: Membership) {
   return { memberId: member.id, isFamilyOwner };
@@ -48,7 +51,7 @@ async function uploadedOrRateLimit(
   try {
     return await files.upload(channelId, file);
   } catch (error) {
-    if (error instanceof BotApiError && error.errorCode === rateLimitedStatus) {
+    if (error instanceof BotApiError && error.errorCode === httpStatus.tooManyRequests) {
       return { retryAfterSeconds: error.retryAfterSeconds ?? defaultRetryAfterSeconds };
     }
 
@@ -56,7 +59,8 @@ async function uploadedOrRateLimit(
   }
 }
 
-// The same picture uploaded twice is one photo: Telegram gives it the same file_unique_id.
+// The same picture uploaded twice, even at once, is one photo: Telegram gives it the same
+// file_unique_id, and the first row written wins.
 async function upload(
   dependencies: PhotoDependencies,
   membership: Membership,
@@ -79,9 +83,8 @@ async function upload(
     return { status: "rate-limited", retryAfterSeconds: uploaded.retryAfterSeconds };
   }
 
-  const known = await dependencies.photos.findByUnique(familyId, uploaded.fileUniqueId);
   const now = dependencies.clock.now();
-  const row = known ?? {
+  const fresh = {
     id: uuidv7(now),
     familyId,
     ...uploaded,
@@ -90,9 +93,9 @@ async function upload(
     createdBy: membership.member.id,
   };
 
-  if (known === undefined) {
-    await dependencies.photos.add(row);
-  }
+  await dependencies.photos.add(fresh);
+
+  const row = (await dependencies.photos.findByUnique(familyId, uploaded.fileUniqueId)) ?? fresh;
 
   return { status: "ok", photo: await dependencies.links.photoOf(row, viewerOf(membership)) };
 }
@@ -131,17 +134,13 @@ async function serve(
   const isStored = row !== undefined && (await photos.channelOf(row.familyId)) !== undefined;
 
   return isStored
-    ? { status: "ok", body: await files.open(row.variants[request.variant]) }
+    ? { status: "ok", open: async () => files.open(row.variants[request.variant]) }
     : { status: "gone" };
 }
 
 export function createPhotoService(dependencies: PhotoDependencies) {
   return {
-    upload: async (membership: Membership, picked: { file: Blob; takenAt: number | null }) =>
-      upload(dependencies, membership, picked),
-    remove: async (membership: Membership, photoId: string) =>
-      remove(dependencies, membership, photoId),
-    serve: async (request: SignedRequest) => serve(dependencies, request),
+    ...bindFirst(dependencies, { upload, remove, serve }),
   };
 }
 

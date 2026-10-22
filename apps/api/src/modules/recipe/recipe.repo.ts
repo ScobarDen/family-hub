@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import {
   members,
   photos,
@@ -11,9 +12,9 @@ import {
   recipes,
   type Db,
 } from "@/common/db";
+import { knownPhotoIds } from "@/modules/photo";
 
 export type RecipeRow = typeof recipes.$inferSelect;
-export type TagRow = typeof recipeTags.$inferSelect;
 export type PhotoRow = typeof photos.$inferSelect;
 
 type RecipeTarget = { familyId: string; recipeId: string };
@@ -63,8 +64,12 @@ async function setLinks(
   { familyId, recipeId, tagIds, photoIds }: RecipeTarget & { tagIds: string[]; photoIds: string[] },
 ) {
   await db.batch([
-    db.delete(recipeTagLinks).where(eq(recipeTagLinks.recipeId, recipeId)),
-    db.delete(recipePhotos).where(eq(recipePhotos.recipeId, recipeId)),
+    db
+      .delete(recipeTagLinks)
+      .where(and(eq(recipeTagLinks.familyId, familyId), eq(recipeTagLinks.recipeId, recipeId))),
+    db
+      .delete(recipePhotos)
+      .where(and(eq(recipePhotos.familyId, familyId), eq(recipePhotos.recipeId, recipeId))),
     ...tagIds.map((tagId) => db.insert(recipeTagLinks).values({ recipeId, tagId, familyId })),
     ...photoIds.map((photoId, position) =>
       db.insert(recipePhotos).values({ recipeId, photoId, familyId, position }),
@@ -86,32 +91,29 @@ async function setFavorite(
     : db
         .delete(recipeFavorites)
         .where(
-          and(eq(recipeFavorites.recipeId, recipeId), eq(recipeFavorites.memberId, memberId)),
+          and(
+            eq(recipeFavorites.familyId, familyId),
+            eq(recipeFavorites.recipeId, recipeId),
+            eq(recipeFavorites.memberId, memberId),
+          ),
         ));
 }
 
-async function knownIds(
-  db: Db,
-  {
-    familyId,
-    table,
-    ids,
-  }: { familyId: string; table: typeof photos | typeof recipeTags; ids: string[] },
-): Promise<string[]> {
+async function knownTagIds(db: Db, { familyId, ids }: Links): Promise<string[]> {
   if (ids.length === 0) {
     return [];
   }
 
   const rows = await db
-    .select({ id: table.id })
-    .from(table)
-    .where(and(eq(table.familyId, familyId), inArray(table.id, ids)))
+    .select({ id: recipeTags.id })
+    .from(recipeTags)
+    .where(and(eq(recipeTags.familyId, familyId), inArray(recipeTags.id, ids)))
     .all();
 
   return rows.map(({ id }) => id);
 }
 
-export type CookRow = typeof recipeCooks.$inferSelect & { memberName: string };
+type CookRow = typeof recipeCooks.$inferSelect & { memberName: string };
 
 async function cooksOf(db: Db, familyId: string): Promise<CookRow[]> {
   const rows = await db
@@ -131,7 +133,7 @@ function ofCook({ familyId, cookId }: { familyId: string; cookId: string }) {
 // «🍳 Приготовили» marks, each with the Member who made it.
 function cookCalls(db: Db) {
   return {
-    cooksOf: async (familyId: string) => cooksOf(db, familyId),
+    ...bindFirst(db, { cooksOf }),
     findCook: async (target: { familyId: string; cookId: string }) =>
       db.select().from(recipeCooks).where(ofCook(target)).get(),
     async addCook(row: typeof recipeCooks.$inferInsert): Promise<void> {
@@ -145,19 +147,15 @@ function cookCalls(db: Db) {
 
 export function createRecipeRepo(db: Db) {
   return {
+    ...bindFirst(db, { linksOf, favoritesOf, knownTagIds, setLinks, setFavorite }),
     recipesOf: async (familyId: string) =>
       db.select().from(recipes).where(eq(recipes.familyId, familyId)).all(),
-    linksOf: async (familyId: string) => linksOf(db, familyId),
-    favoritesOf: async (viewer: { familyId: string; memberId: string }) => favoritesOf(db, viewer),
     ...cookCalls(db),
     tagsOf: async (familyId: string) =>
       db.select().from(recipeTags).where(eq(recipeTags.familyId, familyId)).all(),
     find: async (target: RecipeTarget) => db.select().from(recipes).where(ofRecipe(target)).get(),
     findTag: async (target: TagTarget) => db.select().from(recipeTags).where(ofTag(target)).get(),
-    knownTagIds: async ({ familyId, ids }: Links) =>
-      knownIds(db, { familyId, table: recipeTags, ids }),
-    knownPhotoIds: async ({ familyId, ids }: Links) =>
-      knownIds(db, { familyId, table: photos, ids }),
+    knownPhotoIds: async ({ familyId, ids }: Links) => knownPhotoIds(db, familyId, ids),
 
     async add(row: typeof recipes.$inferInsert): Promise<void> {
       await db.insert(recipes).values(row);
@@ -168,10 +166,6 @@ export function createRecipeRepo(db: Db) {
     async delete(target: RecipeTarget): Promise<void> {
       await db.delete(recipes).where(ofRecipe(target));
     },
-    setLinks: async (links: RecipeTarget & { tagIds: string[]; photoIds: string[] }) =>
-      setLinks(db, links),
-    setFavorite: async (favorite: RecipeTarget & { memberId: string; isFavorite: boolean }) =>
-      setFavorite(db, favorite),
 
     async addTag(row: typeof recipeTags.$inferInsert): Promise<void> {
       await db.insert(recipeTags).values(row);

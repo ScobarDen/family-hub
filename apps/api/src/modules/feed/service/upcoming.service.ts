@@ -37,48 +37,68 @@ function widened({ today, last }: Window) {
   return { from: dayBefore(today), to: dayAfter(last) };
 }
 
-export function eventUpcoming(row: FeedEventRow, window: Window): FeedUpcoming[] {
+type Placed<Moment> = { occurrence: string; date: string; moment: Moment };
+
+// An all-day Occurrence keeps its date; a timed one falls on the viewer's day of its moment.
+function inWindow<Moment extends number | undefined>(
+  row: Pick<FeedEventRow, "startDate" | "frequency" | "until"> & { skippedDates?: string[] },
+  {
+    window,
+    momentOf,
+    toItem,
+  }: {
+    window: Window;
+    momentOf: (occurrence: string) => Moment;
+    toItem: (placed: Placed<Moment>) => FeedUpcoming;
+  },
+): FeedUpcoming[] {
   const dates = occurrenceDates(row.startDate, seriesOf(row), {
     range: widened(window),
     skipped: row.skippedDates,
   });
 
-  return dates.flatMap((occurrence): FeedUpcoming[] => {
-    const moment =
-      row.startTime === null || row.timeZone === null
-        ? undefined
-        : occurrenceMoment(occurrence, { time: row.startTime, timeZone: row.timeZone });
+  return dates.flatMap((occurrence) => {
+    const moment = momentOf(occurrence);
     const date = moment === undefined ? occurrence : dateInZone(moment, window.timeZone);
-    const item: FeedUpcoming = {
+
+    return isWithin(date, window) ? [toItem({ occurrence, date, moment })] : [];
+  });
+}
+
+export function eventUpcoming(row: FeedEventRow, window: Window): FeedUpcoming[] {
+  const { startTime: time, timeZone } = row;
+
+  return inWindow(row, {
+    window,
+    momentOf: (occurrence) =>
+      time === null || timeZone === null
+        ? undefined
+        : occurrenceMoment(occurrence, { time, timeZone }),
+    toItem: ({ occurrence, date, moment }) => ({
       kind: "event",
       key: `event-${row.id}-${occurrence}`,
       title: row.title,
       date,
       time: moment === undefined ? null : timeInZone(moment, window.timeZone),
       eventId: row.id,
-    };
-
-    return isWithin(date, window) ? [item] : [];
+    }),
   });
 }
 
 export function reminderUpcoming(row: FeedReminderRow, window: Window): FeedUpcoming[] {
-  return occurrenceDates(row.startDate, seriesOf(row), { range: widened(window) }).flatMap(
-    (occurrence): FeedUpcoming[] => {
-      const moment = occurrenceMoment(occurrence, { time: row.startTime, timeZone: row.timeZone });
-      const date = dateInZone(moment, window.timeZone);
-      const item: FeedUpcoming = {
-        kind: "reminder",
-        key: `reminder-${row.id}-${occurrence}`,
-        title: row.text,
-        date,
-        time: timeInZone(moment, window.timeZone),
-        reminderId: row.id,
-      };
-
-      return isWithin(date, window) ? [item] : [];
-    },
-  );
+  return inWindow(row, {
+    window,
+    momentOf: (occurrence) =>
+      occurrenceMoment(occurrence, { time: row.startTime, timeZone: row.timeZone }),
+    toItem: ({ occurrence, date, moment }) => ({
+      kind: "reminder",
+      key: `reminder-${row.id}-${occurrence}`,
+      title: row.text,
+      date,
+      time: timeInZone(moment, window.timeZone),
+      reminderId: row.id,
+    }),
+  });
 }
 
 export function birthdayUpcoming(pet: FeedPetRow, window: Window): FeedUpcoming[] {

@@ -1,4 +1,3 @@
-import { sValidator } from "@hono/standard-validator";
 import { Hono, type Context } from "hono";
 
 import {
@@ -6,22 +5,21 @@ import {
   recipeChange,
   recipeFavorite,
   recipeTagChange,
-  type ErrorCode,
   type Recipe,
   type RecipeTag,
 } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
-import { apiError, httpStatus } from "@/common/errors";
+import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 
 import type { RecipeRefusal, RecipeResult } from "./recipe.types.ts";
 import type { RecipeService } from "./service/recipe.service.ts";
 
-export type RecipeEnv = {
+type RecipeEnv = {
   Variables: MemberEnv["Variables"] & { recipes: RecipeService };
 };
 
-const refusals = {
+const refuse = refusalsOf<RecipeRefusal>({
   "not-found": {
     code: "RECIPE_NOT_FOUND",
     message: "No such Recipe in the Family",
@@ -52,13 +50,7 @@ const refusals = {
     message: "A Recipe is marked cooked for a moment gone by",
     status: httpStatus.badRequest,
   },
-} as const satisfies Record<RecipeRefusal, { code: ErrorCode; message: string; status: number }>;
-
-function refuse(context: Context<RecipeEnv>, refusal: RecipeRefusal) {
-  const { code, message, status } = refusals[refusal];
-
-  return context.json(apiError(code, message), status);
-}
+});
 
 function reply(context: Context<RecipeEnv>, result: RecipeResult) {
   return result.status === "ok"
@@ -66,46 +58,35 @@ function reply(context: Context<RecipeEnv>, result: RecipeResult) {
     : refuse(context, result.status);
 }
 
-function bodyOf<
-  Schema extends
-    | typeof recipeChange
-    | typeof recipeFavorite
-    | typeof recipeTagChange
-    | typeof cookedChange,
->(schema: Schema) {
-  return sValidator("json", schema, (result, context) =>
-    result.success
-      ? undefined
-      : context.json(
-          apiError("INVALID_REQUEST", "A Recipe needs a title; a tag needs a name"),
-          httpStatus.badRequest,
-        ),
-  );
-}
-
 const tagRoute = new Hono<RecipeEnv>()
-  .use("/api/recipe-tags", requireMember)
   .use("/api/recipe-tags/*", requireMember)
   .get("/api/recipe-tags", async (context) =>
     context.json<RecipeTag[]>(await context.var.recipes.tags(context.var.membership)),
   )
-  .post("/api/recipe-tags", bodyOf(recipeTagChange), async (context) =>
-    context.json<RecipeTag>(
-      await context.var.recipes.addTag(context.var.membership, context.req.valid("json").name),
-      httpStatus.created,
-    ),
+  .post(
+    "/api/recipe-tags",
+    jsonBody(recipeTagChange, "A Recipe needs a title; a tag needs a name"),
+    async (context) =>
+      context.json<RecipeTag>(
+        await context.var.recipes.addTag(context.var.membership, context.req.valid("json").name),
+        httpStatus.created,
+      ),
   )
-  .put("/api/recipe-tags/:id", bodyOf(recipeTagChange), async (context) => {
-    const result = await context.var.recipes.renameTag(
-      context.var.membership,
-      context.req.param("id"),
-      context.req.valid("json").name,
-    );
+  .put(
+    "/api/recipe-tags/:id",
+    jsonBody(recipeTagChange, "A Recipe needs a title; a tag needs a name"),
+    async (context) => {
+      const result = await context.var.recipes.renameTag(
+        context.var.membership,
+        context.req.param("id"),
+        context.req.valid("json").name,
+      );
 
-    return result.status === "ok"
-      ? context.json<RecipeTag>(result.tag)
-      : refuse(context, result.status);
-  })
+      return result.status === "ok"
+        ? context.json<RecipeTag>(result.tag)
+        : refuse(context, result.status);
+    },
+  )
   .delete("/api/recipe-tags/:id", async (context) => {
     const result = await context.var.recipes.removeTag(
       context.var.membership,
@@ -116,7 +97,6 @@ const tagRoute = new Hono<RecipeEnv>()
   });
 
 export const recipeRoute = new Hono<RecipeEnv>()
-  .use("/api/recipes", requireMember)
   .use("/api/recipes/*", requireMember)
   .get("/api/recipes", async (context) =>
     context.json<Recipe[]>(
@@ -128,28 +108,35 @@ export const recipeRoute = new Hono<RecipeEnv>()
       }),
     ),
   )
-  .post("/api/recipes", bodyOf(recipeChange), async (context) => {
-    const result = await context.var.recipes.create(
-      context.var.membership,
-      context.req.valid("json"),
-    );
+  .post(
+    "/api/recipes",
+    jsonBody(recipeChange, "A Recipe needs a title; a tag needs a name"),
+    async (context) => {
+      const result = await context.var.recipes.create(
+        context.var.membership,
+        context.req.valid("json"),
+      );
 
-    return result.status === "ok"
-      ? context.json<Recipe>(result.recipe, httpStatus.created)
-      : refuse(context, result.status);
-  })
+      return result.status === "ok"
+        ? context.json<Recipe>(result.recipe, httpStatus.created)
+        : refuse(context, result.status);
+    },
+  )
   .get("/api/recipes/:id", async (context) =>
     reply(context, await context.var.recipes.get(context.var.membership, context.req.param("id"))),
   )
-  .put("/api/recipes/:id", bodyOf(recipeChange), async (context) =>
-    reply(
-      context,
-      await context.var.recipes.update(
-        context.var.membership,
-        context.req.param("id"),
-        context.req.valid("json"),
+  .put(
+    "/api/recipes/:id",
+    jsonBody(recipeChange, "A Recipe needs a title; a tag needs a name"),
+    async (context) =>
+      reply(
+        context,
+        await context.var.recipes.update(
+          context.var.membership,
+          context.req.param("id"),
+          context.req.valid("json"),
+        ),
       ),
-    ),
   )
   .delete("/api/recipes/:id", async (context) => {
     const result = await context.var.recipes.remove(
@@ -159,25 +146,31 @@ export const recipeRoute = new Hono<RecipeEnv>()
 
     return result.status === "deleted" ? context.json(result) : refuse(context, result.status);
   })
-  .put("/api/recipes/:id/favorite", bodyOf(recipeFavorite), async (context) =>
-    reply(
-      context,
-      await context.var.recipes.setFavorite(
-        context.var.membership,
-        context.req.param("id"),
-        context.req.valid("json").isFavorite,
+  .put(
+    "/api/recipes/:id/favorite",
+    jsonBody(recipeFavorite, "A Recipe needs a title; a tag needs a name"),
+    async (context) =>
+      reply(
+        context,
+        await context.var.recipes.setFavorite(
+          context.var.membership,
+          context.req.param("id"),
+          context.req.valid("json").isFavorite,
+        ),
       ),
-    ),
   )
-  .post("/api/recipes/:id/cooked", bodyOf(cookedChange), async (context) =>
-    reply(
-      context,
-      await context.var.recipes.cook(
-        context.var.membership,
-        context.req.param("id"),
-        context.req.valid("json").cookedAt,
+  .post(
+    "/api/recipes/:id/cooked",
+    jsonBody(cookedChange, "A Recipe needs a title; a tag needs a name"),
+    async (context) =>
+      reply(
+        context,
+        await context.var.recipes.cook(
+          context.var.membership,
+          context.req.param("id"),
+          context.req.valid("json").cookedAt,
+        ),
       ),
-    ),
   )
   .delete("/api/recipes/:id/cooked/:cookId", async (context) =>
     reply(

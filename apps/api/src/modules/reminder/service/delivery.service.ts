@@ -1,3 +1,4 @@
+import { httpStatus } from "@/common/errors";
 import { BotApiError } from "@/common/telegram";
 
 import { latenessLimitMs } from "../reminder.lib.ts";
@@ -7,8 +8,6 @@ import { fireAfter, zoneOf } from "./schedule.service.ts";
 import { sourceOfRow } from "./source.service.ts";
 
 const batchSize = 50;
-const rateLimitedStatus = 429;
-const blockedStatus = 403;
 
 type Sent = { chatId: number; messageId: number };
 
@@ -47,12 +46,14 @@ async function send(
       throw error;
     }
 
-    if (error.errorCode === rateLimitedStatus) {
+    if (error.errorCode === httpStatus.tooManyRequests) {
       return { status: "rate-limited" };
     }
 
-    if (error.errorCode === blockedStatus) {
+    if (error.errorCode === httpStatus.forbidden) {
       await memberships.setCanMessage(row.memberId, false, clock.now());
+    } else {
+      console.error("Reminder not sent", { dispatchId: row.id, error: error.message });
     }
 
     return { status: "skipped" };
@@ -129,15 +130,31 @@ async function deliver(dependencies: ReminderDependencies, row: DispatchRow, now
   return delivery;
 }
 
+// A row that fails for any other reason stays locked until its lock runs out and is tried again
+// then, while the rows after it go on.
+async function deliverOrLog(
+  dependencies: ReminderDependencies,
+  row: DispatchRow,
+  now: number,
+): Promise<Delivery | undefined> {
+  try {
+    return await deliver(dependencies, row, now);
+  } catch (error) {
+    console.error("Reminder delivery failed", { dispatchId: row.id, error });
+
+    return undefined;
+  }
+}
+
 // A 429 stops the tick: this row and the rest are released for the next one.
 export async function deliverDue(dependencies: ReminderDependencies): Promise<void> {
   const now = dependencies.clock.now();
   const rows = await dependencies.dispatch.claimDue({ now, limit: batchSize });
 
   for (const [index, row] of rows.entries()) {
-    const delivery = await deliver(dependencies, row, now);
+    const delivery = await deliverOrLog(dependencies, row, now);
 
-    if (delivery.status === "rate-limited") {
+    if (delivery?.status === "rate-limited") {
       await dependencies.dispatch.release(rows.slice(index).map(({ id }) => id));
 
       return;

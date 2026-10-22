@@ -1,5 +1,6 @@
-import { and, desc, eq, isNotNull, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import {
   careEntries,
   events,
@@ -19,7 +20,7 @@ export type PlanRow = typeof plans.$inferSelect;
 
 export type DigestRow = Pick<typeof members.$inferSelect, "isDigestEnabled" | "digestTime">;
 
-export type DueEntryRow = Pick<
+type DueEntryRow = Pick<
   typeof careEntries.$inferSelect,
   "id" | "petId" | "details" | "dueDate" | "dueKey" | "occurredAt"
 >;
@@ -48,7 +49,7 @@ async function dueEntriesOf(db: Db, { familyId, id }: InFamily): Promise<DueEntr
         isNotNull(careEntries.dueKey),
       ),
     )
-    .orderBy(desc(careEntries.occurredAt))
+    .orderBy(desc(careEntries.occurredAt), desc(sql`${careEntries}.rowid`))
     .all();
 }
 
@@ -113,12 +114,14 @@ async function memberIdsOf(db: Db, familyId: string): Promise<string[]> {
 
 export function createSourceRepo(db: Db) {
   return {
-    holdersOf: async (familyId: string) => holdersOf(db, familyId),
-    event: async (event: InFamily) => eventOf(db, event),
-    pet: async (pet: InFamily) => petOf(db, pet),
-    dueEntriesOf: async (pet: InFamily) => dueEntriesOf(db, pet),
-    planTree: async (plan: InFamily) => planTree(db, plan),
-    memberIdsOf: async (familyId: string) => memberIdsOf(db, familyId),
+    ...bindFirst(db, {
+      holdersOf,
+      event: eventOf,
+      pet: petOf,
+      dueEntriesOf,
+      planTree,
+      memberIdsOf,
+    }),
 
     // A Member's own settings and zone sit on their row, which belongs to no Family.
     digestOf: async (memberId: string): Promise<DigestRow | undefined> =>

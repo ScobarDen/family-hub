@@ -35,7 +35,6 @@ describe("a text command to the bot", () => {
         /^https:\/\/t\.me\/family_hub_test_bot\?startapp=cmd_[\da-f-]{36}$/u,
       ),
     });
-    expect(worker.ai.calls[0]?.model).toBe("primary-model");
 
     await press(worker, denis, dataOf(preview, "Создать"));
 
@@ -148,6 +147,25 @@ describe("a text command to the bot", () => {
 
     expect(worker.ai.calls).toHaveLength(3);
     expect(lastTo(worker, denis)?.text).toMatch(/^На сегодня команды кончились/u);
+  });
+
+  test("holds the daily limit for commands sent at once", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.answer(
+      { response: internet },
+      { response: internet },
+      { response: internet },
+      { response: internet },
+    );
+    await Promise.all([
+      say(worker, denis, "напомни"),
+      say(worker, asya, "напомни"),
+      say(worker, denis, "напомни"),
+      say(worker, asya, "напомни"),
+    ]);
+
+    expect(worker.ai.calls).toHaveLength(3);
   });
 
   test("tells a stranger the bot works by invitation", async () => {

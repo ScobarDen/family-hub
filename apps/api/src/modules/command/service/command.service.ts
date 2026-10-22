@@ -1,4 +1,4 @@
-import type { CallbackQuery, Message, Voice } from "@grammyjs/types";
+import { bindFirst } from "@/common/bind";
 
 import type { CommandDependencies } from "../command.types.ts";
 import { handleCommandCallback } from "./callback.service.ts";
@@ -8,9 +8,7 @@ import { handleVoice } from "./voice.service.ts";
 
 export function createCommandService(dependencies: CommandDependencies) {
   return {
-    handleText: async (message: Message) => handleText(dependencies, message),
-    handleVoice: async (message: Message & { voice: Voice }) => handleVoice(dependencies, message),
-    handleCallback: async (query: CallbackQuery) => handleCommandCallback(dependencies, query),
+    ...bindFirst(dependencies, { handleText, handleVoice, handleCallback: handleCommandCallback }),
     miniApp: createMiniAppCommands(dependencies),
     // A draft nobody confirmed within a day is gone by the 03:00 UTC maintenance.
     sweep: async () => dependencies.drafts.sweep(dependencies.clock.now()),

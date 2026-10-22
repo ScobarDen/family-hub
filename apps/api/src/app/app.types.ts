@@ -1,7 +1,5 @@
 import type { AuthService } from "@/common/auth";
-import type { Clock } from "@/common/clock";
 import type { Db } from "@/common/db";
-import type { BotApi } from "@/common/telegram";
 import type { AlbumService } from "@/modules/album";
 import type { CareEntryService } from "@/modules/care-entry";
 import type { CommandService } from "@/modules/command";
@@ -21,8 +19,6 @@ import type { ReminderService } from "@/modules/reminder";
 
 export type AppServices = {
   db: Db;
-  clock: Clock;
-  bot: BotApi;
   auth: AuthService;
   albums: AlbumService;
   careEntries: CareEntryService;

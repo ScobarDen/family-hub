@@ -5,7 +5,6 @@ import { z } from "zod";
 import {
   inviteRequest,
   inviteToken,
-  type ErrorCode,
   type InviteAccepted,
   type InviteCreated,
   type InviteList,
@@ -14,17 +13,17 @@ import {
 } from "@family-hub/contract";
 
 import { requireMember, type AuthEnv } from "@/common/auth";
-import { apiError, httpStatus } from "@/common/errors";
+import { apiError, httpStatus, refusalsOf } from "@/common/errors";
 
 import type { AcceptResult, InviteService } from "./service/invite.service.ts";
 
-export type InviteEnv = {
+type InviteEnv = {
   Variables: AuthEnv["Variables"] & { invites: InviteService };
 };
 
 type Refusal = Exclude<AcceptResult["status"], "joined">;
 
-const refusals = {
+const refuse = refusalsOf<Refusal>({
   unavailable: {
     code: "INVITE_UNAVAILABLE",
     message: "The Invite is used, expired or revoked",
@@ -35,7 +34,7 @@ const refusals = {
     message: "Already a Member of a Family",
     status: httpStatus.conflict,
   },
-} as const satisfies Record<Refusal, { code: ErrorCode; message: string; status: number }>;
+});
 
 const invalidRequest = apiError("INVALID_REQUEST", "initData and an Invite token are required");
 
@@ -97,7 +96,5 @@ export const inviteRoute = new Hono<InviteEnv>()
       return context.json<InviteAccepted>(result);
     }
 
-    const { code, message, status } = refusals[result.status];
-
-    return context.json(apiError(code, message), status);
+    return refuse(context, result.status);
   });

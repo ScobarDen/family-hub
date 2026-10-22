@@ -1,0 +1,1 @@
+CREATE INDEX `reminder_dispatch_member_idx` ON `reminder_dispatch` (`member_id`);

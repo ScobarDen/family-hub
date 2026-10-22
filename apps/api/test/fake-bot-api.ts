@@ -17,10 +17,43 @@ type FakeBotState = {
   pendingRateLimit: { retryAfterSeconds: number; method: BotMethod | undefined } | undefined;
   lastMessageId: number;
   files: string[];
+  isNextCallBroken: boolean;
 };
+
+const textMaxLength = 4096;
+const callbackDataMaxBytes = 64;
+const encoder = new TextEncoder();
+
+type Sendable = {
+  text?: string;
+  reply_markup?: { inline_keyboard?: Array<Array<{ callback_data?: string }>> };
+};
+
+// Telegram's own limits, so a message the real bot would be refused fails here too.
+function rejectOversized(params: unknown): void {
+  const { text, reply_markup: markup } = (params ?? {}) as Sendable;
+  const buttons = markup?.inline_keyboard?.flat() ?? [];
+
+  if (text !== undefined && text.length > textMaxLength) {
+    throw new BotApiError(400, "Bad Request: message is too long");
+  }
+
+  if (
+    buttons.some(
+      ({ callback_data: data = "" }) => encoder.encode(data).length > callbackDataMaxBytes,
+    )
+  ) {
+    throw new BotApiError(400, "Bad Request: BUTTON_DATA_INVALID");
+  }
+}
 
 function rejectUndeliverable(state: FakeBotState, method: BotMethod, params: unknown): void {
   const limit = state.pendingRateLimit;
+
+  if (state.isNextCallBroken) {
+    state.isNextCallBroken = false;
+    throw new SyntaxError("Unexpected token '<', \"<html>\" is not valid JSON");
+  }
 
   if (limit !== undefined && (limit.method === undefined || limit.method === method)) {
     state.pendingRateLimit = undefined;
@@ -30,6 +63,8 @@ function rejectUndeliverable(state: FakeBotState, method: BotMethod, params: unk
       limit.retryAfterSeconds,
     );
   }
+
+  rejectOversized(params);
 
   const chatId = (params as { chat_id?: ChatId } | undefined)?.chat_id;
 
@@ -110,6 +145,7 @@ function emptyState(): FakeBotState {
     pendingRateLimit: undefined,
     lastMessageId: 0,
     files: [],
+    isNextCallBroken: false,
   };
 }
 
@@ -152,6 +188,10 @@ export function createFakeBotApi() {
     },
     rateLimitNextCall(retryAfterSeconds: number, method?: BotMethod) {
       state.pendingRateLimit = { retryAfterSeconds, method };
+    },
+    // What a 502 page from a proxy in front of Telegram does to reading the answer as JSON.
+    breakNextCall() {
+      state.isNextCallBroken = true;
     },
   };
 }

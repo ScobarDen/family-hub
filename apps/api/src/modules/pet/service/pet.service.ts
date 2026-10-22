@@ -1,6 +1,7 @@
 import type { PetMemoChange, PetProfile } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 
 import type { PetDependencies } from "../pet.types.ts";
 import { deletePet, setArchived } from "./archive.service.ts";
@@ -8,9 +9,7 @@ import { create, list, saveMemo, saveProfile, setAvatar } from "./profile.servic
 
 export function createPetService(dependencies: PetDependencies) {
   return {
-    list: async (membership: Membership) => list(dependencies, membership),
-    create: async (membership: Membership, profile: PetProfile) =>
-      create(dependencies, membership, profile),
+    ...bindFirst(dependencies, { list, create }),
     saveProfile: async (membership: Membership, petId: string, values: PetProfile) =>
       saveProfile(dependencies, membership, { petId, values }),
     saveMemo: async (membership: Membership, petId: string, values: PetMemoChange) =>

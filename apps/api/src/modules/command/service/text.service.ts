@@ -3,7 +3,7 @@ import type { Message } from "@grammyjs/types";
 import { quotaText } from "../command.lib.ts";
 import type { CommandDependencies } from "../command.types.ts";
 import {
-  isOverQuota,
+  reserve,
   membershipOf,
   outcomeOf,
   reply,
@@ -23,7 +23,9 @@ export async function handleText(
     return;
   }
 
-  if (await isOverQuota(dependencies, membership)) {
+  const reservation = await reserve(dependencies, { membership, chatId, source: "bot_text" });
+
+  if (reservation === undefined) {
     await reply(dependencies, { chatId, text: quotaText });
 
     return;
@@ -33,5 +35,5 @@ export async function handleText(
 
   const outcome = await outcomeOf(dependencies, { membership, text: message.text ?? "" });
 
-  await sendPreview(dependencies, { membership, chatId, source: "bot_text", outcome });
+  await sendPreview(dependencies, { membership, chatId, reservation, outcome });
 }

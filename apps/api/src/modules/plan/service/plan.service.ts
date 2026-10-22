@@ -1,6 +1,7 @@
 import type { PlanChange, SubplanChange } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 
 import type { PlanDependencies, PlanResult } from "../plan.types.ts";
 import { complete, completeById, markSubplan, reopen } from "./completion.service.ts";
@@ -10,11 +11,13 @@ import { addSubplan, removeSubplan, updateSubplan } from "./subplan.service.ts";
 type SubplanTarget = { planId: string; subplanId: string };
 
 function scheduling({ schedule }: PlanDependencies) {
-  return async function rescheduled<Result>(
+  return async function rescheduled<Result extends { status: string }>(
     { family }: Membership,
     { planId, result }: { planId: string; result: Result },
   ): Promise<Result> {
-    await schedule.sourceChanged(family.id, { kind: "plan", id: planId });
+    if (result.status === "ok" || result.status === "deleted") {
+      await schedule.sourceChanged(family.id, { kind: "plan", id: planId });
+    }
 
     return result;
   };
@@ -51,7 +54,7 @@ export function createPlanService(dependencies: PlanDependencies) {
   const rescheduled = scheduling(dependencies);
 
   return {
-    list: async (membership: Membership) => list(dependencies, membership),
+    ...bindFirst(dependencies, { list }),
     create: async (membership: Membership, change: PlanChange) => {
       const result = await create(dependencies, membership, change);
 

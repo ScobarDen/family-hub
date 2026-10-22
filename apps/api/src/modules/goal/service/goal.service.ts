@@ -1,6 +1,7 @@
 import type { GoalChange, GoalOutcome, MovementChange } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 
 import type { GoalDependencies } from "../goal.types.ts";
 import { complete, create, list, update } from "./goal-root.service.ts";
@@ -10,9 +11,7 @@ type MovementTarget = { goalId: string; movementId: string };
 
 export function createGoalService(dependencies: GoalDependencies) {
   return {
-    list: async (membership: Membership) => list(dependencies, membership),
-    create: async (membership: Membership, change: GoalChange) =>
-      create(dependencies, membership, change),
+    ...bindFirst(dependencies, { list, create, removeMovement }),
     update: async (membership: Membership, goalId: string, change: GoalChange) =>
       update(dependencies, membership, { goalId, change }),
     complete: async (membership: Membership, goalId: string, outcome: GoalOutcome) =>
@@ -24,8 +23,6 @@ export function createGoalService(dependencies: GoalDependencies) {
       target: MovementTarget,
       change: MovementChange,
     ) => updateMovement(dependencies, membership, { ...target, change }),
-    removeMovement: async (membership: Membership, target: MovementTarget) =>
-      removeMovement(dependencies, membership, target),
   };
 }
 

@@ -5,18 +5,20 @@ import {
   type DueDateItem,
   type ExpenseSummary,
 } from "@family-hub/contract";
+import { dateInZone } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
-import type { Clock } from "@/common/clock";
+import { bindFirst } from "@/common/bind";
+import { fallbackTimeZone, type Clock } from "@/common/clock";
 import type { PhotoLinks } from "@/common/photo-link";
 
-import { columnsOf, summaryOf, toDueDateItem, todayIn } from "../care-entry.lib.ts";
-import type { CareEntryRepo } from "../care-entry.repo.ts";
+import { columnsOf, summaryOf, toDueDateItem } from "../care-entry.lib.ts";
+import type { CareEntryRepo, CareEntryRow } from "../care-entry.repo.ts";
 import { openDueDates } from "../due-date/index.ts";
 import { hasForeignPhotos, withPhotos } from "./entry-photo.service.ts";
 
 // A new entry may close or move a Due Date, whose Reminders live in the reminder module.
-export type CareSchedule = {
+type CareSchedule = {
   sourceChanged(familyId: string, source: { kind: "pet"; id: string }): Promise<void>;
 };
 
@@ -31,7 +33,7 @@ type Range = { from: number; to: number };
 
 export type CareRefusal = "not-found" | "pet-not-found" | "archived" | "photo-not-found";
 
-export type CareResult = { status: "ok"; entry: CareEntry } | { status: CareRefusal };
+type CareResult = { status: "ok"; entry: CareEntry } | { status: CareRefusal };
 
 export type RemoveResult = { status: "deleted" } | { status: CareRefusal };
 
@@ -75,10 +77,25 @@ async function writableEntry(
   dependencies: CareEntryDependencies,
   membership: Membership,
   entryId: string,
-): Promise<CareRefusal | undefined> {
+): Promise<CareEntryRow | CareRefusal> {
   const entry = await dependencies.entries.find(membership.family.id, entryId);
 
-  return entry ? writablePet(dependencies, membership, entry.petId) : "not-found";
+  if (entry === undefined) {
+    return "not-found";
+  }
+
+  return (await writablePet(dependencies, membership, entry.petId)) ?? entry;
+}
+
+// Only an entry with a Due Date, before or after the change, moves the Pet's Reminders.
+async function scheduleIfDue(
+  { schedule }: CareEntryDependencies,
+  { family }: Membership,
+  { petId, dueKeys }: { petId: string; dueKeys: Array<string | null> },
+): Promise<void> {
+  if (dueKeys.some((dueKey) => dueKey !== null)) {
+    await schedule.sourceChanged(family.id, { kind: "pet", id: petId });
+  }
 }
 
 async function photoRefusal(
@@ -89,18 +106,6 @@ async function photoRefusal(
   return (await hasForeignPhotos(dependencies, membership, photoIds))
     ? "photo-not-found"
     : undefined;
-}
-
-async function scheduleOfEntry(
-  { entries, schedule }: CareEntryDependencies,
-  { family }: Membership,
-  entryId: string,
-): Promise<void> {
-  const entry = await entries.find(family.id, entryId);
-
-  if (entry !== undefined) {
-    await schedule.sourceChanged(family.id, { kind: "pet", id: entry.petId });
-  }
 }
 
 async function create(
@@ -118,12 +123,13 @@ async function create(
 
   const now = dependencies.clock.now();
   const id = uuidv7(now);
+  const values = valuesOf(change);
 
   await dependencies.entries.add({
     id,
     familyId: membership.family.id,
     petId,
-    ...valuesOf(change),
+    ...values,
     createdAt: now,
     createdBy: membership.member.id,
     updatedAt: now,
@@ -133,7 +139,7 @@ async function create(
     entryId: id,
     photoIds: change.photoIds,
   });
-  await dependencies.schedule.sourceChanged(membership.family.id, { kind: "pet", id: petId });
+  await scheduleIfDue(dependencies, membership, { petId, dueKeys: [values.dueKey] });
 
   return current(dependencies, membership, id);
 }
@@ -144,16 +150,22 @@ async function update(
   membership: Membership,
   { entryId, change }: { entryId: string; change: CareEntryChange },
 ): Promise<CareResult> {
-  const refusal =
-    (await writableEntry(dependencies, membership, entryId)) ??
-    (await photoRefusal(dependencies, membership, change));
+  const entry = await writableEntry(dependencies, membership, entryId);
+
+  if (typeof entry === "string") {
+    return { status: entry };
+  }
+
+  const refusal = await photoRefusal(dependencies, membership, change);
 
   if (refusal !== undefined) {
     return { status: refusal };
   }
 
+  const values = valuesOf(change);
+
   await dependencies.entries.update(membership.family.id, entryId, {
-    ...valuesOf(change),
+    ...values,
     updatedAt: dependencies.clock.now(),
   });
   await dependencies.entries.setPhotos({
@@ -161,7 +173,10 @@ async function update(
     entryId,
     photoIds: change.photoIds,
   });
-  await scheduleOfEntry(dependencies, membership, entryId);
+  await scheduleIfDue(dependencies, membership, {
+    petId: entry.petId,
+    dueKeys: [entry.dueKey, values.dueKey],
+  });
 
   return current(dependencies, membership, entryId);
 }
@@ -171,22 +186,14 @@ async function remove(
   membership: Membership,
   entryId: string,
 ): Promise<RemoveResult> {
-  const refusal = await writableEntry(dependencies, membership, entryId);
+  const entry = await writableEntry(dependencies, membership, entryId);
 
-  if (refusal !== undefined) {
-    return { status: refusal };
+  if (typeof entry === "string") {
+    return { status: entry };
   }
-
-  const entry = await dependencies.entries.find(membership.family.id, entryId);
 
   await dependencies.entries.delete(membership.family.id, entryId);
-
-  if (entry !== undefined) {
-    await dependencies.schedule.sourceChanged(membership.family.id, {
-      kind: "pet",
-      id: entry.petId,
-    });
-  }
+  await scheduleIfDue(dependencies, membership, { petId: entry.petId, dueKeys: [entry.dueKey] });
 
   return { status: "deleted" };
 }
@@ -198,7 +205,7 @@ async function dueDates(
 ): Promise<DueDateItem[]> {
   const pet = await entries.petOf(family.id, petId);
   const rows = await entries.dueCandidates(family.id, petId);
-  const today = todayIn(await entries.timeZoneOf(member.id), clock.now());
+  const today = dateInZone(clock.now(), member.timeZone ?? fallbackTimeZone);
   const open = openDueDates({ pets: pet === undefined ? [] : [pet], entries: rows });
 
   return open.map((due) => toDueDateItem(due, today));
@@ -208,21 +215,16 @@ export function createCareEntryService(dependencies: CareEntryDependencies) {
   const { entries } = dependencies;
 
   return {
+    ...bindFirst(dependencies, { get: current, remove, dueDates }),
     async list(membership: Membership, petId: string): Promise<CareEntry[]> {
       const rows = await entries.list(membership.family.id, petId);
 
       return withPhotos(dependencies, membership, rows);
     },
-    get: async (membership: Membership, entryId: string) =>
-      current(dependencies, membership, entryId),
     create: async (membership: Membership, petId: string, change: CareEntryChange) =>
       create(dependencies, membership, { petId, change }),
     update: async (membership: Membership, entryId: string, change: CareEntryChange) =>
       update(dependencies, membership, { entryId, change }),
-    remove: async (membership: Membership, entryId: string) =>
-      remove(dependencies, membership, entryId),
-    dueDates: async (membership: Membership, petId: string) =>
-      dueDates(dependencies, membership, petId),
 
     async expenses({ family }: Membership, petId: string, range: Range): Promise<ExpenseSummary> {
       return summaryOf(await entries.expenses({ familyId: family.id, petId, ...range }));

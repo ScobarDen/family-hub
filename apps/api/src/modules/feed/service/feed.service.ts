@@ -2,7 +2,7 @@ import { feedPageSize, feedUpcomingDays, type FeedPage } from "@family-hub/contr
 import { dateInZone, daysAfter } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
-import type { Clock } from "@/common/clock";
+import { fallbackTimeZone, type Clock } from "@/common/clock";
 import type { PhotoLinks } from "@/common/photo-link";
 
 import {
@@ -15,7 +15,7 @@ import {
   planActivity,
   visibleTrees,
 } from "../feed.lib.ts";
-import type { FeedRepo } from "../feed.repo.ts";
+import type { FeedPlanRow, FeedRepo } from "../feed.repo.ts";
 import { carePreviews, cookedActivity, uploadActivity } from "./photo-activity.service.ts";
 import {
   birthdayUpcoming,
@@ -26,13 +26,10 @@ import {
   type Window,
 } from "./upcoming.service.ts";
 
-export type FeedDependencies = { feed: FeedRepo; clock: Clock; links: PhotoLinks };
+type FeedDependencies = { feed: FeedRepo; clock: Clock; links: PhotoLinks };
 
-// A Member whose zone the Mini App has not reported yet sees the Feed on UTC days.
-const fallbackTimeZone = "UTC";
-
-async function windowOf({ feed, clock }: FeedDependencies, memberId: string): Promise<Window> {
-  const timeZone = (await feed.timeZoneOf(memberId)) ?? fallbackTimeZone;
+function windowOf({ clock }: FeedDependencies, { member }: Membership): Window {
+  const timeZone = member.timeZone ?? fallbackTimeZone;
   const today = dateInZone(clock.now(), timeZone);
 
   return { today, last: daysAfter(today, feedUpcomingDays - 1), timeZone };
@@ -41,14 +38,13 @@ async function windowOf({ feed, clock }: FeedDependencies, memberId: string): Pr
 async function ahead(
   { feed }: FeedDependencies,
   { family, member }: Membership,
-  window: Window,
+  { window, plans }: { window: Window; plans: FeedPlanRow[] },
 ): Promise<Pick<FeedPage, "overdue" | "upcoming">> {
   const viewer = { familyId: family.id, memberId: member.id };
-  const [events, reminders, pets, plans, dues] = await Promise.all([
+  const [events, reminders, pets, dues] = await Promise.all([
     feed.events(viewer),
     feed.reminders(viewer),
     feed.petsInCare(family.id),
-    feed.plans(family.id),
     feed.dues(family.id),
   ]);
   const deadlines = planDeadlines(plans, { memberId: member.id, window });
@@ -69,19 +65,18 @@ async function ahead(
 async function activityPage(
   dependencies: FeedDependencies,
   membership: Membership,
-  before: string | undefined,
+  { before, plans }: { before: string | undefined; plans: FeedPlanRow[] },
 ) {
   const { feed, clock } = dependencies;
   const { family, member } = membership;
   const cursor = parseCursor(before);
-  const [care, pets, plans, joins, goals, movements] = await Promise.all([
+  const [care, pets, joins, goals, movements] = await Promise.all([
     feed.careBefore({
       familyId: family.id,
       before: cursor?.at ?? clock.now(),
       limit: feedPageSize + 1,
     }),
     feed.petsOf(family.id),
-    feed.plans(family.id),
     feed.joins(family.id),
     feed.goals(family.id),
     feed.movements(family.id),
@@ -106,21 +101,23 @@ export function createFeedService(dependencies: FeedDependencies) {
   return {
     // What the morning digest says: what is overdue and what falls on the Member's today.
     async digestOf(membership: Membership) {
-      const window = await windowOf(dependencies, membership.member.id);
-      const { overdue, upcoming } = await ahead(dependencies, membership, window);
+      const window = windowOf(dependencies, membership);
+      const plans = await dependencies.feed.plans(membership.family.id);
+      const { overdue, upcoming } = await ahead(dependencies, membership, { window, plans });
 
       return { overdue, today: upcoming.filter(({ date }) => date === window.today) };
     },
     page: async (membership: Membership, before: string | undefined): Promise<FeedPage> => {
-      const page = await activityPage(dependencies, membership, before);
+      const plans = await dependencies.feed.plans(membership.family.id);
+      const page = await activityPage(dependencies, membership, { before, plans });
 
       if (before !== undefined) {
         return { overdue: [], upcoming: [], ...page };
       }
 
-      const window = await windowOf(dependencies, membership.member.id);
+      const window = windowOf(dependencies, membership);
 
-      return { ...(await ahead(dependencies, membership, window)), ...page };
+      return { ...(await ahead(dependencies, membership, { window, plans })), ...page };
     },
   };
 }

@@ -6,7 +6,7 @@ import { requireMember, type MemberEnv } from "@/common/auth";
 
 import type { FeedService } from "./service/feed.service.ts";
 
-export type FeedEnv = {
+type FeedEnv = {
   Variables: MemberEnv["Variables"] & { feed: FeedService };
 };
 

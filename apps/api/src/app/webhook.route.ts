@@ -1,12 +1,11 @@
 import type { CallbackQuery, Message, Update, Voice } from "@grammyjs/types";
 import { Hono } from "hono";
 
+import { httpStatus } from "@/common/errors";
 import { commandCallbackPrefix } from "@/modules/command";
 import { reminderCallbackPrefix } from "@/modules/reminder";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
-
-const unauthorizedStatus = 401;
 
 // Telegram re-sends an update until it gets a 200, so an unreadable one is dropped.
 async function readUpdate(request: Request): Promise<Update | undefined> {
@@ -57,7 +56,7 @@ async function handleUpdate(
   }
 
   // Writing to the bot again is how a Member who had blocked it turns Reminders back on.
-  if (update.message?.text === "/start") {
+  if (update.message?.text?.split(" ")[0] === "/start") {
     await services.members.allowMessages(update.message.from.id);
   }
 
@@ -67,8 +66,10 @@ async function handleUpdate(
 }
 
 export const webhookRoute = new Hono<AppEnv>().post("/bot/webhook", async (context) => {
-  if (context.req.header("x-telegram-bot-api-secret-token") !== context.env.WEBHOOK_SECRET) {
-    return context.body(null, unauthorizedStatus);
+  const secret = context.env.WEBHOOK_SECRET;
+
+  if (!secret || context.req.header("x-telegram-bot-api-secret-token") !== secret) {
+    return context.body(null, httpStatus.unauthorized);
   }
 
   const update = await readUpdate(context.req.raw);

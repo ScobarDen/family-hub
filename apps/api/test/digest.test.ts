@@ -2,35 +2,7 @@ import type { InlineKeyboardMarkup } from "@grammyjs/types";
 import { describe, expect, test } from "vite-plus/test";
 
 import { signInitData, type TelegramUserFixture } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
-
-const denis = { id: 111, first_name: "Денис" };
-const asya = { id: 222, first_name: "Ася" };
-
-async function request(
-  worker: ReturnType<typeof startWorker>,
-  user: TelegramUserFixture,
-  { method = "GET", path, body }: { method?: string; path: string; body?: unknown },
-) {
-  const session = await worker.request("/api/session", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      initData: signInitData({
-        botToken: worker.env.BOT_TOKEN,
-        user,
-        authDate: worker.clock.iso(),
-      }),
-    }),
-  });
-  const { token = "" } = await session.json<{ token?: string }>();
-
-  return worker.request(path, {
-    method,
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
+import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
 async function startWithFamily() {
   const worker = startWorker({ now: "2026-10-01T09:00:00Z" });
@@ -155,6 +127,23 @@ describe("the morning digest", () => {
     expect(digestsTo(worker, asya)).toEqual([]);
   });
 
+  test("fits a long list into one message and says how much is left out", async () => {
+    const worker = await startWithFamily();
+
+    for (let index = 1; index <= 12; index += 1) {
+      await addPlan(worker, denis, {
+        title: `${"Разобрать антресоль ".repeat(9)}${index}`,
+        dueDate: "2026-09-28",
+      });
+    }
+
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    const [digest] = digestsTo(worker, denis);
+
+    expect(digest?.text.split("\n").at(-1)).toBe("…и ещё 2");
+  });
+
   test("says nothing on an empty day", async () => {
     const worker = await startWithFamily();
 
@@ -193,5 +182,31 @@ describe("the morning digest", () => {
 
     expect(settings.canMessage).toBe(false);
     expect(digestsTo(worker, denis)).toEqual([]);
+  });
+
+  test("comes back to a Member who left and joined again by an Invite", async () => {
+    const worker = await startWithFamily();
+
+    await addPlan(worker, denis, { title: "Отправить документы", dueDate: "2026-09-28" });
+    await request(worker, asya, { method: "POST", path: "/api/family/leave" });
+
+    const invite = await request(worker, denis, { method: "POST", path: "/api/invites" });
+    const { link } = await invite.json<{ link: string }>();
+    const token = new URL(link).searchParams.get("startapp")?.replace(/^inv_/u, "") ?? "";
+
+    await worker.request(`/api/invites/${token}/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        initData: signInitData({
+          botToken: worker.env.BOT_TOKEN,
+          user: asya,
+          authDate: worker.clock.iso(),
+        }),
+      }),
+    });
+    await tickAt(worker, "2026-10-01T23:00:00Z");
+
+    expect(digestsTo(worker, asya)).toHaveLength(1);
   });
 });

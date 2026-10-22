@@ -1,4 +1,3 @@
-import { sValidator } from "@hono/standard-validator";
 import { Hono, type Context } from "hono";
 
 import {
@@ -6,23 +5,22 @@ import {
   petDeletion,
   petMemoChange,
   petProfile,
-  type ErrorCode,
   type Pet,
   type PetDeleted,
   type PetList,
 } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
-import { apiError, httpStatus } from "@/common/errors";
+import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 
 import type { PetRefusal, PetResult } from "./pet.types.ts";
 import type { PetService } from "./service/pet.service.ts";
 
-export type PetEnv = {
+type PetEnv = {
   Variables: MemberEnv["Variables"] & { pets: PetService };
 };
 
-const refusals = {
+const refuse = refusalsOf<PetRefusal>({
   "not-found": {
     code: "PET_NOT_FOUND",
     message: "No such Pet in the Family",
@@ -48,32 +46,16 @@ const refusals = {
     message: "The avatar is one of the photos of the Pet's own Care Entries",
     status: httpStatus.badRequest,
   },
-} as const satisfies Record<PetRefusal, { code: ErrorCode; message: string; status: number }>;
-
-function refuse(context: Context<PetEnv>, refusal: PetRefusal) {
-  const { code, message, status } = refusals[refusal];
-
-  return context.json(apiError(code, message), status);
-}
+});
 
 function reply(context: Context<PetEnv>, result: PetResult) {
   return result.status === "ok" ? context.json<Pet>(result.pet) : refuse(context, result.status);
 }
 
-function bodyOf<
-  Schema extends typeof petProfile | typeof petMemoChange | typeof petDeletion | typeof petAvatar,
->(schema: Schema, message: string) {
-  return sValidator("json", schema, (result, context) =>
-    result.success
-      ? undefined
-      : context.json(apiError("INVALID_REQUEST", message), httpStatus.badRequest),
-  );
-}
-
-const profileBody = bodyOf(petProfile, "A Pet needs a name and a species");
-const memoBody = bodyOf(petMemoChange, "The Pet Memo takes food, clinic and important notes");
-const deletionBody = bodyOf(petDeletion, "Deleting a Pet takes its name");
-const avatarBody = bodyOf(petAvatar, "The avatar takes a photo id or null");
+const profileBody = jsonBody(petProfile, "A Pet needs a name and a species");
+const memoBody = jsonBody(petMemoChange, "The Pet Memo takes food, clinic and important notes");
+const deletionBody = jsonBody(petDeletion, "Deleting a Pet takes its name");
+const avatarBody = jsonBody(petAvatar, "The avatar takes a photo id or null");
 
 export const petRoute = new Hono<PetEnv>()
   .use("/api/pets", requireMember)

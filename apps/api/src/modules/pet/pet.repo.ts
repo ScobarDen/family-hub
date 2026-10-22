@@ -2,6 +2,7 @@ import { and, asc, eq, type SQL } from "drizzle-orm";
 
 import type { PetMemoChange, PetProfile } from "@family-hub/contract";
 
+import { bindFirst } from "@/common/bind";
 import { careEntries, careEntryPhotos, members, pets, type Db } from "@/common/db";
 
 export type PetRow = typeof pets.$inferSelect & { memoUpdatedByName: string | null };
@@ -71,6 +72,7 @@ async function hasPhoto(
 
 export function createPetRepo(db: Db) {
   return {
+    ...bindFirst(db, { setAvatar, hasPhoto }),
     list: async (familyId: string) => selectWhere(db, eq(pets.familyId, familyId)),
     find: async (familyId: string, petId: string) => find(db, { familyId, petId }),
 
@@ -81,10 +83,6 @@ export function createPetRepo(db: Db) {
       now,
     }: PetTarget & { archivedAt: number | null; now: number }) =>
       update(db, { familyId, petId }, { archivedAt, updatedAt: now }),
-
-    setAvatar: async (avatar: Avatar) => setAvatar(db, avatar),
-
-    hasPhoto: async (avatar: PetTarget & { photoId: string }) => hasPhoto(db, avatar),
 
     async delete(familyId: string, petId: string): Promise<void> {
       await db.delete(pets).where(and(eq(pets.familyId, familyId), eq(pets.id, petId)));

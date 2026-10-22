@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
+import { bindFirst } from "@/common/bind";
 import {
   albumPhotos,
   albums,
@@ -134,7 +135,7 @@ async function completeWithSubplans(
     );
 }
 
-export type PlanAlbumRow = {
+type PlanAlbumRow = {
   id: string;
   title: string;
   photos: Array<typeof photos.$inferSelect>;
@@ -166,12 +167,7 @@ async function albumOf(
 
 export function createPlanRepo(db: Db) {
   return {
-    listVisible: async (familyId: string, memberId: string) => listVisible(db, familyId, memberId),
-    findTree: async (familyId: string, planId: string) => findTree(db, familyId, planId),
-
-    isInFamily: async (familyId: string, memberId: string) => isInFamily(db, familyId, memberId),
-    hasPet: async (familyId: string, petId: string) => hasPet(db, familyId, petId),
-    albumOf: async (target: { familyId: string; albumId: string }) => albumOf(db, target),
+    ...bindFirst(db, { listVisible, findTree, isInFamily, hasPet, albumOf, completeWithSubplans }),
 
     async parentOf(familyId: string, subplanId: string): Promise<string | undefined> {
       const row = await db
@@ -201,8 +197,6 @@ export function createPlanRepo(db: Db) {
     async delete(familyId: string, planId: string): Promise<void> {
       await db.delete(plans).where(inFamily(familyId, eq(plans.id, planId)));
     },
-
-    completeWithSubplans: async (completing: Completing) => completeWithSubplans(db, completing),
   };
 }
 

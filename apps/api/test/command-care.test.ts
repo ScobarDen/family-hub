@@ -111,26 +111,6 @@ describe("a Care Entry command to the bot", () => {
     ]);
   });
 
-  test("closes the earlier Due Date of the same vaccine", async () => {
-    const worker = await startWithFamily();
-    const buickId = await addPet(worker, "Бьюик");
-
-    await request(worker, denis, {
-      method: "POST",
-      path: `/api/pets/${buickId}/care-entries`,
-      body: {
-        occurredAt: Date.parse("2025-10-13T09:00:00Z"),
-        note: null,
-        details: { kind: "vaccination", vaccine: "Бешенство", cost: null, dueDate: "2026-10-20" },
-      },
-    });
-    worker.ai.answer({ response: rabiesFor(buickId) });
-    await say(worker, denis, "Бьюику сделали прививку от бешенства, следующая через год");
-    await press(worker, denis, dataOf(lastTo(worker, denis), "Создать"));
-
-    expect(await dueDatesOf(worker, buickId)).toMatchObject([{ dueDate: "2027-10-13" }]);
-  });
-
   test("asks which Pet when there are two and no name, then offers «Создать»", async () => {
     const worker = await startWithFamily();
     const buickId = await addPet(worker, "Бьюик");

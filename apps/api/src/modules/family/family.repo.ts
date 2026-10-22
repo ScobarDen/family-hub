@@ -1,5 +1,6 @@
 import { and, eq, exists, gt, isNull, sql } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import {
   events,
   families,
@@ -12,78 +13,27 @@ import {
   type Db,
 } from "@/common/db";
 
-export type FamilyMemberRow = { id: string; name: string; telegramId: number };
+type FamilyMemberRow = { id: string; name: string; telegramId: number };
 
 type Departure = { familyId: string; memberId: string; now: number };
 
 type HandOver = { familyId: string; fromMemberId: string; toMemberId: string; now: number };
 
-function departFromPlans(db: Db, { familyId, memberId, now }: Departure) {
-  const ofFamily = eq(plans.familyId, familyId);
-  const familyOwner = sql`(select ${families.ownerMemberId} from ${families} where ${families.id} = ${familyId})`;
+type OwnedTable = typeof plans | typeof events | typeof reminders | typeof goals;
 
-  return [
-    db
-      .delete(plans)
-      .where(and(ofFamily, eq(plans.ownerMemberId, memberId), eq(plans.visibility, "private"))),
-    db
-      .update(plans)
-      .set({ ownerMemberId: familyOwner, updatedAt: now })
-      .where(and(ofFamily, eq(plans.ownerMemberId, memberId))),
-    db
-      .update(plans)
-      .set({ assigneeMemberId: null, updatedAt: now })
-      .where(and(ofFamily, eq(plans.assigneeMemberId, memberId), isNull(plans.completedAt))),
-  ] as const;
+function familyOwnerOf(familyId: string) {
+  return sql`(select ${families.ownerMemberId} from ${families} where ${families.id} = ${familyId})`;
 }
 
-function departFromEvents(db: Db, { familyId, memberId, now }: Departure) {
-  const ofFamily = eq(events.familyId, familyId);
-  const familyOwner = sql`(select ${families.ownerMemberId} from ${families} where ${families.id} = ${familyId})`;
+function departFrom(db: Db, table: OwnedTable, { familyId, memberId, now }: Departure) {
+  const isLeavers = and(eq(table.familyId, familyId), eq(table.ownerMemberId, memberId));
 
   return [
+    db.delete(table).where(and(isLeavers, eq(table.visibility, "private"))),
     db
-      .delete(events)
-      .where(and(ofFamily, eq(events.ownerMemberId, memberId), eq(events.visibility, "private"))),
-    db
-      .update(events)
-      .set({ ownerMemberId: familyOwner, updatedAt: now })
-      .where(and(ofFamily, eq(events.ownerMemberId, memberId))),
-  ] as const;
-}
-
-function departFromReminders(db: Db, { familyId, memberId, now }: Departure) {
-  const familyOwner = sql`(select ${families.ownerMemberId} from ${families} where ${families.id} = ${familyId})`;
-
-  return [
-    db
-      .delete(reminders)
-      .where(
-        and(
-          eq(reminders.familyId, familyId),
-          eq(reminders.ownerMemberId, memberId),
-          eq(reminders.visibility, "private"),
-        ),
-      ),
-    db
-      .update(reminders)
-      .set({ ownerMemberId: familyOwner, updatedAt: now })
-      .where(and(eq(reminders.familyId, familyId), eq(reminders.ownerMemberId, memberId))),
-  ] as const;
-}
-
-function departFromGoals(db: Db, { familyId, memberId, now }: Departure) {
-  const ofFamily = eq(goals.familyId, familyId);
-  const familyOwner = sql`(select ${families.ownerMemberId} from ${families} where ${families.id} = ${familyId})`;
-
-  return [
-    db
-      .delete(goals)
-      .where(and(ofFamily, eq(goals.ownerMemberId, memberId), eq(goals.visibility, "private"))),
-    db
-      .update(goals)
-      .set({ ownerMemberId: familyOwner, updatedAt: now })
-      .where(and(ofFamily, eq(goals.ownerMemberId, memberId))),
+      .update(table)
+      .set({ ownerMemberId: familyOwnerOf(familyId), updatedAt: now })
+      .where(isLeavers),
   ] as const;
 }
 
@@ -93,10 +43,20 @@ async function depart(db: Db, departure: Departure): Promise<void> {
   const { familyId, memberId, now } = departure;
 
   await db.batch([
-    ...departFromPlans(db, departure),
-    ...departFromEvents(db, departure),
-    ...departFromReminders(db, departure),
-    ...departFromGoals(db, departure),
+    ...departFrom(db, plans, departure),
+    db
+      .update(plans)
+      .set({ assigneeMemberId: null, updatedAt: now })
+      .where(
+        and(
+          eq(plans.familyId, familyId),
+          eq(plans.assigneeMemberId, memberId),
+          isNull(plans.completedAt),
+        ),
+      ),
+    ...departFrom(db, events, departure),
+    ...departFrom(db, reminders, departure),
+    ...departFrom(db, goals, departure),
     db
       .delete(familyMembers)
       .where(and(eq(familyMembers.familyId, familyId), eq(familyMembers.memberId, memberId))),
@@ -136,6 +96,7 @@ async function handOver(
 
 export function createFamilyRepo(db: Db) {
   return {
+    ...bindFirst(db, { depart, handOver }),
     findMember: async (familyId: string, memberId: string): Promise<FamilyMemberRow | undefined> =>
       db
         .select({ id: members.id, name: members.name, telegramId: members.telegramId })
@@ -146,9 +107,6 @@ export function createFamilyRepo(db: Db) {
 
     countMembers: async (familyId: string) =>
       db.$count(familyMembers, eq(familyMembers.familyId, familyId)),
-
-    depart: async (departure: Departure) => depart(db, departure),
-    handOver: async (change: HandOver) => handOver(db, change),
 
     // Everything of the Family cascades from its row; Member rows stay, as they belong to no Family.
     async delete(familyId: string): Promise<void> {

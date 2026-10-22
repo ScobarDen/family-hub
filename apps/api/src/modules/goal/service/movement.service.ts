@@ -81,9 +81,10 @@ export async function addMovement(
   }
 
   const now = dependencies.clock.now();
+  const id = uuidv7(now);
 
   await dependencies.goals.addMovement({
-    id: uuidv7(now),
+    id,
     familyId: membership.family.id,
     goalId,
     kind: change.kind,
@@ -95,6 +96,24 @@ export async function addMovement(
     createdBy: membership.member.id,
     updatedAt: now,
   });
+
+  return keptAboveZero(dependencies, membership, { goalId, movementId: id });
+}
+
+// Two withdrawals sent at once each pass the check above; read back, the balance shows whether
+// this one went below zero, and then it is taken out again.
+async function keptAboveZero(
+  dependencies: GoalDependencies,
+  membership: Membership,
+  { goalId, movementId }: MovementTarget,
+): Promise<GoalResult> {
+  const familyId = membership.family.id;
+
+  if (isBelowZero(await dependencies.goals.movementsOf(familyId, [goalId]))) {
+    await dependencies.goals.deleteMovement({ familyId, movementId });
+
+    return { status: "balance-negative" };
+  }
 
   return currentGoal(dependencies, membership, goalId);
 }

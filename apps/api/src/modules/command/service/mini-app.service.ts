@@ -2,6 +2,7 @@ import type { CommandOutcome } from "@family-hub/contract";
 import type { Phrase } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 
 import { failureTexts } from "../command.lib.ts";
 import type { CommandDependencies } from "../command.types.ts";
@@ -14,7 +15,7 @@ import {
   pressOf,
   type Press,
 } from "./decision.service.ts";
-import { isOverQuota, outcomeOf, record, type Outcome } from "./draft.service.ts";
+import { outcomeOf, record, reserve, type Outcome } from "./draft.service.ts";
 import { listen, type Audio } from "./voice.service.ts";
 
 export type DraftRefusal = "not-found";
@@ -29,12 +30,14 @@ function outcomeFor(
 }
 
 // The microphone in the tab bar: the same pipeline as a voice message to the bot.
-export async function commandFromAudio(
+async function commandFromAudio(
   dependencies: CommandDependencies,
   membership: Membership,
   audio: Audio,
 ): Promise<CommandOutcome> {
-  if (await isOverQuota(dependencies, membership)) {
+  const reservation = await reserve(dependencies, { membership, chatId: null, source: "mini_app" });
+
+  if (reservation === undefined) {
     return { status: "quota", heard: null, message: failureTexts.quota };
   }
 
@@ -43,17 +46,12 @@ export async function commandFromAudio(
     heard.status === "heard"
       ? await outcomeOf(dependencies, { membership, text: heard.text })
       : heard;
-  const { draftId, phrase } = await record(dependencies, {
-    membership,
-    chatId: null,
-    source: "mini_app",
-    outcome,
-  });
+
+  await record(dependencies, { reservation, outcome });
 
   return outcomeFor(outcome, {
-    draftId,
+    ...reservation,
     heard: heard.status === "heard" ? heard.text : null,
-    phrase,
   });
 }
 
@@ -65,6 +63,12 @@ async function pressFor(
   const press = await pressOf(dependencies, { draftId, membership });
 
   return typeof press === "string" ? undefined : press;
+}
+
+async function createFromApp(dependencies: CommandDependencies, press: Press) {
+  const created = await create(dependencies, press);
+
+  return created === "stale" ? "not-found" : created;
 }
 
 export function createMiniAppCommands(dependencies: CommandDependencies) {
@@ -79,18 +83,17 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
   }
 
   return {
+    ...bindFirst(dependencies, { fromAudio: commandFromAudio }),
     botChat: async () => ({ url: await dependencies.appLinks.chatLink() }),
-    fromAudio: async (membership: Membership, audio: Audio) =>
-      commandFromAudio(dependencies, membership, audio),
     open: async (membership: Membership, draftId: string) =>
       withPress(membership, draftId, async (press) =>
         outcomeFor(
           { status: "draft", draft: press.draft },
-          { draftId, heard: null, phrase: await phraseOf(dependencies, press) },
+          { draftId, heard: null, phrase: phraseOf(press) },
         ),
       ),
     create: async (membership: Membership, draftId: string) =>
-      withPress(membership, draftId, async (press) => create(dependencies, press)),
+      withPress(membership, draftId, async (press) => createFromApp(dependencies, press)),
     pick: async (membership: Membership, { draftId, index }: { draftId: string; index: number }) =>
       withPress(membership, draftId, async (press) => {
         const draft = await pick(dependencies, press, index);
@@ -99,7 +102,7 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
           ? "not-found"
           : outcomeFor(
               { status: "draft", draft },
-              { draftId, heard: null, phrase: await phraseOf(dependencies, press) },
+              { draftId, heard: null, phrase: phraseOf(press) },
             );
       }),
     dismiss: async (membership: Membership, draftId: string) =>
@@ -108,5 +111,3 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
       withPress(membership, draftId, async (press) => markCreated(dependencies, press)),
   };
 }
-
-export type MiniAppCommands = ReturnType<typeof createMiniAppCommands>;
