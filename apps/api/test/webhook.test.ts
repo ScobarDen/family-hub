@@ -32,3 +32,24 @@ test("bot webhook rejects updates with a wrong secret", async () => {
 
   expect(response.status).toBe(401);
 });
+
+test("bot webhook rejects updates without the secret header", async () => {
+  const worker = startWorker();
+
+  const response = await worker.request("/bot/webhook", {
+    method: "POST",
+    body: JSON.stringify(update),
+  });
+
+  expect(response.status).toBe(401);
+});
+
+test("bot webhook rejects every update while no secret is configured", async () => {
+  const worker = startWorker();
+
+  worker.env.WEBHOOK_SECRET = "";
+
+  const response = await worker.webhook(update, { secret: "" });
+
+  expect(response.status).toBe(401);
+});

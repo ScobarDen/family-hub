@@ -187,6 +187,29 @@ describe("whether the bot can message a Member", () => {
 
     expect(settings.canMessage).toBe(true);
   });
+
+  test.each(["/start", "/start inv_abc"])(
+    "comes back once the Member writes «%s»",
+    async (text) => {
+      const { worker, ownerId } = await startWithFamily();
+
+      await worker.markUnreachable(ownerId);
+      await worker.webhook({
+        update_id: 1,
+        message: {
+          message_id: 1,
+          date: 0,
+          chat: { id: denis.id, type: "private", first_name: "Денис" },
+          from: { ...denis, is_bot: false },
+          text,
+        },
+      });
+
+      const { settings } = await me(worker, { ...denis, allows_write_to_pm: false });
+
+      expect(settings.canMessage).toBe(true);
+    },
+  );
 });
 
 describe("the Family's Members", () => {
