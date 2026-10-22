@@ -2,39 +2,16 @@ import { describe, expect, test } from "vite-plus/test";
 
 import type { CareEntry, CareEntryChange, ExpenseSummary } from "@family-hub/contract";
 
-import { signInitData, type TelegramUserFixture } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
+import { type TelegramUserFixture } from "./init-data.ts";
+import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
 const now = "2026-10-04T09:00:00Z";
-const denis = { id: 111, first_name: "Денис" };
-const asya = { id: 222, first_name: "Ася" };
 const vika = { id: 333, first_name: "Вика" };
 
 const october = {
   from: Date.parse("2026-09-30T21:00:00Z"),
   to: Date.parse("2026-10-31T21:00:00Z"),
 };
-
-async function call(
-  worker: ReturnType<typeof startWorker>,
-  user: TelegramUserFixture,
-  { method = "GET", path, body }: { method?: string; path: string; body?: unknown },
-) {
-  const session = await worker.request("/api/session", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      initData: signInitData({ botToken: worker.env.BOT_TOKEN, user, authDate: now }),
-    }),
-  });
-  const { token = "" } = await session.json<{ token?: string }>();
-
-  return worker.request(path, {
-    method,
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
 
 async function startWithBuick() {
   const worker = startWorker({ now });
@@ -44,7 +21,7 @@ async function startWithBuick() {
   });
 
   await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
-  const response = await call(worker, denis, {
+  const response = await request(worker, denis, {
     method: "POST",
     path: "/api/pets",
     body: {
@@ -69,7 +46,7 @@ function entryAt(iso: string, details: CareEntryChange["details"], note: string 
 }
 
 async function addEntry(worker: Worker, user: TelegramUserFixture, change: unknown) {
-  return call(worker, user, {
+  return request(worker, user, {
     method: "POST",
     path: `/api/pets/${worker.buickId}/care-entries`,
     body: change,
@@ -83,13 +60,15 @@ async function addedEntry(worker: Worker, user: TelegramUserFixture, change: unk
 }
 
 async function journalOf(worker: Worker, user: TelegramUserFixture = denis) {
-  const response = await call(worker, user, { path: `/api/pets/${worker.buickId}/care-entries` });
+  const response = await request(worker, user, {
+    path: `/api/pets/${worker.buickId}/care-entries`,
+  });
 
   return response.json<CareEntry[]>();
 }
 
 async function expensesOf(worker: Worker, { from, to }: { from: number; to: number }) {
-  const response = await call(worker, denis, {
+  const response = await request(worker, denis, {
     path: `/api/pets/${worker.buickId}/expenses?from=${from}&to=${to}`,
   });
 
@@ -169,7 +148,7 @@ describe("the Care Entry journal", () => {
       entryAt("2026-10-01T09:00:00Z", { kind: "weight", weightKg: 12.4 }),
     );
 
-    const corrected = await call(worker, asya, {
+    const corrected = await request(worker, asya, {
       method: "PUT",
       path: `/api/care-entries/${entry.id}`,
       body: entryAt("2026-10-01T09:00:00Z", { kind: "weight", weightKg: 12.8 }),
@@ -180,7 +159,7 @@ describe("the Care Entry journal", () => {
       author: "Денис",
     });
 
-    const deleted = await call(worker, asya, {
+    const deleted = await request(worker, asya, {
       method: "DELETE",
       path: `/api/care-entries/${entry.id}`,
     });
@@ -202,12 +181,12 @@ describe("the Care Entry journal", () => {
       }),
     );
 
-    const opened = await call(worker, asya, { path: `/api/care-entries/${entry.id}` });
+    const opened = await request(worker, asya, { path: `/api/care-entries/${entry.id}` });
 
     expect(await opened.json()).toEqual(entry);
 
-    await call(worker, denis, { method: "DELETE", path: `/api/care-entries/${entry.id}` });
-    const gone = await call(worker, asya, { path: `/api/care-entries/${entry.id}` });
+    await request(worker, denis, { method: "DELETE", path: `/api/care-entries/${entry.id}` });
+    const gone = await request(worker, asya, { path: `/api/care-entries/${entry.id}` });
 
     expect(gone.status).toBe(404);
     expect(await gone.json()).toMatchObject({ code: "CARE_ENTRY_NOT_FOUND" });
@@ -219,10 +198,12 @@ describe("the Care Entry journal", () => {
     await worker.addFamily({ name: "Соседи", owner: { telegramId: vika.id, name: "Вика" } });
     const entry = await addedEntry(worker, denis, entryAt(now, { kind: "note" }, "Чихает"));
 
-    const listed = await call(worker, vika, { path: `/api/pets/${worker.buickId}/care-entries` });
-    const opened = await call(worker, vika, { path: `/api/care-entries/${entry.id}` });
+    const listed = await request(worker, vika, {
+      path: `/api/pets/${worker.buickId}/care-entries`,
+    });
+    const opened = await request(worker, vika, { path: `/api/care-entries/${entry.id}` });
     const added = await addEntry(worker, vika, entryAt(now, { kind: "note" }));
-    const deleted = await call(worker, vika, {
+    const deleted = await request(worker, vika, {
       method: "DELETE",
       path: `/api/care-entries/${entry.id}`,
     });
@@ -298,7 +279,7 @@ describe("Pet Expenses", () => {
       }),
     );
 
-    await call(worker, denis, {
+    await request(worker, denis, {
       method: "PUT",
       path: `/api/care-entries/${visit.id}`,
       body: entryAt("2026-10-12T10:00:00Z", {

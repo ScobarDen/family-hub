@@ -1,11 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import { signInitData, tamperUser } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
+import { asya, denis, startWorker } from "./worker-harness.ts";
 
 const now = "2026-10-04T09:00:00Z";
-const denis = { id: 111, first_name: "Денис" };
-const asya = { id: 222, first_name: "Ася" };
 
 type Worker = ReturnType<typeof startWorker>;
 

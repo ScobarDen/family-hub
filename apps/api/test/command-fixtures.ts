@@ -2,43 +2,12 @@ import type { InlineKeyboardMarkup, Update } from "@grammyjs/types";
 
 import type { CommandOutcome, Reminder } from "@family-hub/contract";
 
-import { signInitData, type TelegramUserFixture } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
+import { type TelegramUserFixture } from "./init-data.ts";
+import { asya, denis, request, tokenOf, startWorker } from "./worker-harness.ts";
 
-export const denis = { id: 111, first_name: "Денис" };
-export const asya = { id: 222, first_name: "Ася" };
+export { asya, denis, request };
+
 export const stranger = { id: 999, first_name: "Незнакомец" };
-
-async function tokenOf(worker: ReturnType<typeof startWorker>, user: TelegramUserFixture) {
-  const session = await worker.request("/api/session", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      initData: signInitData({
-        botToken: worker.env.BOT_TOKEN,
-        user,
-        authDate: worker.clock.iso(),
-      }),
-    }),
-  });
-  const { token = "" } = await session.json<{ token?: string }>();
-
-  return token;
-}
-
-export async function request(
-  worker: ReturnType<typeof startWorker>,
-  user: TelegramUserFixture,
-  { method = "GET", path, body }: { method?: string; path: string; body?: unknown },
-) {
-  const token = await tokenOf(worker, user);
-
-  return worker.request(path, {
-    method,
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
 
 // What the Mini App's microphone posts: the recording as the body, typed by its format.
 export async function record(

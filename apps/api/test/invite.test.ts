@@ -4,12 +4,11 @@ import { describe, expect, test } from "vite-plus/test";
 import type { InviteCreated } from "@family-hub/contract";
 
 import { signInitData, tamperUser, type TelegramUserFixture } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
+import { asya, startWorker } from "./worker-harness.ts";
 
 const now = "2026-10-04T09:00:00Z";
 const operatorId = 1000;
 const denis = { id: 111, first_name: "Денис", last_name: "Гущин" };
-const asya = { id: 222, first_name: "Ася" };
 const vika = { id: 333, first_name: "Вика" };
 
 type Worker = ReturnType<typeof startWorker>;

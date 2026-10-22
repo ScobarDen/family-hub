@@ -3,11 +3,9 @@ import { describe, expect, test } from "vite-plus/test";
 import type { FamilyMemberList, InviteCreated } from "@family-hub/contract";
 
 import { signInitData, type TelegramUserFixture } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
+import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
 const now = "2026-10-04T09:00:00Z";
-const denis = { id: 111, first_name: "Денис" };
-const asya = { id: 222, first_name: "Ася" };
 const vika = { id: 333, first_name: "Вика" };
 
 type Worker = ReturnType<typeof startWorker>;
@@ -24,40 +22,26 @@ async function signIn(worker: Worker, user: TelegramUserFixture) {
   return response.json<{ status: string; token?: string }>();
 }
 
-async function call(
-  worker: Worker,
-  user: TelegramUserFixture,
-  { method, path, body }: { method: string; path: string; body?: unknown },
-) {
-  const { token = "" } = await signIn(worker, user);
-
-  return worker.request(path, {
-    method,
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
-
 async function membersSeenBy(worker: Worker, user: TelegramUserFixture) {
-  const response = await call(worker, user, { method: "GET", path: "/api/family/members" });
+  const response = await request(worker, user, { method: "GET", path: "/api/family/members" });
 
   return response.json<FamilyMemberList>();
 }
 
 async function leave(worker: Worker, user: TelegramUserFixture) {
-  return call(worker, user, { method: "POST", path: "/api/family/leave" });
+  return request(worker, user, { method: "POST", path: "/api/family/leave" });
 }
 
 async function remove(worker: Worker, user: TelegramUserFixture, memberId: string) {
-  return call(worker, user, { method: "DELETE", path: `/api/family/members/${memberId}` });
+  return request(worker, user, { method: "DELETE", path: `/api/family/members/${memberId}` });
 }
 
 async function handOver(worker: Worker, user: TelegramUserFixture, memberId: string) {
-  return call(worker, user, { method: "PUT", path: "/api/family/owner", body: { memberId } });
+  return request(worker, user, { method: "PUT", path: "/api/family/owner", body: { memberId } });
 }
 
 async function deleteFamily(worker: Worker, user: TelegramUserFixture, familyName: string) {
-  return call(worker, user, { method: "DELETE", path: "/api/family", body: { familyName } });
+  return request(worker, user, { method: "DELETE", path: "/api/family", body: { familyName } });
 }
 
 async function startWithFamily() {
@@ -72,7 +56,7 @@ async function startWithFamily() {
 }
 
 async function inviteBy(worker: Worker, user: TelegramUserFixture) {
-  const response = await call(worker, user, { method: "POST", path: "/api/invites" });
+  const response = await request(worker, user, { method: "POST", path: "/api/invites" });
   const { link } = await response.json<InviteCreated>();
 
   return new URL(link).searchParams.get("startapp")?.replace(/^inv_/, "") ?? "";

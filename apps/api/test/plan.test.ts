@@ -2,12 +2,10 @@ import { describe, expect, test } from "vite-plus/test";
 
 import type { Plan, PlanChange, SubplanChange } from "@family-hub/contract";
 
-import { signInitData, type TelegramUserFixture } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
+import { type TelegramUserFixture } from "./init-data.ts";
+import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
 const now = "2026-10-04T09:00:00Z";
-const denis = { id: 111, first_name: "Денис" };
-const asya = { id: 222, first_name: "Ася" };
 const vika = { id: 333, first_name: "Вика" };
 
 type Worker = Awaited<ReturnType<typeof startWithFamily>>;
@@ -22,31 +20,6 @@ const bedroom: PlanChange = {
   petId: null,
   albumId: null,
 };
-
-async function call(
-  worker: ReturnType<typeof startWorker>,
-  user: TelegramUserFixture,
-  { method = "GET", path, body }: { method?: string; path: string; body?: unknown },
-) {
-  const session = await worker.request("/api/session", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      initData: signInitData({
-        botToken: worker.env.BOT_TOKEN,
-        user,
-        authDate: worker.clock.iso(),
-      }),
-    }),
-  });
-  const { token = "" } = await session.json<{ token?: string }>();
-
-  return worker.request(path, {
-    method,
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
 
 async function startWithFamily() {
   const worker = startWorker({ now });
@@ -69,7 +42,7 @@ async function createPlan(
   change: Partial<PlanChange> = {},
 ) {
   return planOf(
-    await call(worker, user, {
+    await request(worker, user, {
       method: "POST",
       path: "/api/plans",
       body: { ...bedroom, ...change },
@@ -83,7 +56,7 @@ async function addSubplan(
   { planId, ...change }: Partial<SubplanChange> & { planId: string },
 ) {
   return planOf(
-    await call(worker, user, {
+    await request(worker, user, {
       method: "POST",
       path: `/api/plans/${planId}/subplans`,
       body: { title: "Шаг", dueDate: null, assigneeId: null, ...change },
@@ -101,7 +74,7 @@ async function markSubplan(
   }: { planId: string; subplanId: string; action: "complete" | "reopen" },
 ) {
   return planOf(
-    await call(worker, user, {
+    await request(worker, user, {
       method: "POST",
       path: `/api/plans/${planId}/subplans/${subplanId}/${action}`,
     }),
@@ -109,7 +82,7 @@ async function markSubplan(
 }
 
 async function plansOf(worker: Worker, user: TelegramUserFixture) {
-  const response = await call(worker, user, { path: "/api/plans" });
+  const response = await request(worker, user, { path: "/api/plans" });
 
   return response.json<Plan[]>();
 }
@@ -180,7 +153,7 @@ describe("a Plan", () => {
       owner: { telegramId: vika.id, name: "Вика" },
     });
 
-    const response = await call(worker, denis, {
+    const response = await request(worker, denis, {
       method: "POST",
       path: "/api/plans",
       body: { ...bedroom, assigneeId: vikaId },
@@ -196,7 +169,7 @@ describe("a Plan", () => {
     await worker.addFamily({ name: "Соседи", owner: { telegramId: vika.id, name: "Вика" } });
     const plan = await createPlan(worker, denis);
 
-    const completing = await call(worker, vika, {
+    const completing = await request(worker, vika, {
       method: "POST",
       path: `/api/plans/${plan.id}/complete`,
     });
@@ -209,8 +182,14 @@ describe("a Plan", () => {
     const worker = await startWithFamily();
     const plan = await planWithSteps(worker, ["Обои"]);
 
-    const refused = await call(worker, asya, { method: "DELETE", path: `/api/plans/${plan.id}` });
-    const deleted = await call(worker, denis, { method: "DELETE", path: `/api/plans/${plan.id}` });
+    const refused = await request(worker, asya, {
+      method: "DELETE",
+      path: `/api/plans/${plan.id}`,
+    });
+    const deleted = await request(worker, denis, {
+      method: "DELETE",
+      path: `/api/plans/${plan.id}`,
+    });
 
     expect(refused.status).toBe(403);
     expect(await deleted.json()).toEqual({ status: "deleted" });
@@ -260,7 +239,7 @@ describe("completing", () => {
     const plan = await planWithSteps(worker, ["Обои", "Краска"]);
 
     const done = await planOf(
-      await call(worker, asya, { method: "POST", path: `/api/plans/${plan.id}/complete` }),
+      await request(worker, asya, { method: "POST", path: `/api/plans/${plan.id}/complete` }),
     );
 
     expect(done.completed?.by).toBe("Ася");
@@ -271,7 +250,7 @@ describe("completing", () => {
     const worker = await startWithFamily();
     const plan = await createPlan(worker, denis);
 
-    await call(worker, denis, { method: "POST", path: `/api/plans/${plan.id}/complete` });
+    await request(worker, denis, { method: "POST", path: `/api/plans/${plan.id}/complete` });
     const reopened = await addSubplan(worker, asya, { planId: plan.id, title: "Плинтус" });
 
     expect(reopened.completed).toBeNull();
@@ -281,9 +260,9 @@ describe("completing", () => {
     const worker = await startWithFamily();
     const plan = await createPlan(worker, denis);
 
-    await call(worker, denis, { method: "POST", path: `/api/plans/${plan.id}/complete` });
+    await request(worker, denis, { method: "POST", path: `/api/plans/${plan.id}/complete` });
     const reopened = await planOf(
-      await call(worker, asya, { method: "POST", path: `/api/plans/${plan.id}/reopen` }),
+      await request(worker, asya, { method: "POST", path: `/api/plans/${plan.id}/reopen` }),
     );
 
     expect(reopened.completed).toBeNull();
@@ -295,7 +274,7 @@ describe("a Private Plan", () => {
     const worker = await startWithFamily();
     const plan = await createPlan(worker, asya, { title: "Подарок Денису", visibility: "private" });
 
-    const edit = await call(worker, denis, {
+    const edit = await request(worker, denis, {
       method: "PUT",
       path: `/api/plans/${plan.id}`,
       body: { ...bedroom, visibility: "private" },
@@ -310,7 +289,7 @@ describe("a Private Plan", () => {
 
   test("takes only its owner or nobody as Assignee, Subplans included", async () => {
     const worker = await startWithFamily();
-    const refused = await call(worker, asya, {
+    const refused = await request(worker, asya, {
       method: "POST",
       path: "/api/plans",
       body: { ...bedroom, visibility: "private", assigneeId: worker.denisId },
@@ -319,7 +298,7 @@ describe("a Private Plan", () => {
       visibility: "private",
       assigneeId: worker.asyaId,
     });
-    const refusedStep = await call(worker, asya, {
+    const refusedStep = await request(worker, asya, {
       method: "POST",
       path: `/api/plans/${plan.id}/subplans`,
       body: { title: "Шаг", dueDate: null, assigneeId: worker.denisId },
@@ -335,13 +314,13 @@ describe("a Private Plan", () => {
     const plan = await createPlan(worker, asya, { visibility: "private" });
 
     const shared = await planOf(
-      await call(worker, asya, {
+      await request(worker, asya, {
         method: "PUT",
         path: `/api/plans/${plan.id}`,
         body: { ...bedroom, visibility: "shared" },
       }),
     );
-    const back = await call(worker, asya, {
+    const back = await request(worker, asya, {
       method: "PUT",
       path: `/api/plans/${plan.id}`,
       body: { ...bedroom, visibility: "private" },
@@ -363,8 +342,8 @@ describe("a Member leaving", () => {
     });
     const done = await createPlan(worker, denis, { title: "Готовый", assigneeId: worker.asyaId });
 
-    await call(worker, denis, { method: "POST", path: `/api/plans/${done.id}/complete` });
-    await call(worker, asya, { method: "POST", path: "/api/family/leave" });
+    await request(worker, denis, { method: "POST", path: `/api/plans/${done.id}/complete` });
+    await request(worker, asya, { method: "POST", path: "/api/family/leave" });
 
     const plans = await plansOf(worker, denis);
 
@@ -382,7 +361,7 @@ describe("a Member leaving", () => {
 
     await createPlan(worker, asya, { title: "Подарок", visibility: "private" });
     await createPlan(worker, asya, { title: "Отпуск" });
-    await call(worker, asya, { method: "POST", path: "/api/family/leave" });
+    await request(worker, asya, { method: "POST", path: "/api/family/leave" });
 
     expect(await plansOf(worker, denis)).toEqual([
       expect.objectContaining({ title: "Отпуск", isOwn: true }),
@@ -391,7 +370,7 @@ describe("a Member leaving", () => {
 });
 
 async function addBuick(worker: Worker, user: TelegramUserFixture = denis) {
-  const response = await call(worker, user, {
+  const response = await request(worker, user, {
     method: "POST",
     path: "/api/pets",
     body: {
@@ -414,7 +393,7 @@ describe("a Pet's Plan", () => {
     const buick = await addBuick(worker);
     const grooming = await createPlan(worker, asya, { title: "Груминг", petId: buick.id });
     const unlinked = await planOf(
-      await call(worker, asya, {
+      await request(worker, asya, {
         method: "PUT",
         path: `/api/plans/${grooming.id}`,
         body: { ...bedroom, title: "Груминг", petId: null },
@@ -431,7 +410,7 @@ describe("a Pet's Plan", () => {
     await worker.addFamily({ name: "Соседи", owner: { telegramId: vika.id, name: "Вика" } });
     const stranger = await addBuick(worker, vika);
 
-    const response = await call(worker, denis, {
+    const response = await request(worker, denis, {
       method: "POST",
       path: "/api/plans",
       body: { ...bedroom, petId: stranger.id },
