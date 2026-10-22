@@ -569,7 +569,7 @@ export const recipeCooks = sqliteTable(
 
 export type CommandSource = "bot_text" | "bot_voice" | "mini_app";
 
-export type CommandStatus = "pending" | "created" | "dismissed" | "failed";
+export type CommandStatus = "pending" | "creating" | "created" | "dismissed" | "failed";
 
 // One row per command handled, failed ones included: it is also the Family's daily count.
 export const commandDrafts = sqliteTable(

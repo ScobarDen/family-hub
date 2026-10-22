@@ -81,7 +81,8 @@ export async function phraseOf(
   };
 }
 
-async function settleCreated(dependencies: CommandDependencies, { row, draft }: Press) {
+// Also when the Member fixed the draft in the ordinary form, which created the record itself.
+export async function markCreated(dependencies: CommandDependencies, { row, draft }: Press) {
   await dependencies.drafts.update(row.id, {
     status: "created",
     updatedAt: dependencies.clock.now(),
@@ -92,32 +93,49 @@ async function settleCreated(dependencies: CommandDependencies, { row, draft }: 
   });
 }
 
-// A refused draft stays pending, so «Изменить» can still fix what the use case objected to.
+async function createClaimed(dependencies: CommandDependencies, press: Press) {
+  try {
+    return await createRecord(dependencies, {
+      membership: press.membership,
+      draft: press.draft,
+      phrase: await phraseOf(dependencies, press),
+    });
+  } catch (error) {
+    await reopen(dependencies, press);
+    throw error;
+  }
+}
+
+async function reopen({ drafts, clock }: CommandDependencies, { row }: Press) {
+  await drafts.update(row.id, { status: "pending", updatedAt: clock.now() });
+}
+
+// A refused draft stays pending, so «Изменить» can still fix what the use case objected to; a
+// draft already being created by another press is stale.
 export async function create(
   dependencies: CommandDependencies,
   press: Press,
-): Promise<DraftCreated | DraftRefusal> {
-  const { row, draft, membership } = press;
-  const creation = await createRecord(dependencies, {
-    membership,
-    draft,
-    phrase: await phraseOf(dependencies, press),
-  });
+): Promise<DraftCreated | DraftRefusal | "stale"> {
+  const { row, draft } = press;
+
+  const claimed = await dependencies.drafts.claimForCreation(row.id, dependencies.clock.now());
+
+  if (claimed === undefined) {
+    return "stale";
+  }
+
+  const creation = await createClaimed(dependencies, press);
 
   if (creation.status === "refused") {
+    await reopen(dependencies, press);
     await showDraft(dependencies, { row, draft, note: draftRefusalTexts[creation.refusal] });
 
     return creation.refusal;
   }
 
-  await settleCreated(dependencies, press);
+  await markCreated(dependencies, press);
 
   return { kind: draft.kind, id: creation.id };
-}
-
-// The Member fixed the draft in the ordinary form, which created the record itself.
-export async function markCreated(dependencies: CommandDependencies, press: Press): Promise<void> {
-  await settleCreated(dependencies, press);
 }
 
 export async function pick(

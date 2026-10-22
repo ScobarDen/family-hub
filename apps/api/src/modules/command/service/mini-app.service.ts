@@ -64,6 +64,12 @@ async function pressFor(
   return typeof press === "string" ? undefined : press;
 }
 
+async function createFromApp(dependencies: CommandDependencies, press: Press) {
+  const created = await create(dependencies, press);
+
+  return created === "stale" ? "not-found" : created;
+}
+
 export function createMiniAppCommands(dependencies: CommandDependencies) {
   async function withPress<Result>(
     membership: Membership,
@@ -87,7 +93,7 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
         ),
       ),
     create: async (membership: Membership, draftId: string) =>
-      withPress(membership, draftId, async (press) => create(dependencies, press)),
+      withPress(membership, draftId, async (press) => createFromApp(dependencies, press)),
     pick: async (membership: Membership, { draftId, index }: { draftId: string; index: number }) =>
       withPress(membership, draftId, async (press) => {
         const draft = await pick(dependencies, press, index);

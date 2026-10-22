@@ -81,6 +81,16 @@ export function createCommandRepo(db: Db) {
     async update(draftId: string, values: Partial<typeof commandDrafts.$inferInsert>) {
       await db.update(commandDrafts).set(values).where(eq(commandDrafts.id, draftId));
     },
+    // Of two «Создать» pressed at once, only the one that moves the draft off pending goes on.
+    async claimForCreation(draftId: string, now: number): Promise<CommandDraftRow | undefined> {
+      const [claimed] = await db
+        .update(commandDrafts)
+        .set({ status: "creating", updatedAt: now })
+        .where(and(eq(commandDrafts.id, draftId), eq(commandDrafts.status, "pending")))
+        .returning();
+
+      return claimed;
+    },
     async sweep(now: number): Promise<void> {
       await db.delete(commandDrafts).where(lt(commandDrafts.expiresAt, now));
     },
