@@ -24,6 +24,7 @@ import type {
   PetSex,
   PetSpecies,
   PlanReminder,
+  Recurrence,
   Visibility,
 } from "@family-hub/contract";
 
@@ -238,7 +239,7 @@ export const events = sqliteTable(
     timeZone: text("time_zone"),
     endDate: text("end_date"),
     endTime: text("end_time"),
-    frequency: text("frequency").$type<"weekly" | "monthly" | "yearly">(),
+    frequency: text("frequency").$type<Recurrence["frequency"]>(),
     until: text("until"),
     skippedDates: text("skipped_dates", { mode: "json" }).$type<string[]>().notNull().default([]),
     reminderOffsets: text("reminder_offsets", { mode: "json" })
@@ -267,7 +268,7 @@ export const reminders = sqliteTable(
     startDate: text("start_date").notNull(),
     startTime: text("start_time").notNull(),
     timeZone: text("time_zone").notNull(),
-    frequency: text("frequency").$type<"weekly" | "monthly" | "yearly">(),
+    frequency: text("frequency").$type<Recurrence["frequency"]>(),
     until: text("until"),
     isForEveryone: integer("is_for_everyone", { mode: "boolean" }).notNull(),
     createdAt: integer("created_at").notNull(),
