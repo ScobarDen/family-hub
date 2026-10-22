@@ -9,6 +9,7 @@ export { Field } from "./field.view.tsx";
 export { IconBadge, type IconTone } from "./icon-badge.view.tsx";
 export { Input } from "./input.view.tsx";
 export { Label } from "./label.view.tsx";
+export { LoadState } from "./load-state.view.tsx";
 export { Notice } from "./notice.view.tsx";
 export { PersonAvatar } from "./person-avatar.view.tsx";
 export { ScreenTitle } from "./screen-title.view.tsx";

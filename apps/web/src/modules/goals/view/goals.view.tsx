@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { LoadState } from "@/common/ui";
 
 import type { GoalsScreen, GoalsScreenModel } from "../vm/goals.vm.ts";
 import { GoalDetails } from "./goal-details.view.tsx";
@@ -28,11 +28,7 @@ function contentOf(model: GoalsScreenModel, screen: GoalsScreen): ReactNode {
   }
 
   return (
-    <Section>
-      <SectionItem
-        title={screen.kind === "loading" ? "Загружаем…" : "Не получилось загрузить цели."}
-      />
-    </Section>
+    <LoadState failure={screen.kind === "failed" ? "Не получилось загрузить цели." : undefined} />
   );
 }
 

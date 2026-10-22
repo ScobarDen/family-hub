@@ -1,9 +1,8 @@
 import { reatomComponent } from "@reatom/react";
-import { Images, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { PhotoViewer } from "@/common/photo-viewer";
-import { Section, SectionItem } from "@/common/ui";
+import { LoadState } from "@/common/ui";
 
 import type { AlbumsScreen, AlbumsScreenModel } from "../vm/albums.vm.ts";
 import { AlbumDetails } from "./album-details.view.tsx";
@@ -41,13 +40,9 @@ function contentOf(model: AlbumsScreenModel, screen: AlbumsScreen): ReactNode {
   }
 
   return (
-    <Section>
-      <SectionItem
-        icon={screen.kind === "loading" ? Images : Plus}
-        tone="violet"
-        title={screen.kind === "loading" ? "Загружаем…" : "Не получилось загрузить альбомы."}
-      />
-    </Section>
+    <LoadState
+      failure={screen.kind === "failed" ? "Не получилось загрузить альбомы." : undefined}
+    />
   );
 }
 

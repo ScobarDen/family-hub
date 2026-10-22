@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { LoadState } from "@/common/ui";
 
 import type { RecipesScreen, RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { RecipeDetails } from "./recipe-details.view.tsx";
@@ -47,11 +47,9 @@ function contentOf({ model, photoHint, timeZone }: RecipesProps, screen: Recipes
   }
 
   return (
-    <Section>
-      <SectionItem
-        title={screen.kind === "loading" ? "Загружаем…" : "Не получилось загрузить рецепты."}
-      />
-    </Section>
+    <LoadState
+      failure={screen.kind === "failed" ? "Не получилось загрузить рецепты." : undefined}
+    />
   );
 }
 
