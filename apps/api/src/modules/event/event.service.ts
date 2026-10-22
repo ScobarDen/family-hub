@@ -2,6 +2,7 @@ import { uuidv7, type CalendarEvent, type EventChange } from "@family-hub/contra
 
 import type { Membership } from "@/common/auth";
 import type { Clock } from "@/common/clock";
+import { isHiddenFrom, isTurnedPrivate } from "@/common/visibility";
 
 import { columnsOf, toEvent } from "./event.lib.ts";
 import type { EventRepo, EventRow } from "./event.repo.ts";
@@ -24,7 +25,7 @@ async function visible(
 ): Promise<EventRow | undefined> {
   const row = await events.find({ familyId: family.id, eventId });
 
-  return row?.visibility === "private" && row.ownerMemberId !== member.id ? undefined : row;
+  return row === undefined || isHiddenFrom(row, member.id) ? undefined : row;
 }
 
 async function current(
@@ -74,8 +75,7 @@ async function update(
     return { status: "not-found" };
   }
 
-  // Others may already rely on a Shared Event, so it never turns Private.
-  if (row.visibility === "shared" && change.visibility === "private") {
+  if (isTurnedPrivate(row.visibility, change.visibility)) {
     return { status: "visibility-one-way" };
   }
 

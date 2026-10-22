@@ -1,6 +1,7 @@
 import { uuidv7, type Reminder, type ReminderChange } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { isHiddenFrom, isTurnedPrivate } from "@/common/visibility";
 
 import { toReminder } from "../reminder.lib.ts";
 import type { ReminderDependencies, ReminderRefusal, ReminderResult } from "../reminder.types.ts";
@@ -38,8 +39,7 @@ async function visible(
   reminderId: string,
 ): Promise<ReminderWithRecipients | undefined> {
   const found = await reminders.find({ familyId: family.id, reminderId });
-  const isHidden =
-    found?.reminder.visibility === "private" && found.reminder.ownerMemberId !== member.id;
+  const isHidden = found !== undefined && isHiddenFrom(found.reminder, member.id);
 
   return isHidden ? undefined : found;
 }
@@ -133,7 +133,7 @@ export async function update(
     return { status: "not-found" };
   }
 
-  if (found.reminder.visibility === "shared" && change.visibility === "private") {
+  if (isTurnedPrivate(found.reminder.visibility, change.visibility)) {
     return { status: "visibility-one-way" };
   }
 

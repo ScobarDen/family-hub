@@ -1,4 +1,5 @@
 import type { Membership } from "@/common/auth";
+import { isHiddenFrom } from "@/common/visibility";
 
 import type { PlanTree } from "../plan.repo.ts";
 import type { Assignment, PlanDependencies, PlanResult } from "../plan.types.ts";
@@ -10,7 +11,7 @@ export async function visibleTree(
   planId: string,
 ): Promise<PlanTree | undefined> {
   const tree = await plans.findTree(family.id, planId);
-  const isHidden = tree?.root.visibility === "private" && tree.root.ownerMemberId !== member.id;
+  const isHidden = tree !== undefined && isHiddenFrom(tree.root, member.id);
 
   return isHidden ? undefined : tree;
 }
