@@ -1,9 +1,10 @@
 import { z } from "zod";
 
+import { telegramLogin } from "./primitive.ts";
+
 export const familyNameMaxLength = 64;
 
-export const familyRequestBody = z.object({
-  initData: z.string().min(1),
+export const familyRequestBody = telegramLogin.extend({
   familyName: z.string().trim().min(1).max(familyNameMaxLength),
 });
 

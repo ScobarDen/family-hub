@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { careEntryPhotoMax, photo } from "./photo.ts";
+import { deleted, rubles } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const careKind = z.enum([
@@ -26,7 +27,6 @@ const weightStepsPerKg = 10;
 const roundingTolerance = 1e-9;
 
 const name = z.string().trim().min(1).max(careTextMaxLength);
-const rubles = z.number().int().positive();
 const dueDate = z.iso.date().nullable();
 
 // The cost of a medical Care Entry is a Pet Expense of the vet or of medicine.
@@ -92,7 +92,7 @@ export const careEntryList = z.array(careEntry);
 
 export type CareEntryList = z.infer<typeof careEntryList>;
 
-export const careEntryDeleted = z.object({ status: z.literal("deleted") });
+export const careEntryDeleted = deleted;
 
 export type CareEntryDeleted = z.infer<typeof careEntryDeleted>;
 

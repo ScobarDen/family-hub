@@ -2,10 +2,9 @@ import { z } from "zod";
 
 import { familyRequestStatus } from "./family-request.ts";
 import { memberSettings } from "./member.ts";
+import { named, telegramLogin } from "./primitive.ts";
 
-export const sessionRequest = z.object({
-  initData: z.string().min(1),
-});
+export const sessionRequest = telegramLogin;
 
 export const sessionResponse = z.discriminatedUnion("status", [
   z.object({ status: z.literal("member"), token: z.string() }),
@@ -15,8 +14,8 @@ export const sessionResponse = z.discriminatedUnion("status", [
 export type SessionResponse = z.infer<typeof sessionResponse>;
 
 export const currentMember = z.object({
-  member: z.object({ id: z.string(), name: z.string() }),
-  family: z.object({ id: z.string(), name: z.string() }),
+  member: named,
+  family: named,
   isFamilyOwner: z.boolean(),
   settings: memberSettings,
 });

@@ -2,13 +2,11 @@ import { z } from "zod";
 
 import { isTimeZone } from "./member.ts";
 import { visibility } from "./plan.ts";
+import { date, deleted, time } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const eventTitleMaxLength = 200;
 export const eventNoteMaxLength = 2000;
-
-const date = z.iso.date();
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 
 // An all-day Event has a date only; a timed one also has the wall-clock time and the zone it was
 // set in, which its Occurrences keep.
@@ -75,7 +73,7 @@ export const calendarEvent = z.object({
   id: z.string(),
   title: z.string(),
   note: z.string().nullable(),
-  start: z.object({ date, time: time.nullable(), timeZone: z.string().nullable() }),
+  start: eventStart,
   end: eventEnd.nullable(),
   recurrence: recurrence.nullable(),
   visibility,
@@ -94,6 +92,6 @@ export const occurrenceSkip = z.object({ date });
 
 export type OccurrenceSkip = z.infer<typeof occurrenceSkip>;
 
-export const eventDeleted = z.object({ status: z.literal("deleted") });
+export const eventDeleted = deleted;
 
 export type EventDeleted = z.infer<typeof eventDeleted>;

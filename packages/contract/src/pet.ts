@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { photoUrls } from "./photo.ts";
+import { deleted } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const petSpecies = z.enum(["dog", "cat", "bird", "rodent", "fish", "reptile", "other"]);
@@ -62,6 +63,6 @@ export const petDeletion = z.object({ petName: z.string() });
 
 export type PetDeletion = z.infer<typeof petDeletion>;
 
-export const petDeleted = z.object({ status: z.literal("deleted") });
+export const petDeleted = deleted;
 
 export type PetDeleted = z.infer<typeof petDeleted>;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { photo } from "./photo.ts";
+import { deleted, named } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const visibility = z.enum(["shared", "private"]);
@@ -34,7 +35,7 @@ export const planChange = subplanChange.extend({
 
 export type PlanChange = z.infer<typeof planChange>;
 
-export const planMember = z.object({ id: z.string(), name: z.string() });
+export const planMember = named;
 
 export type PlanMember = z.infer<typeof planMember>;
 
@@ -53,7 +54,7 @@ export const subplan = z.object({
 
 export type Subplan = z.infer<typeof subplan>;
 
-export const planPet = z.object({ id: z.string(), name: z.string() });
+export const planPet = named;
 
 export const planAlbumPreview = 10;
 
@@ -82,6 +83,6 @@ export const planList = z.array(plan);
 
 export type PlanList = z.infer<typeof planList>;
 
-export const planDeleted = z.object({ status: z.literal("deleted") });
+export const planDeleted = deleted;
 
 export type PlanDeleted = z.infer<typeof planDeleted>;

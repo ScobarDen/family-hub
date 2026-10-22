@@ -10,6 +10,7 @@ import {
   recurrence,
 } from "./event.ts";
 import { visibility } from "./plan.ts";
+import { time } from "./primitive.ts";
 import { reminderTextMaxLength } from "./reminder.ts";
 
 export const commandDraftLifetimeMs = 86_400_000;
@@ -20,8 +21,6 @@ export const voiceMaxSeconds = 30;
 export const voiceMaxBytes = 2_097_152;
 
 const ambiguousCandidates = 2;
-
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/u);
 
 // What a Reminder needs and the phrase may lack; such a draft is shown without «Создать».
 export const reminderDraftField = z.enum(["text", "date", "time"]);

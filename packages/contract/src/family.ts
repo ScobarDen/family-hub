@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { deleted } from "./primitive.ts";
+
 export const familyLeft = z.object({ status: z.enum(["left", "family-deleted"]) });
 
 export type FamilyLeft = z.infer<typeof familyLeft>;
@@ -20,6 +22,6 @@ export const familyDeletion = z.object({ familyName: z.string() });
 
 export type FamilyDeletion = z.infer<typeof familyDeletion>;
 
-export const familyDeleted = z.object({ status: z.literal("deleted") });
+export const familyDeleted = deleted;
 
 export type FamilyDeleted = z.infer<typeof familyDeleted>;

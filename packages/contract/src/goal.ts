@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { visibility } from "./plan.ts";
+import { named, rubles } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const goalTitleMaxLength = 200;
@@ -28,8 +29,6 @@ export type GoalIcon = z.infer<typeof goalIcon>;
 export const goalColor = z.enum(["blue", "green", "orange", "red", "violet", "teal", "pink"]);
 
 export type GoalColor = z.infer<typeof goalColor>;
-
-const rubles = z.number().int().positive();
 
 export const goalChange = z.object({
   title: z.string().trim().min(1).max(goalTitleMaxLength),
@@ -64,22 +63,20 @@ export type GoalOutcome = z.infer<typeof goalOutcome>;
 
 export const goalCompletion = z.object({ outcome: goalOutcome });
 
-const person = z.object({ id: z.string(), name: z.string() });
-
 export const movement = z.object({
   id: z.string(),
   kind: movementKind,
   amount: z.number(),
   date: z.string(),
-  member: person,
-  recordedBy: person,
+  member: named,
+  recordedBy: named,
   comment: z.string().nullable(),
   isOwn: z.boolean(),
 });
 
 export type Movement = z.infer<typeof movement>;
 
-export const goalShare = person.extend({ contributed: z.number(), withdrawn: z.number() });
+export const goalShare = named.extend({ contributed: z.number(), withdrawn: z.number() });
 
 export type GoalShare = z.infer<typeof goalShare>;
 
