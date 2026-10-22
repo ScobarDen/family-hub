@@ -1,7 +1,12 @@
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 
-import { createAuthService, createMembershipRepo, type MembershipRepo } from "@/common/auth";
+import {
+  createAuthService,
+  createMembershipRepo,
+  sessionRoute,
+  type MembershipRepo,
+} from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import { createDb, type Db } from "@/common/db";
 import { createMiniAppLinks, type MiniAppLinks } from "@/common/mini-app-link";
@@ -49,7 +54,6 @@ import {
   reminderRoute,
   type ReminderService,
 } from "@/modules/reminder";
-import { sessionRoute } from "@/modules/session";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
 import { healthRoute } from "./health.route.ts";

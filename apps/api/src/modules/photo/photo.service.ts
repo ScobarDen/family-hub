@@ -6,7 +6,7 @@ import { httpStatus } from "@/common/errors";
 import type { PhotoLinks } from "@/common/photo-link";
 import { BotApiError } from "@/common/telegram";
 
-import type { PhotoFiles } from "./photo-file.repo.ts";
+import type { PhotoFiles } from "./photo-file.api.ts";
 import type { PhotoRepo } from "./photo.repo.ts";
 
 export type PhotoDependencies = {
