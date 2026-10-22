@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, like, lt, lte, notInArray, or } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, lte, notInArray, or } from "drizzle-orm";
 
 import { familyMembers, reminderDispatch, type DispatchSource, type Db } from "@/common/db";
 
@@ -37,14 +37,14 @@ function isUnlocked(now: number) {
   return or(isNull(reminderDispatch.lockedUntil), lt(reminderDispatch.lockedUntil, now));
 }
 
+// A holder's id and its ids with a part after it sort next to each other, so the (source,
+// source_id) index reads them as one range; a LIKE would scan, as LIKE ignores case.
 function ofHolder({ familyId, sources, holderId }: HolderRows) {
   return and(
     eq(reminderDispatch.familyId, familyId),
     inArray(reminderDispatch.source, sources),
-    or(
-      eq(reminderDispatch.sourceId, holderId),
-      like(reminderDispatch.sourceId, sourceIdOf(holderId, "%")),
-    ),
+    gte(reminderDispatch.sourceId, holderId),
+    lte(reminderDispatch.sourceId, sourceIdOf(holderId, "￿")),
   );
 }
 
