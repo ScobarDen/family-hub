@@ -4,6 +4,8 @@ The «Цели» tab: the Family's Savings Goals. «Всего накоплен�
 
 A Goal shows its progress, what is left and, with a deadline, «~N ₽ / мес» to reach it in time; every Member's «внесено / снято»; and its Contributions and Withdrawals, newest first. A movement may be dated back and may be another Member's money; only the one who recorded it changes or deletes it. The salute goes off when a Contribution reaches the target. Closing a Goal as fulfilled or cancelled asks first and leaves it read-only with its Balance frozen.
 
+The Goal and movement forms are `reatomEditableRecord`s from `common/form`: they map values from a record and into a change, while creating, editing, the saving flags and the refused-submit message are the common module's. The movement form also keeps the Goal it was opened on, which a new movement is added to.
+
 ## Injected
 
 - `api` — `createGoalsApi(httpClient)`: the Goals the session Member may see with the total, the Family's Members, creating, changing and closing a Goal, and its movements.

@@ -1,4 +1,4 @@
-import { action, atom, computed, noop, reatomForm, wrap } from "@reatom/core";
+import { action, reatomForm } from "@reatom/core";
 import { z } from "zod";
 
 import {
@@ -7,9 +7,10 @@ import {
   petProfile,
   petShortTextMaxLength,
   type Pet,
+  type PetProfile,
 } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { reatomEditableRecord } from "@/common/form";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -63,54 +64,34 @@ function schemaFor(today: () => string) {
   });
 }
 
-async function saveProfile(
-  { api, pets, onSaved }: Omit<ProfileFormDependencies, "today">,
-  petId: string | undefined,
-  values: ProfileValues,
-): Promise<void> {
-  const profile = petProfile.parse({
+function profileOf(values: ProfileValues): PetProfile {
+  return petProfile.parse({
     ...values,
     sex: values.sex === "" ? null : values.sex,
     birthDate: values.birthDate === "" ? null : values.birthDate,
   });
-  const saved = await wrap(
-    petId === undefined ? api.create(profile) : api.saveProfile(petId, profile),
-  );
-
-  pets.keep(saved);
-  onSaved(saved);
 }
 
 export function reatomPetProfileForm({ api, pets, today, onSaved }: ProfileFormDependencies) {
-  const editedPetId = atom<string | undefined>(undefined, "pets.profileForm.editedPetId");
-  const form = reatomForm(emptyProfile, {
-    name: "pets.profileForm",
-    schema: schemaFor(today),
-    onSubmit: async (values: ProfileValues) => {
-      await wrap(saveProfile({ api, pets, onSaved }, editedPetId(), values));
+  const record = reatomEditableRecord({
+    name: "pets.profileRecord",
+    form: (onSubmit) =>
+      reatomForm(emptyProfile, { name: "pets.profileForm", schema: schemaFor(today), onSubmit }),
+    failureMessage: "Не получилось сохранить. Попробуйте ещё раз.",
+    valuesOf,
+    create: async (values) => api.create(profileOf(values)),
+    update: async (pet: Pet, values) => api.saveProfile(pet.id, profileOf(values)),
+    onSaved: (saved) => {
+      pets.keep(saved);
+      onSaved(saved);
     },
   });
 
   return {
-    form,
-    isCreating: computed(() => editedPetId() === undefined, "pets.profileForm.isCreating"),
-    isSaving: computed(() => !form.submit.ready(), "pets.profileForm.isSaving"),
-    failure: reatomSubmitFailure(form, {
-      message: "Не получилось сохранить. Попробуйте ещё раз.",
-      name: "pets.profileForm.failure",
-    }),
-
+    ...record,
     startCreating: action(() => {
-      editedPetId.set(undefined);
-      fillForm(form, emptyProfile);
+      record.startCreating(emptyProfile);
     }, "pets.profileForm.startCreating"),
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "pets.profileForm.save"),
-    startEditing: action((pet: Pet) => {
-      editedPetId.set(pet.id);
-      fillForm(form, valuesOf(pet));
-    }, "pets.profileForm.startEditing"),
   };
 }
 

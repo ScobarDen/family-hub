@@ -1,4 +1,4 @@
-import { action, atom, computed, noop, reatomForm, wrap } from "@reatom/core";
+import { action, computed, reatomForm } from "@reatom/core";
 import { z } from "zod";
 
 import {
@@ -9,7 +9,7 @@ import {
   type PlanChange,
 } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { reatomEditableRecord } from "@/common/form";
 import type { Choice } from "@/common/ui";
 
 import type { PlansApi } from "../plans.api.ts";
@@ -91,24 +91,22 @@ export function assigneeChoices(
   ];
 }
 
-function reatomPlanForm({ api, plans, onSaved }: PlanFormDependencies) {
-  const editedPlan = atom<Plan | undefined>(undefined, "plans.planForm.editedPlan");
-  const form = reatomForm(emptyPlan, {
-    name: "plans.planForm",
-    schema,
-    onSubmit: async (values: PlanValues) => {
-      const plan = editedPlan();
-      const saved = await wrap(
-        plan === undefined ? api.create(changeOf(values)) : api.update(plan.id, changeOf(values)),
-      );
-
+function reatomPlanRecord({ api, plans, onSaved }: PlanFormDependencies) {
+  return reatomEditableRecord({
+    name: "plans.planRecord",
+    form: (onSubmit) => reatomForm(emptyPlan, { name: "plans.planForm", schema, onSubmit }),
+    failureMessage: "Не получилось сохранить план. Попробуйте ещё раз.",
+    valuesOf,
+    create: async (values) => api.create(changeOf(values)),
+    update: async (plan: Plan, values) => api.update(plan.id, changeOf(values)),
+    onSaved: (saved) => {
       plans.keep(saved);
       onSaved(saved);
     },
   });
-
-  return { form, editedPlan };
 }
+
+type PlanRecord = ReturnType<typeof reatomPlanRecord>;
 
 // A trip's Plan keeps its photos in one of the Family's own Albums, not a Pet's.
 function reatomAlbumChoices({ plans }: PlanFormDependencies) {
@@ -123,10 +121,7 @@ function reatomAlbumChoices({ plans }: PlanFormDependencies) {
   );
 }
 
-function reatomChoices(
-  dependencies: PlanFormDependencies,
-  { form, editedPlan }: ReturnType<typeof reatomPlanForm>,
-) {
+function reatomChoices(dependencies: PlanFormDependencies, { form, edited }: PlanRecord) {
   const isPrivate = computed(
     () => form.fields.visibility() === "private",
     "plans.planForm.isPrivate",
@@ -135,7 +130,7 @@ function reatomChoices(
   return {
     // A Shared Plan never turns Private, so editing one offers no choice.
     canChooseVisibility: computed(
-      () => editedPlan()?.visibility !== "shared",
+      () => edited()?.visibility !== "shared",
       "plans.planForm.canChooseVisibility",
     ),
     assignees: computed(
@@ -160,17 +155,12 @@ function reatomChoices(
 }
 
 export function reatomPlanFormModel(dependencies: PlanFormDependencies) {
-  const { form, editedPlan } = reatomPlanForm(dependencies);
+  const record = reatomPlanRecord(dependencies);
+  const { form } = record;
 
   return {
-    form,
-    isCreating: computed(() => editedPlan() === undefined, "plans.planForm.isCreating"),
-    isSaving: computed(() => !form.submit.ready(), "plans.planForm.isSaving"),
-    ...reatomChoices(dependencies, { form, editedPlan }),
-    failure: reatomSubmitFailure(form, {
-      message: "Не получилось сохранить план. Попробуйте ещё раз.",
-      name: "plans.planForm.failure",
-    }),
+    ...record,
+    ...reatomChoices(dependencies, record),
 
     chooseVisibility: action((chosen: string) => {
       form.fields.visibility.set(chosen);
@@ -180,16 +170,8 @@ export function reatomPlanFormModel(dependencies: PlanFormDependencies) {
       }
     }, "plans.planForm.chooseVisibility"),
     startCreating: action((petId?: string) => {
-      editedPlan.set(undefined);
-      fillForm(form, { ...emptyPlan, petId: petId ?? "" });
+      record.startCreating({ ...emptyPlan, petId: petId ?? "" });
     }, "plans.planForm.startCreating"),
-    startEditing: action((plan: Plan) => {
-      editedPlan.set(plan);
-      fillForm(form, valuesOf(plan));
-    }, "plans.planForm.startEditing"),
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "plans.planForm.save"),
   };
 }
 

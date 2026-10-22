@@ -1,5 +1,5 @@
-import { context, reatomForm } from "@reatom/core";
-import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { context, noop, reatomForm } from "@reatom/core";
+import { beforeEach, describe, expect, expectTypeOf, test, vi } from "vite-plus/test";
 import { z } from "zod";
 
 import { reatomEditableRecord } from "./form.model.ts";
@@ -142,6 +142,43 @@ describe("an editable record", () => {
     expect(refused.saved).toEqual([]);
     expect(invalid.notes.failure()).toBeUndefined();
     expect(invalid.requests).toEqual([]);
+  });
+});
+
+describe("a record without drafts", () => {
+  test("is created and updated, and offers no start from a draft", async () => {
+    const requests: string[] = [];
+    const notes = reatomEditableRecord({
+      name: "test.plainNotes",
+      form: (onSubmit) => reatomForm({ title: "" }, { name: "test.plainNotes.form", onSubmit }),
+      failureMessage,
+      valuesOf: (note: Note) => ({ title: note.title }),
+      create: async ({ title }) => {
+        requests.push(`create ${title}`);
+
+        return { id: "note-new", title };
+      },
+      update: async (note, { title }) => {
+        requests.push(`update ${note.id} ${title}`);
+
+        return { ...note, title };
+      },
+      onSaved: noop,
+    });
+
+    notes.startCreating({ title: "Корм" });
+    notes.save();
+    await vi.waitFor(() => {
+      expect(requests).toEqual(["create Корм"]);
+    });
+
+    notes.startEditing({ id: "note-1", title: "Корм" });
+    notes.save();
+    await vi.waitFor(() => {
+      expect(requests).toEqual(["create Корм", "update note-1 Корм"]);
+    });
+    expect("startFromDraft" in notes).toBe(false);
+    expectTypeOf(notes).not.toHaveProperty("startFromDraft");
   });
 });
 

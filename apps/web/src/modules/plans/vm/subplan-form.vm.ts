@@ -1,4 +1,4 @@
-import { action, atom, computed, noop, reatomForm, wrap } from "@reatom/core";
+import { action, atom, computed, reatomForm, type Atom } from "@reatom/core";
 import { z } from "zod";
 
 import {
@@ -8,7 +8,7 @@ import {
   type SubplanChange,
 } from "@family-hub/contract";
 
-import { fillForm } from "@/common/form";
+import { reatomEditableRecord } from "@/common/form";
 
 import type { PlansApi } from "../plans.api.ts";
 import { reminderOf, reminderValueOf } from "../plans.lib.ts";
@@ -22,7 +22,7 @@ type SubplanFormDependencies = {
   onSaved: (plan: Plan) => void;
 };
 
-type Editing = { plan: Plan; subplanId: string | undefined };
+type Edited = { plan: Plan; subplanId: string };
 
 const emptySubplan = { title: "", dueDate: "", reminder: "", assigneeId: "" };
 
@@ -35,7 +35,13 @@ const schema = z.object({
   assigneeId: z.string(),
 });
 
-function valuesOf(subplan: Subplan): SubplanValues {
+function valuesOf({ plan, subplanId }: Edited): SubplanValues {
+  const subplan = plan.subplans.find(({ id }) => id === subplanId);
+
+  return subplan === undefined ? emptySubplan : subplanValuesOf(subplan);
+}
+
+function subplanValuesOf(subplan: Subplan): SubplanValues {
   return {
     title: subplan.title,
     dueDate: subplan.dueDate ?? "",
@@ -53,50 +59,50 @@ function changeOf(values: SubplanValues): SubplanChange {
   };
 }
 
-function reatomSubplanForm({ api, plans, onSaved }: SubplanFormDependencies) {
-  const editing = atom<Editing | undefined>(undefined, "plans.subplanForm.editing");
-  const form = reatomForm(emptySubplan, {
-    name: "plans.subplanForm",
-    schema,
-    onSubmit: async (values: SubplanValues) => {
-      const target = editing();
+function reatomSubplanRecord(
+  { api, plans, onSaved }: SubplanFormDependencies,
+  plan: Atom<Plan | undefined>,
+) {
+  return reatomEditableRecord({
+    name: "plans.subplanRecord",
+    form: (onSubmit) => reatomForm(emptySubplan, { name: "plans.subplanForm", schema, onSubmit }),
+    failureMessage: "Не получилось сохранить шаг. Попробуйте ещё раз.",
+    valuesOf,
+    create: async (values) => {
+      const target = plan();
 
       if (target === undefined) {
-        return;
+        throw new Error("No Plan is open to add the subplan to");
       }
 
-      const { plan, subplanId } = target;
-      const saved = await wrap(
-        subplanId === undefined
-          ? api.addSubplan(plan.id, changeOf(values))
-          : api.updateSubplan({ planId: plan.id, subplanId }, changeOf(values)),
-      );
-
+      return api.addSubplan(target.id, changeOf(values));
+    },
+    update: async ({ plan: target, subplanId }: Edited, values) =>
+      api.updateSubplan({ planId: target.id, subplanId }, changeOf(values)),
+    onSaved: (saved) => {
       plans.keep(saved);
       onSaved(saved);
     },
   });
-
-  return { form, editing };
 }
 
 export function reatomSubplanFormModel(dependencies: SubplanFormDependencies) {
-  const { form, editing } = reatomSubplanForm(dependencies);
+  const plan = atom<Plan | undefined>(undefined, "plans.subplanForm.plan");
+  const { startCreating, startEditing, ...record } = reatomSubplanRecord(dependencies, plan);
+  const { form } = record;
 
   return {
-    form,
-    isCreating: computed(() => editing()?.subplanId === undefined, "plans.subplanForm.isCreating"),
-    isSaving: computed(() => !form.submit.ready(), "plans.subplanForm.isSaving"),
-    assignees: computed(() => {
-      const plan = editing()?.plan;
-
-      return assigneeChoices(dependencies.plans.members.data() ?? [], {
-        isPrivate: plan?.visibility === "private",
-        ownerId: dependencies.self(),
-      });
-    }, "plans.subplanForm.assignees"),
+    ...record,
+    assignees: computed(
+      () =>
+        assigneeChoices(dependencies.plans.members.data() ?? [], {
+          isPrivate: plan()?.visibility === "private",
+          ownerId: dependencies.self(),
+        }),
+      "plans.subplanForm.assignees",
+    ),
     warning: computed((): string | undefined => {
-      const planDueDate = editing()?.plan.dueDate ?? null;
+      const planDueDate = plan()?.dueDate ?? null;
       const dueDate = form.fields.dueDate();
 
       return planDueDate !== null && dueDate !== "" && dueDate > planDueDate
@@ -104,19 +110,14 @@ export function reatomSubplanFormModel(dependencies: SubplanFormDependencies) {
         : undefined;
     }, "plans.subplanForm.warning"),
 
-    startAdding: action((plan: Plan) => {
-      editing.set({ plan, subplanId: undefined });
-      fillForm(form, emptySubplan);
+    startAdding: action((target: Plan) => {
+      plan.set(target);
+      startCreating(emptySubplan);
     }, "plans.subplanForm.startAdding"),
-    startEditing: action((plan: Plan, subplanId: string) => {
-      const subplan = plan.subplans.find(({ id }) => id === subplanId);
-
-      editing.set({ plan, subplanId });
-      fillForm(form, subplan === undefined ? emptySubplan : valuesOf(subplan));
+    startEditing: action((target: Plan, subplanId: string) => {
+      plan.set(target);
+      startEditing({ plan: target, subplanId });
     }, "plans.subplanForm.startEditing"),
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "plans.subplanForm.save"),
   };
 }
 

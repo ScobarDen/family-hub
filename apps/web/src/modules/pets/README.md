@@ -16,4 +16,4 @@ The pet tab: the Family's Pets, each one's card and its Pet Memo. With a single 
 
 The card follows the spec — header with the avatar, «Скоро», Pet Memo, «Траты за месяц», «Фото», «Журнал»; the expenses, photos and journal blocks come from the `care` module through the page. `makeAvatar` saves the photo picked in the care module's viewer as the open Pet's avatar.
 
-Both forms are filled through `fillForm` from `common/form`, never the form's own `reset`, which also aborts the next submit.
+The profile form is a `reatomEditableRecord` from `common/form`: it maps values from a Pet and into a profile, while creating, editing and the saving flags are the common module's. The Pet Memo form only edits the memo of a Pet that exists, so it has no creating to share and is filled through `fillForm`, never the form's own `reset`, which also aborts the next submit.

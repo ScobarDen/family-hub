@@ -1,4 +1,4 @@
-import { action, atom, computed, noop, reatomForm, wrap, type Atom } from "@reatom/core";
+import { action, computed, reatomForm } from "@reatom/core";
 import { z } from "zod";
 
 import {
@@ -9,7 +9,7 @@ import {
   type GoalChange,
 } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { reatomEditableRecord } from "@/common/form";
 
 import type { GoalsApi } from "../goals.api.ts";
 import type { GoalsModel } from "../goals.model.ts";
@@ -62,56 +62,30 @@ function valuesOf(goal: Goal): GoalValues {
   };
 }
 
-type GoalForm = ReturnType<typeof reatomForm<GoalValues>>;
-
-function reatomFlags(form: GoalForm, edited: Atom<Goal | undefined>) {
-  return {
-    // A Shared Goal never turns Private, so editing one offers no choice.
-    canChooseVisibility: computed(
-      () => edited()?.visibility !== "shared",
-      "goals.form.canChooseVisibility",
-    ),
-    failure: reatomSubmitFailure(form, {
-      message: "Не получилось сохранить цель. Попробуйте ещё раз.",
-      name: "goals.form.failure",
-    }),
-  };
-}
-
 export function reatomGoalForm({ api, goals, onSaved }: GoalFormDependencies) {
-  const edited = atom<Goal | undefined>(undefined, "goals.form.edited");
-  const form = reatomForm(emptyGoal, {
-    name: "goals.form",
-    schema,
-    onSubmit: async (values: GoalValues) => {
-      const goal = edited();
-      const change = changeOf(values);
-      const saved = await wrap(
-        goal === undefined ? api.create(change) : api.update(goal.id, change),
-      );
-
+  const record = reatomEditableRecord({
+    name: "goals.record",
+    form: (onSubmit) => reatomForm(emptyGoal, { name: "goals.form", schema, onSubmit }),
+    failureMessage: "Не получилось сохранить цель. Попробуйте ещё раз.",
+    valuesOf,
+    create: async (values) => api.create(changeOf(values)),
+    update: async (goal: Goal, values) => api.update(goal.id, changeOf(values)),
+    onSaved: (saved) => {
       goals.keep(saved);
       onSaved(saved);
     },
   });
 
   return {
-    form,
-    isCreating: computed(() => edited() === undefined, "goals.form.isCreating"),
-    isSaving: computed(() => !form.submit.ready(), "goals.form.isSaving"),
-    ...reatomFlags(form, edited),
-
+    ...record,
+    // A Shared Goal never turns Private, so editing one offers no choice.
+    canChooseVisibility: computed(
+      () => record.edited()?.visibility !== "shared",
+      "goals.form.canChooseVisibility",
+    ),
     startCreating: action(() => {
-      edited.set(undefined);
-      fillForm(form, emptyGoal);
+      record.startCreating(emptyGoal);
     }, "goals.form.startCreating"),
-    startEditing: action((goal: Goal) => {
-      edited.set(goal);
-      fillForm(form, valuesOf(goal));
-    }, "goals.form.startEditing"),
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "goals.form.save"),
   };
 }
 

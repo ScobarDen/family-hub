@@ -1,4 +1,4 @@
-import { action, atom, computed, noop, reatomForm, wrap } from "@reatom/core";
+import { action, reatomForm } from "@reatom/core";
 import { z } from "zod";
 
 import {
@@ -6,9 +6,10 @@ import {
   albumDescriptionMaxLength,
   albumTitleMaxLength,
   type Album,
+  type AlbumChange,
 } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { reatomEditableRecord } from "@/common/form";
 
 import type { AlbumsApi } from "../albums.api.ts";
 
@@ -25,42 +26,27 @@ const schema = z.object({
     .max(albumDescriptionMaxLength, `Не длиннее ${albumDescriptionMaxLength} символов`),
 });
 
-export function reatomAlbumForm({ api, onSaved }: AlbumFormDependencies) {
-  const edited = atom<Album | undefined>(undefined, "albums.form.edited");
-  const form = reatomForm(emptyAlbum, {
-    name: "albums.form",
-    schema,
-    onSubmit: async (values: AlbumValues) => {
-      const target = edited();
-      const change = albumChange.parse({ ...values, coverPhotoId: target?.coverPhotoId ?? null });
-      const saved = await wrap(
-        target === undefined ? api.create(change) : api.update(target.id, change),
-      );
+function changeOf(values: AlbumValues, coverPhotoId: string | null): AlbumChange {
+  return albumChange.parse({ ...values, coverPhotoId });
+}
 
-      onSaved(saved);
-    },
+export function reatomAlbumForm({ api, onSaved }: AlbumFormDependencies) {
+  const record = reatomEditableRecord({
+    name: "albums.record",
+    form: (onSubmit) => reatomForm(emptyAlbum, { name: "albums.form", schema, onSubmit }),
+    failureMessage: "Не получилось сохранить альбом. Попробуйте ещё раз.",
+    valuesOf: (album: Album) => ({ title: album.title, description: album.description ?? "" }),
+    create: async (values) => api.create(changeOf(values, null)),
+    update: async (album: Album, values) =>
+      api.update(album.id, changeOf(values, album.coverPhotoId)),
+    onSaved,
   });
 
   return {
-    form,
-    isCreating: computed(() => edited() === undefined, "albums.form.isCreating"),
-    isSaving: computed(() => !form.submit.ready(), "albums.form.isSaving"),
-    failure: reatomSubmitFailure(form, {
-      message: "Не получилось сохранить альбом. Попробуйте ещё раз.",
-      name: "albums.form.failure",
-    }),
-
+    ...record,
     startCreating: action(() => {
-      edited.set(undefined);
-      fillForm(form, emptyAlbum);
+      record.startCreating(emptyAlbum);
     }, "albums.form.startCreating"),
-    startEditing: action((album: Album) => {
-      edited.set(album);
-      fillForm(form, { title: album.title, description: album.description ?? "" });
-    }, "albums.form.startEditing"),
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "albums.form.save"),
   };
 }
 
