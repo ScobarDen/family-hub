@@ -1,8 +1,10 @@
 export { Button } from "./button.view.tsx";
 export { ChartContainer, type ChartConfig } from "./chart.view.tsx";
 export { ChoiceField, type Choice } from "./choice-field.view.tsx";
+export { ChipGroup } from "./chip-group.view.tsx";
 export { Chip } from "./chip.view.tsx";
 export { FieldError } from "./field-error.view.tsx";
+export { FilePick } from "./file-pick.view.tsx";
 export { FormShell } from "./form-shell.view.tsx";
 export { IconBadge } from "./icon-badge.view.tsx";
 export { Input } from "./input.view.tsx";

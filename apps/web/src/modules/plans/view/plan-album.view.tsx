@@ -1,5 +1,6 @@
 import { Images } from "lucide-react";
 
+import { PhotoThumbs } from "@/common/photo-viewer";
 import { Section, SectionItem } from "@/common/ui";
 
 import type { PlanDetails } from "../plans.lib.ts";
@@ -17,26 +18,13 @@ export function PlanAlbum({ album, onOpen }: PlanAlbumProps) {
 
   return (
     <Section title={album.title}>
-      {album.photos.length > 0 && (
-        <div className="flex gap-1 overflow-x-auto px-4 pt-3 pb-2">
-          {album.photos.map((photo) => (
-            <button
-              key={photo.id}
-              type="button"
-              className="size-20 shrink-0 overflow-hidden rounded-md bg-muted"
-              aria-label="Открыть альбом"
-              onClick={open}
-            >
-              <img
-                src={photo.urls.thumb}
-                alt=""
-                loading="lazy"
-                className="size-full object-cover"
-              />
-            </button>
-          ))}
-        </div>
-      )}
+      <PhotoThumbs
+        photos={album.photos}
+        className="flex gap-1 overflow-x-auto px-4 pt-3 pb-2"
+        thumbClassName="size-20 rounded-md"
+        label="Открыть альбом"
+        onOpen={open}
+      />
       <SectionItem
         icon={Images}
         title="Открыть альбом"

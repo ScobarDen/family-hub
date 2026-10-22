@@ -1,6 +1,14 @@
 import { reatomComponent } from "@reatom/react";
 
-import { Button, Chip, type Choice, ChoiceField, FormShell, Label, TextField } from "@/common/ui";
+import {
+  Button,
+  Chip,
+  ChipGroup,
+  type Choice,
+  ChoiceField,
+  FormShell,
+  TextField,
+} from "@/common/ui";
 
 import { repeatChoices } from "../calendar.config.ts";
 import type { ReminderFormModel } from "../vm/reminder-form.vm.ts";
@@ -15,25 +23,22 @@ type ReminderFormProps = { model: ReminderFormModel; onCancel: () => void };
 
 const Recipients = reatomComponent(
   ({ model }: { model: ReminderFormModel }) => (
-    <div className="flex flex-col gap-2">
-      <Label>Кому</Label>
-      <div className="flex flex-wrap gap-2">
-        <Chip isSelected={model.isForEveryone()} onClick={model.chooseEveryone}>
-          Всем
+    <ChipGroup label="Кому">
+      <Chip isSelected={model.isForEveryone()} onClick={model.chooseEveryone}>
+        Всем
+      </Chip>
+      {model.recipients().map((recipient) => (
+        <Chip
+          key={recipient.id}
+          isSelected={recipient.isChosen}
+          onClick={() => {
+            model.toggleRecipient(recipient.id);
+          }}
+        >
+          {recipient.name}
         </Chip>
-        {model.recipients().map((recipient) => (
-          <Chip
-            key={recipient.id}
-            isSelected={recipient.isChosen}
-            onClick={() => {
-              model.toggleRecipient(recipient.id);
-            }}
-          >
-            {recipient.name}
-          </Chip>
-        ))}
-      </div>
-    </div>
+      ))}
+    </ChipGroup>
   ),
   "Recipients",
 );

@@ -2,10 +2,10 @@ import { reatomComponent } from "@reatom/react";
 
 import {
   Chip,
+  ChipGroup,
   type Choice,
   ChoiceField,
   FormShell,
-  Label,
   TextAreaField,
   TextField,
   visibilityChoices,
@@ -24,22 +24,19 @@ type EventFormProps = { model: EventFormModel; onCancel: () => void };
 
 const ReminderOffsets = reatomComponent(
   ({ model }: { model: EventFormModel }) => (
-    <div className="flex flex-col gap-2">
-      <Label>Напомнить</Label>
-      <div className="flex flex-wrap gap-2">
-        {model.offsets().map((choice) => (
-          <Chip
-            key={choice.offset}
-            isSelected={choice.isChosen}
-            onClick={() => {
-              model.toggleOffset(choice.offset);
-            }}
-          >
-            {choice.title}
-          </Chip>
-        ))}
-      </div>
-    </div>
+    <ChipGroup label="Напомнить">
+      {model.offsets().map((choice) => (
+        <Chip
+          key={choice.offset}
+          isSelected={choice.isChosen}
+          onClick={() => {
+            model.toggleOffset(choice.offset);
+          }}
+        >
+          {choice.title}
+        </Chip>
+      ))}
+    </ChipGroup>
   ),
   "ReminderOffsets",
 );

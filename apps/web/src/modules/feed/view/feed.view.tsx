@@ -18,12 +18,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { PhotoViewer } from "@/common/photo-viewer";
+import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
 import { Button, Chip, PersonAvatar, Section, SectionItem } from "@/common/ui";
 
 import type { FeedRow } from "../feed.lib.ts";
 import { feedFilters, type FeedModel } from "../vm/feed.vm.ts";
-import { FeedPhotos } from "./feed-photos.view.tsx";
 
 const icons: Record<FeedRow["kind"], LucideIcon> = {
   event: CalendarDays,
@@ -99,7 +98,15 @@ const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
         }
         onClick={hasActions ? undefined : open}
       />
-      <FeedPhotos row={row} model={model} />
+      <PhotoThumbs
+        photos={row.photos}
+        more={row.morePhotos}
+        className="flex gap-1 pr-4 pb-2 pl-14"
+        thumbClassName="size-16 rounded-md"
+        onOpen={(photoId) => {
+          model.viewer.open(row.photos, photoId);
+        }}
+      />
     </>
   );
 }, "FeedRowItem");

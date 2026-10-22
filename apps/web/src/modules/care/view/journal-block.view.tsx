@@ -2,11 +2,11 @@ import { reatomComponent } from "@reatom/react";
 import { Plus } from "lucide-react";
 import { Fragment } from "react";
 
+import { PhotoThumbs } from "@/common/photo-viewer";
 import { Chip, Section, SectionItem } from "@/common/ui";
 
 import { weightRanges, type WeightRange } from "../care.config.ts";
 import type { CareBlockProps } from "./expenses-block.view.tsx";
-import { PhotoThumbs } from "./photo-thumbs.view.tsx";
 import { WeightChart } from "./weight-chart.view.tsx";
 import { WeightHeader } from "./weight-header.view.tsx";
 
@@ -71,6 +71,8 @@ export const JournalBlock = reatomComponent(
               }
             />
             <PhotoThumbs
+              className="flex flex-wrap gap-1 px-4 pb-2"
+              thumbClassName="size-16 rounded-md"
               photos={item.photos}
               onOpen={(photoId) => {
                 model.viewer.open(item.photos, photoId);

@@ -1,21 +1,23 @@
 import { reatomComponent } from "@reatom/react";
 import { Pencil, Star, Trash2 } from "lucide-react";
 
-import { PhotoViewer } from "@/common/photo-viewer";
+import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
 import { Section, SectionItem } from "@/common/ui";
 
 import type { RecipeDetails as RecipeDetailsData } from "../recipes.lib.ts";
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { RecipeCooked } from "./recipe-cooked.view.tsx";
 import { RecipeIngredients } from "./recipe-ingredients.view.tsx";
-import { RecipePhotos } from "./recipe-photos.view.tsx";
 
 type DetailsProps = { model: RecipesScreenModel; recipe: RecipeDetailsData; checked: number[] };
 
 export const RecipeDetails = reatomComponent(
   ({ model, recipe, checked }: DetailsProps) => (
     <>
-      <RecipePhotos
+      <PhotoThumbs
+        className="flex gap-1 overflow-x-auto px-4 pb-3"
+        thumbClassName="size-28 rounded-lg"
+        resolution="medium"
         photos={recipe.photos}
         onOpen={(photoId) => {
           model.viewer.open(recipe.photos, photoId);
