@@ -71,11 +71,7 @@ export const DigestSetting = reatomComponent(({ model }: DigestProps) => {
           <DigestPreview model={model} />
         </>
       )}
-      {failure !== undefined && (
-        <div className="px-4 py-2">
-          <FieldError>{failure}</FieldError>
-        </div>
-      )}
+      <FieldError className="px-4 py-2">{failure}</FieldError>
     </>
   );
 }, "DigestSetting");

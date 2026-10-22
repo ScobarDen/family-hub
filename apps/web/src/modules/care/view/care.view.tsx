@@ -62,9 +62,7 @@ export const Care = reatomComponent(({ model }: CareProps) => {
         onCancel={model.back}
         onRemove={model.remove}
       />
-      <div className="px-4">
-        <FieldError>{model.failure()}</FieldError>
-      </div>
+      <FieldError className="px-4">{model.failure()}</FieldError>
     </>
   );
 }, "Care");

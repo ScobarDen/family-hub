@@ -6,9 +6,7 @@ import { Button, Section } from "@/common/ui";
 import type { CareModel } from "../vm/care.vm.ts";
 import { ExpenseRows } from "./expense-rows.view.tsx";
 
-export type CareBlockProps = { model: CareModel };
-
-export const ExpensesBlock = reatomComponent(({ model }: CareBlockProps) => {
+export const ExpensesBlock = reatomComponent(({ model }: { model: CareModel }) => {
   const month = model.month();
 
   return (

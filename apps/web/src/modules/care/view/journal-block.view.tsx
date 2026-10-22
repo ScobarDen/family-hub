@@ -6,13 +6,13 @@ import { PhotoThumbs } from "@/common/photo-viewer";
 import { Chip, Section, SectionItem } from "@/common/ui";
 
 import { weightRanges, type WeightRange } from "../care.config.ts";
-import type { CareBlockProps } from "./expenses-block.view.tsx";
+import type { CareModel } from "../vm/care.vm.ts";
 import { WeightChart } from "./weight-chart.view.tsx";
 import { WeightHeader } from "./weight-header.view.tsx";
 
 const ranges: WeightRange[] = ["quarter", "year", "all"];
 
-const WeightBlock = reatomComponent(({ model }: CareBlockProps) => {
+const WeightBlock = reatomComponent(({ model }: { model: CareModel }) => {
   const weight = model.weight();
 
   return (
@@ -44,7 +44,7 @@ const WeightBlock = reatomComponent(({ model }: CareBlockProps) => {
 }, "WeightBlock");
 
 export const JournalBlock = reatomComponent(
-  ({ model }: CareBlockProps) => (
+  ({ model }: { model: CareModel }) => (
     <>
       <WeightBlock model={model} />
       <Section title="Журнал">

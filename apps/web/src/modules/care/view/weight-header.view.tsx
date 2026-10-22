@@ -3,10 +3,10 @@ import { Scale } from "lucide-react";
 
 import { Button } from "@/common/ui";
 
-import type { CareBlockProps } from "./expenses-block.view.tsx";
+import type { CareModel } from "../vm/care.vm.ts";
 
 // The last weighing leads the block; the chart under it is the evidence.
-export const WeightHeader = reatomComponent(({ model }: CareBlockProps) => {
+export const WeightHeader = reatomComponent(({ model }: { model: CareModel }) => {
   const summary = model.weightSummary();
 
   return (

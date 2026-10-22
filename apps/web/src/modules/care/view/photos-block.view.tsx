@@ -4,12 +4,12 @@ import { Images, UserRound } from "lucide-react";
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
 import { Section, SectionItem } from "@/common/ui";
 
-import type { CareBlockProps } from "./expenses-block.view.tsx";
+import type { CareModel } from "../vm/care.vm.ts";
 
 const avatarAction = { label: "Сделать аватаром", icon: UserRound };
 
 // The «Фото» block of the pet card: every photo of the Pet's entries, and the viewer over them.
-export const PhotosBlock = reatomComponent(({ model }: CareBlockProps) => {
+export const PhotosBlock = reatomComponent(({ model }: { model: CareModel }) => {
   const photos = model.petPhotos();
 
   return (

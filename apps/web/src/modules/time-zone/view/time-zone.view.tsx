@@ -38,11 +38,7 @@ export const TimeZone = reatomComponent(({ model }: TimeZoneProps) => {
           />
         }
       />
-      {failure !== undefined && (
-        <div className="px-4 py-2">
-          <FieldError>{failure}</FieldError>
-        </div>
-      )}
+      <FieldError className="px-4 py-2">{failure}</FieldError>
     </>
   );
 }, "TimeZone");
