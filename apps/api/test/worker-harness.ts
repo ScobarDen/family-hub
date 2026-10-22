@@ -48,7 +48,20 @@ function createTestEnv(ai: FakeAi): Env {
   };
 }
 
+function createEdgeCache() {
+  const stored = new Map<string, Response>();
+
+  return {
+    match: async (request: Request) => stored.get(request.url)?.clone(),
+    put: async (request: Request, response: Response) => {
+      stored.set(request.url, response);
+    },
+  };
+}
+
 export function startWorker({ now = "2026-10-04T09:00:00Z" }: { now?: string } = {}) {
+  vi.stubGlobal("caches", { default: createEdgeCache() });
+
   const clock = createFakeClock(now);
   const bot = createFakeBotApi();
   const ai = createFakeAi();

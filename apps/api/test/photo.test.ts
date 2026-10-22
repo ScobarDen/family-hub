@@ -166,6 +166,37 @@ describe("a signed photo link", () => {
     ]);
   });
 
+  test("is checked again when the edge cache already holds the photo", async () => {
+    const worker = await startWithBuick();
+    const photo = await uploaded(worker, asya);
+    const warmed = await worker.request(photo.urls.full);
+    const forged = await worker.request(photo.urls.full.replace(/sig=.+$/u, "sig=AAAA"));
+
+    worker.clock.set("2026-10-05T11:00:01Z");
+
+    const stale = await worker.request(photo.urls.full);
+
+    expect([warmed.status, forged.status, stale.status]).toEqual([200, 403, 403]);
+  });
+
+  test("answers gone from a warmed cache once the photo is deleted or the channel disconnected", async () => {
+    const worker = await startWithBuick();
+    const deleted = await uploaded(worker, asya, 1);
+    const kept = await uploaded(worker, asya, 2);
+
+    await worker.request(deleted.urls.thumb);
+    await worker.request(kept.urls.thumb);
+    await request(worker, asya, { method: "DELETE", path: `/api/photos/${deleted.id}` });
+
+    const afterDelete = await worker.request(deleted.urls.thumb);
+
+    await worker.setPhotoChannel(worker.familyId, null);
+
+    const afterDisconnect = await worker.request(kept.urls.thumb);
+
+    expect([afterDelete.status, afterDisconnect.status]).toEqual([410, 410]);
+  });
+
   test("answers gone once the channel is disconnected", async () => {
     const worker = await startWithBuick();
     const photo = await uploaded(worker, asya);

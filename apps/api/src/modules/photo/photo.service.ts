@@ -34,7 +34,9 @@ export type SignedRequest = {
   signature: string;
 };
 
-export type ServedPhoto = { status: "ok"; body: Response } | { status: "forbidden" | "gone" };
+export type ServedPhoto =
+  | { status: "ok"; open: () => Promise<Response> }
+  | { status: "forbidden" | "gone" };
 
 function viewerOf({ member, isFamilyOwner }: Membership) {
   return { memberId: member.id, isFamilyOwner };
@@ -131,7 +133,7 @@ async function serve(
   const isStored = row !== undefined && (await photos.channelOf(row.familyId)) !== undefined;
 
   return isStored
-    ? { status: "ok", body: await files.open(row.variants[request.variant]) }
+    ? { status: "ok", open: async () => files.open(row.variants[request.variant]) }
     : { status: "gone" };
 }
 

@@ -60,19 +60,32 @@ function cacheKeyOf(
   return new Request(new URL(`/photos/${photoId}/${variant}`, context.req.url));
 }
 
-async function freshPhoto(context: Context<PhotoEnv>, signed: SignedRequest): Promise<Response> {
-  const served = await context.var.photos.serve(signed);
+// Workers give the edge cache as caches.default; elsewhere there is none.
+async function cachedOrFresh(
+  context: Context<PhotoEnv>,
+  key: Request,
+  open: () => Promise<Response>,
+): Promise<Response> {
+  const cache = typeof caches === "undefined" ? undefined : caches.default;
+  const cached = await cache?.match(key);
 
-  if (served.status !== "ok") {
-    return context.body(null, served.status === "gone" ? httpStatus.gone : httpStatus.forbidden);
+  if (cached !== undefined) {
+    return cached;
   }
 
-  return new Response(served.body.body, {
+  const file = await open();
+  const response = new Response(file.body, {
     headers: { "content-type": "image/jpeg", "cache-control": cacheControl },
   });
+
+  if (file.ok && cache !== undefined) {
+    context.executionCtx.waitUntil(cache.put(key, response.clone()));
+  }
+
+  return response;
 }
 
-// Workers give the edge cache as caches.default; elsewhere, as in tests, there is none.
+// The cache only spares the Telegram download: the link and the photo are checked on every request.
 async function servePhoto(context: Context<PhotoEnv>): Promise<Response> {
   const signed = signedRequestOf(context);
 
@@ -80,21 +93,13 @@ async function servePhoto(context: Context<PhotoEnv>): Promise<Response> {
     return context.body(null, httpStatus.forbidden);
   }
 
-  const cache = typeof caches === "undefined" ? undefined : caches.default;
-  const key = cacheKeyOf(context, signed);
-  const cached = await cache?.match(key);
+  const served = await context.var.photos.serve(signed);
 
-  if (cached !== undefined) {
-    return cached;
+  if (served.status !== "ok") {
+    return context.body(null, served.status === "gone" ? httpStatus.gone : httpStatus.forbidden);
   }
 
-  const response = await freshPhoto(context, signed);
-
-  if (response.ok && cache !== undefined) {
-    context.executionCtx.waitUntil(cache.put(key, response.clone()));
-  }
-
-  return response;
+  return cachedOrFresh(context, cacheKeyOf(context, signed), served.open);
 }
 
 export const photoRoute = new Hono<PhotoEnv>()
