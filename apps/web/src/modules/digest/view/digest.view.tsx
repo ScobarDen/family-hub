@@ -11,7 +11,6 @@ const DigestTime = reatomComponent(
   ({ model }: DigestProps) => (
     <SectionItem
       icon={Clock}
-      tone="gray"
       title="Время сводки"
       after={
         <Input
@@ -29,6 +28,24 @@ const DigestTime = reatomComponent(
   "DigestTime",
 );
 
+// What the bot will send, so the switch shows its result rather than a promise.
+const DigestPreview = reatomComponent(
+  ({ model }: DigestProps) => (
+    <div className="border-t border-border px-4 pt-3 pb-4 pl-14">
+      <div className="flex max-w-72 flex-col gap-1 rounded-2xl rounded-bl-md bg-secondary px-3.5 py-2.5 text-[0.9375rem]">
+        <span className="font-medium">Сводка на сегодня</span>
+        <span>Просрочено: что не успели раньше</span>
+        <span>Сегодня: события, напоминания и сроки</span>
+        <span className="self-end text-xs text-muted-foreground">{model.time()}</span>
+      </div>
+      <p className="pt-2 text-[0.8125rem] text-muted-foreground">
+        В день, когда нечего сказать, бот промолчит
+      </p>
+    </div>
+  ),
+  "DigestPreview",
+);
+
 export const DigestSetting = reatomComponent(({ model }: DigestProps) => {
   const failure = model.failure();
 
@@ -36,9 +53,8 @@ export const DigestSetting = reatomComponent(({ model }: DigestProps) => {
     <>
       <SectionItem
         icon={Sunrise}
-        tone="orange"
         title="Утренняя сводка"
-        subtitle="Что просрочено и что сегодня — сообщением от бота"
+        subtitle={model.schedule()}
         after={
           <Switch
             aria-label="Утренняя сводка"
@@ -49,7 +65,12 @@ export const DigestSetting = reatomComponent(({ model }: DigestProps) => {
           />
         }
       />
-      {model.isEnabled() && <DigestTime model={model} />}
+      {model.isEnabled() && (
+        <>
+          <DigestTime model={model} />
+          <DigestPreview model={model} />
+        </>
+      )}
       {failure !== undefined && (
         <div className="px-4 py-2">
           <FieldError>{failure}</FieldError>

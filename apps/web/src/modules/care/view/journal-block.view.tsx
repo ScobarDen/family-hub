@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import { NotebookPen, Plus, Scale } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Fragment } from "react";
 
 import { Chip, Section, SectionItem } from "@/common/ui";
@@ -8,6 +8,7 @@ import { weightRanges, type WeightRange } from "../care.config.ts";
 import type { CareBlockProps } from "./expenses-block.view.tsx";
 import { PhotoThumbs } from "./photo-thumbs.view.tsx";
 import { WeightChart } from "./weight-chart.view.tsx";
+import { WeightHeader } from "./weight-header.view.tsx";
 
 const ranges: WeightRange[] = ["quarter", "year", "all"];
 
@@ -16,10 +17,12 @@ const WeightBlock = reatomComponent(({ model }: CareBlockProps) => {
 
   return (
     <Section title="Вес">
-      <div className="flex gap-2 px-4 pt-3">
+      <WeightHeader model={model} />
+      <div className="flex gap-1.5 px-4 pt-4">
         {ranges.map((range) => (
           <Chip
             key={range}
+            className="h-7 px-3 text-[0.8125rem]"
             isSelected={range === weight.range}
             onClick={() => {
               model.chooseWeightRange(range);
@@ -32,17 +35,9 @@ const WeightBlock = reatomComponent(({ model }: CareBlockProps) => {
       {weight.points.length > 1 ? (
         <WeightChart points={weight.points} />
       ) : (
-        <SectionItem title="Для графика нужно хотя бы два взвешивания" />
-      )}
-      {!model.isReadOnly() && (
-        <SectionItem
-          icon={Scale}
-          tone="teal"
-          title="Записать вес"
-          onClick={() => {
-            model.add("weight");
-          }}
-        />
+        <p className="px-4 py-4 text-[0.9375rem] text-muted-foreground">
+          Для графика нужно хотя бы два взвешивания
+        </p>
       )}
     </Section>
   );
@@ -56,7 +51,6 @@ export const JournalBlock = reatomComponent(
         {!model.isReadOnly() && (
           <SectionItem
             icon={Plus}
-            tone="green"
             title="Добавить запись"
             onClick={() => {
               model.add("vaccination");
@@ -66,8 +60,6 @@ export const JournalBlock = reatomComponent(
         {model.journal().map((item) => (
           <Fragment key={item.id}>
             <SectionItem
-              icon={NotebookPen}
-              tone="gray"
               title={item.title}
               subtitle={item.note === undefined ? item.subtitle : `${item.subtitle}\n${item.note}`}
               onClick={

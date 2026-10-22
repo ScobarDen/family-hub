@@ -1,9 +1,7 @@
-import { Bell, Cake, CalendarDays, ListTodo, Syringe, TriangleAlert } from "lucide-react";
-
-import { formatDate } from "@/common/format-date";
 import { Section, SectionItem } from "@/common/ui";
 
 import type { CalendarItem } from "../calendar.lib.ts";
+import { AgendaMark, isOverdue } from "./agenda-mark.view.tsx";
 
 type AgendaProps = {
   title: string;
@@ -13,55 +11,36 @@ type AgendaProps = {
   onOpen: (item: CalendarItem) => void;
 };
 
-const tones = {
-  event: "red",
-  reminder: "violet",
-  birthday: "pink",
-  due: "orange",
-  plan: "blue",
+const kinds = {
+  event: "Событие",
+  reminder: "Напоминание",
+  birthday: "День рождения",
+  due: "Уход за питомцем",
+  plan: "Срок плана",
 } as const;
 
-function toneOf(item: CalendarItem) {
-  return item.kind === "plan" && item.isOverdue ? "red" : tones[item.kind];
-}
-
-function iconOf(item: CalendarItem) {
-  if (item.kind === "birthday") {
-    return Cake;
-  }
-
-  if (item.kind === "reminder") {
-    return Bell;
-  }
-
-  if (item.kind === "due") {
-    return item.isOverdue ? TriangleAlert : Syringe;
-  }
-
-  if (item.kind === "plan") {
-    return item.isOverdue ? TriangleAlert : ListTodo;
-  }
-
-  return CalendarDays;
-}
-
-function subtitleOf(item: CalendarItem, isDated: boolean): string | undefined {
-  const parts = [isDated ? formatDate(item.date) : undefined, item.time].filter(
-    (part) => part !== undefined,
-  );
-
-  return parts.length === 0 ? undefined : parts.join(", ");
+function subtitleOf(item: CalendarItem, isDated: boolean): string {
+  return [isOverdue(item) ? "Просрочено" : kinds[item.kind], isDated ? item.time : undefined]
+    .filter((part) => part !== undefined)
+    .join(" · ");
 }
 
 export function Agenda({ title, items, isDated, empty, onOpen }: AgendaProps) {
   return (
     <Section title={title}>
-      {items.length === 0 && <SectionItem title={empty} />}
-      {items.map((item) => (
+      {items.length === 0 && (
+        <div className="px-5 py-3.5 text-[0.9375rem] text-muted-foreground">{empty}</div>
+      )}
+      {items.map((item, index) => (
         <SectionItem
           key={item.key}
-          icon={iconOf(item)}
-          tone={toneOf(item)}
+          leading={
+            <AgendaMark
+              item={item}
+              isDated={isDated}
+              isSameDay={items[index - 1]?.date === item.date}
+            />
+          }
           title={item.title}
           subtitle={subtitleOf(item, isDated)}
           onClick={() => {

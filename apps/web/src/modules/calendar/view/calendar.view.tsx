@@ -1,8 +1,8 @@
 import { reatomComponent } from "@reatom/react";
 import { BellPlus, Plus } from "lucide-react";
 
-import { formatDate } from "@/common/format-date";
-import { Section, SectionItem } from "@/common/ui";
+import { formatNearDate } from "@/common/format-date";
+import { Button } from "@/common/ui";
 
 import type { CalendarModel } from "../vm/calendar.vm.ts";
 import { Agenda } from "./agenda.view.tsx";
@@ -31,22 +31,21 @@ export const Calendar = reatomComponent(({ model }: CalendarProps) => {
   return (
     <>
       <MonthGrid model={model} />
+      <div className="grid grid-cols-2 gap-2 px-4 pb-7">
+        <Button className="h-11 rounded-xl" onClick={model.add}>
+          <Plus /> Событие
+        </Button>
+        <Button className="h-11 rounded-xl bg-card" variant="secondary" onClick={model.addReminder}>
+          <BellPlus /> Напоминание
+        </Button>
+      </div>
       <Agenda
-        title={formatDate(model.selected())}
+        title={formatNearDate(model.selected(), model.today())}
         items={model.dayItems()}
         isDated={false}
         empty="Ничего не запланировано"
         onOpen={model.openItem}
       />
-      <Section>
-        <SectionItem icon={Plus} tone="green" title="Новое событие" onClick={model.add} />
-        <SectionItem
-          icon={BellPlus}
-          tone="orange"
-          title="Новое напоминание"
-          onClick={model.addReminder}
-        />
-      </Section>
       <Agenda
         title="Ближайшее"
         items={model.upcoming()}

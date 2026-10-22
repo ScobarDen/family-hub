@@ -36,7 +36,7 @@ export const moduleIcons: Record<AppModule, LucideIcon> = {
 export const moduleTones: Record<AppModule, IconTone> = {
   feed: "blue",
   plans: "green",
-  calendar: "red",
+  calendar: "blue",
   pet: "orange",
   goals: "teal",
   albums: "violet",

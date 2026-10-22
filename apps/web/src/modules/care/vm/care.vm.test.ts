@@ -266,6 +266,18 @@ describe("the weight chart", () => {
       ],
     });
   });
+
+  test("leads with the last weighing and its change over the shown range", async () => {
+    const { model } = startCare();
+
+    await loaded(model);
+
+    expect(model.weightSummary()).toEqual({ latest: "12,8 кг", change: undefined });
+
+    model.chooseWeightRange("all");
+
+    expect(model.weightSummary()).toEqual({ latest: "12,8 кг", change: "+0,7 кг с 1 мая" });
+  });
 });
 
 describe("the entry form", () => {

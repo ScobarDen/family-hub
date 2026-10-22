@@ -13,9 +13,11 @@ import {
   toExpensesView,
   toJournalItem,
   weightPoints,
+  weightSummaryOf,
   type ExpensesView,
   type JournalItem,
   type WeightPoint,
+  type WeightSummary,
 } from "../care.lib.ts";
 import { reatomCareData, type CareData } from "../care.model.ts";
 import { reatomCareForm, type CareEntryDraftOpening, type CareFormModel } from "./care-form.vm.ts";
@@ -55,8 +57,33 @@ type Sources = CareDependencies & {
   failure: Atom<string | undefined>;
 };
 
-function reatomViews({ data, timeZone, today }: Sources, weightRange: Atom<WeightRange>) {
+function reatomWeight({ data, timeZone, today }: Sources, weightRange: Atom<WeightRange>) {
+  const weight = computed(
+    (): { range: WeightRange; points: WeightPoint[] } => ({
+      range: weightRange(),
+      points: weightPoints(data.entries.data() ?? [], {
+        range: weightRange(),
+        today: today(),
+        timeZone: timeZone(),
+      }),
+    }),
+    "care.weight",
+  );
+
   return {
+    weight,
+    weightSummary: computed(
+      (): WeightSummary | undefined => weightSummaryOf(weight().points),
+      "care.weightSummary",
+    ),
+  };
+}
+
+function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
+  const { data, timeZone } = sources;
+
+  return {
+    ...reatomWeight(sources, weightRange),
     journal: computed(
       (): JournalItem[] =>
         (data.entries.data() ?? []).map((entry) => toJournalItem(entry, timeZone())),
@@ -82,17 +109,6 @@ function reatomViews({ data, timeZone, today }: Sources, weightRange: Atom<Weigh
             })),
           };
     }, "care.yearView"),
-    weight: computed(
-      (): { range: WeightRange; points: WeightPoint[] } => ({
-        range: weightRange(),
-        points: weightPoints(data.entries.data() ?? [], {
-          range: weightRange(),
-          today: today(),
-          timeZone: timeZone(),
-        }),
-      }),
-      "care.weight",
-    ),
   };
 }
 

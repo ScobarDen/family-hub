@@ -36,6 +36,13 @@ export function reatomDigest({ api, saved }: DigestDependencies) {
   return {
     isEnabled: computed(() => current().isEnabled, "digest.isEnabled"),
     time: computed(() => current().time, "digest.time"),
+    schedule: computed(
+      () =>
+        current().isEnabled
+          ? `Каждое утро в ${current().time} — сообщением от бота`
+          : "Выключена: бот не пишет по утрам",
+      "digest.schedule",
+    ),
     failure: computed(() => failure(), "digest.visibleFailure"),
 
     toggle: action((isEnabled: boolean) => {

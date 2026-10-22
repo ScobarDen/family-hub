@@ -2,22 +2,31 @@ import type { ReactNode } from "react";
 
 type SectionProps = {
   title?: string;
+  // A short figure or link at the header's right end: a count, a total, «Все».
+  aside?: ReactNode;
   footer?: ReactNode;
   children: ReactNode;
 };
 
-export function Section({ title, footer, children }: SectionProps) {
+export function Section({ title, aside, footer, children }: SectionProps) {
   return (
-    <section className="flex flex-col gap-1.5 px-4 pb-6">
-      {title !== undefined && (
-        <h2 className="px-4 text-[0.8rem] font-medium text-muted-foreground uppercase ios:normal-case ios:text-sm">
-          {title}
-        </h2>
+    <section className="flex flex-col gap-2 px-4 pb-7">
+      {(title !== undefined || aside !== undefined) && (
+        <div className="flex items-baseline justify-between gap-3 px-1">
+          {title !== undefined && (
+            <h2 className="text-[0.9375rem] font-semibold tracking-tight">{title}</h2>
+          )}
+          {aside !== undefined && (
+            <span className="text-[0.8125rem] text-muted-foreground">{aside}</span>
+          )}
+        </div>
       )}
-      <div className="flex flex-col overflow-hidden rounded-xl bg-card text-card-foreground android:rounded-2xl">
+      <div className="flex flex-col overflow-hidden rounded-2xl bg-card text-card-foreground">
         {children}
       </div>
-      {footer !== undefined && <div className="px-4 text-sm text-muted-foreground">{footer}</div>}
+      {footer !== undefined && (
+        <div className="px-1 text-[0.8125rem] text-muted-foreground">{footer}</div>
+      )}
     </section>
   );
 }
