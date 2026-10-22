@@ -1,8 +1,8 @@
-import { action, noop, withAsync, wrap } from "@reatom/core";
+import { action, atom, reatomMap, withAsync, wrap } from "@reatom/core";
 
-import { recipeTagNameMaxLength } from "@family-hub/contract";
+import { recipeTagNameMaxLength, type RecipeTag } from "@family-hub/contract";
 
-import { detached, reatomFailure } from "@/common/state";
+import { detached, readOnly, reatomFailure } from "@/common/state";
 import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
@@ -25,6 +25,46 @@ function nameOf(text: string): string | undefined {
   return name === "" || name.length > recipeTagNameMaxLength ? undefined : name;
 }
 
+type Change = (doing: () => Promise<unknown>) => Promise<void>;
+
+// The new tag's text and the names being typed over tags stay until the server takes them.
+function reatomTagTyping(api: RecipesApi, change: Change) {
+  const newTag = atom("", "recipes.tags.newTag");
+  const renamed = reatomMap<string, string>(new Map(), "recipes.tags.renamed");
+  const add = action(async () => {
+    const name = nameOf(newTag());
+
+    if (name !== undefined) {
+      await wrap(change(async () => api.addTag(name)));
+      newTag.set("");
+    }
+  }, "recipes.tags.addTyped").extend(withAsync());
+  const rename = action(async (tagId: string) => {
+    const name = nameOf(renamed().get(tagId) ?? "");
+
+    try {
+      if (name !== undefined) {
+        await wrap(change(async () => api.renameTag(tagId, name)));
+      }
+    } finally {
+      renamed.delete(tagId);
+    }
+  }, "recipes.tags.renameTyped").extend(withAsync());
+
+  return {
+    newTag: readOnly(newTag),
+    typeNewTag: action((text: string) => {
+      newTag.set(text);
+    }, "recipes.tags.typeNew"),
+    addTag: detached(add, "recipes.tags.add"),
+    tagNameOf: (tag: RecipeTag) => renamed().get(tag.id) ?? tag.name,
+    typeTagName: action((tagId: string, text: string) => {
+      renamed.set(tagId, text);
+    }, "recipes.tags.typeName"),
+    renameTag: detached(rename, "recipes.tags.rename"),
+  };
+}
+
 // The Family's tags: anyone adds, renames or deletes one.
 export function reatomTagEditing({ api, telegram }: TagDependencies, data: RecipesData) {
   const change = action(async (doing: () => Promise<unknown>) => {
@@ -42,20 +82,7 @@ export function reatomTagEditing({ api, telegram }: TagDependencies, data: Recip
       message: "Не получилось сохранить тег. Попробуйте ещё раз.",
       name: "recipes.tags.failure",
     }),
-    addTag: action((text: string) => {
-      const name = nameOf(text);
-
-      if (name !== undefined) {
-        change(async () => api.addTag(name)).catch(noop);
-      }
-    }, "recipes.tags.add"),
-    renameTag: action((tagId: string, text: string) => {
-      const name = nameOf(text);
-
-      if (name !== undefined) {
-        change(async () => api.renameTag(tagId, name)).catch(noop);
-      }
-    }, "recipes.tags.rename"),
+    ...reatomTagTyping(api, change),
     removeTag: detached(remove, "recipes.tags.remove"),
   };
 }

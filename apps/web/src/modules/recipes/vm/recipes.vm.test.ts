@@ -175,6 +175,38 @@ describe("the Recipes", () => {
   });
 });
 
+describe("the Family's tags", () => {
+  test("keep a new tag's text when the server refuses it", async () => {
+    const { model } = startRecipes({ failing: "POST /api/recipe-tags" });
+
+    await listed(model);
+    model.typeNewTag("Супы");
+    model.addTag();
+    await vi.waitFor(() => {
+      expect(model.tagFailure()).toBe("Не получилось сохранить тег. Попробуйте ещё раз.");
+    });
+
+    expect(model.newTag()).toBe("Супы");
+  });
+
+  test("show the saved name again when a rename fails", async () => {
+    const { model } = startRecipes({ failing: "PUT /api/recipe-tags/tag-1" });
+    const [pasta] = lasagna.tags;
+
+    await listed(model);
+    model.typeTagName("tag-1", "Макароны");
+
+    expect(pasta && model.tagNameOf(pasta)).toBe("Макароны");
+
+    model.renameTag("tag-1");
+    await vi.waitFor(() => {
+      expect(model.tagFailure()).toBeDefined();
+    });
+
+    expect(pasta && model.tagNameOf(pasta)).toBe("Паста");
+  });
+});
+
 describe("cooking a Recipe", () => {
   test("lists what was cooked longest ago once asked", async () => {
     const { model, requests } = startRecipes();
@@ -196,11 +228,13 @@ describe("cooking a Recipe", () => {
     await vi.waitFor(() => {
       expect(model.screen().kind).toBe("recipe");
     });
-    model.cook("2026-10-21");
+    model.chooseCookDay("2026-10-21");
+    model.cook();
     await vi.waitFor(() => {
       expect(model.isCooking()).toBe(false);
     });
-    model.cook("2026-10-18");
+    model.chooseCookDay("2026-10-18");
+    model.cook();
     await vi.waitFor(() => {
       expect(requests.filter(({ request }) => request.endsWith("/cooked"))).toHaveLength(2);
     });

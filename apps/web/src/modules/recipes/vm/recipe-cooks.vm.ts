@@ -1,4 +1,4 @@
-import { action, computed, noop, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
 import { Temporal } from "temporal-polyfill";
 
 import type { Recipe } from "@family-hub/contract";
@@ -26,6 +26,19 @@ function cookedAtOf({ today, timeZone }: CookDependencies, date: string): number
         .epochMilliseconds;
 }
 
+// Today by default; an earlier day marks a dinner cooked before it was written down.
+function reatomCookDay({ today }: CookDependencies) {
+  const chosenDay = atom<string | undefined>(undefined, "recipes.cooks.chosenDay");
+
+  return {
+    today: readOnly(today),
+    cookDay: computed(() => chosenDay() ?? today(), "recipes.cooks.day"),
+    chooseCookDay: action((day: string) => {
+      chosenDay.set(day);
+    }, "recipes.chooseCookDay"),
+  };
+}
+
 export function reatomRecipeCooks(
   dependencies: CookDependencies,
   { data, opened }: { data: RecipesData; opened: () => Recipe | undefined },
@@ -47,13 +60,20 @@ export function reatomRecipeCooks(
     }
   }, "recipes.cooks.change").extend(withAsync());
 
+  const { cookDay, ...dayChoice } = reatomCookDay(dependencies);
+  const isCooking = computed(() => !change.ready(), "recipes.cooks.isCooking");
+
   return {
-    isCooking: computed(() => !change.ready(), "recipes.cooks.isCooking"),
-    today: readOnly(dependencies.today),
+    isCooking,
+    cookDay,
+    ...dayChoice,
+    canCook: computed(() => !isCooking() && cookDay() !== "", "recipes.cooks.canCook"),
     ordering: readOnly(data.ordering),
-    cook: action((date: string) => {
+    cook: action(() => {
+      const day = cookDay();
+
       change(async (recipe) =>
-        dependencies.api.cook(recipe.id, cookedAtOf(dependencies, date)),
+        dependencies.api.cook(recipe.id, cookedAtOf(dependencies, day)),
       ).catch(noop);
     }, "recipes.cook"),
     uncook: action((cookId: string) => {

@@ -13,11 +13,12 @@ export const TagRow = reatomComponent(
     <div className="flex items-center gap-2 px-4 py-1">
       <Input
         aria-label="Название тега"
-        defaultValue={tag.name}
-        onBlur={(event) => {
-          if (event.target.value !== tag.name) {
-            model.renameTag(tag.id, event.target.value);
-          }
+        value={model.tagNameOf(tag)}
+        onChange={(event) => {
+          model.typeTagName(tag.id, event.target.value);
+        }}
+        onBlur={() => {
+          model.renameTag(tag.id);
         }}
       />
       <Button
