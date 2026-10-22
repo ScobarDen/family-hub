@@ -37,6 +37,23 @@ const reminderOffsets = z
 
 export type Recurrence = z.infer<typeof recurrence>;
 
+type EventSpan = {
+  start: { date: string; time: string | null };
+  end: { date: string; time: string | null } | null;
+};
+
+function isEndAfterStart({ start, end }: EventSpan): boolean {
+  if (end === null) {
+    return true;
+  }
+
+  if (end.date !== start.date) {
+    return end.date > start.date;
+  }
+
+  return start.time === null || end.time === null || end.time >= start.time;
+}
+
 export const eventChange = z
   .object({
     title: z.string().trim().min(1).max(eventTitleMaxLength),
@@ -47,7 +64,7 @@ export const eventChange = z
     visibility,
     reminderOffsets: reminderOffsets.default([]),
   })
-  .refine(({ start, end }) => end === null || end.date >= start.date, {
+  .refine(isEndAfterStart, {
     message: "An Event ends after it starts",
     path: ["end"],
   });
