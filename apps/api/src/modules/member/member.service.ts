@@ -53,7 +53,10 @@ export function createMemberService({ members, clock, schedule }: MemberServiceD
 
     async saveTimeZone({ member }: Membership, change: TimeZoneSettings) {
       await members.saveTimeZone(member.id, change, clock.now());
-      await schedule.zoneChanged(member.id);
+
+      if (member.timeZone !== change.timeZone) {
+        await schedule.zoneChanged(member.id);
+      }
 
       return change;
     },

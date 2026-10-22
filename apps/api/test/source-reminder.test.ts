@@ -183,6 +183,35 @@ describe("an Event's Reminders", () => {
   });
 });
 
+describe("an Event set across the date line", () => {
+  test("still reaches a Recipient whose clock is already two days ahead of its date", async () => {
+    const worker = await startWithFamily();
+
+    await request(worker, asya, {
+      method: "PUT",
+      path: "/api/me/time-zone",
+      body: { timeZone: "Pacific/Kiritimati", isAuto: false },
+    });
+    worker.clock.set("2026-10-11T10:10:00Z");
+    await request(worker, denis, {
+      method: "POST",
+      path: "/api/events",
+      body: {
+        title: "Созвон с Самоа",
+        note: null,
+        start: { date: "2026-10-10", time: "23:30", timeZone: "Pacific/Pago_Pago" },
+        end: null,
+        recurrence: null,
+        visibility: "shared",
+        reminderOffsets: ["at-start"],
+      },
+    });
+    await tickAt(worker, "2026-10-11T10:30:00Z");
+
+    expect(textsTo(worker, asya)).toHaveLength(1);
+  });
+});
+
 describe("a Pet's birthday", () => {
   test("is congratulated at 09:00 on the day, for everyone", async () => {
     const worker = await startWithFamily();

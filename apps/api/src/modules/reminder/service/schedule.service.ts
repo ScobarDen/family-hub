@@ -21,12 +21,13 @@ export async function zoneOf(
 }
 
 // The first Occurrence that still fires ahead of now on this Recipient's clock; the search starts
-// a day early, as a moment set in another zone may fall on the Recipient's previous day.
+// two days early, as zones lie up to 26 hours apart and a moment set in another zone may fall on
+// the Recipient's day after next.
 export function upcoming(
   source: Source,
   { timeZone, now }: { timeZone: string; now: number },
 ): Fire | undefined {
-  let occurrence = source.first(dayBefore(dateInZone(now, timeZone)));
+  let occurrence = source.first(dayBefore(dayBefore(dateInZone(now, timeZone))));
 
   while (occurrence !== undefined && source.fireAt(occurrence, timeZone) < now) {
     occurrence = source.next(occurrence);
@@ -115,18 +116,26 @@ export async function zoneChanged(dependencies: ReminderDependencies, memberId: 
   await digestChanged(dependencies, memberId);
 
   const familyId = membership.family.id;
+  const rows = await dependencies.dispatch.ofMember({ familyId, memberId });
+  const planned: PlannedRow[] = [];
 
-  for (const row of await dependencies.dispatch.ofMember({ familyId, memberId })) {
+  for (const row of rows.filter(({ source }) => source !== "digest")) {
     const source = await sourceOfRow(dependencies, row);
     const timeZone = await zoneOf(dependencies, { memberId, source });
-    const fire = source === undefined ? undefined : upcoming(source, { timeZone, now });
 
-    await dependencies.dispatch.update(familyId, row.id, {
-      occurrence: fire?.occurrence ?? null,
-      nextFireAt: fire?.fireAt ?? null,
-      updatedAt: now,
+    planned.push({
+      source: row.source,
+      sourceId: row.sourceId,
+      memberId,
+      fire: source && upcoming(source, { timeZone, now }),
     });
   }
+
+  const { moved } = changesOf({ existing: rows, planned, now });
+
+  await dependencies.dispatch.write({ familyId, now, added: [], moved, removedIds: [] }, () =>
+    uuidv7(now),
+  );
 }
 
 // Rows already there stay as they are, snoozes included: a Member who joined gets rows for every
