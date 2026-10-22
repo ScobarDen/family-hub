@@ -10,7 +10,6 @@ import { reatomTelegram } from "@/common/telegram";
 import { createVoiceRecorder } from "@/common/voice-recorder";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
-import { createCareApi, reatomCare } from "@/modules/care";
 import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
 import { createDigestApi, reatomDigest } from "@/modules/digest";
 import { createFamilyApi, reatomFamily, reatomFamilyMembers } from "@/modules/family";
@@ -20,7 +19,7 @@ import { createGoalsApi, reatomGoalsScreen } from "@/modules/goals";
 import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import { reatomNotifications } from "@/modules/notifications";
-import { createPetsApi, reatomPets, reatomPetsScreen } from "@/modules/pets";
+import { createCareApi, createPetsApi, reatomPets, reatomPetTab } from "@/modules/pets";
 import { createPhotoStorageApi, reatomPhotoStorage } from "@/modules/photo-storage";
 import { createPlansApi, reatomPlansScreen } from "@/modules/plans";
 import { createRecipesApi, reatomRecipesScreen } from "@/modules/recipes";
@@ -147,41 +146,29 @@ const goals = reatomGoalsScreen({
   today,
   timeZone: zone,
 });
-const pets = reatomPetsScreen({
+const pet = reatomPetTab({
   api: petsApi,
+  careApi: createCareApi(httpClient),
   pets: petsModel,
   viewer: () => ({ today: today(), timeZone: zone() }),
+  now: () => Temporal.Now.plainDateTimeISO(zone()).toString({ smallestUnit: "minute" }),
+  telegram,
   isFamilyOwner: () => session.member()?.isFamilyOwner === true,
-  soon: (petId) => [
-    ...plans.openPlansOf(petId).map(({ id, title, dueDate }) => ({
+  preparePhoto: prepare,
+  photoHint: photoStorage.uploadHint,
+  plansOf: (petId) =>
+    plans.openPlansOf(petId).map(({ id, title, dueDate }) => ({
       id,
       title,
       dueDate,
       kind: "plan" as const,
     })),
-    ...care.dueSources(),
-  ],
   onOpenSoon: (target) => {
     opener.open(target);
   },
   onPlan: (petId) => {
     opener.open({ kind: "plan-for-pet", petId });
   },
-});
-const care = reatomCare({
-  api: createCareApi(httpClient),
-  petId: () => pets.openedPetId(),
-  today,
-  now: () => Temporal.Now.plainDateTimeISO(zone()).toString({ smallestUnit: "minute" }),
-  timeZone: zone,
-  telegram,
-  isReadOnly: () => pets.isOpenedPetArchived(),
-  preparePhoto: prepare,
-  photoHint: photoStorage.uploadHint,
-  onMakeAvatar: (photoId) => {
-    pets.makeAvatar(photoId);
-  },
-  onOpenPet: pets.open,
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
@@ -214,7 +201,7 @@ const commandSheet = reatomCommandSheet({
   },
   onCreated: () => {
     calendar.reload();
-    care.reload();
+    pet.care.reload();
     feed.reload();
   },
 });
@@ -248,16 +235,7 @@ const navigation = reatomNavigation({
   isSignedIn: () => session.member() !== undefined,
   telegram,
   nestedBack: {
-    pet: {
-      canGoBack: () => care.canGoBack() || pets.canGoBack(),
-      back: () => {
-        if (care.canGoBack()) {
-          care.back();
-        } else {
-          pets.back();
-        }
-      },
-    },
+    pet,
     plans,
     calendar,
     goals,
@@ -269,9 +247,9 @@ const opener = reatomOpener({
   telegram,
   navigation,
   isSignedIn: () => session.member() !== undefined,
-  pets,
+  pets: pet.pets,
   plans,
-  care,
+  care: pet.care,
   calendar,
   goals,
   albums,
@@ -317,10 +295,9 @@ const home = {
     telegram,
     timeZone: zone,
   }),
-  pets,
+  pet,
   plans,
   photoStorage,
-  care,
   calendar,
   feed,
   goals,

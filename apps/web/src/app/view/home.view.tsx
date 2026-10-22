@@ -5,7 +5,6 @@ import type { AppModule } from "@family-hub/contract";
 
 import { Albums, type AlbumsScreenModel } from "@/modules/albums";
 import { Calendar, type CalendarModel } from "@/modules/calendar";
-import { Care, ExpensesBlock, JournalBlock, PhotosBlock, type CareModel } from "@/modules/care";
 import {
   CommandSheet,
   Microphone,
@@ -18,7 +17,7 @@ import { Feed, type FeedModel } from "@/modules/feed";
 import { Goals, type GoalsScreenModel } from "@/modules/goals";
 import type { InvitesModel } from "@/modules/invites";
 import { NotificationsBanner, type NotificationsModel } from "@/modules/notifications";
-import { Pets, type PetsScreenModel } from "@/modules/pets";
+import { PetTab, type PetTabModel } from "@/modules/pets";
 import type { PhotoStorageModel } from "@/modules/photo-storage";
 import { Plans, type PlansScreenModel } from "@/modules/plans";
 import { Recipes, type RecipesScreenModel } from "@/modules/recipes";
@@ -40,8 +39,7 @@ export type HomeProps = {
   digest: DigestModel;
   family: FamilyModel;
   invites: InvitesModel;
-  pets: PetsScreenModel;
-  care: CareModel;
+  pet: PetTabModel;
   calendar: CalendarModel;
   feed: FeedModel;
   goals: GoalsScreenModel;
@@ -66,24 +64,6 @@ function profileOf(props: HomeProps): ReactNode {
 
 type ModuleContent = { title: string; subtitle?: string | undefined; content: ReactNode };
 
-function petContentOf(pets: PetsScreenModel, care: CareModel): ModuleContent {
-  if (care.canGoBack()) {
-    return { title: care.title() ?? pets.title(), content: <Care model={care} /> };
-  }
-
-  return {
-    title: pets.title(),
-    content: (
-      <Pets
-        model={pets}
-        expenses={<ExpensesBlock model={care} />}
-        journal={<JournalBlock model={care} />}
-        photos={<PhotosBlock model={care} />}
-      />
-    ),
-  };
-}
-
 const contents: Record<AppModule, (props: HomeProps) => ModuleContent> = {
   feed: ({ feed }) => ({
     title: "Лента",
@@ -92,7 +72,7 @@ const contents: Record<AppModule, (props: HomeProps) => ModuleContent> = {
   }),
   plans: ({ plans }) => ({ title: plans.title(), content: <Plans model={plans} /> }),
   calendar: ({ calendar }) => ({ title: calendar.title(), content: <Calendar model={calendar} /> }),
-  pet: ({ pets, care }) => petContentOf(pets, care),
+  pet: ({ pet }) => ({ title: pet.title(), content: <PetTab model={pet} /> }),
   goals: ({ goals }) => ({ title: goals.title(), content: <Goals model={goals} /> }),
   albums: ({ albums }) => ({ title: albums.title(), content: <Albums model={albums} /> }),
   recipes: ({ recipes }) => ({ title: recipes.title(), content: <Recipes model={recipes} /> }),

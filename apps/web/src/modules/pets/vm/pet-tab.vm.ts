@@ -1,0 +1,58 @@
+import { action, computed } from "@reatom/core";
+
+import { reatomCare, type CareApi, type CareDependencies } from "../care/index.ts";
+import type { SoonSource } from "../pets.lib.ts";
+import type { PetsDependencies } from "./pets-screen.vm.ts";
+import { reatomPetsScreen } from "./pets.vm.ts";
+
+type WiredInside =
+  | "api"
+  | "petId"
+  | "today"
+  | "timeZone"
+  | "isReadOnly"
+  | "onMakeAvatar"
+  | "onOpenPet";
+
+export type PetTabDependencies = Omit<PetsDependencies, "soon"> &
+  Omit<CareDependencies, WiredInside> & {
+    careApi: CareApi;
+    plansOf: (petId: string) => SoonSource[];
+  };
+
+// The care journal opens over the pet card, so its forms come first on the way back.
+export function reatomPetTab({ careApi, plansOf, ...dependencies }: PetTabDependencies) {
+  const { viewer } = dependencies;
+  const pets = reatomPetsScreen({
+    ...dependencies,
+    soon: (petId) => [...plansOf(petId), ...care.dueSources()],
+  });
+  const care = reatomCare({
+    ...dependencies,
+    api: careApi,
+    petId: () => pets.openedPetId(),
+    today: () => viewer().today,
+    timeZone: () => viewer().timeZone,
+    isReadOnly: () => pets.isOpenedPetArchived(),
+    onMakeAvatar: (photoId) => {
+      pets.makeAvatar(photoId);
+    },
+    onOpenPet: pets.open,
+  });
+
+  return {
+    pets,
+    care,
+    title: computed(() => care.title() ?? pets.title(), "petTab.title"),
+    canGoBack: computed(() => care.canGoBack() || pets.canGoBack(), "petTab.canGoBack"),
+    back: action(() => {
+      if (care.canGoBack()) {
+        care.back();
+      } else {
+        pets.back();
+      }
+    }, "petTab.back"),
+  };
+}
+
+export type PetTabModel = ReturnType<typeof reatomPetTab>;

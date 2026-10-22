@@ -10,7 +10,7 @@ import { PetList } from "./pet-list.view.tsx";
 import { PetMemoForm } from "./pet-memo-form.view.tsx";
 import { PetProfileForm } from "./pet-profile-form.view.tsx";
 
-// The journal, its expenses and weight belong to the care module; the page passes them in.
+// The journal, its expenses and photos come from the care submodule through PetTab.
 export type PetsProps = {
   model: PetsScreenModel;
   expenses: ReactNode;

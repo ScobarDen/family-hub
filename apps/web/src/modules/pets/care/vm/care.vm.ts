@@ -29,7 +29,7 @@ export type CareScreen =
   | { kind: "form"; isCreating: boolean }
   | { kind: "expenses" };
 
-type CareDependencies = {
+export type CareDependencies = {
   api: CareApi;
   petId: () => string | undefined;
   today: () => string;

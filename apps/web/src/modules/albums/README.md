@@ -13,4 +13,4 @@ The «Альбомы» tab: the Family's Albums, always Shared, and each Pet's a
 - `wait` — a timer, so tests do not sleep through a 429.
 - `photoHint` — from `photo-storage`: why photos cannot be added now.
 
-`reatomAlbumsScreen` goes to the navigation as the albums module's `nestedBack`. The full-screen viewer is `common/photo-viewer`, shared with the care module.
+`reatomAlbumsScreen` goes to the navigation as the albums module's `nestedBack`. The full-screen viewer is `common/photo-viewer`, shared with the care journal in `pets`.
