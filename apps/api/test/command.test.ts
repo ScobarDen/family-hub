@@ -150,6 +150,25 @@ describe("a text command to the bot", () => {
     expect(lastTo(worker, denis)?.text).toMatch(/^На сегодня команды кончились/u);
   });
 
+  test("holds the daily limit for commands sent at once", async () => {
+    const worker = await startWithFamily();
+
+    worker.ai.answer(
+      { response: internet },
+      { response: internet },
+      { response: internet },
+      { response: internet },
+    );
+    await Promise.all([
+      say(worker, denis, "напомни"),
+      say(worker, asya, "напомни"),
+      say(worker, denis, "напомни"),
+      say(worker, asya, "напомни"),
+    ]);
+
+    expect(worker.ai.calls).toHaveLength(3);
+  });
+
   test("tells a stranger the bot works by invitation", async () => {
     const worker = await startWithFamily();
 

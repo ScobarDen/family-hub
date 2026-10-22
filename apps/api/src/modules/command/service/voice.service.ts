@@ -5,7 +5,7 @@ import { voiceMaxSeconds } from "@family-hub/contract";
 import { quotaText, tooLongText } from "../command.lib.ts";
 import type { CommandDependencies } from "../command.types.ts";
 import {
-  isOverQuota,
+  reserve,
   isQuotaError,
   membershipOf,
   outcomeOf,
@@ -78,7 +78,9 @@ export async function handleVoice(
     return;
   }
 
-  if (await isOverQuota(dependencies, membership)) {
+  const reservation = await reserve(dependencies, { membership, chatId, source: "bot_voice" });
+
+  if (reservation === undefined) {
     await reply(dependencies, { chatId, text: quotaText });
 
     return;
@@ -91,7 +93,7 @@ export async function handleVoice(
   await sendPreview(dependencies, {
     membership,
     chatId,
-    source: "bot_voice",
+    reservation,
     ...(heard.status === "heard"
       ? {
           outcome: await outcomeOf(dependencies, { membership, text: heard.text }),

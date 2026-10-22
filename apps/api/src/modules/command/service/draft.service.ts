@@ -46,20 +46,6 @@ export async function membershipOf(
   return membership;
 }
 
-// Neurons are counted per account from 00:00 UTC; the Family's share resets with them.
-export async function isOverQuota(
-  dependencies: CommandDependencies,
-  { family }: Membership,
-): Promise<boolean> {
-  const now = dependencies.clock.now();
-  const count = await dependencies.drafts.countSince({
-    familyId: family.id,
-    since: now - (now % dayMs),
-  });
-
-  return count >= dependencies.commandsPerFamilyDay;
-}
-
 export async function showTyping({ bot }: CommandDependencies, chatId: number): Promise<void> {
   await ignoringBotErrors(bot.call("sendChatAction", { chat_id: chatId, action: "typing" }));
 }
@@ -114,41 +100,60 @@ export async function outcomeOf(
   }
 }
 
-type Handled = {
-  membership: Membership;
-  chatId: number | null;
-  source: CommandSource;
-  outcome: Outcome;
-};
+export type Reservation = { draftId: string; phrase: Phrase };
+
+type Speaking = { membership: Membership; chatId: number | null; source: CommandSource };
 
 // Every command handled leaves a row, failed ones too: the rows are the Family's daily count.
+// The row is taken before the model runs, so commands sent at once cannot all slip under the
+// limit; neurons are counted per account from 00:00 UTC and the Family's share resets with them.
 // The row's moment and zone are the phrase's, which «Создать» later reads the draft's dates in.
-export async function record(
+export async function reserve(
   dependencies: CommandDependencies,
-  { membership, chatId, source, outcome }: Handled,
-): Promise<{ draftId: string; phrase: Phrase }> {
+  { membership, chatId, source }: Speaking,
+): Promise<Reservation | undefined> {
   const now = dependencies.clock.now();
   const draftId = uuidv7(now);
-  const isDraft = outcome.status === "draft";
   const timeZone = await speakerZoneOf(dependencies, membership);
+  const reserved = await dependencies.drafts.reserve(
+    {
+      id: draftId,
+      familyId: membership.family.id,
+      memberId: membership.member.id,
+      source,
+      chatId,
+      timeZone,
+      status: "failed",
+      expiresAt: now + commandDraftLifetimeMs,
+      createdAt: now,
+      updatedAt: now,
+    },
+    { since: now - (now % dayMs), limit: dependencies.commandsPerFamilyDay },
+  );
 
-  await dependencies.drafts.add({
-    id: draftId,
-    familyId: membership.family.id,
-    memberId: membership.member.id,
-    kind: isDraft ? outcome.draft.kind : null,
-    payload: isDraft ? outcome.draft : null,
-    source,
-    chatId,
-    timeZone,
-    status: isDraft ? "pending" : "failed",
-    expiresAt: now + commandDraftLifetimeMs,
-    createdAt: now,
-    updatedAt: now,
-  });
-
-  return { draftId, phrase: { saidAt: now, timeZone } };
+  return reserved === "reserved" ? { draftId, phrase: { saidAt: now, timeZone } } : undefined;
 }
+
+export async function record(
+  dependencies: CommandDependencies,
+  { reservation, outcome }: { reservation: Reservation; outcome: Outcome },
+): Promise<void> {
+  if (outcome.status === "draft") {
+    await dependencies.drafts.update(reservation.draftId, {
+      kind: outcome.draft.kind,
+      payload: outcome.draft,
+      status: "pending",
+      updatedAt: dependencies.clock.now(),
+    });
+  }
+}
+
+type Handled = {
+  membership: Membership;
+  chatId: number;
+  reservation: Reservation;
+  outcome: Outcome;
+};
 
 // A voice command's answer starts with what the bot heard, so a misheard word is visible.
 function withHeard(text: string, heard: string | undefined): string {
@@ -157,10 +162,12 @@ function withHeard(text: string, heard: string | undefined): string {
 
 export async function sendPreview(
   dependencies: CommandDependencies,
-  answer: Handled & { chatId: number; heard?: string },
+  answer: Handled & { heard?: string },
 ): Promise<void> {
-  const { membership, chatId, outcome, heard } = answer;
-  const { draftId } = await record(dependencies, answer);
+  const { membership, chatId, outcome, heard, reservation } = answer;
+  const { draftId } = reservation;
+
+  await record(dependencies, answer);
 
   if (outcome.status !== "draft") {
     await reply(dependencies, { chatId, text: withHeard(failureTexts[outcome.status], heard) });

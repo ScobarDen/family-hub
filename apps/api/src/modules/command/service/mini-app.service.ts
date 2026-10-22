@@ -14,7 +14,7 @@ import {
   pressOf,
   type Press,
 } from "./decision.service.ts";
-import { isOverQuota, outcomeOf, record, type Outcome } from "./draft.service.ts";
+import { outcomeOf, record, reserve, type Outcome } from "./draft.service.ts";
 import { listen, type Audio } from "./voice.service.ts";
 
 export type DraftRefusal = "not-found";
@@ -34,7 +34,9 @@ export async function commandFromAudio(
   membership: Membership,
   audio: Audio,
 ): Promise<CommandOutcome> {
-  if (await isOverQuota(dependencies, membership)) {
+  const reservation = await reserve(dependencies, { membership, chatId: null, source: "mini_app" });
+
+  if (reservation === undefined) {
     return { status: "quota", heard: null, message: failureTexts.quota };
   }
 
@@ -43,17 +45,12 @@ export async function commandFromAudio(
     heard.status === "heard"
       ? await outcomeOf(dependencies, { membership, text: heard.text })
       : heard;
-  const { draftId, phrase } = await record(dependencies, {
-    membership,
-    chatId: null,
-    source: "mini_app",
-    outcome,
-  });
+
+  await record(dependencies, { reservation, outcome });
 
   return outcomeFor(outcome, {
-    draftId,
+    ...reservation,
     heard: heard.status === "heard" ? heard.text : null,
-    phrase,
   });
 }
 

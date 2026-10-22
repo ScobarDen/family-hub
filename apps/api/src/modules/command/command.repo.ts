@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNull, lt } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lt, lte, sql } from "drizzle-orm";
 
 import { commandDrafts, familyMembers, members, pets, type Db } from "@/common/db";
 
@@ -41,22 +41,45 @@ function familyQueries(db: Db) {
   };
 }
 
+type DraftInsert = typeof commandDrafts.$inferInsert;
+
+type Quota = { since: number; limit: number };
+
+// The day's rows are counted up to this one in insertion order (SQLite's rowid; ids of one
+// millisecond are unordered), so of commands sent at once exactly the first ones within the limit stay.
+async function reserve(
+  db: Db,
+  row: DraftInsert,
+  { since, limit }: Quota,
+): Promise<"reserved" | "over-quota"> {
+  const rowid = sql<number>`rowid`;
+  const [inserted] = await db.insert(commandDrafts).values(row).returning({ position: rowid });
+  const ahead = await db.$count(
+    commandDrafts,
+    and(
+      eq(commandDrafts.familyId, row.familyId),
+      gte(commandDrafts.createdAt, since),
+      lte(rowid, inserted?.position ?? 0),
+    ),
+  );
+
+  if (ahead <= limit) {
+    return "reserved";
+  }
+
+  await db.delete(commandDrafts).where(eq(commandDrafts.id, row.id));
+
+  return "over-quota";
+}
+
 export function createCommandRepo(db: Db) {
   return {
-    async add(row: typeof commandDrafts.$inferInsert): Promise<void> {
-      await db.insert(commandDrafts).values(row);
-    },
+    reserve: async (row: DraftInsert, quota: Quota) => reserve(db, row, quota),
     // The bot's buttons know a draft by its id alone; the row names its Family and author.
     find: async (draftId: string): Promise<CommandDraftRow | undefined> =>
       db.select().from(commandDrafts).where(eq(commandDrafts.id, draftId)).get(),
     async update(draftId: string, values: Partial<typeof commandDrafts.$inferInsert>) {
       await db.update(commandDrafts).set(values).where(eq(commandDrafts.id, draftId));
-    },
-    async countSince({ familyId, since }: { familyId: string; since: number }): Promise<number> {
-      return db.$count(
-        commandDrafts,
-        and(eq(commandDrafts.familyId, familyId), gte(commandDrafts.createdAt, since)),
-      );
     },
     async sweep(now: number): Promise<void> {
       await db.delete(commandDrafts).where(lt(commandDrafts.expiresAt, now));
