@@ -1,4 +1,3 @@
-import { sValidator } from "@hono/standard-validator";
 import { Hono, type Context } from "hono";
 
 import {
@@ -11,7 +10,7 @@ import {
 } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
-import { apiError, httpStatus } from "@/common/errors";
+import { apiError, httpStatus, jsonBody } from "@/common/errors";
 
 import type { CommandService } from "./service/command.service.ts";
 
@@ -55,11 +54,7 @@ function audioRefusal(context: Context<CommandEnv>) {
     : undefined;
 }
 
-const pickBody = sValidator("json", draftPick, (result, context) =>
-  result.success
-    ? undefined
-    : context.json(apiError("INVALID_REQUEST", "Pick a candidate by index"), httpStatus.badRequest),
-);
+const pickBody = jsonBody(draftPick, "Pick a candidate by index");
 
 export const commandRoute = new Hono<CommandEnv>()
   .use("/api/commands/*", requireMember)

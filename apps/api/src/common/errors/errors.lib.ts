@@ -1,3 +1,8 @@
+import { sValidator } from "@hono/standard-validator";
+import type { Context } from "hono";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
+import type { ZodType } from "zod";
+
 import type { ApiError, ErrorCode } from "@family-hub/contract";
 
 export const httpStatus = {
@@ -15,6 +20,25 @@ export const httpStatus = {
   serviceUnavailable: 503,
 } as const;
 
+export type Refusal = { code: ErrorCode; message: string; status: ContentfulStatusCode };
+
 export function apiError(code: ErrorCode, message: string): ApiError {
   return { code, message };
+}
+
+// A module names each of its refusals once; its routes answer one by its key.
+export function refusalsOf<Key extends string>(refusals: Record<Key, Refusal>) {
+  return (context: Context, refusal: Key) => {
+    const { code, message, status } = refusals[refusal];
+
+    return context.json(apiError(code, message), status);
+  };
+}
+
+export function jsonBody<Schema extends ZodType>(schema: Schema, message: string) {
+  return sValidator("json", schema, (result, context) =>
+    result.success
+      ? undefined
+      : context.json(apiError("INVALID_REQUEST", message), httpStatus.badRequest),
+  );
 }

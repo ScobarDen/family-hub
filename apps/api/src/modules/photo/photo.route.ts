@@ -1,9 +1,9 @@
 import { Hono, type Context } from "hono";
 
-import { photoVariant, type ErrorCode, type Photo, type PhotoVariant } from "@family-hub/contract";
+import { photoVariant, type Photo, type PhotoVariant } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
-import { apiError, httpStatus } from "@/common/errors";
+import { apiError, httpStatus, refusalsOf } from "@/common/errors";
 
 import type { PhotoRefusal, PhotoService, SignedRequest } from "./photo.service.ts";
 
@@ -11,7 +11,7 @@ export type PhotoEnv = {
   Variables: MemberEnv["Variables"] & { photos: PhotoService };
 };
 
-const refusals = {
+const refuse = refusalsOf<PhotoRefusal>({
   "storage-unavailable": {
     code: "PHOTO_STORAGE_UNAVAILABLE",
     message: "The Family has no Photo Storage connected",
@@ -32,16 +32,10 @@ const refusals = {
     message: "Only the Member who uploaded a photo or the Family Owner may delete it",
     status: httpStatus.forbidden,
   },
-} as const satisfies Record<PhotoRefusal, { code: ErrorCode; message: string; status: number }>;
+});
 
 // Signed links change hourly; the edge keeps one copy per photo and variant regardless.
 const cacheControl = "private, max-age=31536000, immutable";
-
-function refuse(context: Context<PhotoEnv>, refusal: PhotoRefusal) {
-  const { code, message, status } = refusals[refusal];
-
-  return context.json(apiError(code, message), status);
-}
 
 function signedRequestOf(context: Context<PhotoEnv>): SignedRequest | undefined {
   const variant = photoVariant.safeParse(context.req.param("variant"));

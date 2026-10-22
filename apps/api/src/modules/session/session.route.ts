@@ -1,4 +1,3 @@
-import { sValidator } from "@hono/standard-validator";
 import { Hono } from "hono";
 
 import {
@@ -8,7 +7,7 @@ import {
 } from "@family-hub/contract";
 
 import type { AuthEnv } from "@/common/auth";
-import { apiError, httpStatus } from "@/common/errors";
+import { apiError, httpStatus, jsonBody } from "@/common/errors";
 
 // Wired by the app to the family-request module, which modules may not import directly.
 type SessionEnv = {
@@ -19,11 +18,7 @@ type SessionEnv = {
 
 export const sessionRoute = new Hono<SessionEnv>().post(
   "/api/session",
-  sValidator("json", sessionRequest, (result, context) =>
-    result.success
-      ? undefined
-      : context.json(apiError("INVALID_REQUEST", "initData is required"), httpStatus.badRequest),
-  ),
+  jsonBody(sessionRequest, "initData is required"),
   async (context) => {
     const result = await context.var.auth.signIn(context.req.valid("json").initData);
 
