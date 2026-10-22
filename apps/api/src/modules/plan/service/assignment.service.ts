@@ -1,10 +1,9 @@
 import type { Membership } from "@/common/auth";
+import { httpStatus } from "@/common/errors";
 import { BotApiError } from "@/common/telegram";
 
 import { assignedText, openPlanButton } from "../plan.lib.ts";
 import type { PlanDependencies } from "../plan.types.ts";
-
-const forbiddenStatus = 403;
 
 export type AssignmentChange = {
   planId: string;
@@ -32,7 +31,7 @@ async function send(
       throw error;
     }
 
-    if (error.errorCode === forbiddenStatus) {
+    if (error.errorCode === httpStatus.forbidden) {
       await memberships.setCanMessage(assignee.member.id, false, clock.now());
     }
   }

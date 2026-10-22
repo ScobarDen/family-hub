@@ -1,3 +1,4 @@
+import { httpStatus } from "@/common/errors";
 import { BotApiError } from "@/common/telegram";
 
 import { latenessLimitMs } from "../reminder.lib.ts";
@@ -7,8 +8,6 @@ import { fireAfter, zoneOf } from "./schedule.service.ts";
 import { sourceOfRow } from "./source.service.ts";
 
 const batchSize = 50;
-const rateLimitedStatus = 429;
-const blockedStatus = 403;
 
 type Sent = { chatId: number; messageId: number };
 
@@ -47,11 +46,11 @@ async function send(
       throw error;
     }
 
-    if (error.errorCode === rateLimitedStatus) {
+    if (error.errorCode === httpStatus.tooManyRequests) {
       return { status: "rate-limited" };
     }
 
-    if (error.errorCode === blockedStatus) {
+    if (error.errorCode === httpStatus.forbidden) {
       await memberships.setCanMessage(row.memberId, false, clock.now());
     } else {
       console.error("Reminder not sent", { dispatchId: row.id, error: error.message });

@@ -1,6 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 
-import { families, photos, type Db } from "@/common/db";
+import { photos, type Db } from "@/common/db";
+import { storageChannelOf } from "@/modules/photo-storage";
 
 export type PhotoRow = typeof photos.$inferSelect;
 
@@ -28,14 +29,7 @@ export async function knownPhotoIds(
 export function createPhotoRepo(db: Db) {
   return {
     async channelOf(familyId: string): Promise<number | undefined> {
-      const row = await db
-        .select({
-          channelId: families.photoChannelId,
-          isConnected: families.isPhotoChannelConnected,
-        })
-        .from(families)
-        .where(eq(families.id, familyId))
-        .get();
+      const row = await storageChannelOf(db, familyId);
 
       return row?.isConnected === true && row.channelId !== null ? row.channelId : undefined;
     },

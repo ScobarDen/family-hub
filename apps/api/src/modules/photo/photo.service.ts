@@ -2,6 +2,7 @@ import { photoMaxBytes, uuidv7, type Photo, type PhotoVariant } from "@family-hu
 
 import type { Membership } from "@/common/auth";
 import type { Clock } from "@/common/clock";
+import { httpStatus } from "@/common/errors";
 import type { PhotoLinks } from "@/common/photo-link";
 import { BotApiError } from "@/common/telegram";
 
@@ -22,7 +23,6 @@ export type UploadResult =
   | { status: "rate-limited"; retryAfterSeconds: number }
   | { status: PhotoRefusal };
 
-const rateLimitedStatus = 429;
 const defaultRetryAfterSeconds = 3;
 
 export type DeleteResult = { status: "deleted" } | { status: PhotoRefusal };
@@ -50,7 +50,7 @@ async function uploadedOrRateLimit(
   try {
     return await files.upload(channelId, file);
   } catch (error) {
-    if (error instanceof BotApiError && error.errorCode === rateLimitedStatus) {
+    if (error instanceof BotApiError && error.errorCode === httpStatus.tooManyRequests) {
       return { retryAfterSeconds: error.retryAfterSeconds ?? defaultRetryAfterSeconds };
     }
 

@@ -29,10 +29,13 @@ function selectChannels(db: Db) {
     .innerJoin(members, eq(members.id, families.ownerMemberId));
 }
 
+export async function storageChannelOf(db: Db, familyId: string): Promise<ChannelRow | undefined> {
+  return selectChannels(db).where(eq(families.id, familyId)).get();
+}
+
 export function createPhotoStorageRepo(db: Db) {
   return {
-    channelOf: async (familyId: string): Promise<ChannelRow | undefined> =>
-      selectChannels(db).where(eq(families.id, familyId)).get(),
+    channelOf: async (familyId: string) => storageChannelOf(db, familyId),
 
     // A channel event names no Family, so the Family is found by the channel it holds.
     connectedTo: async (channelId: number): Promise<ChannelRow | undefined> =>
