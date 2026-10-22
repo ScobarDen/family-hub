@@ -176,7 +176,7 @@ describe("without a microphone", () => {
   test("opens the bot chat when the Member refuses the microphone", async () => {
     const recorder = fakeRecorder();
 
-    recorder.refusal = "denied";
+    recorder.refusal = "refused";
 
     const { model, telegram } = startMicrophone(recorder);
 

@@ -11,13 +11,9 @@ export type AlbumItem = {
 
 export type AlbumView = Album & { subtitle: string };
 
-const plural = new Intl.PluralRules("ru-RU");
-const photoWords = { one: "фото", few: "фото", many: "фото", other: "фото" } as const;
-
+// «фото» does not change with the count.
 function countOf(count: number): string {
-  const form = plural.select(count);
-
-  return `${count} ${form === "zero" || form === "two" ? photoWords.other : photoWords[form]}`;
+  return `${count} фото`;
 }
 
 function spanOf({ from, to }: AlbumSummary, timeZone: string): string | undefined {

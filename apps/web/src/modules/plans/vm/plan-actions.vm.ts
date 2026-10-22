@@ -127,5 +127,3 @@ export function reatomPlanActions(dependencies: PlanActionsDependencies) {
     }, "plans.removePlan"),
   };
 }
-
-export type PlanActions = ReturnType<typeof reatomPlanActions>;

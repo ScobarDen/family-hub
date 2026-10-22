@@ -1,6 +1,2 @@
-export { PhotoViewer, type PickAction } from "./photo-viewer.view.tsx";
-export {
-  reatomPhotoViewer,
-  type PhotoViewerDependencies,
-  type PhotoViewerModel,
-} from "./photo-viewer.vm.ts";
+export { PhotoViewer } from "./photo-viewer.view.tsx";
+export { reatomPhotoViewer } from "./photo-viewer.vm.ts";

@@ -146,5 +146,3 @@ export function reatomEventDetails(dependencies: EventDetailsDependencies) {
     }, "calendar.details.remove"),
   };
 }
-
-export type EventDetailsModel = ReturnType<typeof reatomEventDetails>;

@@ -72,5 +72,3 @@ export function reatomPetArchive(dependencies: PetArchiveDependencies) {
     deletePet: detached(deletion.submit, "pets.archive.deletePet"),
   };
 }
-
-export type PetArchiveModel = ReturnType<typeof reatomPetArchive>;
