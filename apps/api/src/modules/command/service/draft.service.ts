@@ -5,6 +5,7 @@ import { commandDraftLifetimeMs, uuidv7 } from "@family-hub/contract";
 import { dateInZone, type Phrase } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
+import { fallbackTimeZone } from "@/common/clock";
 import type { CommandSource } from "@/common/db";
 import { ignoringBotErrors } from "@/common/telegram";
 
@@ -14,7 +15,6 @@ import type { FamilyNames } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
 
 const dayMs = 86_400_000;
-const fallbackTimeZone = "UTC";
 const quotaPattern = /4006|neuron|allocation|quota/iu;
 
 const weekdays = new Intl.DateTimeFormat("ru-RU", { weekday: "long", timeZone: "UTC" });
@@ -64,18 +64,15 @@ export async function namesOf(
   return { members: await drafts.membersOf(familyId), pets: await drafts.petsOf(familyId) };
 }
 
-export async function speakerZoneOf(
-  { drafts }: CommandDependencies,
-  { member }: Membership,
-): Promise<string> {
-  return (await drafts.timeZoneOf(member.id)) ?? fallbackTimeZone;
+export function speakerZoneOf({ member }: Membership): string {
+  return member.timeZone ?? fallbackTimeZone;
 }
 
 export async function outcomeOf(
   dependencies: CommandDependencies,
   { membership, text }: { membership: Membership; text: string },
 ): Promise<Outcome> {
-  const timeZone = await speakerZoneOf(dependencies, membership);
+  const timeZone = speakerZoneOf(membership);
   const today = dateInZone(dependencies.clock.now(), timeZone);
   const { members, pets } = await namesOf(dependencies, membership.family.id);
 
@@ -114,7 +111,7 @@ export async function reserve(
 ): Promise<Reservation | undefined> {
   const now = dependencies.clock.now();
   const draftId = uuidv7(now);
-  const timeZone = await speakerZoneOf(dependencies, membership);
+  const timeZone = speakerZoneOf(membership);
   const reserved = await dependencies.drafts.reserve(
     {
       id: draftId,

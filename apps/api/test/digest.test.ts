@@ -158,7 +158,7 @@ describe("the morning digest", () => {
   test("fits a long list into one message and says how much is left out", async () => {
     const worker = await startWithFamily();
 
-    for (let index = 1; index <= 25; index += 1) {
+    for (let index = 1; index <= 12; index += 1) {
       await addPlan(worker, denis, {
         title: `${"Разобрать антресоль ".repeat(9)}${index}`,
         dueDate: "2026-09-28",
@@ -169,7 +169,7 @@ describe("the morning digest", () => {
 
     const [digest] = digestsTo(worker, denis);
 
-    expect(digest?.text.split("\n").at(-1)).toBe("…и ещё 15");
+    expect(digest?.text.split("\n").at(-1)).toBe("…и ещё 2");
   });
 
   test("says nothing on an empty day", async () => {

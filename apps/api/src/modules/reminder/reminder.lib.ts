@@ -9,8 +9,6 @@ import type { ReminderWithRecipients } from "./repo/reminder.repo.ts";
 export const callbackPrefix = "rd";
 export const snoozeMs = 3_600_000;
 export const daySnoozeMs = 86_400_000;
-// A Recipient whose zone the Mini App has not reported yet gets floating dates on UTC days.
-export const fallbackTimeZone = "UTC";
 // A Reminder more than 12 hours late moves on to its next Occurrence without a stale message.
 export const latenessLimitMs = 43_200_000;
 

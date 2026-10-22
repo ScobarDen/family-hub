@@ -245,16 +245,6 @@ export function createFeedRepo(db: Db) {
     cooksOf: async (familyId: string) => cooksOf(db, familyId),
     recipePhotosOf: async (familyId: string) => recipePhotosOf(db, familyId),
     movements: async (familyId: string) => movementsOf(db, familyId),
-
-    async timeZoneOf(memberId: string): Promise<string | null> {
-      const row = await db
-        .select({ timeZone: members.timeZone })
-        .from(members)
-        .where(eq(members.id, memberId))
-        .get();
-
-      return row?.timeZone ?? null;
-    },
   };
 }
 

@@ -51,17 +51,6 @@ async function dueCandidates(db: Db, familyId: string, petId: string) {
   );
 }
 
-// A Member's own zone sits on their row, which belongs to no Family.
-async function timeZoneOf(db: Db, memberId: string): Promise<string | null> {
-  const row = await db
-    .select({ timeZone: members.timeZone })
-    .from(members)
-    .where(eq(members.id, memberId))
-    .get();
-
-  return row?.timeZone ?? null;
-}
-
 async function expenses(db: Db, { familyId, petId, from, to }: ExpenseQuery) {
   return selectWhere(
     db,
@@ -123,7 +112,6 @@ export function createCareEntryRepo(db: Db) {
     find: async (familyId: string, entryId: string) => find(db, familyId, entryId),
     petOf: async (familyId: string, petId: string) => petOf(db, familyId, petId),
     dueCandidates: async (familyId: string, petId: string) => dueCandidates(db, familyId, petId),
-    timeZoneOf: async (memberId: string) => timeZoneOf(db, memberId),
     expenses: async (query: ExpenseQuery) => expenses(db, query),
     photosOf: async (familyId: string, entryIds: string[]) => photosOf(db, familyId, entryIds),
     knownPhotoIds: async (familyId: string, photoIds: string[]) =>

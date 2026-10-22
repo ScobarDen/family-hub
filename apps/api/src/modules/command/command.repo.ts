@@ -29,15 +29,6 @@ function familyQueries(db: Db) {
         .where(and(eq(pets.familyId, familyId), isNull(pets.archivedAt)))
         .orderBy(asc(pets.createdAt))
         .all(),
-    async timeZoneOf(memberId: string): Promise<string | null> {
-      const row = await db
-        .select({ timeZone: members.timeZone })
-        .from(members)
-        .where(eq(members.id, memberId))
-        .get();
-
-      return row?.timeZone ?? null;
-    },
   };
 }
 

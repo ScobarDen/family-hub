@@ -5,12 +5,13 @@ import {
   type DueDateItem,
   type ExpenseSummary,
 } from "@family-hub/contract";
+import { dateInZone } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
-import type { Clock } from "@/common/clock";
+import { fallbackTimeZone, type Clock } from "@/common/clock";
 import type { PhotoLinks } from "@/common/photo-link";
 
-import { columnsOf, summaryOf, toDueDateItem, todayIn } from "../care-entry.lib.ts";
+import { columnsOf, summaryOf, toDueDateItem } from "../care-entry.lib.ts";
 import type { CareEntryRepo, CareEntryRow } from "../care-entry.repo.ts";
 import { openDueDates } from "../due-date/index.ts";
 import { hasForeignPhotos, withPhotos } from "./entry-photo.service.ts";
@@ -203,7 +204,7 @@ async function dueDates(
 ): Promise<DueDateItem[]> {
   const pet = await entries.petOf(family.id, petId);
   const rows = await entries.dueCandidates(family.id, petId);
-  const today = todayIn(await entries.timeZoneOf(member.id), clock.now());
+  const today = dateInZone(clock.now(), member.timeZone ?? fallbackTimeZone);
   const open = openDueDates({ pets: pet === undefined ? [] : [pet], entries: rows });
 
   return open.map((due) => toDueDateItem(due, today));

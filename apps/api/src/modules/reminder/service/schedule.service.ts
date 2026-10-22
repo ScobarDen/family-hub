@@ -1,7 +1,9 @@
 import { uuidv7 } from "@family-hub/contract";
 import { dateInZone, dayBefore } from "@family-hub/recurrence";
 
-import { changesOf, fallbackTimeZone, rowKey, type PlannedRow } from "../reminder.lib.ts";
+import { fallbackTimeZone } from "@/common/clock";
+
+import { changesOf, rowKey, type PlannedRow } from "../reminder.lib.ts";
 import type { SourceHolder, HolderKind, ReminderDependencies, Source } from "../reminder.types.ts";
 import { familySources, kindsOf, sourceOfRow, sourcesOf } from "./source.service.ts";
 

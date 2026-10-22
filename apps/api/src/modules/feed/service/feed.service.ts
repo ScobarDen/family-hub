@@ -2,7 +2,7 @@ import { feedPageSize, feedUpcomingDays, type FeedPage } from "@family-hub/contr
 import { dateInZone, daysAfter } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
-import type { Clock } from "@/common/clock";
+import { fallbackTimeZone, type Clock } from "@/common/clock";
 import type { PhotoLinks } from "@/common/photo-link";
 
 import {
@@ -28,11 +28,8 @@ import {
 
 export type FeedDependencies = { feed: FeedRepo; clock: Clock; links: PhotoLinks };
 
-// A Member whose zone the Mini App has not reported yet sees the Feed on UTC days.
-const fallbackTimeZone = "UTC";
-
-async function windowOf({ feed, clock }: FeedDependencies, memberId: string): Promise<Window> {
-  const timeZone = (await feed.timeZoneOf(memberId)) ?? fallbackTimeZone;
+function windowOf({ clock }: FeedDependencies, { member }: Membership): Window {
+  const timeZone = member.timeZone ?? fallbackTimeZone;
   const today = dateInZone(clock.now(), timeZone);
 
   return { today, last: daysAfter(today, feedUpcomingDays - 1), timeZone };
@@ -106,7 +103,7 @@ export function createFeedService(dependencies: FeedDependencies) {
   return {
     // What the morning digest says: what is overdue and what falls on the Member's today.
     async digestOf(membership: Membership) {
-      const window = await windowOf(dependencies, membership.member.id);
+      const window = windowOf(dependencies, membership);
       const { overdue, upcoming } = await ahead(dependencies, membership, window);
 
       return { overdue, today: upcoming.filter(({ date }) => date === window.today) };
@@ -118,7 +115,7 @@ export function createFeedService(dependencies: FeedDependencies) {
         return { overdue: [], upcoming: [], ...page };
       }
 
-      const window = await windowOf(dependencies, membership.member.id);
+      const window = windowOf(dependencies, membership);
 
       return { ...(await ahead(dependencies, membership, window)), ...page };
     },

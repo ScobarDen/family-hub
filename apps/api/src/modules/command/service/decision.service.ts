@@ -71,13 +71,10 @@ export async function pressOf(
 }
 
 // A draft kept from before zones were stored falls back to the speaker's zone now.
-export async function phraseOf(
-  dependencies: CommandDependencies,
-  { row, membership }: Press,
-): Promise<Phrase> {
+export function phraseOf({ row, membership }: Press): Phrase {
   return {
     saidAt: row.createdAt,
-    timeZone: row.timeZone ?? (await speakerZoneOf(dependencies, membership)),
+    timeZone: row.timeZone ?? speakerZoneOf(membership),
   };
 }
 
@@ -98,7 +95,7 @@ async function createClaimed(dependencies: CommandDependencies, press: Press) {
     return await createRecord(dependencies, {
       membership: press.membership,
       draft: press.draft,
-      phrase: await phraseOf(dependencies, press),
+      phrase: phraseOf(press),
     });
   } catch (error) {
     await reopen(dependencies, press);

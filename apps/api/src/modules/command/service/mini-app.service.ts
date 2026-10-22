@@ -89,7 +89,7 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
       withPress(membership, draftId, async (press) =>
         outcomeFor(
           { status: "draft", draft: press.draft },
-          { draftId, heard: null, phrase: await phraseOf(dependencies, press) },
+          { draftId, heard: null, phrase: phraseOf(press) },
         ),
       ),
     create: async (membership: Membership, draftId: string) =>
@@ -102,7 +102,7 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
           ? "not-found"
           : outcomeFor(
               { status: "draft", draft },
-              { draftId, heard: null, phrase: await phraseOf(dependencies, press) },
+              { draftId, heard: null, phrase: phraseOf(press) },
             );
       }),
     dismiss: async (membership: Membership, draftId: string) =>
