@@ -251,6 +251,42 @@ describe("a Care Entry's photos", () => {
   });
 });
 
+describe("another Family's photo", () => {
+  test("cannot be attached to a Care Entry, an avatar or an Album", async () => {
+    const worker = await startWithBuick();
+    const stranger = { id: 333, first_name: "Пётр" };
+    const neighbours = await worker.addFamily({
+      name: "Соседи",
+      owner: { telegramId: stranger.id, name: "Пётр" },
+    });
+
+    await worker.setPhotoChannel(neighbours.familyId, -100_600);
+
+    const foreign = await uploaded(worker, stranger, 9);
+    const album = await request(worker, asya, {
+      method: "POST",
+      path: "/api/albums",
+      body: { title: "Казань", description: null },
+    });
+    const { id: albumId } = await album.json<{ id: string }>();
+    const responses = [
+      await addEntry(worker, [foreign.id]),
+      await request(worker, denis, {
+        method: "PUT",
+        path: `/api/pets/${worker.buickId}/avatar`,
+        body: { photoId: foreign.id },
+      }),
+      await request(worker, asya, {
+        method: "POST",
+        path: `/api/albums/${albumId}/photos`,
+        body: { photoIds: [foreign.id] },
+      }),
+    ];
+
+    expect(responses.map(({ status }) => status)).toEqual([400, 400, 400]);
+  });
+});
+
 describe("deleting a photo", () => {
   test("is for its uploader or the Family Owner and forgets it everywhere", async () => {
     const worker = await startWithBuick();

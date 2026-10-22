@@ -107,7 +107,9 @@ async function knownPhotoIds(db: Db, familyId: string, photoIds: string[]): Prom
 
 async function setPhotos(db: Db, { familyId, entryId, photoIds }: PhotoLinks): Promise<void> {
   await db.batch([
-    db.delete(careEntryPhotos).where(eq(careEntryPhotos.careEntryId, entryId)),
+    db
+      .delete(careEntryPhotos)
+      .where(and(eq(careEntryPhotos.familyId, familyId), eq(careEntryPhotos.careEntryId, entryId))),
     ...photoIds.map((photoId, position) =>
       db.insert(careEntryPhotos).values({ careEntryId: entryId, photoId, familyId, position }),
     ),

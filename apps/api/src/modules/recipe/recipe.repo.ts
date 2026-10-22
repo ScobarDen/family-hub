@@ -63,8 +63,12 @@ async function setLinks(
   { familyId, recipeId, tagIds, photoIds }: RecipeTarget & { tagIds: string[]; photoIds: string[] },
 ) {
   await db.batch([
-    db.delete(recipeTagLinks).where(eq(recipeTagLinks.recipeId, recipeId)),
-    db.delete(recipePhotos).where(eq(recipePhotos.recipeId, recipeId)),
+    db
+      .delete(recipeTagLinks)
+      .where(and(eq(recipeTagLinks.familyId, familyId), eq(recipeTagLinks.recipeId, recipeId))),
+    db
+      .delete(recipePhotos)
+      .where(and(eq(recipePhotos.familyId, familyId), eq(recipePhotos.recipeId, recipeId))),
     ...tagIds.map((tagId) => db.insert(recipeTagLinks).values({ recipeId, tagId, familyId })),
     ...photoIds.map((photoId, position) =>
       db.insert(recipePhotos).values({ recipeId, photoId, familyId, position }),
@@ -86,7 +90,11 @@ async function setFavorite(
     : db
         .delete(recipeFavorites)
         .where(
-          and(eq(recipeFavorites.recipeId, recipeId), eq(recipeFavorites.memberId, memberId)),
+          and(
+            eq(recipeFavorites.familyId, familyId),
+            eq(recipeFavorites.recipeId, recipeId),
+            eq(recipeFavorites.memberId, memberId),
+          ),
         ));
 }
 
