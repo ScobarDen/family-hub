@@ -5,7 +5,7 @@ import type { CareEntry, CareKind } from "@family-hub/contract";
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { PreparedPhoto } from "@/common/photo";
-import { detached, readOnly } from "@/common/state";
+import { detached, readOnly, reatomFailure } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
@@ -55,7 +55,6 @@ type Sources = CareDependencies & {
   data: CareData;
   form: CareFormModel;
   screen: Atom<CareScreen["kind"]>;
-  failure: Atom<string | undefined>;
 };
 
 function reatomWeight({ data, timeZone, today }: Sources, weightRange: Atom<WeightRange>) {
@@ -113,7 +112,7 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
   };
 }
 
-function reatomRemove({ api, data, form, screen, failure, telegram }: Sources) {
+function reatomRemove({ api, data, form, screen, telegram }: Sources) {
   return action(async () => {
     const entryId = form.editedId();
     const choice = await wrap(
@@ -131,15 +130,9 @@ function reatomRemove({ api, data, form, screen, failure, telegram }: Sources) {
       return;
     }
 
-    failure.set(undefined);
-
-    try {
-      await wrap(api.remove(entryId));
-      data.reload();
-      screen.set("blocks");
-    } catch {
-      failure.set("Не получилось удалить запись. Попробуйте ещё раз.");
-    }
+    await wrap(api.remove(entryId));
+    data.reload();
+    screen.set("blocks");
   }, "care.remove").extend(withAsync());
 }
 
@@ -256,7 +249,6 @@ export function reatomCare(dependencies: CareDependencies) {
     data,
     form,
     screen,
-    failure: atom<string | undefined>(undefined, "care.failure"),
   };
   const weightRange = atom<WeightRange>("quarter", "care.weightRange");
   const remove = reatomRemove(sources);
@@ -267,7 +259,10 @@ export function reatomCare(dependencies: CareDependencies) {
     canGoBack: computed(() => screen() !== "blocks", "care.canGoBack"),
     isReadOnly: readOnly(dependencies.isReadOnly),
     dueSources: reatomDueSources(data),
-    failure: readOnly(sources.failure),
+    failure: reatomFailure(remove, {
+      message: "Не получилось удалить запись. Попробуйте ещё раз.",
+      name: "care.failure",
+    }),
     form,
     ...photos,
     ...reatomViews(sources, weightRange),

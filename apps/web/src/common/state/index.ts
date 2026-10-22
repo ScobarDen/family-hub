@@ -1,1 +1,1 @@
-export { detached, readOnly } from "./state.lib.ts";
+export { detached, readOnly, reatomFailure } from "./state.lib.ts";

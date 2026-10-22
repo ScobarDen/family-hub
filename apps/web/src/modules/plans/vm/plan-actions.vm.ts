@@ -1,8 +1,8 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, computed, noop, withAsync, wrap } from "@reatom/core";
 
 import type { Plan } from "@family-hub/contract";
 
-import { readOnly } from "@/common/state";
+import { reatomFailure } from "@/common/state";
 import type { PopupParams } from "@/common/telegram";
 
 import type { PlansApi } from "../plans.api.ts";
@@ -106,10 +106,7 @@ async function kept(
   }
 }
 
-function reatomPlanChange(
-  dependencies: PlanActionsDependencies,
-  failure: Atom<string | undefined>,
-) {
+function reatomPlanChange(dependencies: PlanActionsDependencies) {
   return action(async (change: (plan: Plan) => Promise<void>) => {
     const plan = dependencies.openedPlan();
 
@@ -117,22 +114,18 @@ function reatomPlanChange(
       return;
     }
 
-    failure.set(undefined);
-
-    try {
-      await wrap(change(plan));
-    } catch {
-      failure.set("Не получилось сохранить. Попробуйте ещё раз.");
-    }
+    await wrap(change(plan));
   }, "plans.change").extend(withAsync());
 }
 
 export function reatomPlanActions(dependencies: PlanActionsDependencies) {
-  const failure = atom<string | undefined>(undefined, "plans.failure");
-  const change = reatomPlanChange(dependencies, failure);
+  const change = reatomPlanChange(dependencies);
 
   return {
-    failure: readOnly(failure),
+    failure: reatomFailure(change, {
+      message: "Не получилось сохранить. Попробуйте ещё раз.",
+      name: "plans.failure",
+    }),
     isChanging: computed(() => !change.ready(), "plans.isChanging"),
 
     togglePlan: action(() => {

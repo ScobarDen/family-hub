@@ -1,10 +1,10 @@
-import { action, atom, computed, reatomForm, withAsync, wrap } from "@reatom/core";
+import { action, computed, reatomForm, withAsync, wrap } from "@reatom/core";
 import { z } from "zod";
 
 import type { Pet } from "@family-hub/contract";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
-import { detached, readOnly } from "@/common/state";
+import { detached, reatomFailure } from "@/common/state";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -47,7 +47,6 @@ function reatomDeletion({ api, pets, openedPet, onDeleted }: PetArchiveDependenc
 // Archiving is any Member's and undone as easily; deleting forever is the Family Owner's alone.
 export function reatomPetArchive(dependencies: PetArchiveDependencies) {
   const { api, pets, openedPet } = dependencies;
-  const failure = atom<string | undefined>(undefined, "pets.archive.failure");
   const deletion = reatomDeletion(dependencies);
   const toggle = action(async () => {
     const pet = openedPet();
@@ -56,13 +55,7 @@ export function reatomPetArchive(dependencies: PetArchiveDependencies) {
       return;
     }
 
-    failure.set(undefined);
-
-    try {
-      pets.keep(await wrap(pet.archivedAt === null ? api.archive(pet.id) : api.unarchive(pet.id)));
-    } catch {
-      failure.set("Не получилось. Попробуйте ещё раз.");
-    }
+    pets.keep(await wrap(pet.archivedAt === null ? api.archive(pet.id) : api.unarchive(pet.id)));
   }, "pets.archive.toggle").extend(withAsync());
 
   return {
@@ -72,7 +65,10 @@ export function reatomPetArchive(dependencies: PetArchiveDependencies) {
       message: "Не получилось удалить питомца. Попробуйте ещё раз.",
       name: "pets.archive.deletionFailure",
     }),
-    archiveFailure: readOnly(failure),
+    archiveFailure: reatomFailure(toggle, {
+      message: "Не получилось. Попробуйте ещё раз.",
+      name: "pets.archive.failure",
+    }),
 
     toggleArchive: detached(toggle, "pets.archive.toggleArchive"),
     resetDeletion: action(() => {

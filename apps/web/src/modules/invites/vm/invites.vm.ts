@@ -1,9 +1,9 @@
-import { action, atom, computed, withAsync, withAsyncData, wrap } from "@reatom/core";
+import { action, computed, withAsync, withAsyncData, wrap } from "@reatom/core";
 
 import type { Invite, InviteCreated } from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
-import { detached, readOnly } from "@/common/state";
+import { detached, reatomFailure } from "@/common/state";
 
 import type { InvitesApi } from "../invites.api.ts";
 
@@ -39,10 +39,9 @@ function reatomList(api: InvitesApi) {
 
 type Sources = InvitesDependencies & {
   list: ReturnType<typeof reatomList>;
-  failure: { set: (failure: string | undefined) => void };
 };
 
-function reatomCreate({ api, telegram, list, failure }: Sources) {
+function reatomCreate({ api, telegram, list }: Sources) {
   async function share({ link, preparedMessageId }: InviteCreated): Promise<void> {
     if (preparedMessageId !== null && telegram.canShareMessage) {
       await wrap(telegram.shareMessage(preparedMessageId));
@@ -52,44 +51,44 @@ function reatomCreate({ api, telegram, list, failure }: Sources) {
   }
 
   return action(async () => {
-    failure.set(undefined);
+    const created = await wrap(api.create());
+    const { preparedMessageId: _prepared, ...invite } = created;
 
-    try {
-      const created = await wrap(api.create());
-      const { preparedMessageId: _prepared, ...invite } = created;
-
-      list.data.set(newestFirst([invite, ...(list.data() ?? [])]));
-      await wrap(share(created));
-    } catch {
-      failure.set("Не получилось создать приглашение. Попробуйте ещё раз.");
-    }
+    list.data.set(newestFirst([invite, ...(list.data() ?? [])]));
+    await wrap(share(created));
   }, "invites.create").extend(withAsync());
 }
 
-function reatomRevoke({ api, list, failure }: Sources) {
+function reatomRevoke({ api, list }: Sources) {
   return action(async (inviteId: string) => {
     const revoked = list.data()?.find((invite) => invite.id === inviteId);
 
-    failure.set(undefined);
     list.data.set(list.data()?.filter((invite) => invite.id !== inviteId));
 
     try {
       await wrap(api.revoke(inviteId));
-    } catch {
+    } catch (error) {
       if (revoked) {
         list.data.set(newestFirst([...(list.data() ?? []), revoked]));
       }
 
-      failure.set("Не получилось отозвать приглашение. Попробуйте ещё раз.");
+      throw error;
     }
   }, "invites.revoke").extend(withAsync());
 }
 
 export function reatomInvites(dependencies: InvitesDependencies) {
   const list = reatomList(dependencies.api);
-  const failure = atom<string | undefined>(undefined, "invites.failure");
-  const create = reatomCreate({ ...dependencies, list, failure });
-  const revoke = reatomRevoke({ ...dependencies, list, failure });
+  const create = reatomCreate({ ...dependencies, list });
+  const revoke = reatomRevoke({ ...dependencies, list });
+  const createFailure = reatomFailure(create, {
+    message: "Не получилось создать приглашение. Попробуйте ещё раз.",
+    name: "invites.createFailure",
+  });
+  const revokeFailure = reatomFailure(revoke, {
+    message: "Не получилось отозвать приглашение. Попробуйте ещё раз.",
+    name: "invites.revokeFailure",
+  });
 
   return {
     invites: computed(
@@ -102,7 +101,7 @@ export function reatomInvites(dependencies: InvitesDependencies) {
     ),
     isInviting: computed(() => !create.ready(), "invites.isInviting"),
     isRevoking: computed(() => !revoke.ready(), "invites.isRevoking"),
-    failure: readOnly(failure),
+    failure: computed(() => createFailure() ?? revokeFailure(), "invites.failure"),
 
     invite: detached(create, "invites.invite"),
     revoke: detached(revoke, "invites.revokeOne"),

@@ -1,10 +1,10 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
 
 import type { CalendarEvent } from "@family-hub/contract";
 import { occurrenceMoment, timeInZone } from "@family-hub/recurrence";
 
 import { formatDate, formatDay } from "@/common/format-date";
-import { readOnly } from "@/common/state";
+import { reatomFailure } from "@/common/state";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
@@ -104,7 +104,6 @@ async function isConfirmed(
 
 type ChangeSources = EventDetailsDependencies & {
   event: () => CalendarEvent | undefined;
-  failure: Atom<string | undefined>;
 };
 
 async function apply(
@@ -133,25 +132,18 @@ function reatomChange(sources: ChangeSources) {
       return;
     }
 
-    sources.failure.set(undefined);
-
-    try {
-      await wrap(apply(sources, { kind, target }));
-      sources.onClosed();
-    } catch {
-      sources.failure.set("Не получилось. Попробуйте ещё раз.");
-    }
+    await wrap(apply(sources, { kind, target }));
+    sources.onClosed();
   }, "calendar.details.change").extend(withAsync());
 }
 
 export function reatomEventDetails(dependencies: EventDetailsDependencies) {
   const { data, opened } = dependencies;
-  const failure = atom<string | undefined>(undefined, "calendar.details.failure");
   const event = computed(
     () => data.events.data()?.find(({ id }) => id === opened()?.eventId),
     "calendar.details.event",
   );
-  const change = reatomChange({ ...dependencies, event, failure });
+  const change = reatomChange({ ...dependencies, event });
 
   return {
     event,
@@ -163,7 +155,10 @@ export function reatomEventDetails(dependencies: EventDetailsDependencies) {
         ? undefined
         : detailsOf(current, target.occurrence ?? current.start.date, dependencies.timeZone());
     }, "calendar.details"),
-    failure: readOnly(failure),
+    failure: reatomFailure(change, {
+      message: "Не получилось. Попробуйте ещё раз.",
+      name: "calendar.details.failure",
+    }),
     skipOccurrence: action(() => {
       change("skip").catch(noop);
     }, "calendar.details.skip"),

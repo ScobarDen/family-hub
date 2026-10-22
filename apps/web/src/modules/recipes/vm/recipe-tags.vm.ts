@@ -1,8 +1,8 @@
-import { action, atom, noop, withAsync, wrap } from "@reatom/core";
+import { action, noop, withAsync, wrap } from "@reatom/core";
 
 import { recipeTagNameMaxLength } from "@family-hub/contract";
 
-import { detached, readOnly } from "@/common/state";
+import { detached, reatomFailure } from "@/common/state";
 import type { PopupParams } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
@@ -30,16 +30,9 @@ function nameOf(text: string): string | undefined {
 
 // The Family's tags: anyone adds, renames or deletes one.
 export function reatomTagEditing({ api, telegram }: TagDependencies, data: RecipesData) {
-  const failure = atom<string | undefined>(undefined, "recipes.tags.failure");
   const change = action(async (doing: () => Promise<unknown>) => {
-    failure.set(undefined);
-
-    try {
-      await wrap(doing());
-      data.reload();
-    } catch {
-      failure.set("Не получилось сохранить тег. Попробуйте ещё раз.");
-    }
+    await wrap(doing());
+    data.reload();
   }, "recipes.tags.change").extend(withAsync());
   const remove = action(async (tagId: string) => {
     if ((await wrap(telegram.showPopup(deleteQuestion))) === "delete") {
@@ -48,7 +41,10 @@ export function reatomTagEditing({ api, telegram }: TagDependencies, data: Recip
   }, "recipes.tags.removeAsked").extend(withAsync());
 
   return {
-    tagFailure: readOnly(failure),
+    tagFailure: reatomFailure(change, {
+      message: "Не получилось сохранить тег. Попробуйте ещё раз.",
+      name: "recipes.tags.failure",
+    }),
     addTag: action((text: string) => {
       const name = nameOf(text);
 
