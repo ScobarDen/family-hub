@@ -23,6 +23,7 @@ export type PlanDetails = {
   note: string | undefined;
   facts: string | undefined;
   progress: string | undefined;
+  stepsTitle: string;
   completed: string | undefined;
   isCompleted: boolean;
   isPrivate: boolean;
@@ -88,6 +89,7 @@ export function toDetails(plan: Plan, timeZone: string): PlanDetails {
     note: plan.note ?? undefined,
     facts: joined([dueOf(plan.dueDate), plan.assignee?.name, plan.pet?.name]),
     progress: progressOf(plan),
+    stepsTitle: joined(["Шаги", progressOf(plan)]) ?? "Шаги",
     completed: completedOf(plan.completed, timeZone),
     isCompleted: plan.completed !== null,
     isPrivate: plan.visibility === "private",

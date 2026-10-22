@@ -73,7 +73,7 @@ export function PlanDetails({ plan, model }: PlanDetailsProps) {
   return (
     <>
       <PlanHeader plan={plan} model={model} />
-      <Section title={plan.progress === undefined ? "Шаги" : `Шаги · ${plan.progress}`}>
+      <Section title={plan.stepsTitle}>
         {plan.subplans.map((subplan) => (
           <SubplanRow key={subplan.id} subplan={subplan} model={model} />
         ))}

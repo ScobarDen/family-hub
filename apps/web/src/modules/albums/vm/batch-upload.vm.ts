@@ -123,6 +123,29 @@ function reatomRun(
   }, "albums.batch.run").extend(withAsync(), withAbort());
 }
 
+function reatomBatchTexts(items: Atom<BatchItem[]>, run: { ready: () => boolean }) {
+  const progress = computed(
+    () => `${countOf(items(), "done")} / ${items().length}`,
+    "albums.batch.progress",
+  );
+  const failedCount = computed(() => countOf(items(), "failed"), "albums.batch.failedCount");
+
+  return {
+    isActive: computed(() => items().length > 0, "albums.batch.isActive"),
+    isRunning: computed(() => !run.ready(), "albums.batch.isRunning"),
+    progress,
+    failedCount,
+    title: computed(
+      () => `${run.ready() ? "Загружено" : "Загружаем"} ${progress()}`,
+      "albums.batch.title",
+    ),
+    failedNote: computed(
+      () => (failedCount() > 0 ? `Не загрузилось: ${failedCount()}` : undefined),
+      "albums.batch.failedNote",
+    ),
+  };
+}
+
 export function reatomBatchUpload(dependencies: BatchUploadDependencies) {
   const items = atom<BatchItem[]>([], "albums.batch.items");
   const albumId = atom<string | undefined>(undefined, "albums.batch.albumId");
@@ -130,13 +153,7 @@ export function reatomBatchUpload(dependencies: BatchUploadDependencies) {
   let lastKey = 0;
 
   return {
-    isActive: computed(() => items().length > 0, "albums.batch.isActive"),
-    isRunning: computed(() => !run.ready(), "albums.batch.isRunning"),
-    progress: computed(
-      () => `${countOf(items(), "done")} / ${items().length}`,
-      "albums.batch.progress",
-    ),
-    failedCount: computed(() => countOf(items(), "failed"), "albums.batch.failedCount"),
+    ...reatomBatchTexts(items, run),
 
     start: action((target: string | undefined, files: Blob[]) => {
       albumId.set(target);

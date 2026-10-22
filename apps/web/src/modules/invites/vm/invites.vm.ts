@@ -8,7 +8,7 @@ import { detached, reatomFailure } from "@/common/state";
 
 import type { InvitesApi } from "../invites.api.ts";
 
-export type InviteItem = { id: string; expiresOn: string };
+export type InviteItem = { id: string; title: string };
 
 type InvitesDependencies = {
   api: InvitesApi;
@@ -31,7 +31,7 @@ function newestFirst(invites: Invite[]): Invite[] {
 }
 
 function toItem(invite: Invite, timeZone: string): InviteItem {
-  return { id: invite.id, expiresOn: `до ${formatDay(invite.expiresAt, timeZone)}` };
+  return { id: invite.id, title: `Приглашение до ${formatDay(invite.expiresAt, timeZone)}` };
 }
 
 function reatomList(api: InvitesApi) {

@@ -89,10 +89,11 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
         (data.entries.data() ?? []).map((entry) => toJournalItem(entry, timeZone())),
       "care.journal",
     ),
-    month: computed((): ExpensesView | undefined => {
+    // Until the month arrives it reads as nothing spent.
+    month: computed((): ExpensesView => {
       const summary = data.month.data();
 
-      return summary === undefined ? undefined : toExpensesView(summary);
+      return summary === undefined ? { total: formatRubles(0), rows: [] } : toExpensesView(summary);
     }, "care.monthView"),
     year: computed((): YearExpenses | undefined => {
       const summary = data.year.data();

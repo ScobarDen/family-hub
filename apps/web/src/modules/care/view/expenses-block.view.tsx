@@ -23,9 +23,7 @@ export const ExpensesBlock = reatomComponent(({ model }: { model: CareModel }) =
       }
     >
       <div className="flex items-end justify-between gap-3 px-4 pt-4 pb-3">
-        <span className="text-[1.75rem] leading-none tracking-tight">
-          {month === undefined || month.rows.length === 0 ? "0 ₽" : month.total}
-        </span>
+        <span className="text-[1.75rem] leading-none tracking-tight">{month.total}</span>
         {!model.isReadOnly() && (
           <Button
             size="sm"
@@ -38,7 +36,7 @@ export const ExpensesBlock = reatomComponent(({ model }: { model: CareModel }) =
           </Button>
         )}
       </div>
-      <ExpenseRows rows={month?.rows ?? []} />
+      <ExpenseRows rows={month.rows} />
     </Section>
   );
 }, "ExpensesBlock");

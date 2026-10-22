@@ -16,7 +16,7 @@ function GoalRows({ goals, model }: { goals: GoalListItem[]; model: GoalsScreenM
       tone={goal.color}
       iconVariant="badge"
       title={goal.title}
-      subtitle={`${goal.subtitle} · ${goal.percent}%`}
+      subtitle={goal.progress}
       onClick={() => {
         model.open(goal.id);
       }}

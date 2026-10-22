@@ -22,7 +22,7 @@ export const Invites = reatomComponent(({ model }: InvitesProps) => {
         <SectionItem
           key={invite.id}
           icon={Link}
-          title={`Приглашение ${invite.expiresOn}`}
+          title={invite.title}
           after={
             <Button
               size="sm"

@@ -192,7 +192,7 @@ type Model = ReturnType<typeof startCare>["model"];
 async function loaded(model: Model) {
   await vi.waitFor(() => {
     expect(model.journal()).toHaveLength(3);
-    expect(model.month()).toBeDefined();
+    expect(model.month().rows).not.toEqual([]);
   });
 }
 
