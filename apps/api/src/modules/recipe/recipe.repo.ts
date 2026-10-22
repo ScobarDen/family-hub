@@ -12,6 +12,7 @@ import {
   recipes,
   type Db,
 } from "@/common/db";
+import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
 import { knownPhotoIds } from "@/modules/photo";
 
 export type RecipeRow = typeof recipes.$inferSelect;
@@ -126,6 +127,40 @@ async function cooksOf(db: Db, familyId: string): Promise<CookRow[]> {
   return rows.map(({ cook, memberName }) => ({ ...cook, memberName }));
 }
 
+const cookKeyed = { at: recipeCooks.cookedAt, key: keyOf("cooked", recipeCooks.id) };
+
+async function cooksBefore(db: Db, familyId: string, { keyset, limit }: KeysetPage) {
+  return db
+    .select({
+      key: cookKeyed.key,
+      recipeId: recipeCooks.recipeId,
+      cookedAt: recipeCooks.cookedAt,
+      title: recipes.title,
+      memberName: members.name,
+    })
+    .from(recipeCooks)
+    .innerJoin(recipes, eq(recipes.id, recipeCooks.recipeId))
+    .innerJoin(members, eq(members.id, recipeCooks.createdBy))
+    .where(and(eq(recipeCooks.familyId, familyId), olderThan(cookKeyed, keyset)))
+    .orderBy(...newestFirstBy(cookKeyed))
+    .limit(limit)
+    .all();
+}
+
+async function photosOf(db: Db, { familyId, ids }: Links) {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  return db
+    .select({ recipeId: recipePhotos.recipeId, photo: photos })
+    .from(recipePhotos)
+    .innerJoin(photos, eq(photos.id, recipePhotos.photoId))
+    .where(and(eq(recipePhotos.familyId, familyId), inArray(recipePhotos.recipeId, ids)))
+    .orderBy(asc(recipePhotos.position))
+    .all();
+}
+
 function ofCook({ familyId, cookId }: { familyId: string; cookId: string }) {
   return and(eq(recipeCooks.familyId, familyId), eq(recipeCooks.id, cookId));
 }
@@ -133,7 +168,7 @@ function ofCook({ familyId, cookId }: { familyId: string; cookId: string }) {
 // «🍳 Приготовили» marks, each with the Member who made it.
 function cookCalls(db: Db) {
   return {
-    ...bindFirst(db, { cooksOf }),
+    ...bindFirst(db, { cooksOf, cooksBefore, photosOf }),
     findCook: async (target: { familyId: string; cookId: string }) =>
       db.select().from(recipeCooks).where(ofCook(target)).get(),
     async addCook(row: typeof recipeCooks.$inferInsert): Promise<void> {

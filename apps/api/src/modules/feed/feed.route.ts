@@ -4,7 +4,7 @@ import type { FeedPage } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
 
-import type { FeedService } from "./service/feed.service.ts";
+import type { FeedService } from "./feed.service.ts";
 
 type FeedEnv = {
   Variables: MemberEnv["Variables"] & { feed: FeedService };

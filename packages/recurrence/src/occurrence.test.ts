@@ -6,6 +6,7 @@ import {
   nthOccurrence,
   occurrenceDates,
   occurrenceMoment,
+  occurrencesOnDays,
   timeInZone,
 } from "./occurrence.ts";
 
@@ -136,5 +137,24 @@ describe("the first Occurrence from a day", () => {
     ],
   ] as const)("%s", (...[, start, recurrence, date, first]) => {
     expect(firstOccurrenceFrom(start, recurrence, date)).toBe(first);
+  });
+});
+
+describe("Occurrences on the viewer's days", () => {
+  const days = { from: "2026-10-05", to: "2026-10-06", timeZone: "Asia/Vladivostok" };
+
+  test("places a timed Occurrence on the viewer's day of its moment", () => {
+    const placed = occurrencesOnDays(
+      { startDate: "2026-10-04", recurrence: { frequency: "weekly", until: null } },
+      {
+        days,
+        momentOf: (occurrence) =>
+          occurrenceMoment(occurrence, { time: "20:00", timeZone: "Europe/Moscow" }),
+      },
+    );
+
+    expect(placed.map(({ occurrence, date }) => [occurrence, date])).toEqual([
+      ["2026-10-04", "2026-10-05"],
+    ]);
   });
 });

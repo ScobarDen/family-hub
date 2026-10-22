@@ -5,8 +5,8 @@ import { bindFirst } from "@/common/bind";
 import type { Clock } from "@/common/clock";
 import { isHiddenFrom, isTurnedPrivate } from "@/common/visibility";
 
-import { columnsOf, toEvent } from "./event.lib.ts";
-import type { EventRepo, EventRow } from "./event.repo.ts";
+import { columnsOf, toEvent } from "../event.lib.ts";
+import type { EventRepo, EventRow } from "../event.repo.ts";
 
 // The Reminders of an Event live in the reminder module; the app wires this port to it.
 type EventSchedule = {

@@ -12,27 +12,33 @@ import { createDb, type Db } from "@/common/db";
 import { createMiniAppLinks, type MiniAppLinks } from "@/common/mini-app-link";
 import { createPhotoLinks, type PhotoLinks } from "@/common/photo-link";
 import type { BotApi } from "@/common/telegram";
-import { albumRoute, createAlbumRepo, createAlbumService } from "@/modules/album";
+import { albumRoute, createAlbumFeed, createAlbumRepo, createAlbumService } from "@/modules/album";
 import {
   careEntryRoute,
+  createCareFeed,
   createCareEntryRepo,
   createCareEntryService,
   type CareEntryService,
 } from "@/modules/care-entry";
 import { commandRoute, createCommandRepo, createCommandService } from "@/modules/command";
-import { createEventRepo, createEventService, eventRoute } from "@/modules/event";
-import { createFamilyRepo, createFamilyService, familyRoute } from "@/modules/family";
+import { createEventFeed, createEventRepo, createEventService, eventRoute } from "@/modules/event";
+import {
+  createFamilyFeed,
+  createFamilyRepo,
+  createFamilyService,
+  familyRoute,
+} from "@/modules/family";
 import {
   createFamilyRequestRepo,
   createFamilyRequestService,
   familyRequestRoute,
   type FamilyRequestService,
 } from "@/modules/family-request";
-import { createFeedRepo, createFeedService, feedRoute, type FeedService } from "@/modules/feed";
-import { createGoalRepo, createGoalService, goalRoute } from "@/modules/goal";
+import { createFeedService, feedRoute, type FeedService } from "@/modules/feed";
+import { createGoalFeed, createGoalRepo, createGoalService, goalRoute } from "@/modules/goal";
 import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
 import { createMemberRepo, createMemberService, memberRoute } from "@/modules/member";
-import { createPetRepo, createPetService, petRoute } from "@/modules/pet";
+import { createPetFeed, createPetRepo, createPetService, petRoute } from "@/modules/pet";
 import {
   createPhotoRepo,
   createPhotoService,
@@ -44,10 +50,22 @@ import {
   createPhotoStorageService,
   photoStorageRoute,
 } from "@/modules/photo-storage";
-import { createPlanRepo, createPlanService, planRoute, type PlanService } from "@/modules/plan";
-import { createRecipeRepo, createRecipeService, recipeRoute } from "@/modules/recipe";
+import {
+  createPlanFeed,
+  createPlanRepo,
+  createPlanService,
+  planRoute,
+  type PlanService,
+} from "@/modules/plan";
+import {
+  createRecipeFeed,
+  createRecipeRepo,
+  createRecipeService,
+  recipeRoute,
+} from "@/modules/recipe";
 import {
   createDispatchRepo,
+  createReminderFeed,
   createReminderRepo,
   createReminderService,
   createSourceRepo,
@@ -115,6 +133,30 @@ function albumServiceOf(
   });
 }
 
+function feedServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Clock }) {
+  const care = createCareFeed({ entries: createCareEntryRepo(db), links });
+  const plans = createPlanFeed({ plans: createPlanRepo(db) });
+
+  return createFeedService({
+    activity: [
+      care,
+      plans,
+      createGoalFeed({ goals: createGoalRepo(db) }),
+      createRecipeFeed({ recipes: createRecipeRepo(db), links }),
+      createAlbumFeed({ albums: createAlbumRepo(db), links }),
+      createFamilyFeed({ families: createFamilyRepo(db) }),
+    ],
+    upcoming: [
+      care,
+      plans,
+      createEventFeed({ events: createEventRepo(db) }),
+      createReminderFeed({ reminders: createReminderRepo(db) }),
+      createPetFeed({ pets: createPetRepo(db) }),
+    ],
+    clock,
+  });
+}
+
 // A Plan's Reminder completes the Plan from the bot, and the Plan reschedules its Reminders;
 // the morning digest reads the Member's Feed.
 function reminderServiceOf(
@@ -140,7 +182,7 @@ function reminderServiceOf(
 // The services of what a Family keeps: its Pets, journal, Plans, Events and Reminders.
 function familyRecordServices(db: Db, { links, ...shared }: Records) {
   const { clock } = shared;
-  const feed = createFeedService({ feed: createFeedRepo(db), clock, links });
+  const feed = feedServiceOf(db, { links, clock });
   const reminders = reminderServiceOf(db, { shared, feed, plans: () => plans });
   const plans = createPlanService({
     plans: createPlanRepo(db),

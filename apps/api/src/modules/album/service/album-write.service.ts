@@ -1,4 +1,9 @@
-import { careEntryPhotoMax, uuidv7, type AlbumChange } from "@family-hub/contract";
+import {
+  careEntryPhotoMax,
+  uploadBatchGapMs,
+  uuidv7,
+  type AlbumChange,
+} from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
 
@@ -106,6 +111,22 @@ async function addToPet(
   }
 }
 
+// Photos continue the Member's latest Upload Batch in the Album while the pause stays short.
+async function addToAlbum(
+  { albums, clock }: AlbumDependencies,
+  membership: Membership,
+  { albumId, photoIds }: { albumId: string; photoIds: string[] },
+): Promise<void> {
+  const familyId = membership.family.id;
+  const memberId = membership.member.id;
+  const now = clock.now();
+  const latest = await albums.latestBatchOf({ familyId, albumId, memberId });
+  const batchId =
+    latest !== undefined && now - latest.lastAddedAt < uploadBatchGapMs ? latest.id : uuidv7(now);
+
+  await albums.addPhotos({ familyId, albumId, photoIds, memberId, batchId, now });
+}
+
 export async function addPhotos(
   dependencies: AlbumDependencies,
   membership: Membership,
@@ -127,13 +148,7 @@ export async function addPhotos(
   const petId = petIdOf(albumId);
 
   await (petId === undefined
-    ? dependencies.albums.addPhotos({
-        familyId,
-        albumId,
-        photoIds,
-        memberId: membership.member.id,
-        now: dependencies.clock.now(),
-      })
+    ? addToAlbum(dependencies, membership, { albumId, photoIds })
     : addToPet(dependencies, membership, { petId, photoIds }));
 
   return current(dependencies, membership, albumId);

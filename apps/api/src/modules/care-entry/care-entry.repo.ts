@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, lt, sql, type SQL } from "
 
 import { bindFirst } from "@/common/bind";
 import { careEntries, careEntryPhotos, members, pets, photos, type Db } from "@/common/db";
+import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
 import { knownPhotoIds } from "@/modules/photo";
 
 export type CareEntryRow = typeof careEntries.$inferSelect & { authorName: string | null };
@@ -66,6 +67,28 @@ async function expenses(db: Db, { familyId, petId, from, to }: ExpenseQuery) {
   );
 }
 
+const keyed = { at: careEntries.createdAt, key: keyOf("care", careEntries.id) };
+
+async function activityBefore(db: Db, familyId: string, { keyset, limit }: KeysetPage) {
+  return db
+    .select({
+      id: careEntries.id,
+      key: keyed.key,
+      petId: careEntries.petId,
+      details: careEntries.details,
+      createdAt: careEntries.createdAt,
+      memberName: members.name,
+      petName: pets.name,
+    })
+    .from(careEntries)
+    .innerJoin(members, eq(members.id, careEntries.createdBy))
+    .innerJoin(pets, eq(pets.id, careEntries.petId))
+    .where(and(eq(careEntries.familyId, familyId), olderThan(keyed, keyset)))
+    .orderBy(...newestFirstBy(keyed))
+    .limit(limit)
+    .all();
+}
+
 async function photosOf(db: Db, familyId: string, entryIds: string[]): Promise<EntryPhotoRow[]> {
   if (entryIds.length === 0) {
     return [];
@@ -95,7 +118,24 @@ async function setPhotos(db: Db, { familyId, entryId, photoIds }: PhotoLinks): P
 
 export function createCareEntryRepo(db: Db) {
   return {
-    ...bindFirst(db, { find, petOf, dueCandidates, expenses, photosOf, knownPhotoIds, setPhotos }),
+    ...bindFirst(db, {
+      find,
+      petOf,
+      dueCandidates,
+      expenses,
+      photosOf,
+      knownPhotoIds,
+      setPhotos,
+      activityBefore,
+    }),
+    petsOf: async (familyId: string) =>
+      db
+        .select({ id: pets.id, name: pets.name, archivedAt: pets.archivedAt })
+        .from(pets)
+        .where(eq(pets.familyId, familyId))
+        .all(),
+    allDueCandidates: async (familyId: string) =>
+      selectWhere(db, and(eq(careEntries.familyId, familyId), isNotNull(careEntries.dueKey))),
     list: async (familyId: string, petId: string) =>
       selectWhere(db, and(eq(careEntries.familyId, familyId), eq(careEntries.petId, petId))),
 

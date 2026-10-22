@@ -53,8 +53,8 @@ async function withRecipients(db: Db, row: ReminderRow): Promise<ReminderWithRec
 }
 
 // A Private Reminder exists only for its owner.
-async function listVisible(db: Db, familyId: string, memberId: string) {
-  const rows = await db
+async function visibleRows(db: Db, familyId: string, memberId: string): Promise<ReminderRow[]> {
+  return db
     .select()
     .from(reminders)
     .where(
@@ -65,6 +65,10 @@ async function listVisible(db: Db, familyId: string, memberId: string) {
     )
     .orderBy(asc(reminders.startDate))
     .all();
+}
+
+async function listVisible(db: Db, familyId: string, memberId: string) {
+  const rows = await visibleRows(db, familyId, memberId);
 
   return Promise.all(rows.map(async (row) => withRecipients(db, row)));
 }
@@ -131,7 +135,14 @@ async function removeDepartedRecipients(db: Db, familyId: string): Promise<void>
 
 export function createReminderRepo(db: Db) {
   return {
-    ...bindFirst(db, { familyMembersOf, listVisible, save, removeDepartedRecipients, areMembers }),
+    ...bindFirst(db, {
+      familyMembersOf,
+      listVisible,
+      visibleRows,
+      save,
+      removeDepartedRecipients,
+      areMembers,
+    }),
     find: async (reminderTarget: ReminderTarget) => findWhere(db, target(reminderTarget)),
 
     async delete(reminderTarget: ReminderTarget): Promise<void> {

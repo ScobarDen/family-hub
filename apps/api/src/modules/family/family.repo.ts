@@ -12,6 +12,7 @@ import {
   reminders,
   type Db,
 } from "@/common/db";
+import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
 
 type FamilyMemberRow = { id: string; name: string; telegramId: number };
 
@@ -94,9 +95,26 @@ async function handOver(
   return changed;
 }
 
+const joinKeyed = { at: familyMembers.createdAt, key: keyOf("joined", familyMembers.memberId) };
+
+async function joinsBefore(db: Db, familyId: string, { keyset, limit }: KeysetPage) {
+  return db
+    .select({
+      key: joinKeyed.key,
+      memberName: members.name,
+      createdAt: familyMembers.createdAt,
+    })
+    .from(familyMembers)
+    .innerJoin(members, eq(members.id, familyMembers.memberId))
+    .where(and(eq(familyMembers.familyId, familyId), olderThan(joinKeyed, keyset)))
+    .orderBy(...newestFirstBy(joinKeyed))
+    .limit(limit)
+    .all();
+}
+
 export function createFamilyRepo(db: Db) {
   return {
-    ...bindFirst(db, { depart, handOver }),
+    ...bindFirst(db, { depart, handOver, joinsBefore }),
     findMember: async (familyId: string, memberId: string): Promise<FamilyMemberRow | undefined> =>
       db
         .select({ id: members.id, name: members.name, telegramId: members.telegramId })
