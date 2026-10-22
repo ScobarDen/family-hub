@@ -10,7 +10,7 @@ import type {
 import type { CareEntryRow } from "./care-entry.repo.ts";
 import { dueKeyOf, type OpenDueDate } from "./due-date/index.ts";
 
-export type PromotedColumns = {
+type PromotedColumns = {
   dueDate: string | null;
   dueKey: string | null;
   weightKg: number | null;

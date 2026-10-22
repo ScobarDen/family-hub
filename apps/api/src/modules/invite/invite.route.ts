@@ -17,7 +17,7 @@ import { apiError, httpStatus, refusalsOf } from "@/common/errors";
 
 import type { AcceptResult, InviteService } from "./service/invite.service.ts";
 
-export type InviteEnv = {
+type InviteEnv = {
   Variables: AuthEnv["Variables"] & { invites: InviteService };
 };
 

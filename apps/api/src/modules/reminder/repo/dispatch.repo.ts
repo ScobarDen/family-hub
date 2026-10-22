@@ -14,7 +14,7 @@ export type NewRow = {
   nextFireAt: number;
 };
 
-export type HolderRows = { familyId: string; sources: DispatchSource[]; holderId: string };
+type HolderRows = { familyId: string; sources: DispatchSource[]; holderId: string };
 
 type DispatchValues = Partial<typeof reminderDispatch.$inferInsert>;
 

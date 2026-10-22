@@ -4,9 +4,9 @@ import { commandDrafts, familyMembers, members, pets, type Db } from "@/common/d
 
 export type CommandDraftRow = typeof commandDrafts.$inferSelect;
 
-export type FamilyPerson = { id: string; name: string };
+type FamilyPerson = { id: string; name: string };
 
-export type FamilyPet = FamilyPerson & { species: string };
+type FamilyPet = FamilyPerson & { species: string };
 
 // Who a draft may refer to: the Members by name and the Pets in care.
 export type FamilyNames = { members: FamilyPerson[]; pets: FamilyPet[] };

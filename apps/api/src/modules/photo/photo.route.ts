@@ -7,7 +7,7 @@ import { apiError, httpStatus, refusalsOf } from "@/common/errors";
 
 import type { PhotoRefusal, PhotoService, SignedRequest } from "./photo.service.ts";
 
-export type PhotoEnv = {
+type PhotoEnv = {
   Variables: MemberEnv["Variables"] & { photos: PhotoService };
 };
 

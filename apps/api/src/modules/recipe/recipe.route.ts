@@ -15,7 +15,7 @@ import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 import type { RecipeRefusal, RecipeResult } from "./recipe.types.ts";
 import type { RecipeService } from "./service/recipe.service.ts";
 
-export type RecipeEnv = {
+type RecipeEnv = {
   Variables: MemberEnv["Variables"] & { recipes: RecipeService };
 };
 

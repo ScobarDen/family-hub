@@ -18,7 +18,7 @@ export type PhotoDependencies = {
 
 export type PhotoRefusal = "storage-unavailable" | "too-large" | "not-found" | "not-uploader";
 
-export type UploadResult =
+type UploadResult =
   | { status: "ok"; photo: Photo }
   | { status: "rate-limited"; retryAfterSeconds: number }
   | { status: PhotoRefusal };
@@ -34,7 +34,7 @@ export type SignedRequest = {
   signature: string;
 };
 
-export type ServedPhoto =
+type ServedPhoto =
   | { status: "ok"; open: () => Promise<Response> }
   | { status: "forbidden" | "gone" };
 

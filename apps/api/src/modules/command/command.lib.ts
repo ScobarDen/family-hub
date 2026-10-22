@@ -20,7 +20,7 @@ export const strangerText =
   "Family Hub работает по приглашениям: попросите приглашение у своей семьи.";
 export const quotaText =
   "На сегодня команды кончились. Создайте напоминание вручную в приложении — завтра снова можно будет просто написать.";
-export const unrecognizedText = [
+const unrecognizedText = [
   "Не понял 🤔 Попробуйте так:",
   "• напомни в пятницу в 19:00 оплатить интернет",
   "• напомни мне завтра в 9 позвонить врачу",
@@ -28,10 +28,12 @@ export const unrecognizedText = [
   "• в субботу в 12 груминг Бьюика",
   "• Бьюик весит 12,4",
 ].join("\n");
-export const unsupportedText =
+const unsupportedText =
   "Такое голосом и текстом не умею — только создать напоминание, событие или запись питомца.";
+
 export const tooLongText = "Слишком длинно — уложитесь в 30 секунд.";
-export const unheardText = "Не расслышал, попробуйте ещё раз.";
+const unheardText = "Не расслышал, попробуйте ещё раз.";
+
 export const failureTexts: Record<CommandFailure, string> = {
   quota: quotaText,
   unheard: unheardText,

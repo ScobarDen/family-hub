@@ -19,7 +19,7 @@ export type PlanRow = typeof plans.$inferSelect;
 
 export type DigestRow = Pick<typeof members.$inferSelect, "isDigestEnabled" | "digestTime">;
 
-export type DueEntryRow = Pick<
+type DueEntryRow = Pick<
   typeof careEntries.$inferSelect,
   "id" | "petId" | "details" | "dueDate" | "dueKey" | "occurredAt"
 >;

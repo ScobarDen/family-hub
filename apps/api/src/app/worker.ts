@@ -55,7 +55,7 @@ import type { AppEnv, AppServices } from "./app.types.ts";
 import { healthRoute } from "./health.route.ts";
 import { webhookRoute } from "./webhook.route.ts";
 
-export type WorkerDependencies = {
+type WorkerDependencies = {
   clock: Clock;
   createBotApi: (token: string) => BotApi;
 };

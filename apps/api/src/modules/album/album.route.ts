@@ -14,7 +14,7 @@ import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 import type { AlbumRefusal, AlbumResult } from "./album.types.ts";
 import type { AlbumService } from "./service/album.service.ts";
 
-export type AlbumEnv = {
+type AlbumEnv = {
   Variables: MemberEnv["Variables"] & { albums: AlbumService };
 };
 

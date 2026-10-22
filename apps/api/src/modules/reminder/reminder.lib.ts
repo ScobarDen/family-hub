@@ -11,8 +11,6 @@ export const daySnoozeMs = 86_400_000;
 // A Reminder more than 12 hours late moves on to its next Occurrence without a stale message.
 export const latenessLimitMs = 43_200_000;
 
-export type ReminderAction = "done" | "snooze";
-
 const callbackPattern = new RegExp(`^${callbackPrefix}:(done|snooze):(.+)$`);
 
 const sourceIdSeparator = ":";

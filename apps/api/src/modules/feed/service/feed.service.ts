@@ -26,7 +26,7 @@ import {
   type Window,
 } from "./upcoming.service.ts";
 
-export type FeedDependencies = { feed: FeedRepo; clock: Clock; links: PhotoLinks };
+type FeedDependencies = { feed: FeedRepo; clock: Clock; links: PhotoLinks };
 
 function windowOf({ clock }: FeedDependencies, { member }: Membership): Window {
   const timeZone = member.timeZone ?? fallbackTimeZone;

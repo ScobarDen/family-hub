@@ -14,7 +14,7 @@ import type { Clock } from "@/common/clock";
 import type { MemberRepo, MemberSettingsRow } from "./member.repo.ts";
 
 // Reminders of floating dates come at 09:00 on the Member's clock, so a new zone retimes them.
-export type MemberSchedule = {
+type MemberSchedule = {
   zoneChanged(memberId: string): Promise<void>;
   digestChanged(memberId: string): Promise<void>;
 };

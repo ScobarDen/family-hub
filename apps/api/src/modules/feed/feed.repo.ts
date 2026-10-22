@@ -38,7 +38,7 @@ export type FeedMovementRow = Pick<
   "id" | "goalId" | "kind" | "amount" | "createdAt"
 > & { memberName: string };
 export type FeedPhotoRow = typeof photos.$inferSelect;
-export type FeedEntryPhotoRow = { careEntryId: string; photo: FeedPhotoRow };
+type FeedEntryPhotoRow = { careEntryId: string; photo: FeedPhotoRow };
 export type FeedUploadRow = {
   albumId: string;
   albumTitle: string;
@@ -47,14 +47,14 @@ export type FeedUploadRow = {
   addedAt: number;
   photo: FeedPhotoRow;
 };
-export type FeedCookRow = {
+type FeedCookRow = {
   id: string;
   recipeId: string;
   title: string;
   cookedAt: number;
   memberName: string;
 };
-export type FeedRecipePhotoRow = { recipeId: string; photo: FeedPhotoRow };
+type FeedRecipePhotoRow = { recipeId: string; photo: FeedPhotoRow };
 export type FeedJoinRow = { memberId: string; memberName: string; createdAt: number };
 
 type Viewer = { familyId: string; memberId: string };

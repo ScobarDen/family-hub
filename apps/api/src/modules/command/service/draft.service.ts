@@ -97,7 +97,7 @@ export async function outcomeOf(
   }
 }
 
-export type Reservation = { draftId: string; phrase: Phrase };
+type Reservation = { draftId: string; phrase: Phrase };
 
 type Speaking = { membership: Membership; chatId: number | null; source: CommandSource };
 

@@ -16,7 +16,7 @@ import { jsonBody } from "@/common/errors";
 
 import type { MemberService } from "./member.service.ts";
 
-export type MemberRouteEnv = {
+type MemberRouteEnv = {
   Variables: AuthEnv["Variables"] & { members: MemberService };
 };
 

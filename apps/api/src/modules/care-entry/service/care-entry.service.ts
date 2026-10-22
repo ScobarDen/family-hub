@@ -17,7 +17,7 @@ import { openDueDates } from "../due-date/index.ts";
 import { hasForeignPhotos, withPhotos } from "./entry-photo.service.ts";
 
 // A new entry may close or move a Due Date, whose Reminders live in the reminder module.
-export type CareSchedule = {
+type CareSchedule = {
   sourceChanged(familyId: string, source: { kind: "pet"; id: string }): Promise<void>;
 };
 
@@ -32,7 +32,7 @@ type Range = { from: number; to: number };
 
 export type CareRefusal = "not-found" | "pet-not-found" | "archived" | "photo-not-found";
 
-export type CareResult = { status: "ok"; entry: CareEntry } | { status: CareRefusal };
+type CareResult = { status: "ok"; entry: CareEntry } | { status: CareRefusal };
 
 export type RemoveResult = { status: "deleted" } | { status: CareRefusal };
 

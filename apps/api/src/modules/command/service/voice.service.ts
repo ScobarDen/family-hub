@@ -18,7 +18,7 @@ const telegramVoiceType = "audio/ogg";
 
 export type Audio = { body: ReadableStream; contentType: string };
 
-export type Heard = { status: "heard"; text: string } | { status: "unheard" } | { status: "quota" };
+type Heard = { status: "heard"; text: string } | { status: "unheard" } | { status: "quota" };
 
 function transcriptOf(raw: unknown): string {
   const text = typeof raw === "object" && raw !== null && "text" in raw ? raw.text : undefined;

@@ -5,7 +5,7 @@ import { BotApiError } from "@/common/telegram";
 import { assignedText, openPlanButton } from "../plan.lib.ts";
 import type { PlanDependencies } from "../plan.types.ts";
 
-export type AssignmentChange = {
+type AssignmentChange = {
   planId: string;
   title: string;
   dueDate: string | null;

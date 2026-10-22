@@ -16,7 +16,7 @@ import type {
   FeedPlanRow,
 } from "./feed.repo.ts";
 
-export type Cursor = { at: number; key: string };
+type Cursor = { at: number; key: string };
 
 const careTitles = {
   vaccination: "Прививка",
@@ -41,7 +41,7 @@ const rubles = new Intl.NumberFormat("ru-RU", {
   maximumFractionDigits: 0,
 });
 
-export function careTitleOf(details: CareDetails): string {
+function careTitleOf(details: CareDetails): string {
   if (details.kind === "vaccination") {
     return `${careTitles.vaccination}: ${details.vaccine}`;
   }
@@ -229,7 +229,7 @@ export function parseCursor(raw: string | undefined): Cursor | undefined {
     : { at, key: raw.slice(separator + 1) };
 }
 
-export type UploadBatch = {
+type UploadBatch = {
   key: string;
   albumId: string;
   albumTitle: string;

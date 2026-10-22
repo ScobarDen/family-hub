@@ -7,7 +7,7 @@ import type { PhotoLinks } from "@/common/photo-link";
 import type { AlbumRepo } from "./album.repo.ts";
 
 // Adding photos to a Pet's automatic Album writes a Care Entry «Заметка»; the app wires this port.
-export type PetNotes = {
+type PetNotes = {
   addNote(
     membership: Membership,
     { petId, photoIds }: { petId: string; photoIds: string[] },

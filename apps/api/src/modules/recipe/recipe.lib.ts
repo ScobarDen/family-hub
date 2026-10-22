@@ -9,7 +9,7 @@ export type RecipeParts = {
   cooks: Cooked[];
 };
 
-export function ingredientsOf(text: string): string[] {
+function ingredientsOf(text: string): string[] {
   return text
     .split("\n")
     .map((line) => line.trim())

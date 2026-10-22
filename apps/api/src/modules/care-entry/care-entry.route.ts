@@ -16,7 +16,7 @@ import { apiError, httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 
 import type { CareEntryService, CareRefusal } from "./service/care-entry.service.ts";
 
-export type CareEntryEnv = {
+type CareEntryEnv = {
   Variables: MemberEnv["Variables"] & { careEntries: CareEntryService };
 };
 

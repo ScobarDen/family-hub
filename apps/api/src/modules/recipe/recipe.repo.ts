@@ -14,7 +14,6 @@ import {
 import { knownPhotoIds } from "@/modules/photo";
 
 export type RecipeRow = typeof recipes.$inferSelect;
-export type TagRow = typeof recipeTags.$inferSelect;
 export type PhotoRow = typeof photos.$inferSelect;
 
 type RecipeTarget = { familyId: string; recipeId: string };
@@ -113,7 +112,7 @@ async function knownTagIds(db: Db, { familyId, ids }: Links): Promise<string[]> 
   return rows.map(({ id }) => id);
 }
 
-export type CookRow = typeof recipeCooks.$inferSelect & { memberName: string };
+type CookRow = typeof recipeCooks.$inferSelect & { memberName: string };
 
 async function cooksOf(db: Db, familyId: string): Promise<CookRow[]> {
   const rows = await db

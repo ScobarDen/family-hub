@@ -11,11 +11,11 @@ import type { ReminderService } from "@/modules/reminder";
 import type { CommandRepo } from "./command.repo.ts";
 
 // «Создать» goes through the same use case as the Mini App form of the draft's kind.
-export type ReminderCreation = Pick<ReminderService, "create">;
+type ReminderCreation = Pick<ReminderService, "create">;
 
-export type EventCreation = Pick<EventService, "create">;
+type EventCreation = Pick<EventService, "create">;
 
-export type CareEntryCreation = Pick<CareEntryService, "create">;
+type CareEntryCreation = Pick<CareEntryService, "create">;
 
 export type CommandDependencies = {
   drafts: CommandRepo;

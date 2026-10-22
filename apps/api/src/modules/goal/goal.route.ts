@@ -14,7 +14,7 @@ import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 import type { GoalRefusal, GoalResult } from "./goal.types.ts";
 import type { GoalService } from "./service/goal.service.ts";
 
-export type GoalEnv = {
+type GoalEnv = {
   Variables: MemberEnv["Variables"] & { goals: GoalService };
 };
 

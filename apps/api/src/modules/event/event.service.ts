@@ -8,7 +8,7 @@ import { columnsOf, toEvent } from "./event.lib.ts";
 import type { EventRepo, EventRow } from "./event.repo.ts";
 
 // The Reminders of an Event live in the reminder module; the app wires this port to it.
-export type EventSchedule = {
+type EventSchedule = {
   sourceChanged(familyId: string, source: { kind: "event"; id: string }): Promise<void>;
 };
 

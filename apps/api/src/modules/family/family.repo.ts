@@ -12,7 +12,7 @@ import {
   type Db,
 } from "@/common/db";
 
-export type FamilyMemberRow = { id: string; name: string; telegramId: number };
+type FamilyMemberRow = { id: string; name: string; telegramId: number };
 
 type Departure = { familyId: string; memberId: string; now: number };
 

@@ -16,7 +16,7 @@ import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 import type { PetRefusal, PetResult } from "./pet.types.ts";
 import type { PetService } from "./service/pet.service.ts";
 
-export type PetEnv = {
+type PetEnv = {
   Variables: MemberEnv["Variables"] & { pets: PetService };
 };
 

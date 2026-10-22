@@ -14,7 +14,7 @@ import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 
 import type { FamilyService } from "./service/family.service.ts";
 
-export type FamilyEnv = {
+type FamilyEnv = {
   Variables: AuthEnv["Variables"] & { families: FamilyService };
 };
 

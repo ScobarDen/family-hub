@@ -41,7 +41,7 @@ function blockOf(
 }
 
 // Only what this Member sees, and nothing at all on a day with nothing to say.
-export function digestText(
+function digestText(
   { overdue, today }: { overdue: FeedUpcoming[]; today: FeedUpcoming[] },
   day: string,
 ): string | undefined {

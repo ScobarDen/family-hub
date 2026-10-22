@@ -29,7 +29,7 @@ function outcomeFor(
 }
 
 // The microphone in the tab bar: the same pipeline as a voice message to the bot.
-export async function commandFromAudio(
+async function commandFromAudio(
   dependencies: CommandDependencies,
   membership: Membership,
   audio: Audio,
@@ -111,5 +111,3 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
       withPress(membership, draftId, async (press) => markCreated(dependencies, press)),
   };
 }
-
-export type MiniAppCommands = ReturnType<typeof createMiniAppCommands>;

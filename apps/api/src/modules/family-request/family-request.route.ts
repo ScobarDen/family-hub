@@ -7,7 +7,7 @@ import { apiError, httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 
 import type { FamilyRequestService, SubmitResult } from "./service/family-request.service.ts";
 
-export type FamilyRequestEnv = {
+type FamilyRequestEnv = {
   Variables: AuthEnv["Variables"] & { familyRequests: FamilyRequestService };
 };
 

@@ -13,7 +13,7 @@ import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 
 import type { EventRefusal, EventResult, EventService } from "./event.service.ts";
 
-export type EventEnv = {
+type EventEnv = {
   Variables: MemberEnv["Variables"] & { events: EventService };
 };
 

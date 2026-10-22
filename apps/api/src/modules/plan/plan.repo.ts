@@ -134,7 +134,7 @@ async function completeWithSubplans(
     );
 }
 
-export type PlanAlbumRow = {
+type PlanAlbumRow = {
   id: string;
   title: string;
   photos: Array<typeof photos.$inferSelect>;

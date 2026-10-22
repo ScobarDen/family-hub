@@ -14,7 +14,7 @@ import { apiError, httpStatus, jsonBody } from "@/common/errors";
 
 import type { CommandService } from "./service/command.service.ts";
 
-export type CommandEnv = {
+type CommandEnv = {
   Variables: MemberEnv["Variables"] & { commands: CommandService };
 };
 

@@ -3,7 +3,7 @@ import type { PhotoSize } from "@grammyjs/types";
 import type { PhotoVariants } from "@/common/db";
 import type { BotApi } from "@/common/telegram";
 
-export type UploadedPhoto = { fileUniqueId: string; variants: PhotoVariants };
+type UploadedPhoto = { fileUniqueId: string; variants: PhotoVariants };
 
 // Where photo files live: today each Family's Telegram channel (ADR 0002), later perhaps R2.
 export type PhotoFiles = {

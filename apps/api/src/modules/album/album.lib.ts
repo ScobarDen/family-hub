@@ -23,7 +23,7 @@ export function momentOf(photo: PhotoRow): number {
   return photo.takenAt ?? photo.createdAt;
 }
 
-export function byMoment(left: PhotoRow, right: PhotoRow): number {
+function byMoment(left: PhotoRow, right: PhotoRow): number {
   return momentOf(left) - momentOf(right);
 }
 

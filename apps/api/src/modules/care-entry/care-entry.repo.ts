@@ -5,7 +5,7 @@ import { knownPhotoIds } from "@/modules/photo";
 
 export type CareEntryRow = typeof careEntries.$inferSelect & { authorName: string | null };
 
-export type EntryPhotoRow = { careEntryId: string; photo: typeof photos.$inferSelect };
+type EntryPhotoRow = { careEntryId: string; photo: typeof photos.$inferSelect };
 
 type PhotoLinks = { familyId: string; entryId: string; photoIds: string[] };
 

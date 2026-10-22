@@ -14,7 +14,7 @@ import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 import type { PlanRefusal, PlanResult } from "./plan.types.ts";
 import type { PlanService } from "./service/plan.service.ts";
 
-export type PlanEnv = {
+type PlanEnv = {
   Variables: MemberEnv["Variables"] & { plans: PlanService };
 };
 

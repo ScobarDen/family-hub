@@ -13,7 +13,7 @@ import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 import type { ReminderRefusal, ReminderResult } from "./reminder.types.ts";
 import type { ReminderService } from "./service/reminder.service.ts";
 
-export type ReminderEnv = {
+type ReminderEnv = {
   Variables: MemberEnv["Variables"] & { reminders: ReminderService };
 };
 
