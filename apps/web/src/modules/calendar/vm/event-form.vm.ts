@@ -23,7 +23,7 @@ type EventFormDependencies = {
   timeZone: () => string;
   onSaved: (event: CalendarEvent) => void;
   // An Event saved from a Command Draft settles that draft.
-  onDraftSaved?: (draftId: string) => void;
+  onDraftSaved: (draftId: string) => void;
 };
 
 export type EventDraftOpening = DraftOpening<EventDraft>;

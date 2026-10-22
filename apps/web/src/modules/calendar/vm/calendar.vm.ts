@@ -33,7 +33,7 @@ type CalendarDependencies = {
   onOpenPet: (petId: string) => void;
   onOpenPlan: (planId: string) => void;
   self: () => string | undefined;
-  onDraftSaved?: (draftId: string) => void;
+  onDraftSaved: (draftId: string) => void;
 };
 
 const upcomingDays = 30;

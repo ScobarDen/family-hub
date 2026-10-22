@@ -22,7 +22,7 @@ type ReminderFormDependencies = {
   telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
   onClosed: () => void;
   // A Reminder saved from a Command Draft settles that draft.
-  onDraftSaved?: (draftId: string) => void;
+  onDraftSaved: (draftId: string) => void;
 };
 
 export type ReminderDraftOpening = DraftOpening<ReminderDraft>;

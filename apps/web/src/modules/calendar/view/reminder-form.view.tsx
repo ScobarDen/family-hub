@@ -1,7 +1,6 @@
 import { reatomComponent } from "@reatom/react";
-import type { FormEvent } from "react";
 
-import { Button, Chip, ChoiceField, FieldError, Label, TextField, type Choice } from "@/common/ui";
+import { Button, Chip, type Choice, ChoiceField, FormShell, Label, TextField } from "@/common/ui";
 
 import type { ReminderFormModel } from "../vm/reminder-form.vm.ts";
 
@@ -46,13 +45,18 @@ const Recipients = reatomComponent(
 export const ReminderForm = reatomComponent(({ model, onCancel }: ReminderFormProps) => {
   const { fields } = model.form;
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    model.save();
-  }
-
   return (
-    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submit}>
+    <FormShell
+      model={model}
+      onCancel={onCancel}
+      actions={
+        model.canDelete() && (
+          <Button type="button" size="lg" variant="destructive" onClick={model.removeReminder}>
+            Удалить напоминание
+          </Button>
+        )
+      }
+    >
       <TextField
         field={fields.text}
         id="reminder-text"
@@ -69,18 +73,6 @@ export const ReminderForm = reatomComponent(({ model, onCancel }: ReminderFormPr
         <ChoiceField field={fields.visibility} label="Кто видит" choices={visibilities} />
       )}
       {!model.isPrivate() && <Recipients model={model} />}
-      <FieldError>{model.failure()}</FieldError>
-      <Button type="submit" size="lg" disabled={model.isSaving()}>
-        {model.isSaving() ? "Сохраняем…" : "Сохранить"}
-      </Button>
-      {model.canDelete() && (
-        <Button type="button" size="lg" variant="destructive" onClick={model.removeReminder}>
-          Удалить напоминание
-        </Button>
-      )}
-      <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
-        Отмена
-      </Button>
-    </form>
+    </FormShell>
   );
 }, "ReminderForm");

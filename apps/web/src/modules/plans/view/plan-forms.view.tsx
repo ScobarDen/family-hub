@@ -1,14 +1,6 @@
 import { reatomComponent } from "@reatom/react";
-import type { FormEvent } from "react";
 
-import {
-  Button,
-  ChoiceField,
-  FieldError,
-  TextAreaField,
-  TextField,
-  type Choice,
-} from "@/common/ui";
+import { type Choice, ChoiceField, FormShell, TextAreaField, TextField } from "@/common/ui";
 
 import type { PlanFormModel } from "../vm/plan-form.vm.ts";
 import type { SubplanFormModel } from "../vm/subplan-form.vm.ts";
@@ -25,35 +17,13 @@ const reminderChoices: Choice[] = [
   { value: "1w", title: "За неделю" },
 ];
 
-type FormButtonsProps = { isSaving: boolean; onCancel: () => void };
-
-function FormButtons({ isSaving, onCancel }: FormButtonsProps) {
-  return (
-    <>
-      <Button type="submit" size="lg" disabled={isSaving}>
-        {isSaving ? "Сохраняем…" : "Сохранить"}
-      </Button>
-      <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
-        Отмена
-      </Button>
-    </>
-  );
-}
-
-function submitWith(save: () => void) {
-  return (event: FormEvent) => {
-    event.preventDefault();
-    save();
-  };
-}
-
 type PlanFormProps = { model: PlanFormModel; onCancel: () => void };
 
 export const PlanForm = reatomComponent(({ model, onCancel }: PlanFormProps) => {
   const { fields } = model.form;
 
   return (
-    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submitWith(model.save)}>
+    <FormShell model={model} onCancel={onCancel}>
       <TextField
         field={fields.title}
         id="plan-title"
@@ -80,9 +50,7 @@ export const PlanForm = reatomComponent(({ model, onCancel }: PlanFormProps) => 
       {model.albums().length > 1 && (
         <ChoiceField field={fields.albumId} label="Альбом" choices={model.albums()} />
       )}
-      <FieldError>{model.failure()}</FieldError>
-      <FormButtons isSaving={model.isSaving()} onCancel={onCancel} />
-    </form>
+    </FormShell>
   );
 }, "PlanForm");
 
@@ -93,7 +61,7 @@ export const SubplanForm = reatomComponent(({ model, onCancel }: SubplanFormProp
   const warning = model.warning();
 
   return (
-    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submitWith(model.save)}>
+    <FormShell model={model} onCancel={onCancel}>
       <TextField field={fields.title} id="subplan-title" label="Шаг" placeholder="Купить обои" />
       <TextField field={fields.dueDate} id="subplan-due-date" label="Срок" type="date" />
       {warning !== undefined && <p className="text-sm text-orange-500">{warning}</p>}
@@ -101,7 +69,6 @@ export const SubplanForm = reatomComponent(({ model, onCancel }: SubplanFormProp
         <ChoiceField field={fields.reminder} label="Напомнить" choices={reminderChoices} />
       )}
       <ChoiceField field={fields.assigneeId} label="Исполнитель" choices={model.assignees()} />
-      <FormButtons isSaving={model.isSaving()} onCancel={onCancel} />
-    </form>
+    </FormShell>
   );
 }, "SubplanForm");

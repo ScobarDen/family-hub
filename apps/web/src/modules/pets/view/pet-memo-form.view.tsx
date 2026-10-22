@@ -1,7 +1,6 @@
 import { reatomComponent } from "@reatom/react";
-import type { FormEvent } from "react";
 
-import { Button, FieldError, TextAreaField } from "@/common/ui";
+import { FormShell, TextAreaField } from "@/common/ui";
 
 import type { PetMemoFormModel } from "../vm/pet-memo-form.vm.ts";
 
@@ -9,15 +8,9 @@ type PetMemoFormProps = { model: PetMemoFormModel; onCancel: () => void };
 
 export const PetMemoForm = reatomComponent(({ model, onCancel }: PetMemoFormProps) => {
   const { fields } = model.form;
-  const isSaving = model.isSaving();
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    model.save();
-  }
 
   return (
-    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submit}>
+    <FormShell model={model} onCancel={onCancel}>
       <TextAreaField
         field={fields.food}
         id="memo-food"
@@ -36,13 +29,6 @@ export const PetMemoForm = reatomComponent(({ model, onCancel }: PetMemoFormProp
         label="Важное"
         placeholder="Аллергии, страхи, привычки"
       />
-      <FieldError>{model.failure()}</FieldError>
-      <Button type="submit" size="lg" disabled={isSaving}>
-        {isSaving ? "Сохраняем…" : "Сохранить"}
-      </Button>
-      <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
-        Отмена
-      </Button>
-    </form>
+    </FormShell>
   );
 }, "PetMemoForm");

@@ -31,7 +31,7 @@ type CareFormDependencies = {
   photos: PhotoAttachmentsModel;
   onSaved: () => void;
   // An entry saved from a Command Draft settles that draft.
-  onDraftSaved?: (draftId: string) => void;
+  onDraftSaved: (draftId: string) => void;
 };
 
 export type CareEntryDraftOpening = DraftOpening<CareEntryDraft>;

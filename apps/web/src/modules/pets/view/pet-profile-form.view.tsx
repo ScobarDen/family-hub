@@ -1,14 +1,6 @@
 import { reatomComponent } from "@reatom/react";
-import type { FormEvent } from "react";
 
-import {
-  Button,
-  ChoiceField,
-  FieldError,
-  TextAreaField,
-  TextField,
-  type Choice,
-} from "@/common/ui";
+import { type Choice, ChoiceField, FormShell, TextAreaField, TextField } from "@/common/ui";
 
 import { sexTitles, speciesTitles } from "../pets.config.ts";
 import type { PetProfileFormModel } from "../vm/pet-profile-form.vm.ts";
@@ -26,15 +18,9 @@ const sexChoices: Choice[] = [
 
 export const PetProfileForm = reatomComponent(({ model, onCancel }: PetProfileFormProps) => {
   const { fields } = model.form;
-  const isSaving = model.isSaving();
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    model.save();
-  }
 
   return (
-    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submit}>
+    <FormShell model={model} onCancel={onCancel}>
       <TextField field={fields.name} id="pet-name" label="Имя" placeholder="Например, Бьюик" />
       <ChoiceField field={fields.species} label="Вид" choices={speciesChoices} />
       <TextField field={fields.breed} id="pet-breed" label="Порода" />
@@ -42,13 +28,6 @@ export const PetProfileForm = reatomComponent(({ model, onCancel }: PetProfileFo
       <TextField field={fields.birthDate} id="pet-birth-date" label="Дата рождения" type="date" />
       <TextField field={fields.chipNumber} id="pet-chip" label="Номер чипа" />
       <TextAreaField field={fields.notes} id="pet-notes" label="Заметки" />
-      <FieldError>{model.failure()}</FieldError>
-      <Button type="submit" size="lg" disabled={isSaving}>
-        {isSaving ? "Сохраняем…" : "Сохранить"}
-      </Button>
-      <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
-        Отмена
-      </Button>
-    </form>
+    </FormShell>
   );
 }, "PetProfileForm");

@@ -170,6 +170,7 @@ function startCalendar({
       openedPlans.push(planId);
     },
     self: () => "member-1",
+    onDraftSaved: noop,
   });
 
   model.grid.subscribe(noop);

@@ -3,6 +3,7 @@ export { ChartContainer, type ChartConfig } from "./chart.view.tsx";
 export { ChoiceField, type Choice } from "./choice-field.view.tsx";
 export { Chip } from "./chip.view.tsx";
 export { FieldError } from "./field-error.view.tsx";
+export { FormShell } from "./form-shell.view.tsx";
 export { FieldLabel } from "./field-label.view.tsx";
 export { Field } from "./field.view.tsx";
 export { IconBadge, type IconTone } from "./icon-badge.view.tsx";

@@ -1,15 +1,13 @@
 import { reatomComponent } from "@reatom/react";
-import type { FormEvent } from "react";
 
 import {
-  Button,
   Chip,
+  type Choice,
   ChoiceField,
-  FieldError,
+  FormShell,
   Label,
   TextAreaField,
   TextField,
-  type Choice,
 } from "@/common/ui";
 
 import type { EventFormModel } from "../vm/event-form.vm.ts";
@@ -73,13 +71,8 @@ const EventWhen = reatomComponent(({ model }: { model: EventFormModel }) => {
 export const EventForm = reatomComponent(({ model, onCancel }: EventFormProps) => {
   const { fields } = model.form;
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    model.save();
-  }
-
   return (
-    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submit}>
+    <FormShell model={model} onCancel={onCancel}>
       <TextField
         field={fields.title}
         id="event-title"
@@ -96,13 +89,6 @@ export const EventForm = reatomComponent(({ model, onCancel }: EventFormProps) =
         <ChoiceField field={fields.visibility} label="Кто видит" choices={visibilities} />
       )}
       <TextAreaField field={fields.note} id="event-note" label="Заметка" />
-      <FieldError>{model.failure()}</FieldError>
-      <Button type="submit" size="lg" disabled={model.isSaving()}>
-        {model.isSaving() ? "Сохраняем…" : "Сохранить"}
-      </Button>
-      <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
-        Отмена
-      </Button>
-    </form>
+    </FormShell>
   );
 }, "EventForm");

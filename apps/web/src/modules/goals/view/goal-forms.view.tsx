@@ -1,18 +1,16 @@
 import { reatomComponent } from "@reatom/react";
-import type { FormEvent } from "react";
 
 import { goalColor, goalIcon } from "@family-hub/contract";
 
 import {
-  Button,
   Chip,
+  type Choice,
   ChoiceField,
-  FieldError,
+  FormShell,
   IconBadge,
   Label,
   TextAreaField,
   TextField,
-  type Choice,
 } from "@/common/ui";
 
 import { goalIcons } from "../goals.config.ts";
@@ -28,26 +26,6 @@ const kindChoices: Choice[] = [
   { value: "contribution", title: "Пополнение" },
   { value: "withdrawal", title: "Снятие" },
 ];
-
-function submitWith(save: () => void) {
-  return (event: FormEvent) => {
-    event.preventDefault();
-    save();
-  };
-}
-
-function FormButtons({ isSaving, onCancel }: { isSaving: boolean; onCancel: () => void }) {
-  return (
-    <>
-      <Button type="submit" size="lg" disabled={isSaving}>
-        {isSaving ? "Сохраняем…" : "Сохранить"}
-      </Button>
-      <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
-        Отмена
-      </Button>
-    </>
-  );
-}
 
 const CoverPicker = reatomComponent(({ model }: { model: GoalFormModel }) => {
   const { icon, color } = model.form.fields;
@@ -95,7 +73,7 @@ export const GoalForm = reatomComponent(
     const { fields } = model.form;
 
     return (
-      <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submitWith(model.save)}>
+      <FormShell model={model} onCancel={onCancel}>
         <TextField
           field={fields.title}
           id="goal-title"
@@ -109,9 +87,7 @@ export const GoalForm = reatomComponent(
         {model.canChooseVisibility() && (
           <ChoiceField field={fields.visibility} label="Кто видит" choices={visibilityChoices} />
         )}
-        <FieldError>{model.failure()}</FieldError>
-        <FormButtons isSaving={model.isSaving()} onCancel={onCancel} />
-      </form>
+      </FormShell>
     );
   },
   "GoalForm",
@@ -122,7 +98,7 @@ export const MovementForm = reatomComponent(
     const { fields } = model.form;
 
     return (
-      <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submitWith(model.save)}>
+      <FormShell model={model} onCancel={onCancel}>
         <ChoiceField field={fields.kind} label="Что" choices={kindChoices} />
         <TextField field={fields.amount} id="movement-amount" label="Сумма, ₽" placeholder="5000" />
         <TextField field={fields.date} id="movement-date" label="Дата" type="date" />
@@ -130,9 +106,7 @@ export const MovementForm = reatomComponent(
           <ChoiceField field={fields.memberId} label="Чей вклад" choices={model.contributors()} />
         )}
         <TextField field={fields.comment} id="movement-comment" label="Комментарий" />
-        <FieldError>{model.failure()}</FieldError>
-        <FormButtons isSaving={model.isSaving()} onCancel={onCancel} />
-      </form>
+      </FormShell>
     );
   },
   "MovementForm",

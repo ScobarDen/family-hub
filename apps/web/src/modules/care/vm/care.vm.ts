@@ -41,7 +41,7 @@ type CareDependencies = {
   photoHint: () => string | undefined;
   onMakeAvatar: (photoId: string) => void;
   onOpenPet: (petId: string) => void;
-  onDraftSaved?: (draftId: string) => void;
+  onDraftSaved: (draftId: string) => void;
 };
 
 export type DueSource = { id: string; title: string; dueDate: string; kind: "due" };

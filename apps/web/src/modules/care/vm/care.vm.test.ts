@@ -163,6 +163,7 @@ function startCare(choices: string[] = []) {
     timeZone: () => "Europe/Moscow",
     telegram: { showPopup: async () => pending.shift(), showAlert: noop },
     isReadOnly: () => isArchived(),
+    onDraftSaved: noop,
     preparePhoto: async (file) => {
       if (file === tooLarge) {
         throw new PhotoTooLargeError();
