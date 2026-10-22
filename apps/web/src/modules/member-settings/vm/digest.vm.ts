@@ -1,37 +1,30 @@
-import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
+import { action, computed, noop } from "@reatom/core";
 
 import { defaultDigestTime, type DigestSettings } from "@family-hub/contract";
 
 import { reatomFailure } from "@/common/state";
 
-import type { DigestApi } from "../digest.api.ts";
+import type { MemberSettingsApi } from "../member-settings.api.ts";
+import { reatomSavedSetting } from "../member-settings.model.ts";
 
 type DigestDependencies = {
-  api: DigestApi;
+  api: MemberSettingsApi;
   // undefined until the Member's settings arrive.
   saved: () => DigestSettings | undefined;
 };
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/u;
 
-// A change shows at once and stays unless the server refuses it.
 export function reatomDigest({ api, saved }: DigestDependencies) {
-  const draft = atom<DigestSettings | undefined>(undefined, "digest.draft");
+  const setting = reatomSavedSetting("digest", { send: api.saveDigest, saved });
   const current = computed(
-    (): DigestSettings => draft() ?? saved() ?? { isEnabled: true, time: defaultDigestTime },
+    (): DigestSettings => setting.current() ?? { isEnabled: true, time: defaultDigestTime },
     "digest.current",
   );
 
-  const save = action(async (next: DigestSettings) => {
-    draft.set(next);
-
-    try {
-      await wrap(api.save(next));
-    } catch (error) {
-      draft.set(undefined);
-      throw error;
-    }
-  }, "digest.save").extend(withAsync());
+  function save(next: DigestSettings): void {
+    setting.save(next).catch(noop);
+  }
 
   return {
     isEnabled: computed(() => current().isEnabled, "digest.isEnabled"),
@@ -43,17 +36,17 @@ export function reatomDigest({ api, saved }: DigestDependencies) {
           : "Выключена: бот не пишет по утрам",
       "digest.schedule",
     ),
-    failure: reatomFailure(save, {
+    failure: reatomFailure(setting.save, {
       message: "Не получилось сохранить сводку. Попробуйте ещё раз.",
       name: "digest.failure",
     }),
 
     toggle: action((isEnabled: boolean) => {
-      save({ ...current(), isEnabled }).catch(noop);
+      save({ ...current(), isEnabled });
     }, "digest.toggle"),
     chooseTime: action((time: string) => {
       if (timePattern.test(time)) {
-        save({ ...current(), time }).catch(noop);
+        save({ ...current(), time });
       }
     }, "digest.chooseTime"),
   };

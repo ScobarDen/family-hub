@@ -5,7 +5,7 @@ import type { DigestSettings } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 
-import { createDigestApi } from "../digest.api.ts";
+import { createMemberSettingsApi } from "../member-settings.api.ts";
 import { reatomDigest } from "./digest.vm.ts";
 
 function startDigest({ isFailing = false } = {}) {
@@ -21,7 +21,9 @@ function startDigest({ isFailing = false } = {}) {
 
   const settings: DigestSettings = { isEnabled: true, time: "09:00" };
   const model = reatomDigest({
-    api: createDigestApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
+    api: createMemberSettingsApi(
+      createHttpClient({ baseUrl: "https://api.family-hub.test", fetch }),
+    ),
     saved: () => settings,
   });
 

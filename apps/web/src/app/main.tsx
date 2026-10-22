@@ -11,14 +11,18 @@ import { createVoiceRecorder } from "@/common/voice-recorder";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
-import { createDigestApi, reatomDigest } from "@/modules/digest";
 import { createFamilyApi, reatomFamily, reatomFamilyMembers } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
 import { createFeedApi, reatomFeed } from "@/modules/feed";
 import { createGoalsApi, reatomGoalsScreen } from "@/modules/goals";
 import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
-import { reatomNotifications } from "@/modules/notifications";
+import {
+  createMemberSettingsApi,
+  reatomDigest,
+  reatomNotifications,
+  reatomTimeZone,
+} from "@/modules/member-settings";
 import { createCareApi, createPetsApi, reatomPets, reatomPetTab } from "@/modules/pets";
 import { createPhotoStorageApi, reatomPhotoStorage } from "@/modules/photo-storage";
 import { createPlansApi, reatomPlansScreen } from "@/modules/plans";
@@ -30,7 +34,6 @@ import {
   reatomTabBarMenu,
   reatomTabBarModules,
 } from "@/modules/tab-bar";
-import { createTimeZoneApi, reatomTimeZone } from "@/modules/time-zone";
 
 import { reatomNavigation } from "./app.route.ts";
 import { reatomOpener } from "./opener.vm.ts";
@@ -66,8 +69,9 @@ const familyRequest = reatomFamilyRequest({
   onCheck: session.signIn,
 });
 
+const memberSettingsApi = createMemberSettingsApi(httpClient);
 const timeZone = reatomTimeZone({
-  api: createTimeZoneApi(httpClient),
+  api: memberSettingsApi,
   saved: () => session.member()?.settings.timeZone,
   deviceZone: deviceTimeZone(),
   zones: Intl.supportedValuesOf("timeZone"),
@@ -276,7 +280,7 @@ const home = {
   }),
   timeZone,
   digest: reatomDigest({
-    api: createDigestApi(httpClient),
+    api: memberSettingsApi,
     saved: () => session.member()?.settings.digest,
   }),
   family: reatomFamily({

@@ -11,19 +11,22 @@ import {
   type CommandSheetModel,
   type MicrophoneModel,
 } from "@/modules/command";
-import type { DigestModel } from "@/modules/digest";
 import type { FamilyModel } from "@/modules/family";
 import { Feed, type FeedModel } from "@/modules/feed";
 import { Goals, type GoalsScreenModel } from "@/modules/goals";
 import type { InvitesModel } from "@/modules/invites";
-import { NotificationsBanner, type NotificationsModel } from "@/modules/notifications";
+import {
+  NotificationsBanner,
+  type DigestModel,
+  type NotificationsModel,
+  type TimeZoneModel,
+} from "@/modules/member-settings";
 import { PetTab, type PetTabModel } from "@/modules/pets";
 import type { PhotoStorageModel } from "@/modules/photo-storage";
 import { Plans, type PlansScreenModel } from "@/modules/plans";
 import { Recipes, type RecipesScreenModel } from "@/modules/recipes";
 import type { SessionModel } from "@/modules/session";
 import { TabBar, TabBarMenu, type TabBarMenuModel, type TabBarModel } from "@/modules/tab-bar";
-import type { TimeZoneModel } from "@/modules/time-zone";
 import { ModulePage } from "@/pages/module";
 import { ProfilePage } from "@/pages/profile";
 

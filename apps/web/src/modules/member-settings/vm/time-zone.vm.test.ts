@@ -5,7 +5,7 @@ import { timeZoneSettings, type TimeZoneSettings } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 
-import { createTimeZoneApi } from "../time-zone.api.ts";
+import { createMemberSettingsApi } from "../member-settings.api.ts";
 import { reatomTimeZone } from "./time-zone.vm.ts";
 
 function fakeBackend({ isDown = false } = {}) {
@@ -30,7 +30,7 @@ function startTimeZone(saved?: TimeZoneSettings | null, backend = fakeBackend())
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const member = atom(saved, "test.savedTimeZone");
   const model = reatomTimeZone({
-    api: createTimeZoneApi(client),
+    api: createMemberSettingsApi(client),
     saved: member,
     deviceZone: "Europe/Moscow",
     zones: ["Asia/Tbilisi", "Europe/Moscow"],
