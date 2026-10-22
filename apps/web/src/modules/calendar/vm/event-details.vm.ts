@@ -1,11 +1,11 @@
-import { action, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, type Atom, computed, noop, withAsync, wrap } from "@reatom/core";
 
 import type { CalendarEvent } from "@family-hub/contract";
 import { occurrenceMoment, timeInZone } from "@family-hub/recurrence";
 
 import { formatDate, formatDay } from "@/common/format-date";
 import { reatomFailure } from "@/common/state";
-import type { PopupParams } from "@/common/telegram";
+import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
 import type { CalendarData } from "../calendar.model.ts";
@@ -26,12 +26,10 @@ type EventDetailsDependencies = {
   api: CalendarApi;
   data: Pick<CalendarData, "events" | "keep" | "drop">;
   timeZone: () => string;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   opened: Atom<OpenedOccurrence | undefined>;
   onClosed: () => void;
 };
-
-type Confirmation = { title: string; message: string; button: string };
 
 const repeatTitles = { weekly: "Каждую неделю", monthly: "Каждый месяц", yearly: "Каждый год" };
 
@@ -84,24 +82,6 @@ function detailsOf(event: CalendarEvent, occurrence: string, viewerZone: string)
   };
 }
 
-async function isConfirmed(
-  { telegram }: EventDetailsDependencies,
-  { title, message, button }: Confirmation,
-): Promise<boolean> {
-  const choice = await wrap(
-    telegram.showPopup({
-      title,
-      message,
-      buttons: [
-        { id: "confirm", type: "destructive", text: button },
-        { id: "cancel", type: "cancel" },
-      ],
-    }),
-  );
-
-  return choice === "confirm";
-}
-
 type ChangeSources = EventDetailsDependencies & {
   event: () => CalendarEvent | undefined;
 };
@@ -128,7 +108,7 @@ function reatomChange(sources: ChangeSources) {
   return action(async (kind: "skip" | "delete") => {
     const target = sources.opened();
 
-    if (target === undefined || !(await wrap(isConfirmed(sources, confirmations[kind])))) {
+    if (target === undefined || !(await wrap(isConfirmed(sources.telegram, confirmations[kind])))) {
       return;
     }
 

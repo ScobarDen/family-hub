@@ -1,13 +1,13 @@
 import {
   action,
   atom,
+  type Atom,
+  type BooleanAtom,
   computed,
   noop,
   reatomBoolean,
   withAsync,
   wrap,
-  type Atom,
-  type BooleanAtom,
 } from "@reatom/core";
 
 import type { Photo } from "@family-hub/contract";
@@ -15,7 +15,7 @@ import type { Photo } from "@family-hub/contract";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
-import { didSucceedOrAlert, type Dialogs, type PopupParams } from "@/common/telegram";
+import { type Dialogs, didSucceedOrAlert, type PopupParams } from "@/common/telegram";
 
 import type { AlbumsApi } from "../albums.api.ts";
 import { subtitleOf, toItem, type AlbumItem, type AlbumView } from "../albums.lib.ts";

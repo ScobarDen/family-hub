@@ -1,4 +1,4 @@
-import { action, atom, computed, reatomForm, wrap, type Atom } from "@reatom/core";
+import { action, atom, type Atom, computed, reatomForm, wrap } from "@reatom/core";
 import { z } from "zod";
 
 import {
@@ -10,7 +10,7 @@ import {
 
 import { reatomEditableRecord, type DraftOpening } from "@/common/form";
 import { detached } from "@/common/state";
-import type { PopupParams } from "@/common/telegram";
+import { type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
 import type { CalendarData } from "../calendar.model.ts";
@@ -20,7 +20,7 @@ type ReminderFormDependencies = {
   data: Pick<CalendarData, "keepReminder" | "dropReminder" | "members">;
   timeZone: () => string;
   self: () => string | undefined;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   onClosed: () => void;
   // A Reminder saved from a Command Draft settles that draft.
   onDraftSaved: (draftId: string) => void;
@@ -125,18 +125,15 @@ function reatomRecipients(dependencies: ReminderFormDependencies, chosen: Atom<s
 function reatomRemove(dependencies: ReminderFormDependencies, edited: Editing) {
   return action(async () => {
     const reminder = edited();
-    const choice = await wrap(
-      dependencies.telegram.showPopup({
+    const isSure = await wrap(
+      isConfirmed(dependencies.telegram, {
         title: "Удалить напоминание?",
         message: "Оно больше не придёт никому.",
-        buttons: [
-          { id: "delete", type: "destructive", text: "Удалить" },
-          { id: "cancel", type: "cancel" },
-        ],
+        button: "Удалить",
       }),
     );
 
-    if (reminder !== undefined && choice === "delete") {
+    if (reminder !== undefined && isSure) {
       await wrap(dependencies.api.removeReminder(reminder.id));
       dependencies.data.dropReminder(reminder.id);
       dependencies.onClosed();

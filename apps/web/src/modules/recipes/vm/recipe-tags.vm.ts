@@ -3,23 +3,20 @@ import { action, noop, withAsync, wrap } from "@reatom/core";
 import { recipeTagNameMaxLength } from "@family-hub/contract";
 
 import { detached, reatomFailure } from "@/common/state";
-import type { PopupParams } from "@/common/telegram";
+import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import type { RecipesData } from "../recipes.model.ts";
 
 type TagDependencies = {
   api: RecipesApi;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
 };
 
-const deleteQuestion: PopupParams = {
+const deleteQuestion: Confirmation = {
   title: "Удалить тег?",
   message: "Тег снимется со всех рецептов; сами рецепты останутся.",
-  buttons: [
-    { id: "delete", type: "destructive", text: "Удалить" },
-    { id: "cancel", type: "cancel" },
-  ],
+  button: "Удалить",
 };
 
 function nameOf(text: string): string | undefined {
@@ -35,7 +32,7 @@ export function reatomTagEditing({ api, telegram }: TagDependencies, data: Recip
     data.reload();
   }, "recipes.tags.change").extend(withAsync());
   const remove = action(async (tagId: string) => {
-    if ((await wrap(telegram.showPopup(deleteQuestion))) === "delete") {
+    if (await wrap(isConfirmed(telegram, deleteQuestion))) {
       await wrap(change(async () => api.removeTag(tagId)));
     }
   }, "recipes.tags.removeAsked").extend(withAsync());

@@ -1,8 +1,8 @@
-import { action, atom, computed, reatomBoolean, type Atom, type BooleanAtom } from "@reatom/core";
+import { action, atom, type Atom, type BooleanAtom, computed, reatomBoolean } from "@reatom/core";
 
 import type { Plan } from "@family-hub/contract";
 
-import type { PopupParams } from "@/common/telegram";
+import type { Dialogs } from "@/common/telegram";
 
 import type { PlansApi } from "../plans.api.ts";
 import { toDetails, toListItem, type PlanDetails, type PlanListItem } from "../plans.lib.ts";
@@ -22,7 +22,7 @@ export type PlansScreen =
 type PlansDependencies = {
   api: PlansApi;
   plans: PlansModel;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   self: () => string | undefined;
   timeZone: () => string;
   onOpenAlbum: (albumId: string) => void;

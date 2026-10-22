@@ -1,7 +1,9 @@
 import { action, reatomForm, withAsync, wrap } from "@reatom/core";
 import { z } from "zod";
 
-import { isConfirmed, type FamilySources } from "./family-sources.vm.ts";
+import { isConfirmed } from "@/common/telegram";
+
+import type { FamilySources } from "./family-sources.vm.ts";
 
 async function leaveAfterConfirmation({ api, telegram, self, onLeft, failure }: FamilySources) {
   const isSure = await wrap(

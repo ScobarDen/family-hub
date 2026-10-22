@@ -61,7 +61,7 @@ function startRecipes({ failing = "" }: { failing?: string } = {}) {
   const model = reatomRecipesScreen({
     api: createRecipesApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: {
-      showPopup: async () => "delete",
+      showPopup: async () => "confirm",
       showAlert(message: string) {
         alerts.push(message);
       },

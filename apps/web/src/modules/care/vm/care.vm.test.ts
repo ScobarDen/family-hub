@@ -330,7 +330,7 @@ describe("the entry form", () => {
   });
 
   test("deletes an entry after a confirmation", async () => {
-    const { model, backend } = startCare(["delete"]);
+    const { model, backend } = startCare(["confirm"]);
 
     await loaded(model);
     model.edit("entry-2");
@@ -376,7 +376,7 @@ describe("a Care Entry's photos", () => {
   });
 
   test("open full screen, become the avatar and are deleted after a confirmation", async () => {
-    const { model, backend, avatars } = startCare(["delete"]);
+    const { model, backend, avatars } = startCare(["confirm"]);
 
     model.viewer.open([walk], "photo-1");
     model.viewer.pick();

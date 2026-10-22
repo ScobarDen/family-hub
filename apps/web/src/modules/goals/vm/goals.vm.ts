@@ -1,19 +1,19 @@
 import {
   action,
   atom,
+  type Atom,
+  type BooleanAtom,
   computed,
   reatomBoolean,
   withAsync,
   wrap,
-  type Atom,
-  type BooleanAtom,
 } from "@reatom/core";
 
 import type { Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
 
 import { formatRubles } from "@/common/format-money";
 import { detached } from "@/common/state";
-import type { PopupParams } from "@/common/telegram";
+import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { GoalsApi } from "../goals.api.ts";
 import { sectionsOf, toDetails, type GoalDetails, type GoalSections } from "../goals.lib.ts";
@@ -32,7 +32,7 @@ export type GoalsScreen =
 type GoalsDependencies = {
   api: GoalsApi;
   goals: GoalsModel;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   self: () => string | undefined;
   today: () => string;
   timeZone: () => string;
@@ -44,22 +44,17 @@ type Navigation = {
   isCelebrating: BooleanAtom;
 };
 
-const outcomeQuestions: Record<GoalOutcome, PopupParams> = {
+const outcomeQuestions: Record<GoalOutcome, Confirmation> = {
   fulfilled: {
     title: "Цель исполнена?",
     message: "Цель уйдёт в архив и больше не будет меняться.",
-    buttons: [
-      { id: "confirm", type: "default", text: "Исполнена" },
-      { id: "cancel", type: "cancel" },
-    ],
+    button: "Исполнена",
+    isDestructive: false,
   },
   cancelled: {
     title: "Отменить цель?",
     message: "Цель уйдёт в архив с тем, что на ней накоплено, и больше не будет меняться.",
-    buttons: [
-      { id: "confirm", type: "destructive", text: "Отменить цель" },
-      { id: "cancel", type: "cancel" },
-    ],
+    button: "Отменить цель",
   },
 };
 
@@ -129,9 +124,11 @@ function reatomScreen(
 function reatomCompletion(dependencies: GoalsDependencies, openedGoal: () => Goal | undefined) {
   return action(async (outcome: GoalOutcome) => {
     const goal = openedGoal();
-    const choice = goal && (await wrap(dependencies.telegram.showPopup(outcomeQuestions[outcome])));
+    const isSure =
+      goal !== undefined &&
+      (await wrap(isConfirmed(dependencies.telegram, outcomeQuestions[outcome])));
 
-    if (goal !== undefined && choice === "confirm") {
+    if (isSure) {
       dependencies.goals.keep(await wrap(dependencies.api.complete(goal.id, outcome)));
     }
   }, "goals.complete").extend(withAsync());
@@ -140,20 +137,17 @@ function reatomCompletion(dependencies: GoalsDependencies, openedGoal: () => Goa
 function reatomRemoval(dependencies: GoalsDependencies, openedGoal: () => Goal | undefined) {
   return action(async (movementId: string) => {
     const goal = openedGoal();
-    const choice =
-      goal &&
+    const isSure =
+      goal !== undefined &&
       (await wrap(
-        dependencies.telegram.showPopup({
+        isConfirmed(dependencies.telegram, {
           title: "Удалить запись?",
           message: "Баланс цели пересчитается.",
-          buttons: [
-            { id: "confirm", type: "destructive", text: "Удалить" },
-            { id: "cancel", type: "cancel" },
-          ],
+          button: "Удалить",
         }),
       ));
 
-    if (goal !== undefined && choice === "confirm") {
+    if (isSure) {
       dependencies.goals.keep(
         await wrap(dependencies.api.removeMovement({ goalId: goal.id, movementId })),
       );

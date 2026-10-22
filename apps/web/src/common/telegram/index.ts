@@ -1,12 +1,3 @@
-export { didSucceedOrAlert, type Dialogs } from "./telegram.lib.ts";
-export { reatomTelegram, type Telegram, type Theme } from "./telegram.model.ts";
-export type {
-  ColorScheme,
-  HapticImpact,
-  PopupButton,
-  PopupParams,
-  SafeAreaInset,
-  TelegramWebApp,
-  ThemeParams,
-  Viewport,
-} from "./telegram.types.ts";
+export { didSucceedOrAlert, isConfirmed, type Confirmation, type Dialogs } from "./telegram.lib.ts";
+export { reatomTelegram, type Telegram } from "./telegram.model.ts";
+export type { HapticImpact, PopupParams } from "./telegram.types.ts";

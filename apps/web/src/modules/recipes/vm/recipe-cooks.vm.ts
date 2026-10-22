@@ -4,7 +4,7 @@ import { Temporal } from "temporal-polyfill";
 import type { Recipe } from "@family-hub/contract";
 
 import { readOnly } from "@/common/state";
-import { didSucceedOrAlert, type Dialogs } from "@/common/telegram";
+import { type Dialogs, didSucceedOrAlert } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import type { RecipesData } from "../recipes.model.ts";

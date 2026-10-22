@@ -1,4 +1,4 @@
-import { action, atom, computed, withAbort, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, atom, type Atom, computed, withAbort, withAsync, wrap } from "@reatom/core";
 
 import type { CareEntry, CareKind } from "@family-hub/contract";
 
@@ -6,7 +6,7 @@ import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { PreparedPhoto } from "@/common/photo";
 import { detached, readOnly, reatomFailure } from "@/common/state";
-import type { Dialogs } from "@/common/telegram";
+import { type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import { categoryTitles, type WeightRange } from "../care.config.ts";
@@ -115,18 +115,15 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
 function reatomRemove({ api, data, form, screen, telegram }: Sources) {
   return action(async () => {
     const entryId = form.editedId();
-    const choice = await wrap(
-      telegram.showPopup({
+    const isSure = await wrap(
+      isConfirmed(telegram, {
         title: "Удалить запись?",
         message: "Запись пропадёт из журнала и трат у всей семьи.",
-        buttons: [
-          { id: "delete", type: "destructive", text: "Удалить" },
-          { id: "cancel", type: "cancel" },
-        ],
+        button: "Удалить",
       }),
     );
 
-    if (entryId === undefined || choice !== "delete") {
+    if (entryId === undefined || !isSure) {
       return;
     }
 

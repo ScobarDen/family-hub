@@ -8,6 +8,34 @@ export type Dialogs = {
   showAlert: (message: string) => void;
 };
 
+// The button reads as destructive unless the step loses nothing, such as completing a Plan.
+export type Confirmation = {
+  title: string;
+  message: string;
+  button: string;
+  isDestructive?: boolean;
+};
+
+const confirmed = "confirm";
+
+export async function isConfirmed(
+  telegram: Pick<Dialogs, "showPopup">,
+  { title, message, button, isDestructive = true }: Confirmation,
+): Promise<boolean> {
+  const choice = await wrap(
+    telegram.showPopup({
+      title,
+      message,
+      buttons: [
+        { id: confirmed, type: isDestructive ? "destructive" : "default", text: button },
+        { id: "cancel", type: "cancel" },
+      ],
+    }),
+  );
+
+  return choice === confirmed;
+}
+
 // A call the Member started that fails gets a word instead of silence.
 export async function didSucceedOrAlert(
   telegram: Pick<Dialogs, "showAlert">,

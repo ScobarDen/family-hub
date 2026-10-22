@@ -1,7 +1,7 @@
-import { action, atom, computed, type Atom } from "@reatom/core";
+import { action, atom, type Atom, computed } from "@reatom/core";
 
 import { readOnly } from "@/common/state";
-import type { PopupParams } from "@/common/telegram";
+import type { Dialogs } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
 import {
@@ -30,7 +30,7 @@ type CalendarDependencies = {
   api: CalendarApi;
   today: () => string;
   timeZone: () => string;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   onOpenPet: (petId: string) => void;
   onOpenPlan: (planId: string) => void;
   self: () => string | undefined;

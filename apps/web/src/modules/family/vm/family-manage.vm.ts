@@ -3,8 +3,9 @@ import { action, withAsync, wrap } from "@reatom/core";
 import type { FamilyMember } from "@family-hub/contract";
 
 import { withoutId } from "@/common/records";
+import { isConfirmed } from "@/common/telegram";
 
-import { isConfirmed, type FamilySources } from "./family-sources.vm.ts";
+import type { FamilySources } from "./family-sources.vm.ts";
 
 async function remove({ api, telegram, list, failure }: FamilySources, member: FamilyMember) {
   const isSure = await wrap(

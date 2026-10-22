@@ -1,13 +1,13 @@
 import {
   action,
   atom,
+  type Atom,
   computed,
   reatomSet,
+  type SetAtom,
   withAsync,
   withAsyncData,
   wrap,
-  type Atom,
-  type SetAtom,
 } from "@reatom/core";
 
 import type { Recipe, RecipeTag } from "@family-hub/contract";
@@ -15,7 +15,7 @@ import type { Recipe, RecipeTag } from "@family-hub/contract";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
-import { didSucceedOrAlert, type Dialogs, type PopupParams } from "@/common/telegram";
+import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import { reatomRecipesData, type RecipesData } from "../recipes.model.ts";
@@ -47,13 +47,10 @@ type Navigation = {
   checked: SetAtom<number>;
 };
 
-const deleteQuestion: PopupParams = {
+const deleteQuestion: Confirmation = {
   title: "Удалить рецепт?",
   message: "Рецепт пропадёт у всей семьи вместе со своими фото.",
-  buttons: [
-    { id: "delete", type: "destructive", text: "Удалить" },
-    { id: "cancel", type: "cancel" },
-  ],
+  button: "Удалить",
 };
 
 function reatomOpened(
@@ -113,9 +110,9 @@ function reatomRecipeRemoval(
 ) {
   return action(async () => {
     const recipe = opened.data();
-    const choice = await wrap(telegram.showPopup(deleteQuestion));
+    const isSure = await wrap(isConfirmed(telegram, deleteQuestion));
 
-    if (recipe === undefined || choice !== "delete") {
+    if (recipe === undefined || !isSure) {
       return;
     }
 

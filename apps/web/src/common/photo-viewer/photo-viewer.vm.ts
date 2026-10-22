@@ -3,7 +3,7 @@ import { action, atom, computed, withAsync, wrap } from "@reatom/core";
 import type { Photo } from "@family-hub/contract";
 
 import { detached } from "@/common/state";
-import { didSucceedOrAlert, type Dialogs, type PopupParams } from "@/common/telegram";
+import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
 
 export type PhotoViewerDependencies = {
   api: { deletePhoto: (photoId: string) => Promise<unknown> };
@@ -15,13 +15,10 @@ export type PhotoViewerDependencies = {
 
 type Opened = { photos: Photo[]; index: number };
 
-const deleteQuestion: PopupParams = {
+const deleteQuestion: Confirmation = {
   title: "Удалить фото?",
   message: "Фото пропадёт у всей семьи: из записей и альбомов.",
-  buttons: [
-    { id: "delete", type: "destructive", text: "Удалить" },
-    { id: "cancel", type: "cancel" },
-  ],
+  button: "Удалить",
 };
 
 function without({ photos, index }: Opened, photoId: string): Opened | undefined {
@@ -65,10 +62,9 @@ function reatomPhotoRemoval(
       return;
     }
 
-    const choice = await wrap(dependencies.telegram.showPopup(deleteQuestion));
-
+    const isSure = await wrap(isConfirmed(dependencies.telegram, deleteQuestion));
     const isDeleted =
-      choice === "delete" &&
+      isSure &&
       (await wrap(
         didSucceedOrAlert(dependencies.telegram, {
           failure: "Не получилось удалить фото. Попробуйте ещё раз.",
