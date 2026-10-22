@@ -1,12 +1,23 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import { dueStepFrom, eventReminderMoment, morningOf, planReminderMoment } from "./fire-time.ts";
+import { dateInZone, timeInZone } from "./occurrence.ts";
 
 function iso(moment: number) {
   return new Date(moment).toISOString();
 }
 
+const berlin = "Europe/Berlin";
+
+function inBerlin(moment: number) {
+  return `${dateInZone(moment, berlin)}T${timeInZone(moment, berlin)}`;
+}
+
 describe("a floating date's morning", () => {
+  test.each(["2026-03-29", "2026-10-25"])("is 09:00 on a DST change day %s", (date) => {
+    expect(inBerlin(morningOf(date, berlin))).toBe(`${date}T09:00`);
+  });
+
   test.each([
     ["Europe/Moscow", "2026-10-20T06:00:00.000Z"],
     ["Asia/Vladivostok", "2026-10-19T23:00:00.000Z"],
@@ -35,6 +46,24 @@ describe("an Event Reminder", () => {
 
     expect(iso(fire)).toBe(moment);
   });
+
+  test.each([
+    ["2026-03-29", "1d", "2026-03-28T19:00"],
+    ["2026-03-29", "1w", "2026-03-22T19:00"],
+    ["2026-10-25", "1d", "2026-10-24T19:00"],
+    ["2026-10-25", "1w", "2026-10-18T19:00"],
+  ] as const)(
+    "of a timed Event on %s keeps its wall-clock time %s before across a DST change",
+    (date, offset, local) => {
+      const fire = eventReminderMoment(date, {
+        start: { date, time: "19:00", timeZone: berlin },
+        offset,
+        recipientZone: berlin,
+      });
+
+      expect(inBerlin(fire)).toBe(local);
+    },
+  );
 
   test.each([
     ["at-start", "2026-10-22T06:00:00.000Z"],
@@ -67,6 +96,12 @@ describe("the Due Date nudges", () => {
 });
 
 describe("a Plan's deadline Reminder", () => {
+  test.each(["2026-03-29", "2026-10-25"])("comes at 09:00 on a DST change day %s", (date) => {
+    const fire = planReminderMoment(date, { lead: "on-day", recipientZone: berlin });
+
+    expect(inBerlin(fire)).toBe(`${date}T09:00`);
+  });
+
   test.each([
     ["on-day", "2026-10-22T06:00:00.000Z"],
     ["1d", "2026-10-21T06:00:00.000Z"],

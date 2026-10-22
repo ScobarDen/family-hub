@@ -8,20 +8,12 @@ export type EventStart = { date: string; time: string | null; timeZone: string |
 
 export const morningTime = "09:00";
 
-const offsetMs: Record<EventOffset, number> = {
-  "at-start": 0,
-  "15m": 900_000,
-  "1h": 3_600_000,
-  "1d": 86_400_000,
-  "1w": 604_800_000,
-};
-
-const offsetDays: Record<EventOffset, number> = {
-  "at-start": 0,
-  "15m": 0,
-  "1h": 0,
-  "1d": 1,
-  "1w": 7,
+const offsetBefore: Record<EventOffset, Temporal.DurationLike> = {
+  "at-start": { minutes: 0 },
+  "15m": { minutes: 15 },
+  "1h": { hours: 1 },
+  "1d": { days: 1 },
+  "1w": { weeks: 1 },
 };
 
 export type PlanLead = "on-day" | "1d" | "1w";
@@ -47,14 +39,14 @@ export function eventReminderMoment(
   }: { start: EventStart; offset: EventOffset; recipientZone: string },
 ): number {
   if (start.time === null || start.timeZone === null) {
-    const day = Temporal.PlainDate.from(occurrence).subtract({ days: offsetDays[offset] });
+    const day = Temporal.PlainDate.from(occurrence).subtract(offsetBefore[offset]);
 
     return morningOf(day.toString(), recipientZone);
   }
 
-  return (
-    occurrenceMoment(occurrence, { time: start.time, timeZone: start.timeZone }) - offsetMs[offset]
-  );
+  return Temporal.PlainDate.from(occurrence)
+    .toZonedDateTime({ timeZone: start.timeZone, plainTime: Temporal.PlainTime.from(start.time) })
+    .subtract(offsetBefore[offset]).epochMilliseconds;
 }
 
 // The days a Due Date nudges on: a week ahead, on the day, then every week while it stays open.
