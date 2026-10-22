@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, inArray, isNotNull, lt, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, lt, sql, type SQL } from "drizzle-orm";
 
 import { careEntries, careEntryPhotos, members, pets, photos, type Db } from "@/common/db";
 
@@ -16,7 +16,7 @@ async function selectWhere(db: Db, condition: SQL | undefined): Promise<CareEntr
     .from(careEntries)
     .leftJoin(members, eq(members.id, careEntries.createdBy))
     .where(condition)
-    .orderBy(desc(careEntries.occurredAt))
+    .orderBy(desc(careEntries.occurredAt), desc(sql`${careEntries}.rowid`))
     .all();
 
   return rows.map(({ entry, authorName }) => ({ ...entry, authorName }));

@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull, isNull, or } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import {
   careEntries,
@@ -48,7 +48,7 @@ async function dueEntriesOf(db: Db, { familyId, id }: InFamily): Promise<DueEntr
         isNotNull(careEntries.dueKey),
       ),
     )
-    .orderBy(desc(careEntries.occurredAt))
+    .orderBy(desc(careEntries.occurredAt), desc(sql`${careEntries}.rowid`))
     .all();
 }
 

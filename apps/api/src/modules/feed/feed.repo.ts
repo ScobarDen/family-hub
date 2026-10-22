@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 
 import {
   albumPhotos,
@@ -110,7 +110,7 @@ async function duesOf(db: Db, familyId: string): Promise<FeedDueRow[]> {
     })
     .from(careEntries)
     .where(and(eq(careEntries.familyId, familyId), isNotNull(careEntries.dueKey)))
-    .orderBy(desc(careEntries.occurredAt))
+    .orderBy(desc(careEntries.occurredAt), desc(sql`${careEntries}.rowid`))
     .all();
 }
 
