@@ -1,7 +1,8 @@
 import {
+  careKindTitles,
+  expenseCategoryTitles,
   uploadBatchGapMs,
   type CareDetails,
-  type ExpenseCategory,
   type FeedActivity,
   type FeedUpcoming,
   type Photo,
@@ -18,23 +19,6 @@ import type {
 
 type Cursor = { at: number; key: string };
 
-const careTitles = {
-  vaccination: "Прививка",
-  treatment: "Обработка",
-  vet_visit: "Ветеринар",
-  weight: "Вес",
-  note: "Заметка",
-} as const;
-
-const expenseTitles: Record<ExpenseCategory, string> = {
-  food: "Корм",
-  vet: "Ветеринар",
-  medicine: "Лекарства",
-  grooming: "Груминг",
-  toys: "Игрушки",
-  other: "Другое",
-};
-
 const rubles = new Intl.NumberFormat("ru-RU", {
   style: "currency",
   currency: "RUB",
@@ -43,26 +27,26 @@ const rubles = new Intl.NumberFormat("ru-RU", {
 
 function careTitleOf(details: CareDetails): string {
   if (details.kind === "vaccination") {
-    return `${careTitles.vaccination}: ${details.vaccine}`;
+    return `${careKindTitles.vaccination}: ${details.vaccine}`;
   }
 
   if (details.kind === "treatment") {
-    return `${careTitles.treatment}: ${details.target}`;
+    return `${careKindTitles.treatment}: ${details.target}`;
   }
 
   if (details.kind === "vet_visit") {
     return details.reason === null
-      ? careTitles.vet_visit
-      : `${careTitles.vet_visit}: ${details.reason}`;
+      ? careKindTitles.vet_visit
+      : `${careKindTitles.vet_visit}: ${details.reason}`;
   }
 
   if (details.kind === "weight") {
-    return `${careTitles.weight}: ${details.weightKg} кг`;
+    return `${careKindTitles.weight}: ${details.weightKg} кг`;
   }
 
   return details.kind === "expense"
-    ? `${expenseTitles[details.category]}: ${rubles.format(details.amount)}`
-    : careTitles.note;
+    ? `${expenseCategoryTitles[details.category]}: ${rubles.format(details.amount)}`
+    : careKindTitles.note;
 }
 
 export function byDateAndTime(left: FeedUpcoming, right: FeedUpcoming): number {

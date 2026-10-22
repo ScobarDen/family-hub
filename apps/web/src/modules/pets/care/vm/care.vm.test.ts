@@ -208,7 +208,7 @@ describe("the journal", () => {
 
     expect(model.journal()[1]).toEqual({
       id: "entry-2",
-      title: "Ветеринар: Хромает",
+      title: "Визит к ветеринару: Хромает",
       subtitle: "2 октября · Денис · 2 500 ₽",
       note: "Перенёс спокойно",
       photos: [],

@@ -1,24 +1,6 @@
-import type { CareKind, ExpenseCategory } from "@family-hub/contract";
+import { expenseCategoryTitles, type CareKind } from "@family-hub/contract";
 
 import type { Choice } from "@/common/ui";
-
-export const kindTitles: Record<CareKind, string> = {
-  vaccination: "Прививка",
-  treatment: "Обработка",
-  vet_visit: "Ветеринар",
-  weight: "Вес",
-  expense: "Трата",
-  note: "Заметка",
-};
-
-export const categoryTitles: Record<ExpenseCategory, string> = {
-  food: "Корм",
-  vet: "Ветеринар",
-  medicine: "Лекарства",
-  grooming: "Груминг",
-  toys: "Игрушки",
-  other: "Другое",
-};
 
 export const weightRanges = {
   quarter: "3 месяца",
@@ -46,8 +28,8 @@ export type KindField = {
 };
 
 const costChoices: Choice[] = [
-  { value: "vet", title: categoryTitles.vet },
-  { value: "medicine", title: categoryTitles.medicine },
+  { value: "vet", title: expenseCategoryTitles.vet },
+  { value: "medicine", title: expenseCategoryTitles.medicine },
 ];
 
 const costFields: KindField[] = [
@@ -71,7 +53,7 @@ export const kindFields: Record<CareKind, KindField[]> = {
     {
       name: "category",
       label: "Категория",
-      choices: Object.entries(categoryTitles).map(([value, title]) => ({ value, title })),
+      choices: Object.entries(expenseCategoryTitles).map(([value, title]) => ({ value, title })),
     },
   ],
   note: [],

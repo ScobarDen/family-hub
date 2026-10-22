@@ -1,18 +1,14 @@
-import type { CareDetails, CareEntryDraft, ExpenseCategory } from "@family-hub/contract";
+import {
+  careKindTitles,
+  expenseCategoryTitles,
+  type CareDetails,
+  type CareEntryDraft,
+} from "@family-hub/contract";
 
 import { dayOf, momentOf, rublesOf } from "./wording.ts";
 
-const categoryTitles: Record<ExpenseCategory, string> = {
-  food: "корм",
-  vet: "ветеринар",
-  medicine: "лекарства",
-  grooming: "груминг",
-  toys: "игрушки",
-  other: "другое",
-};
-
 function visitTitleOf(reason: string | null): string {
-  return reason === null ? "Визит к ветеринару" : `Визит к ветеринару: ${reason}`;
+  return reason === null ? careKindTitles.vet_visit : `${careKindTitles.vet_visit}: ${reason}`;
 }
 
 export function careTitleOf(details: CareDetails | null): string {
@@ -21,11 +17,11 @@ export function careTitleOf(details: CareDetails | null): string {
   }
 
   if (details.kind === "vaccination") {
-    return `Прививка «${details.vaccine}»`;
+    return `${careKindTitles.vaccination} «${details.vaccine}»`;
   }
 
   if (details.kind === "treatment") {
-    return `Обработка «${details.target}»`;
+    return `${careKindTitles.treatment} «${details.target}»`;
   }
 
   if (details.kind === "vet_visit") {
@@ -33,12 +29,12 @@ export function careTitleOf(details: CareDetails | null): string {
   }
 
   if (details.kind === "weight") {
-    return `Вес ${String(details.weightKg).replace(".", ",")} кг`;
+    return `${careKindTitles.weight} ${String(details.weightKg).replace(".", ",")} кг`;
   }
 
   return details.kind === "expense"
-    ? `Трата ${rublesOf(details.amount)} · ${categoryTitles[details.category]}`
-    : "Заметка";
+    ? `${careKindTitles.expense} ${rublesOf(details.amount)} · ${expenseCategoryTitles[details.category].toLowerCase()}`
+    : careKindTitles.note;
 }
 
 function medicalDetailsOf(details: CareDetails | null): string[] {

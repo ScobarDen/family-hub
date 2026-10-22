@@ -1,6 +1,8 @@
 import { reatomComponent } from "@reatom/react";
 import type { FormEvent, ReactNode } from "react";
 
+import { careKindTitles } from "@family-hub/contract";
+
 import {
   Button,
   ChoiceField,
@@ -10,7 +12,6 @@ import {
   type Choice,
 } from "@/common/ui";
 
-import { kindTitles } from "../care.config.ts";
 import type { CareFormModel } from "../vm/care-form.vm.ts";
 
 type CareFormProps = {
@@ -23,7 +24,7 @@ type CareFormProps = {
 
 type ActionsProps = Omit<CareFormProps, "photos">;
 
-const kindChoices: Choice[] = Object.entries(kindTitles).map(([value, title]) => ({
+const kindChoices: Choice[] = Object.entries(careKindTitles).map(([value, title]) => ({
   value,
   title,
 }));

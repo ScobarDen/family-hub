@@ -1,12 +1,19 @@
 import { Temporal } from "temporal-polyfill";
 
-import type { CareDetails, CareEntry, ExpenseSummary, Photo } from "@family-hub/contract";
+import {
+  careKindTitles,
+  expenseCategoryTitles,
+  type CareDetails,
+  type CareEntry,
+  type ExpenseSummary,
+  type Photo,
+} from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 
 import type { Range } from "./care.api.ts";
-import { categoryTitles, kindTitles, type WeightRange } from "./care.config.ts";
+import type { WeightRange } from "./care.config.ts";
 
 export type JournalItem = {
   id: string;
@@ -55,24 +62,24 @@ function costOf(details: CareDetails): string | undefined {
 
 export function titleOf(details: CareDetails): string {
   if (details.kind === "vaccination") {
-    return `${kindTitles.vaccination}: ${details.vaccine}`;
+    return `${careKindTitles.vaccination}: ${details.vaccine}`;
   }
 
   if (details.kind === "treatment") {
-    return `${kindTitles.treatment}: ${details.target}`;
+    return `${careKindTitles.treatment}: ${details.target}`;
   }
 
   if (details.kind === "vet_visit") {
     return details.reason === null
-      ? kindTitles.vet_visit
-      : `${kindTitles.vet_visit}: ${details.reason}`;
+      ? careKindTitles.vet_visit
+      : `${careKindTitles.vet_visit}: ${details.reason}`;
   }
 
   if (details.kind === "weight") {
-    return `${kindTitles.weight}: ${formatKilograms(details.weightKg)}`;
+    return `${careKindTitles.weight}: ${formatKilograms(details.weightKg)}`;
   }
 
-  return details.kind === "expense" ? categoryTitles[details.category] : kindTitles.note;
+  return details.kind === "expense" ? expenseCategoryTitles[details.category] : careKindTitles.note;
 }
 
 export function toJournalItem(entry: CareEntry, timeZone: string): JournalItem {
@@ -106,7 +113,7 @@ export function toExpensesView(summary: ExpenseSummary): ExpensesView {
   return {
     total: formatRubles(summary.total),
     rows: summary.byCategory.map(({ category, amount }) => ({
-      title: categoryTitles[category],
+      title: expenseCategoryTitles[category],
       amount: formatRubles(amount),
     })),
   };

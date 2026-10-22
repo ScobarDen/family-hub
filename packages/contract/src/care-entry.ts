@@ -15,9 +15,27 @@ export const careKind = z.enum([
 
 export type CareKind = z.infer<typeof careKind>;
 
+export const careKindTitles: Record<CareKind, string> = {
+  vaccination: "Прививка",
+  treatment: "Обработка",
+  vet_visit: "Визит к ветеринару",
+  weight: "Вес",
+  expense: "Трата",
+  note: "Заметка",
+};
+
 export const expenseCategory = z.enum(["food", "vet", "medicine", "grooming", "toys", "other"]);
 
 export type ExpenseCategory = z.infer<typeof expenseCategory>;
+
+export const expenseCategoryTitles: Record<ExpenseCategory, string> = {
+  food: "Корм",
+  vet: "Ветеринар",
+  medicine: "Лекарства",
+  grooming: "Груминг",
+  toys: "Игрушки",
+  other: "Другое",
+};
 
 const careTextMaxLength = 200;
 

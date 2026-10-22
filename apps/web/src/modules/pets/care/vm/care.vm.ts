@@ -1,6 +1,6 @@
 import { action, atom, type Atom, computed, withAbort, withAsync, wrap } from "@reatom/core";
 
-import type { CareEntry, CareKind } from "@family-hub/contract";
+import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
@@ -9,7 +9,7 @@ import { detached, readOnly, reatomFailure } from "@/common/state";
 import { type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
-import { categoryTitles, type WeightRange } from "../care.config.ts";
+import type { WeightRange } from "../care.config.ts";
 import {
   toExpensesView,
   toJournalItem,
@@ -104,7 +104,7 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
             ...toExpensesView(summary),
             entries: summary.entries.map(({ id, category, occurredAt, amount }) => ({
               id,
-              title: categoryTitles[category],
+              title: expenseCategoryTitles[category],
               subtitle: formatDay(occurredAt, timeZone()),
               amount: formatRubles(amount),
             })),
