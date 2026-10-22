@@ -1,14 +1,15 @@
 import { reatomComponent } from "@reatom/react";
 import { CookingPot, Plus, Star, Tags } from "lucide-react";
 
-import type { Recipe, RecipeTag } from "@family-hub/contract";
+import type { RecipeTag } from "@family-hub/contract";
 
 import { Section, SectionItem } from "@/common/ui";
 
+import type { RecipeItem } from "../recipes.lib.ts";
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { RecipeFilters } from "./recipe-filters.view.tsx";
 
-type RecipeListProps = { model: RecipesScreenModel; recipes: Recipe[]; tags: RecipeTag[] };
+type RecipeListProps = { model: RecipesScreenModel; recipes: RecipeItem[]; tags: RecipeTag[] };
 
 export const RecipeList = reatomComponent(
   ({ model, recipes, tags }: RecipeListProps) => (
@@ -20,16 +21,15 @@ export const RecipeList = reatomComponent(
           <SectionItem
             key={recipe.id}
             icon={recipe.isFavorite ? Star : CookingPot}
-            tone={recipe.isFavorite ? "orange" : "pink"}
             title={recipe.title}
-            subtitle={recipe.tags.map(({ name }) => name).join(" · ") || undefined}
+            subtitle={recipe.subtitle}
             onClick={() => {
               model.open(recipe.id);
             }}
           />
         ))}
-        <SectionItem icon={Plus} tone="green" title="Новый рецепт" onClick={model.add} />
-        <SectionItem icon={Tags} tone="gray" title="Теги" onClick={model.openTags} />
+        <SectionItem icon={Plus} title="Новый рецепт" onClick={model.add} />
+        <SectionItem icon={Tags} title="Теги" onClick={model.openTags} />
       </Section>
     </>
   ),

@@ -18,7 +18,7 @@ export const albumChange = z.object({
 
 export type AlbumChange = z.infer<typeof albumChange>;
 
-export const albumSummary = z.object({
+const albumSummary = z.object({
   id: z.string(),
   kind: z.enum(["album", "pet"]),
   title: z.string(),
@@ -45,9 +45,5 @@ export type Album = z.infer<typeof album>;
 export const albumPhotos = z.object({
   photoIds: z.array(z.string()).min(1).max(albumBatchMax),
 });
-
-export type AlbumPhotos = z.infer<typeof albumPhotos>;
-
-export const albumDeleted = z.object({ status: z.literal("deleted") });
 
 export const photoList = z.array(photo);

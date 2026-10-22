@@ -14,6 +14,8 @@ export type GoalListItem = {
   color: GoalColor;
   subtitle: string;
   percent: number;
+  // The list's line: the balance with how much of the target it is.
+  progress: string;
 };
 
 export type MovementItem = {
@@ -58,13 +60,17 @@ export function monthlyHint(goal: Goal, today: string): string | undefined {
 }
 
 export function toListItem(goal: Goal): GoalListItem {
+  const subtitle = `${formatRubles(goal.balance)} из ${formatRubles(goal.target)}`;
+  const percent = Math.min(fullPercent, Math.floor((goal.balance / goal.target) * fullPercent));
+
   return {
     id: goal.id,
     title: goal.title,
     icon: goal.icon,
     color: goal.color,
-    subtitle: `${formatRubles(goal.balance)} из ${formatRubles(goal.target)}`,
-    percent: Math.min(fullPercent, Math.floor((goal.balance / goal.target) * fullPercent)),
+    subtitle,
+    percent,
+    progress: `${subtitle} · ${percent}%`,
   };
 }
 

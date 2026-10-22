@@ -10,7 +10,6 @@ export const GoalActions = reatomComponent(
     <Section>
       <SectionItem
         icon={Plus}
-        tone="green"
         title="Пополнить"
         onClick={() => {
           model.addMovement("contribution");
@@ -18,13 +17,12 @@ export const GoalActions = reatomComponent(
       />
       <SectionItem
         icon={Minus}
-        tone="orange"
         title="Снять"
         onClick={() => {
           model.addMovement("withdrawal");
         }}
       />
-      <SectionItem icon={Pencil} tone="gray" title="Изменить цель" onClick={model.edit} />
+      <SectionItem icon={Pencil} title="Изменить цель" onClick={model.edit} />
     </Section>
   ),
   "GoalActions",

@@ -1,9 +1,7 @@
 import {
   album,
-  albumDeleted,
+  deleted,
   albumList,
-  photo,
-  photoDeleted,
   photoList,
   type Album,
   type AlbumChange,
@@ -11,7 +9,7 @@ import {
 } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
-import { resolvedPhoto, resolvedUrls, type PreparedPhoto } from "@/common/photo";
+import { createPhotoCalls, resolvedPhoto, resolvedUrls } from "@/common/photo";
 
 function resolvedSummary(client: HttpClient, summary: AlbumSummary): AlbumSummary {
   return {
@@ -35,25 +33,6 @@ function photoCalls(client: HttpClient) {
 
       return photos.map((each) => resolvedPhoto(each, client.url));
     },
-    async uploadPhoto({ file, takenAt }: PreparedPhoto) {
-      const form = new FormData();
-
-      form.append("file", file, "photo.jpg");
-
-      if (takenAt !== null) {
-        form.append("takenAt", String(takenAt));
-      }
-
-      const uploaded = await client.request("/api/photos", {
-        method: "POST",
-        body: form,
-        schema: photo,
-      });
-
-      return resolvedPhoto(uploaded, client.url);
-    },
-    deletePhoto: async (photoId: string) =>
-      client.request(`/api/photos/${photoId}`, { method: "DELETE", schema: photoDeleted }),
   };
 }
 
@@ -80,11 +59,12 @@ export function createAlbumsApi(client: HttpClient) {
     remove: async (albumId: string, scope: "album-only" | "with-photos") =>
       client.request(`/api/albums/${albumId}${scope === "with-photos" ? "?withPhotos=true" : ""}`, {
         method: "DELETE",
-        schema: albumDeleted,
+        schema: deleted,
       }),
     addPhotos: async (albumId: string, photoIds: string[]) =>
       one(`/api/albums/${albumId}/photos`, { method: "POST", body: { photoIds } }),
     ...photoCalls(client),
+    ...createPhotoCalls(client),
   };
 }
 

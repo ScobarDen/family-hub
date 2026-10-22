@@ -1,13 +1,15 @@
 import { uuidv7, type CalendarEvent, type EventChange } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 import type { Clock } from "@/common/clock";
+import { isHiddenFrom, isTurnedPrivate } from "@/common/visibility";
 
 import { columnsOf, toEvent } from "./event.lib.ts";
 import type { EventRepo, EventRow } from "./event.repo.ts";
 
 // The Reminders of an Event live in the reminder module; the app wires this port to it.
-export type EventSchedule = {
+type EventSchedule = {
   sourceChanged(familyId: string, source: { kind: "event"; id: string }): Promise<void>;
 };
 
@@ -24,7 +26,7 @@ async function visible(
 ): Promise<EventRow | undefined> {
   const row = await events.find({ familyId: family.id, eventId });
 
-  return row?.visibility === "private" && row.ownerMemberId !== member.id ? undefined : row;
+  return row === undefined || isHiddenFrom(row, member.id) ? undefined : row;
 }
 
 async function current(
@@ -74,8 +76,7 @@ async function update(
     return { status: "not-found" };
   }
 
-  // Others may already rely on a Shared Event, so it never turns Private.
-  if (row.visibility === "shared" && change.visibility === "private") {
+  if (isTurnedPrivate(row.visibility, change.visibility)) {
     return { status: "visibility-one-way" };
   }
 
@@ -138,19 +139,16 @@ async function remove(
 
 export function createEventService(dependencies: EventDependencies) {
   return {
+    ...bindFirst(dependencies, { create, remove }),
     async list({ family, member }: Membership): Promise<CalendarEvent[]> {
       const rows = await dependencies.events.listVisible(family.id, member.id);
 
       return rows.map((row) => toEvent(row, member.id));
     },
-    create: async (membership: Membership, change: EventChange) =>
-      create(dependencies, membership, change),
     update: async (membership: Membership, eventId: string, change: EventChange) =>
       update(dependencies, membership, { eventId, change }),
     skip: async (membership: Membership, eventId: string, date: string) =>
       skip(dependencies, membership, { eventId, date }),
-    remove: async (membership: Membership, eventId: string) =>
-      remove(dependencies, membership, eventId),
   };
 }
 

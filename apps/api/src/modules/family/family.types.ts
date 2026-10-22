@@ -3,7 +3,7 @@ import type { BotApi } from "@/common/telegram";
 
 import type { FamilyRepo } from "./family.repo.ts";
 
-export type FamilySchedule = { membershipChanged(familyId: string): Promise<void> };
+type FamilySchedule = { membershipChanged(familyId: string): Promise<void> };
 
 export type FamilyDependencies = {
   families: FamilyRepo;

@@ -3,11 +3,11 @@ import { z } from "zod";
 import { photoUrls } from "./photo.ts";
 import { optionalText } from "./text.ts";
 
-export const petSpecies = z.enum(["dog", "cat", "bird", "rodent", "fish", "reptile", "other"]);
+const petSpecies = z.enum(["dog", "cat", "bird", "rodent", "fish", "reptile", "other"]);
 
 export type PetSpecies = z.infer<typeof petSpecies>;
 
-export const petSex = z.enum(["male", "female"]);
+const petSex = z.enum(["male", "female"]);
 
 export type PetSex = z.infer<typeof petSex>;
 
@@ -35,7 +35,7 @@ export const petMemoChange = z.object({
 
 export type PetMemoChange = z.infer<typeof petMemoChange>;
 
-export const petMemo = petMemoChange.extend({
+const petMemo = petMemoChange.extend({
   updatedAt: z.number().nullable(),
   updatedBy: z.string().nullable(),
 });
@@ -61,7 +61,3 @@ export type PetList = z.infer<typeof petList>;
 export const petDeletion = z.object({ petName: z.string() });
 
 export type PetDeletion = z.infer<typeof petDeletion>;
-
-export const petDeleted = z.object({ status: z.literal("deleted") });
-
-export type PetDeleted = z.infer<typeof petDeleted>;

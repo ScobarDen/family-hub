@@ -1,3 +1,4 @@
+export { matchingName } from "./form.lib.ts";
 export {
   fillForm,
   reatomEditableRecord,

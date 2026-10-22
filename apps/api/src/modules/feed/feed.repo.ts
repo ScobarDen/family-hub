@@ -1,5 +1,6 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import {
   albumPhotos,
   albums,
@@ -38,7 +39,7 @@ export type FeedMovementRow = Pick<
   "id" | "goalId" | "kind" | "amount" | "createdAt"
 > & { memberName: string };
 export type FeedPhotoRow = typeof photos.$inferSelect;
-export type FeedEntryPhotoRow = { careEntryId: string; photo: FeedPhotoRow };
+type FeedEntryPhotoRow = { careEntryId: string; photo: FeedPhotoRow };
 export type FeedUploadRow = {
   albumId: string;
   albumTitle: string;
@@ -47,14 +48,14 @@ export type FeedUploadRow = {
   addedAt: number;
   photo: FeedPhotoRow;
 };
-export type FeedCookRow = {
+type FeedCookRow = {
   id: string;
   recipeId: string;
   title: string;
   cookedAt: number;
   memberName: string;
 };
-export type FeedRecipePhotoRow = { recipeId: string; photo: FeedPhotoRow };
+type FeedRecipePhotoRow = { recipeId: string; photo: FeedPhotoRow };
 export type FeedJoinRow = { memberId: string; memberName: string; createdAt: number };
 
 type Viewer = { familyId: string; memberId: string };
@@ -110,7 +111,7 @@ async function duesOf(db: Db, familyId: string): Promise<FeedDueRow[]> {
     })
     .from(careEntries)
     .where(and(eq(careEntries.familyId, familyId), isNotNull(careEntries.dueKey)))
-    .orderBy(desc(careEntries.occurredAt))
+    .orderBy(desc(careEntries.occurredAt), desc(sql`${careEntries}.rowid`))
     .all();
 }
 
@@ -221,6 +222,18 @@ async function recipePhotosOf(db: Db, familyId: string): Promise<FeedRecipePhoto
 
 export function createFeedRepo(db: Db) {
   return {
+    ...bindFirst(db, {
+      plans: plansOf,
+      dues: duesOf,
+      careBefore,
+      joins: joinsOf,
+      goals: goalsOf,
+      entryPhotosOf,
+      uploadsOf,
+      cooksOf,
+      recipePhotosOf,
+      movements: movementsOf,
+    }),
     events: async (viewer: Viewer) =>
       db.select().from(events).where(isVisible(events, viewer)).all(),
     reminders: async (viewer: Viewer) =>
@@ -233,28 +246,6 @@ export function createFeedRepo(db: Db) {
         .all(),
     petsOf: async (familyId: string) =>
       db.select().from(pets).where(eq(pets.familyId, familyId)).all(),
-    plans: async (familyId: string) => plansOf(db, familyId),
-    dues: async (familyId: string) => duesOf(db, familyId),
-    careBefore: async (query: { familyId: string; before: number; limit: number }) =>
-      careBefore(db, query),
-    joins: async (familyId: string) => joinsOf(db, familyId),
-    goals: async (familyId: string) => goalsOf(db, familyId),
-    entryPhotosOf: async (familyId: string, entryIds: string[]) =>
-      entryPhotosOf(db, familyId, entryIds),
-    uploadsOf: async (familyId: string) => uploadsOf(db, familyId),
-    cooksOf: async (familyId: string) => cooksOf(db, familyId),
-    recipePhotosOf: async (familyId: string) => recipePhotosOf(db, familyId),
-    movements: async (familyId: string) => movementsOf(db, familyId),
-
-    async timeZoneOf(memberId: string): Promise<string | null> {
-      const row = await db
-        .select({ timeZone: members.timeZone })
-        .from(members)
-        .where(eq(members.id, memberId))
-        .get();
-
-      return row?.timeZone ?? null;
-    },
   };
 }
 

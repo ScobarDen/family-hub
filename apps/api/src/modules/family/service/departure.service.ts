@@ -4,10 +4,7 @@ import { ignoringBotErrors } from "@/common/telegram";
 import { removedText } from "../family.lib.ts";
 import type { FamilyDependencies } from "../family.types.ts";
 
-export type LeaveResult =
-  | { status: "left" }
-  | { status: "family-deleted" }
-  | { status: "must-hand-over" };
+type LeaveResult = { status: "left" } | { status: "family-deleted" } | { status: "must-hand-over" };
 
 export type RemoveResult =
   | { status: "removed" }

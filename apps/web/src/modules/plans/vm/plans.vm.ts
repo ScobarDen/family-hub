@@ -1,12 +1,12 @@
-import { action, atom, computed, type Atom } from "@reatom/core";
+import { action, atom, type Atom, type BooleanAtom, computed, reatomBoolean } from "@reatom/core";
 
 import type { Plan } from "@family-hub/contract";
 
-import type { PopupParams } from "@/common/telegram";
+import type { Dialogs } from "@/common/telegram";
 
 import type { PlansApi } from "../plans.api.ts";
 import { toDetails, toListItem, type PlanDetails, type PlanListItem } from "../plans.lib.ts";
-import type { PlansModel } from "../plans.model.ts";
+import { reatomPlans, type PlansModel, type SharedLists } from "../plans.model.ts";
 import { reatomPlanActions } from "./plan-actions.vm.ts";
 import { reatomPlanFormModel } from "./plan-form.vm.ts";
 import { reatomSubplanFormModel } from "./subplan-form.vm.ts";
@@ -22,7 +22,7 @@ export type PlansScreen =
 type PlansDependencies = {
   api: PlansApi;
   plans: PlansModel;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   self: () => string | undefined;
   timeZone: () => string;
   onOpenAlbum: (albumId: string) => void;
@@ -31,7 +31,7 @@ type PlansDependencies = {
 type Navigation = {
   editing: Atom<"plan" | "subplan" | undefined>;
   openedPlanId: Atom<string | undefined>;
-  isDoneShown: Atom<boolean>;
+  isDoneShown: BooleanAtom;
 };
 
 type Forms = ReturnType<typeof reatomForms>;
@@ -96,7 +96,7 @@ function reatomBrowsing({ editing, openedPlanId, isDoneShown }: Navigation) {
       openedPlanId.set(planId);
     }, "plans.open"),
     toggleDone: action(() => {
-      isDoneShown.set(!isDoneShown());
+      isDoneShown.toggle();
     }, "plans.toggleDone"),
     back: action(() => {
       if (editing() === undefined) {
@@ -156,11 +156,20 @@ function titleOf(screen: PlansScreen): string {
   return screen.kind === "subplan-form" ? "Шаг" : "Планы";
 }
 
-export function reatomPlansScreen(dependencies: PlansDependencies) {
+// The pet card shows its open Plans in «Скоро»; the plans module stays their only source.
+function openPlansOf(plans: PlansModel) {
+  return (petId: string) =>
+    (plans.list.data() ?? []).filter(
+      ({ pet, completed }) => pet?.id === petId && completed === null,
+    );
+}
+
+export function reatomPlansScreen(input: Omit<PlansDependencies, "plans"> & SharedLists) {
+  const dependencies: PlansDependencies = { ...input, plans: reatomPlans(input) };
   const navigation: Navigation = {
     editing: atom<"plan" | "subplan" | undefined>(undefined, "plans.editing"),
     openedPlanId: atom<string | undefined>(undefined, "plans.openedPlanId"),
-    isDoneShown: atom(false, "plans.isDoneShown"),
+    isDoneShown: reatomBoolean(false, "plans.isDoneShown"),
   };
   const openedPlan = computed(
     () => dependencies.plans.list.data()?.find(({ id }) => id === navigation.openedPlanId()),
@@ -180,11 +189,7 @@ export function reatomPlansScreen(dependencies: PlansDependencies) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "plans.title"),
-    // The pet card shows its open Plans in «Скоро»; the plans module stays their only source.
-    openPlansOf: (petId: string) =>
-      (dependencies.plans.list.data() ?? []).filter(
-        ({ pet, completed }) => pet?.id === petId && completed === null,
-      ),
+    openPlansOf: openPlansOf(dependencies.plans),
     canGoBack: computed(
       () => navigation.editing() !== undefined || openedPlan() !== undefined,
       "plans.canGoBack",

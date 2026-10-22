@@ -1,6 +1,7 @@
 import { uuidv7, type GoalChange, type GoalList, type GoalOutcome } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { isTurnedPrivate } from "@/common/visibility";
 
 import type { GoalDependencies, GoalResult } from "../goal.types.ts";
 import { currentGoal, goalOf, visibleGoal, visibleGoals } from "./goal-access.service.ts";
@@ -57,7 +58,7 @@ export async function update(
   }
 
   // Others may already have put money into a Shared Goal, so it never turns Private.
-  if (found.row.visibility === "shared" && change.visibility === "private") {
+  if (isTurnedPrivate(found.row.visibility, change.visibility)) {
     return { status: "visibility-one-way" };
   }
 

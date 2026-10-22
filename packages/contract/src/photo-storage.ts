@@ -1,8 +1,6 @@
 import { z } from "zod";
 
-export const photoStorageStatus = z.enum(["none", "connected", "disconnected"]);
-
-export type PhotoStorageStatus = z.infer<typeof photoStorageStatus>;
+const photoStorageStatus = z.enum(["none", "connected", "disconnected"]);
 
 export const photoStorage = z.object({
   status: photoStorageStatus,

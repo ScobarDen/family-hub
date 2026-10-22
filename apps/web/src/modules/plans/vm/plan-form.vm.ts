@@ -109,6 +109,23 @@ function reatomPlanRecord({ api, plans, onSaved }: PlanFormDependencies) {
 type PlanRecord = ReturnType<typeof reatomPlanRecord>;
 
 // A trip's Plan keeps its photos in one of the Family's own Albums, not a Pet's.
+// Only the «none» choice left means there is nothing to choose, so the field stays hidden.
+function hasChoice(choices: () => Choice[], name: string) {
+  return computed(() => choices().length > 1, name);
+}
+
+function reatomPetChoices({ plans }: PlanFormDependencies) {
+  return computed(
+    (): Choice[] => [
+      { value: "", title: "Без питомца" },
+      ...(plans.pets.data() ?? [])
+        .filter(({ archivedAt }) => archivedAt === null)
+        .map(({ id, name }) => ({ value: id, title: name })),
+    ],
+    "plans.planForm.pets",
+  );
+}
+
 function reatomAlbumChoices({ plans }: PlanFormDependencies) {
   return computed(
     (): Choice[] => [
@@ -126,6 +143,8 @@ function reatomChoices(dependencies: PlanFormDependencies, { form, edited }: Pla
     () => form.fields.visibility() === "private",
     "plans.planForm.isPrivate",
   );
+  const pets = reatomPetChoices(dependencies);
+  const albums = reatomAlbumChoices(dependencies);
 
   return {
     // A Shared Plan never turns Private, so editing one offers no choice.
@@ -141,16 +160,10 @@ function reatomChoices(dependencies: PlanFormDependencies, { form, edited }: Pla
         }),
       "plans.planForm.assignees",
     ),
-    pets: computed(
-      (): Choice[] => [
-        { value: "", title: "Без питомца" },
-        ...(dependencies.plans.pets.data() ?? [])
-          .filter(({ archivedAt }) => archivedAt === null)
-          .map(({ id, name }) => ({ value: id, title: name })),
-      ],
-      "plans.planForm.pets",
-    ),
-    albums: reatomAlbumChoices(dependencies),
+    pets,
+    hasPetChoice: hasChoice(pets, "plans.planForm.hasPetChoice"),
+    albums,
+    hasAlbumChoice: hasChoice(albums, "plans.planForm.hasAlbumChoice"),
   };
 }
 

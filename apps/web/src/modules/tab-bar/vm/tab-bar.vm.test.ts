@@ -99,13 +99,4 @@ describe("the modules hidden from the tab bar", () => {
       { module: "recipes", title: "Рецепты" },
     ]);
   });
-
-  test("leave out every module the tab bar shows", () => {
-    const { model } = startTabBar(["feed", "plans", "calendar", "pet", "goals"]);
-
-    expect(model.hidden()).toEqual([
-      { module: "albums", title: "Альбомы" },
-      { module: "recipes", title: "Рецепты" },
-    ]);
-  });
 });

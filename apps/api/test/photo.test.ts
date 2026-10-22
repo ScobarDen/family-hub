@@ -2,44 +2,10 @@ import { describe, expect, test } from "vite-plus/test";
 
 import type { CareEntry, Pet, Photo } from "@family-hub/contract";
 
-import { signInitData, type TelegramUserFixture } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
+import { type TelegramUserFixture } from "./init-data.ts";
+import { asya, denis, request, startWorker, tokenOf } from "./worker-harness.ts";
 
-const denis = { id: 111, first_name: "Денис" };
-const asya = { id: 222, first_name: "Ася" };
 const channelId = -100_500;
-
-async function tokenOf(worker: ReturnType<typeof startWorker>, user: TelegramUserFixture) {
-  const session = await worker.request("/api/session", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      initData: signInitData({
-        botToken: worker.env.BOT_TOKEN,
-        user,
-        authDate: worker.clock.iso(),
-      }),
-    }),
-  });
-  const { token = "" } = await session.json<{ token?: string }>();
-
-  return token;
-}
-
-async function request(
-  worker: ReturnType<typeof startWorker>,
-  user: TelegramUserFixture,
-  { method = "GET", path, body }: { method?: string; path: string; body?: unknown },
-) {
-  return worker.request(path, {
-    method,
-    headers: {
-      authorization: `Bearer ${await tokenOf(worker, user)}`,
-      "content-type": "application/json",
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
 
 async function startWithBuick() {
   const worker = startWorker({ now: "2026-10-04T09:00:00Z" });
@@ -166,6 +132,37 @@ describe("a signed photo link", () => {
     ]);
   });
 
+  test("is checked again when the edge cache already holds the photo", async () => {
+    const worker = await startWithBuick();
+    const photo = await uploaded(worker, asya);
+    const warmed = await worker.request(photo.urls.full);
+    const forged = await worker.request(photo.urls.full.replace(/sig=.+$/u, "sig=AAAA"));
+
+    worker.clock.set("2026-10-05T11:00:01Z");
+
+    const stale = await worker.request(photo.urls.full);
+
+    expect([warmed.status, forged.status, stale.status]).toEqual([200, 403, 403]);
+  });
+
+  test("answers gone from a warmed cache once the photo is deleted or the channel disconnected", async () => {
+    const worker = await startWithBuick();
+    const deleted = await uploaded(worker, asya, 1);
+    const kept = await uploaded(worker, asya, 2);
+
+    await worker.request(deleted.urls.thumb);
+    await worker.request(kept.urls.thumb);
+    await request(worker, asya, { method: "DELETE", path: `/api/photos/${deleted.id}` });
+
+    const afterDelete = await worker.request(deleted.urls.thumb);
+
+    await worker.setPhotoChannel(worker.familyId, null);
+
+    const afterDisconnect = await worker.request(kept.urls.thumb);
+
+    expect([afterDelete.status, afterDisconnect.status]).toEqual([410, 410]);
+  });
+
   test("answers gone once the channel is disconnected", async () => {
     const worker = await startWithBuick();
     const photo = await uploaded(worker, asya);
@@ -217,6 +214,42 @@ describe("a Care Entry's photos", () => {
 
     expect(withAvatar.avatar?.thumb).toMatch(/^\/photos\//u);
     expect(refused.status).toBe(400);
+  });
+});
+
+describe("another Family's photo", () => {
+  test("cannot be attached to a Care Entry, an avatar or an Album", async () => {
+    const worker = await startWithBuick();
+    const stranger = { id: 333, first_name: "Пётр" };
+    const neighbours = await worker.addFamily({
+      name: "Соседи",
+      owner: { telegramId: stranger.id, name: "Пётр" },
+    });
+
+    await worker.setPhotoChannel(neighbours.familyId, -100_600);
+
+    const foreign = await uploaded(worker, stranger, 9);
+    const album = await request(worker, asya, {
+      method: "POST",
+      path: "/api/albums",
+      body: { title: "Казань", description: null },
+    });
+    const { id: albumId } = await album.json<{ id: string }>();
+    const responses = [
+      await addEntry(worker, [foreign.id]),
+      await request(worker, denis, {
+        method: "PUT",
+        path: `/api/pets/${worker.buickId}/avatar`,
+        body: { photoId: foreign.id },
+      }),
+      await request(worker, asya, {
+        method: "POST",
+        path: `/api/albums/${albumId}/photos`,
+        body: { photoIds: [foreign.id] },
+      }),
+    ];
+
+    expect(responses.map(({ status }) => status)).toEqual([400, 400, 400]);
   });
 });
 

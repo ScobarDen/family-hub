@@ -1,6 +1,7 @@
 import { uuidv7, type Plan, type PlanChange } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { isTurnedPrivate } from "@/common/visibility";
 
 import type { PlanDependencies, PlanRefusal, PlanResult } from "../plan.types.ts";
 import { currentPlan, isAssigneeAllowed, visibleTree } from "./access.service.ts";
@@ -109,7 +110,7 @@ export async function update(
   }
 
   // Others may already have seen and contributed to a Shared Plan, so it never turns Private.
-  if (tree.root.visibility === "shared" && change.visibility === "private") {
+  if (isTurnedPrivate(tree.root.visibility, change.visibility)) {
     return { status: "visibility-one-way" };
   }
 

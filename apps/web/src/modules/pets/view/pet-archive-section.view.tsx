@@ -18,25 +18,18 @@ export const PetArchiveSection = reatomComponent(({ screen, model }: PetArchiveS
       {!isArchived && screen.archivedCount > 0 && (
         <SectionItem
           icon={PawPrint}
-          tone="gray"
           title={`Все питомцы · в архиве ${screen.archivedCount}`}
           onClick={model.showAll}
         />
       )}
       <SectionItem
         icon={isArchived ? ArchiveRestore : Archive}
-        tone="gray"
         title={isArchived ? "Вернуть из архива" : "Перенести в архив"}
         subtitle={isArchived ? undefined : "История останется, напоминания прекратятся"}
         onClick={model.toggleArchive}
       />
       {screen.canDelete && (
-        <SectionItem
-          icon={Trash2}
-          tone="red"
-          title="Удалить навсегда"
-          onClick={model.startDeleting}
-        />
+        <SectionItem icon={Trash2} isAlert title="Удалить навсегда" onClick={model.startDeleting} />
       )}
     </Section>
   );

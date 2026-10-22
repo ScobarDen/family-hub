@@ -4,10 +4,7 @@ import { ignoringBotErrors } from "@/common/telegram";
 import { isSameFamilyName, newOwnerText } from "../family.lib.ts";
 import type { FamilyDependencies } from "../family.types.ts";
 
-export type HandOverResult =
-  | { status: "handed-over" }
-  | { status: "not-owner" }
-  | { status: "not-found" };
+type HandOverResult = { status: "handed-over" } | { status: "not-owner" } | { status: "not-found" };
 
 export type DeleteResult =
   | { status: "deleted" }

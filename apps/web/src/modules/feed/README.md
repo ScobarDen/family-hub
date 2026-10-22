@@ -7,6 +7,6 @@ A Plan's deadline is ticked off right here, a Due Date gets «Записать»
 ## Injected
 
 - `api` — `createFeedApi(httpClient)`: the Feed's pages and completing a Plan or Subplan.
-- `today`, `timeZone` — the viewer's date and zone for «Сегодня» and «Вчера»; still the device's.
+- `today`, `timeZone` — the viewer's date and zone for «Сегодня» and «Вчера»; the Member's own zone, the device's until it is known.
 - `onOpen` — opens a Plan, an Event, the calendar, a Pet's card, a Care Entry's form over its Pet's card, a Savings Goal, an Album or a Recipe; the app's opener switches tabs.
 - `onRecord` — opens a new Care Entry that follows up a Due Date on the Pet's card, through the app's opener too.

@@ -1,8 +1,8 @@
 import type { FieldAtom } from "@reatom/core";
 import { reatomComponent } from "@reatom/react";
 
+import { ChipGroup } from "./chip-group.view.tsx";
 import { Chip } from "./chip.view.tsx";
-import { Label } from "./label.view.tsx";
 
 export type Choice = { value: string; title: string };
 
@@ -18,26 +18,24 @@ export const ChoiceField = reatomComponent(
     const selected = field();
 
     return (
-      <div className="flex flex-col gap-2">
-        <Label>{label}</Label>
-        <div className="flex flex-wrap gap-2">
-          {choices.map(({ value, title }) => (
-            <Chip
-              key={value}
-              isSelected={value === selected}
-              onClick={() => {
-                if (onChoose === undefined) {
-                  field.set(value);
-                } else {
-                  onChoose(value);
-                }
-              }}
-            >
-              {title}
-            </Chip>
-          ))}
-        </div>
-      </div>
+      <ChipGroup label={label} role="radiogroup">
+        {choices.map(({ value, title }) => (
+          <Chip
+            key={value}
+            role="radio"
+            isSelected={value === selected}
+            onClick={() => {
+              if (onChoose === undefined) {
+                field.set(value);
+              } else {
+                onChoose(value);
+              }
+            }}
+          >
+            {title}
+          </Chip>
+        ))}
+      </ChipGroup>
     );
   },
   "ChoiceField",

@@ -1,10 +1,10 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import type { Completion, Plan, PlanAlbum, PlanMember, Subplan } from "@family-hub/contract";
+import type { Completion, Plan, PlanAlbum, Named, Subplan } from "@family-hub/contract";
 
 import type { PlanRow, PlanTree } from "./plan.repo.ts";
 
-function memberOf(id: string | null, name: string | null): PlanMember | null {
+function memberOf(id: string | null, name: string | null): Named | null {
   return id === null || name === null ? null : { id, name };
 }
 

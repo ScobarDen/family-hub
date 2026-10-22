@@ -1,20 +1,19 @@
-import { sValidator } from "@hono/standard-validator";
 import { Hono } from "hono";
 
-import { familyRequestBody, type ErrorCode, type FamilyRequestCreated } from "@family-hub/contract";
+import { familyRequestBody, type FamilyRequestCreated } from "@family-hub/contract";
 
 import type { AuthEnv } from "@/common/auth";
-import { apiError, httpStatus } from "@/common/errors";
+import { apiError, httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 
 import type { FamilyRequestService, SubmitResult } from "./service/family-request.service.ts";
 
-export type FamilyRequestEnv = {
+type FamilyRequestEnv = {
   Variables: AuthEnv["Variables"] & { familyRequests: FamilyRequestService };
 };
 
 type Refusal = Exclude<SubmitResult["status"], "pending">;
 
-const refusals = {
+const refuse = refusalsOf<Refusal>({
   "already-member": {
     code: "ALREADY_MEMBER",
     message: "Already a Member of a Family",
@@ -35,18 +34,11 @@ const refusals = {
     message: "The Operator cannot be reached",
     status: httpStatus.serviceUnavailable,
   },
-} as const satisfies Record<Refusal, { code: ErrorCode; message: string; status: number }>;
+});
 
 export const familyRequestRoute = new Hono<FamilyRequestEnv>().post(
   "/api/family-requests",
-  sValidator("json", familyRequestBody, (result, context) =>
-    result.success
-      ? undefined
-      : context.json(
-          apiError("INVALID_REQUEST", "initData and a family name are required"),
-          httpStatus.badRequest,
-        ),
-  ),
+  jsonBody(familyRequestBody, "initData and a family name are required"),
   async (context) => {
     const { initData, familyName } = context.req.valid("json");
     const user = await context.var.auth.identify(initData);
@@ -64,8 +56,6 @@ export const familyRequestRoute = new Hono<FamilyRequestEnv>().post(
       return context.json<FamilyRequestCreated>(result, httpStatus.created);
     }
 
-    const { code, message, status } = refusals[result.status];
-
-    return context.json(apiError(code, message), status);
+    return refuse(context, result.status);
   },
 );

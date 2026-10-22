@@ -131,7 +131,7 @@ function startFeed() {
     onRecord: ({ entryId }) => {
       recorded.push(entryId);
     },
-    telegram: { showPopup: async () => noChoice },
+    telegram: { showPopup: async () => noChoice, showAlert: noop },
   });
 
   model.blocks.subscribe(noop);
@@ -206,6 +206,22 @@ describe("the Feed", () => {
       title: "1 октября",
       rows: [{ title: "Ася теперь в семье" }],
     });
+  });
+
+  test("starts over from the first page on a reload", async () => {
+    const { model } = startFeed();
+
+    await loaded(model);
+    model.loadMore();
+    await vi.waitFor(() => {
+      expect(model.blocks()).toHaveLength(5);
+    });
+    model.reload();
+    await vi.waitFor(() => {
+      expect(model.blocks()).toHaveLength(4);
+    });
+
+    expect(model.canLoadMore()).toBe(true);
   });
 
   test("completes a step right from the Feed", async () => {

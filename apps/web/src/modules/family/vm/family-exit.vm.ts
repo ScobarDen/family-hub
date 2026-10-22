@@ -1,7 +1,10 @@
 import { action, reatomForm, withAsync, wrap } from "@reatom/core";
 import { z } from "zod";
 
-import { isConfirmed, type FamilySources } from "./family-sources.vm.ts";
+import { matchingName } from "@/common/form";
+import { isConfirmed } from "@/common/telegram";
+
+import type { FamilySources } from "./family-sources.vm.ts";
 
 async function leaveAfterConfirmation({ api, telegram, self, onLeft, failure }: FamilySources) {
   const isSure = await wrap(
@@ -46,12 +49,7 @@ export function reatomLeave(sources: FamilySources, openDeletion: () => void) {
 }
 
 export function reatomDeletion({ api, self, onLeft }: FamilySources) {
-  const familyName = z
-    .string()
-    .refine(
-      (typed) => typed.trim() !== "" && typed.trim() === self()?.familyName.trim(),
-      "Название не совпадает",
-    );
+  const familyName = matchingName(() => self()?.familyName, "Название не совпадает");
 
   return reatomForm(
     { familyName: "" },

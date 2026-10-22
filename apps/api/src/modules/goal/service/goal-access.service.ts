@@ -11,8 +11,9 @@ export type VisibleGoal = { row: GoalRow; movements: MovementRow[] };
 export async function visibleGoals(
   { goals }: GoalDependencies,
   { family, member }: Membership,
+  goalId?: string,
 ): Promise<VisibleGoal[]> {
-  const rows = await goals.listVisible(family.id, member.id);
+  const rows = await goals.listVisible({ familyId: family.id, memberId: member.id, goalId });
   const movements = await goals.movementsOf(
     family.id,
     rows.map(({ id }) => id),
@@ -20,7 +21,7 @@ export async function visibleGoals(
 
   return rows.map((row) => ({
     row,
-    movements: movements.filter(({ goalId }) => goalId === row.id),
+    movements: movements.filter((movement) => movement.goalId === row.id),
   }));
 }
 
@@ -29,9 +30,9 @@ export async function visibleGoal(
   membership: Membership,
   goalId: string,
 ): Promise<VisibleGoal | undefined> {
-  const all = await visibleGoals(dependencies, membership);
+  const [found] = await visibleGoals(dependencies, membership, goalId);
 
-  return all.find(({ row }) => row.id === goalId);
+  return found;
 }
 
 export function goalOf({ row, movements }: VisibleGoal, { member }: Membership): Goal {

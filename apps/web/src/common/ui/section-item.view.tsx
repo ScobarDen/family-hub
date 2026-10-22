@@ -7,9 +7,10 @@ import { cn } from "./ui.lib.ts";
 
 type SectionItemProps = {
   icon?: LucideIcon;
-  tone?: IconTone;
   // A badge is for a colour the Member chose (a Savings Goal); every other icon stays plain.
   iconVariant?: "plain" | "badge";
+  tone?: IconTone;
+  isAlert?: boolean;
   leading?: ReactNode;
   title: string;
   subtitle?: string;
@@ -25,6 +26,7 @@ function leadingOf({
   icon,
   tone = "blue",
   iconVariant = "plain",
+  isAlert = false,
   leading,
 }: SectionItemProps): ReactNode {
   if (leading !== undefined || icon === undefined) {
@@ -34,7 +36,7 @@ function leadingOf({
   return iconVariant === "badge" ? (
     <IconBadge icon={icon} tone={tone} />
   ) : (
-    <PlainIcon icon={icon} tone={tone} />
+    <PlainIcon icon={icon} isAlert={isAlert} />
   );
 }
 

@@ -8,9 +8,9 @@ The «Альбомы» tab: the Family's Albums, always Shared, and each Pet's a
 
 - `api` — `createAlbumsApi(httpClient)`: the Albums with their photos, «Все фото», creating, editing and deleting an Album, adding photos to it, uploading and deleting a photo.
 - `telegram` — `showPopup` from `common/telegram` for the confirmations.
-- `timeZone` — the zone an Album's date span is shown in; still the device's.
+- `timeZone` — the zone an Album's date span is shown in; the Member's own zone, the device's until it is known.
 - `preparePhoto` — `preparePhoto` from `common/photo`: Exif date, then 2560 px JPEG.
 - `wait` — a timer, so tests do not sleep through a 429.
 - `photoHint` — from `photo-storage`: why photos cannot be added now.
 
-`reatomAlbumsScreen` goes to the navigation as the albums module's `nestedBack`. The full-screen viewer is `common/photo-viewer`, shared with the care module.
+`reatomAlbumsScreen` goes to the navigation as the albums module's `nestedBack`. The full-screen viewer is `common/photo-viewer`, shared with the care journal in `pets`.

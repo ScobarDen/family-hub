@@ -1,4 +1,12 @@
-import { action, atom, computed, withAsyncData, wrap, type Atom } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  reatomBoolean,
+  withAsyncData,
+  wrap,
+  type Atom,
+} from "@reatom/core";
 
 import type { AlbumsApi } from "./albums.api.ts";
 
@@ -12,7 +20,7 @@ export function reatomAlbumsData({
   openedId: Atom<string | undefined>;
 }) {
   const version = atom(0, "albums.version");
-  const isAllShown = atom(false, "albums.isAllShown");
+  const isAllShown = reatomBoolean(false, "albums.isAllShown");
 
   return {
     isAllShown,

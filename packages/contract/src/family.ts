@@ -19,7 +19,3 @@ export type FamilyOwnerChanged = z.infer<typeof familyOwnerChanged>;
 export const familyDeletion = z.object({ familyName: z.string() });
 
 export type FamilyDeletion = z.infer<typeof familyDeletion>;
-
-export const familyDeleted = z.object({ status: z.literal("deleted") });
-
-export type FamilyDeleted = z.infer<typeof familyDeleted>;

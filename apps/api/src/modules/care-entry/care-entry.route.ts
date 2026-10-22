@@ -1,27 +1,26 @@
 import { sValidator } from "@hono/standard-validator";
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 
 import {
   careEntryChange,
   expenseRange,
   type CareEntry,
-  type CareEntryDeleted,
+  type Deleted,
   type CareEntryList,
   type DueDateList,
-  type ErrorCode,
   type ExpenseSummary,
 } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
-import { apiError, httpStatus } from "@/common/errors";
+import { apiError, httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 
 import type { CareEntryService, CareRefusal } from "./service/care-entry.service.ts";
 
-export type CareEntryEnv = {
+type CareEntryEnv = {
   Variables: MemberEnv["Variables"] & { careEntries: CareEntryService };
 };
 
-const refusals = {
+const refuse = refusalsOf<CareRefusal>({
   "not-found": {
     code: "CARE_ENTRY_NOT_FOUND",
     message: "No such Care Entry in the Family",
@@ -42,20 +41,11 @@ const refusals = {
     message: "Attach photos uploaded to the Family, at most five",
     status: httpStatus.badRequest,
   },
-} as const satisfies Record<CareRefusal, { code: ErrorCode; message: string; status: number }>;
+});
 
-function refuse(context: Context<CareEntryEnv>, refusal: CareRefusal) {
-  const { code, message, status } = refusals[refusal];
-
-  return context.json(apiError(code, message), status);
-}
-
-const invalidEntry = apiError(
-  "INVALID_REQUEST",
+const entryBody = jsonBody(
+  careEntryChange,
   "A Care Entry needs a time and the details of its Care Kind",
-);
-const entryBody = sValidator("json", careEntryChange, (result, context) =>
-  result.success ? undefined : context.json(invalidEntry, httpStatus.badRequest),
 );
 const rangeQuery = sValidator("query", expenseRange, (result, context) =>
   result.success
@@ -126,6 +116,6 @@ export const careEntryRoute = new Hono<CareEntryEnv>()
     );
 
     return result.status === "deleted"
-      ? context.json<CareEntryDeleted>(result)
+      ? context.json<Deleted>(result)
       : refuse(context, result.status);
   });

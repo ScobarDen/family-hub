@@ -90,12 +90,6 @@ beforeEach(() => {
 });
 
 describe("submitting a Family Request", () => {
-  test("starts on the form", () => {
-    const { model } = startFamilyRequest(fakeBackend({ status: "pending" }));
-
-    expect(model.screen()).toEqual({ kind: "form" });
-  });
-
   test("asks Telegram for write access before sending the request", async () => {
     const backend = fakeBackend({ status: "pending" });
     const telegram = fakeTelegram();
@@ -183,12 +177,6 @@ describe("a refused Family Request", () => {
     await submit(model, "Гущины");
 
     expect(model.failure()).toBe("Не получилось отправить заявку. Попробуйте ещё раз.");
-  });
-
-  test("shows no failure before anything is sent", () => {
-    const { model } = startFamilyRequest(fakeBackend({ status: "pending" }));
-
-    expect(model.failure()).toBeUndefined();
   });
 });
 

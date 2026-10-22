@@ -1,9 +1,10 @@
-import { action, atom, computed, noop, reatomForm, wrap } from "@reatom/core";
+import { action, atom, computed, reatomForm, wrap } from "@reatom/core";
 import { z } from "zod";
 
 import { petLongTextMaxLength, petMemoChange, type Pet } from "@family-hub/contract";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { detached } from "@/common/state";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -47,9 +48,7 @@ export function reatomPetMemoForm({ api, pets, onSaved }: MemoFormDependencies) 
       name: "pets.memoForm.failure",
     }),
 
-    save: action(() => {
-      form.submit().catch(noop);
-    }, "pets.memoForm.save"),
+    save: detached(form.submit, "pets.memoForm.save"),
     startEditing: action((pet: Pet) => {
       petId.set(pet.id);
       fillForm(form, {

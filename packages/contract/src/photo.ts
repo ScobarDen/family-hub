@@ -21,5 +21,3 @@ export const photo = z.object({
 });
 
 export type Photo = z.infer<typeof photo>;
-
-export const photoDeleted = z.object({ status: z.literal("deleted") });

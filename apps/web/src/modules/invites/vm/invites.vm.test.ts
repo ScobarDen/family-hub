@@ -68,7 +68,7 @@ function startInvites(backend = fakeBackend(), telegram = fakeTelegram()) {
   const model = reatomInvites({
     api: createInvitesApi(client),
     telegram,
-    timeZone: "Europe/Moscow",
+    timeZone: () => "Europe/Moscow",
   });
 
   model.invites.subscribe(noop);
@@ -100,7 +100,7 @@ describe("the Member's Invites", () => {
 
     await loaded(model);
 
-    expect(model.invites()).toEqual([{ id: "invite-1", expiresOn: "до 9 октября" }]);
+    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
   });
 });
 
@@ -115,8 +115,8 @@ describe("inviting", () => {
     expect(backend.requests).toContain("POST /api/invites");
     expect(telegram.calls).toEqual(["shareMessage prepared-1"]);
     expect(model.invites()).toEqual([
-      { id: "invite-2", expiresOn: "до 11 октября" },
-      { id: "invite-1", expiresOn: "до 9 октября" },
+      { id: "invite-2", title: "Приглашение до 11 октября" },
+      { id: "invite-1", title: "Приглашение до 9 октября" },
     ]);
   });
 
@@ -178,7 +178,7 @@ describe("revoking", () => {
     model.revoke("invite-1");
 
     await vi.waitFor(() => {
-      expect(model.invites()).toEqual([{ id: "invite-1", expiresOn: "до 9 октября" }]);
+      expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
     });
     expect(model.failure()).toBe("Не получилось отозвать приглашение. Попробуйте ещё раз.");
   });

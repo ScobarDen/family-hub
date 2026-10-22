@@ -1,10 +1,10 @@
 import { z } from "zod";
 
-export const deepLinkMaxLength = 64;
+const deepLinkMaxLength = 64;
 
-export const deepLinkKind = z.enum(["inv", "pet", "entry", "event", "goal", "plan", "cmd"]);
+const deepLinkKind = z.enum(["inv", "pet", "entry", "event", "goal", "plan", "cmd"]);
 
-export type DeepLinkKind = z.infer<typeof deepLinkKind>;
+type DeepLinkKind = z.infer<typeof deepLinkKind>;
 
 export type DeepLink = { kind: DeepLinkKind; id: string };
 

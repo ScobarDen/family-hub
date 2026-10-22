@@ -1,8 +1,8 @@
 import { Temporal } from "temporal-polyfill";
 
-export type Frequency = "weekly" | "monthly" | "yearly";
+import type { Recurrence } from "@family-hub/contract";
 
-export type Recurrence = { frequency: Frequency; until: string | null };
+type Frequency = Recurrence["frequency"];
 
 export type DateRange = { from: string; to: string };
 
@@ -68,14 +68,6 @@ export function daysAfter(date: string, days: number): string {
   return Temporal.PlainDate.from(date).add({ days }).toString();
 }
 
-export function dayAfter(date: string): string {
-  return Temporal.PlainDate.from(date).add({ days: 1 }).toString();
-}
-
-export function dayBefore(date: string): string {
-  return Temporal.PlainDate.from(date).subtract({ days: 1 }).toString();
-}
-
 // The dates of a series inside a range of calendar days, both ends included, skipped dates left out.
 function singleDate(start: string, { range, skipped }: { range: DateRange; skipped: string[] }) {
   const isOutside = isBefore(start, range.from) || isBefore(range.to, start);
@@ -94,9 +86,10 @@ export function occurrenceDates(
 
   const last = lastDateOf(range, recurrence);
   const dates: string[] = [];
+  const first = startingIndex(start, recurrence.frequency, range.from);
 
   for (
-    let index = 0, date = start;
+    let index = first, date = nthOccurrence(start, recurrence.frequency, first);
     !isBefore(last, date);
     index += 1, date = nthOccurrence(start, recurrence.frequency, index)
   ) {

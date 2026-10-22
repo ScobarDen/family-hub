@@ -1,4 +1,4 @@
-import type { CareDetails, DueDateItem } from "@family-hub/contract";
+import { careKindTitles, type CareDetails, type DueDateItem } from "@family-hub/contract";
 
 export type DuePet = { id: string; name: string; archivedAt: number | null };
 
@@ -19,8 +19,6 @@ export type OpenDueDate = {
   title: string;
   dueDate: string;
 };
-
-const vetVisitLabel = "Визит к ветеринару";
 
 // A later entry of the same vaccine, treatment target or a vet visit closes the earlier Due Date.
 export function dueKeyOf(details: CareDetails): string | null {
@@ -54,14 +52,16 @@ type Subject = { kind: OpenDueDate["kind"]; label: string };
 
 function subjectOf(details: CareDetails): Subject | undefined {
   if (details.kind === "vaccination") {
-    return { kind: details.kind, label: `Прививка: ${details.vaccine}` };
+    return { kind: details.kind, label: `${careKindTitles.vaccination}: ${details.vaccine}` };
   }
 
   if (details.kind === "treatment") {
-    return { kind: details.kind, label: `Обработка: ${details.target}` };
+    return { kind: details.kind, label: `${careKindTitles.treatment}: ${details.target}` };
   }
 
-  return details.kind === "vet_visit" ? { kind: details.kind, label: vetVisitLabel } : undefined;
+  return details.kind === "vet_visit"
+    ? { kind: details.kind, label: careKindTitles.vet_visit }
+    : undefined;
 }
 
 function openDueOf({ id, details, dueDate }: DueEntry, pet: DuePet): OpenDueDate[] {

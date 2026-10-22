@@ -18,12 +18,11 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { PhotoViewer } from "@/common/photo-viewer";
-import { Button, Chip, PersonAvatar, Section, SectionItem, type IconTone } from "@/common/ui";
+import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
+import { Button, Chip, PersonAvatar, Section, SectionItem } from "@/common/ui";
 
 import type { FeedRow } from "../feed.lib.ts";
 import { feedFilters, type FeedModel } from "../vm/feed.vm.ts";
-import { FeedPhotos } from "./feed-photos.view.tsx";
 
 const icons: Record<FeedRow["kind"], LucideIcon> = {
   event: CalendarDays,
@@ -37,20 +36,6 @@ const icons: Record<FeedRow["kind"], LucideIcon> = {
   cooked: CookingPot,
   done: CircleCheck,
   joined: UserPlus,
-};
-
-const tones: Record<FeedRow["kind"], IconTone> = {
-  event: "blue",
-  reminder: "violet",
-  plan: "green",
-  due: "orange",
-  birthday: "pink",
-  care: "orange",
-  goal: "teal",
-  upload: "violet",
-  cooked: "pink",
-  done: "green",
-  joined: "blue",
 };
 
 type RowProps = { row: FeedRow; model: FeedModel };
@@ -97,7 +82,7 @@ const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
     <>
       <SectionItem
         icon={row.isOverdue ? TriangleAlert : icons[row.kind]}
-        tone={row.isOverdue ? "red" : tones[row.kind]}
+        isAlert={row.isOverdue}
         {...(row.author === undefined ? {} : { leading: <PersonAvatar name={row.author} /> })}
         title={row.title}
         subtitle={row.subtitle}
@@ -113,7 +98,15 @@ const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
         }
         onClick={hasActions ? undefined : open}
       />
-      <FeedPhotos row={row} model={model} />
+      <PhotoThumbs
+        photos={row.photos}
+        more={row.morePhotos}
+        className="flex gap-1 pr-4 pb-2 pl-14"
+        thumbClassName="size-16 rounded-md"
+        onOpen={(photoId) => {
+          model.viewer.open(row.photos, photoId);
+        }}
+      />
     </>
   );
 }, "FeedRowItem");

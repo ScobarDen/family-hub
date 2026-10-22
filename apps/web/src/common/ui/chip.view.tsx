@@ -5,10 +5,13 @@ import { cn } from "./ui.lib.ts";
 type ChipProps = ComponentProps<"button"> & { isSelected?: boolean };
 
 export function Chip({ isSelected = false, className, ...props }: ChipProps) {
+  const isRadio = props.role === "radio";
+
   return (
     <button
       type="button"
-      aria-pressed={isSelected}
+      aria-pressed={isRadio ? undefined : isSelected}
+      aria-checked={isRadio ? isSelected : undefined}
       className={cn(
         "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
         isSelected

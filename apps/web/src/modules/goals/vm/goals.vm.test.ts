@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { movementChange, type Goal } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
 
 import { createGoalsApi } from "../goals.api.ts";
-import { reatomGoals } from "../goals.model.ts";
 import { reatomGoalsScreen } from "./goals.vm.ts";
 
 const turkey: Goal = {
@@ -71,11 +71,10 @@ function startGoals({ choices = [] as string[] } = {}) {
     return Response.json({ ...turkey, completed: { at: 0, by: "Денис", outcome: "fulfilled" } });
   }
 
+  const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch });
   const model = reatomGoalsScreen({
-    api: createGoalsApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
-    goals: reatomGoals({
-      api: createGoalsApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
-    }),
+    api: createGoalsApi(client),
+    members: reatomFamilyMembers(createFamilyApi(client)),
     telegram: { showPopup: async () => pending.shift() },
     self: () => "member-1",
     today: () => "2026-10-14",

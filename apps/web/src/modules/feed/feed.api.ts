@@ -1,7 +1,7 @@
-import { feedPage, photoDeleted, plan, type FeedPage } from "@family-hub/contract";
+import { feedPage, plan, type FeedPage } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
-import { resolvedPhoto } from "@/common/photo";
+import { createPhotoCalls, resolvedPhoto } from "@/common/photo";
 
 export type PlanStep = { planId: string; subplanId: string | null };
 
@@ -27,8 +27,7 @@ export function createFeedApi(client: HttpClient) {
 
       return resolvedPage(client, page);
     },
-    deletePhoto: async (photoId: string) =>
-      client.request(`/api/photos/${photoId}`, { method: "DELETE", schema: photoDeleted }),
+    deletePhoto: createPhotoCalls(client).deletePhoto,
     complete: async ({ planId, subplanId }: PlanStep) =>
       client.request(
         subplanId === null

@@ -14,6 +14,8 @@ import {
 } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
+import { createPetsApi, reatomPets } from "@/modules/pets";
 
 import { createCalendarApi } from "../calendar.api.ts";
 import { reatomCalendar } from "./calendar.vm.ts";
@@ -156,10 +158,11 @@ function startCalendar({
   const opened: string[] = [];
   const openedPlans: string[] = [];
   const pending = [...choices];
+  const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const model = reatomCalendar({
-    api: createCalendarApi(
-      createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch }),
-    ),
+    api: createCalendarApi(client),
+    members: reatomFamilyMembers(createFamilyApi(client)),
+    pets: reatomPets({ api: createPetsApi(client) }).list,
     today: () => "2026-10-14",
     timeZone: () => timeZone,
     telegram: { showPopup: async () => pending.shift() },
@@ -170,6 +173,7 @@ function startCalendar({
       openedPlans.push(planId);
     },
     self: () => "member-1",
+    onDraftSaved: noop,
   });
 
   model.grid.subscribe(noop);

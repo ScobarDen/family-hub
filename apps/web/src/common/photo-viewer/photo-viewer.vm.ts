@@ -1,12 +1,13 @@
-import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, withAsync, wrap } from "@reatom/core";
 
 import type { Photo } from "@family-hub/contract";
 
-import type { PopupParams } from "@/common/telegram";
+import { detached } from "@/common/state";
+import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
 
 export type PhotoViewerDependencies = {
   api: { deletePhoto: (photoId: string) => Promise<unknown> };
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Dialogs;
   // A module's own action on the photo shown, such as making it a Pet's avatar.
   onPick?: (photoId: string) => void;
   onDeleted: () => void;
@@ -14,13 +15,10 @@ export type PhotoViewerDependencies = {
 
 type Opened = { photos: Photo[]; index: number };
 
-const deleteQuestion: PopupParams = {
+const deleteQuestion: Confirmation = {
   title: "Удалить фото?",
   message: "Фото пропадёт у всей семьи: из записей и альбомов.",
-  buttons: [
-    { id: "delete", type: "destructive", text: "Удалить" },
-    { id: "cancel", type: "cancel" },
-  ],
+  button: "Удалить",
 };
 
 function without({ photos, index }: Opened, photoId: string): Opened | undefined {
@@ -64,10 +62,17 @@ function reatomPhotoRemoval(
       return;
     }
 
-    const choice = await wrap(dependencies.telegram.showPopup(deleteQuestion));
+    const isSure = await wrap(isConfirmed(dependencies.telegram, deleteQuestion));
+    const isDeleted =
+      isSure &&
+      (await wrap(
+        didSucceedOrAlert(dependencies.telegram, {
+          failure: "Не получилось удалить фото. Попробуйте ещё раз.",
+          call: dependencies.api.deletePhoto(photo.id),
+        }),
+      ));
 
-    if (choice === "delete") {
-      await wrap(dependencies.api.deletePhoto(photo.id));
+    if (isDeleted) {
       dependencies.onDeleted();
       opened.set(without(current, photo.id));
     }
@@ -107,9 +112,7 @@ export function reatomPhotoViewer(dependencies: PhotoViewerDependencies) {
         dependencies.onPick?.(photo.id);
       }
     }, "photoViewer.pick"),
-    remove: action(() => {
-      remove().catch(noop);
-    }, "photoViewer.removePhoto"),
+    remove: detached(remove, "photoViewer.removePhoto"),
   };
 }
 

@@ -15,11 +15,9 @@ import type { Membership } from "@/common/auth";
 
 import type { CommandDependencies } from "./command.types.ts";
 
-export type Creation =
-  | { status: "created"; id: string }
-  | { status: "refused"; refusal: DraftRefusal };
+type Creation = { status: "created"; id: string } | { status: "refused"; refusal: DraftRefusal };
 
-export type CommandRecords = Pick<CommandDependencies, "reminders" | "events" | "careEntries">;
+type CommandRecords = Pick<CommandDependencies, "reminders" | "events" | "careEntries">;
 
 type Confirmation<Draft> = { membership: Membership; draft: Draft; phrase: Phrase };
 

@@ -2,16 +2,14 @@ import { z } from "zod";
 
 import { recurrence } from "./event.ts";
 import { isTimeZone } from "./member.ts";
-import { planMember, visibility } from "./plan.ts";
+import { visibility } from "./plan.ts";
+import { date, named, time } from "./primitive.ts";
 
 export const reminderTextMaxLength = 500;
 
-const date = z.iso.date();
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
-
 // A standalone Reminder fires at one moment for all its Recipients: its wall-clock time in the
 // zone it was set in.
-export const reminderStart = z.object({ date, time, timeZone: z.string().refine(isTimeZone) });
+const reminderStart = z.object({ date, time, timeZone: z.string().refine(isTimeZone) });
 
 export const reminderChange = z.object({
   text: z.string().trim().min(1).max(reminderTextMaxLength),
@@ -32,7 +30,7 @@ export const reminder = z.object({
   visibility,
   isOwn: z.boolean(),
   isForEveryone: z.boolean(),
-  recipients: z.array(planMember),
+  recipients: z.array(named),
 });
 
 export type Reminder = z.infer<typeof reminder>;
@@ -40,7 +38,3 @@ export type Reminder = z.infer<typeof reminder>;
 export const reminderList = z.array(reminder);
 
 export type ReminderList = z.infer<typeof reminderList>;
-
-export const reminderDeleted = z.object({ status: z.literal("deleted") });
-
-export type ReminderDeleted = z.infer<typeof reminderDeleted>;

@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
+import { bindFirst } from "@/common/bind";
 import { familyMembers, goalMovements, goals, members, type Db } from "@/common/db";
 
 export type GoalRow = typeof goals.$inferSelect & { completedByName: string | null };
@@ -15,8 +16,10 @@ type GoalTarget = { familyId: string; goalId: string };
 const owners = alias(members, "owners");
 const recorders = alias(members, "recorders");
 
-// A Private Goal exists only for its owner.
-async function listVisible(db: Db, familyId: string, memberId: string): Promise<GoalRow[]> {
+type Viewer = { familyId: string; memberId: string; goalId?: string };
+
+// A Private Goal exists only for its owner; a goalId narrows the list to that one Goal.
+async function listVisible(db: Db, { familyId, memberId, goalId }: Viewer): Promise<GoalRow[]> {
   const rows = await db
     .select({ goal: goals, completedByName: members.name })
     .from(goals)
@@ -25,6 +28,7 @@ async function listVisible(db: Db, familyId: string, memberId: string): Promise<
       and(
         eq(goals.familyId, familyId),
         or(eq(goals.visibility, "shared"), eq(goals.ownerMemberId, memberId)),
+        goalId === undefined ? undefined : eq(goals.id, goalId),
       ),
     )
     .orderBy(asc(goals.createdAt))
@@ -64,8 +68,7 @@ function ofMovement({ familyId, movementId }: { familyId: string; movementId: st
 
 export function createGoalRepo(db: Db) {
   return {
-    listVisible: async (familyId: string, memberId: string) => listVisible(db, familyId, memberId),
-    movementsOf: async (familyId: string, goalIds: string[]) => movementsOf(db, familyId, goalIds),
+    ...bindFirst(db, { listVisible, movementsOf }),
 
     async isInFamily(familyId: string, memberId: string): Promise<boolean> {
       const row = await db

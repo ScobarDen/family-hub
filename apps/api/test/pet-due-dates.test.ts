@@ -2,36 +2,8 @@ import { describe, expect, test } from "vite-plus/test";
 
 import type { CareDetails, DueDateItem, Pet } from "@family-hub/contract";
 
-import { signInitData, type TelegramUserFixture } from "./init-data.ts";
-import { startWorker } from "./worker-harness.ts";
-
-const denis = { id: 111, first_name: "Денис" };
-const asya = { id: 222, first_name: "Ася" };
-
-async function call(
-  worker: ReturnType<typeof startWorker>,
-  user: TelegramUserFixture,
-  { method = "GET", path, body }: { method?: string; path: string; body?: unknown },
-) {
-  const session = await worker.request("/api/session", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      initData: signInitData({
-        botToken: worker.env.BOT_TOKEN,
-        user,
-        authDate: worker.clock.iso(),
-      }),
-    }),
-  });
-  const { token = "" } = await session.json<{ token?: string }>();
-
-  return worker.request(path, {
-    method,
-    headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-}
+import { type TelegramUserFixture } from "./init-data.ts";
+import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
 async function startWithBuick() {
   const worker = startWorker({ now: "2026-10-04T09:00:00Z" });
@@ -41,7 +13,7 @@ async function startWithBuick() {
   });
 
   await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
-  const response = await call(worker, denis, {
+  const response = await request(worker, denis, {
     method: "POST",
     path: "/api/pets",
     body: {
@@ -62,7 +34,7 @@ async function startWithBuick() {
 type Worker = Awaited<ReturnType<typeof startWithBuick>>;
 
 async function record(worker: Worker, { at, details }: { at: string; details: CareDetails }) {
-  return call(worker, denis, {
+  return request(worker, denis, {
     method: "POST",
     path: `/api/pets/${worker.buickId}/care-entries`,
     body: { occurredAt: Date.parse(at), note: null, details },
@@ -70,7 +42,7 @@ async function record(worker: Worker, { at, details }: { at: string; details: Ca
 }
 
 async function dueDatesOf(worker: Worker, user: TelegramUserFixture = denis) {
-  const response = await call(worker, user, { path: `/api/pets/${worker.buickId}/due-dates` });
+  const response = await request(worker, user, { path: `/api/pets/${worker.buickId}/due-dates` });
 
   return response.json<DueDateItem[]>();
 }
@@ -181,7 +153,7 @@ describe("Due Dates", () => {
       at: "2026-09-01T10:00:00Z",
       details: vaccination("Бешенство", "2026-10-05"),
     });
-    await call(worker, denis, {
+    await request(worker, denis, {
       method: "PUT",
       path: "/api/me/time-zone",
       body: { timeZone: "Asia/Vladivostok", isAuto: false },
@@ -203,7 +175,7 @@ describe("archiving a Pet", () => {
     const worker = await startWithBuick();
 
     await record(worker, { at: "2026-10-01T10:00:00Z", details: { kind: "note" } });
-    const archived = await call(worker, asya, {
+    const archived = await request(worker, asya, {
       method: "POST",
       path: `/api/pets/${worker.buickId}/archive`,
     });
@@ -211,19 +183,21 @@ describe("archiving a Pet", () => {
       at: "2026-10-02T10:00:00Z",
       details: { kind: "note" },
     });
-    const refusedMemo = await call(worker, denis, {
+    const refusedMemo = await request(worker, denis, {
       method: "PUT",
       path: `/api/pets/${worker.buickId}/memo`,
       body: { food: "Acana", clinic: null, important: null },
     });
-    const journal = await call(worker, denis, { path: `/api/pets/${worker.buickId}/care-entries` });
+    const journal = await request(worker, denis, {
+      path: `/api/pets/${worker.buickId}/care-entries`,
+    });
 
     expect(await archived.json()).toMatchObject({ archivedAt: Date.parse("2026-10-04T09:00:00Z") });
     expect(refusedEntry.status).toBe(409);
     expect(refusedMemo.status).toBe(409);
     expect(await journal.json()).toHaveLength(1);
 
-    const unarchived = await call(worker, asya, {
+    const unarchived = await request(worker, asya, {
       method: "POST",
       path: `/api/pets/${worker.buickId}/unarchive`,
     });
@@ -243,10 +217,10 @@ describe("archiving a Pet", () => {
       at: "2026-09-01T10:00:00Z",
       details: vaccination("Бешенство", "2026-10-20"),
     });
-    await call(worker, asya, { method: "POST", path: `/api/pets/${worker.buickId}/archive` });
+    await request(worker, asya, { method: "POST", path: `/api/pets/${worker.buickId}/archive` });
     const whileArchived = await dueDatesOf(worker);
 
-    await call(worker, asya, { method: "POST", path: `/api/pets/${worker.buickId}/unarchive` });
+    await request(worker, asya, { method: "POST", path: `/api/pets/${worker.buickId}/unarchive` });
 
     expect(whileArchived).toEqual([]);
     expect(await dueDatesOf(worker)).toMatchObject([{ label: "Прививка: Бешенство" }]);
@@ -258,23 +232,25 @@ describe("deleting a Pet", () => {
     const worker = await startWithBuick();
 
     await record(worker, { at: "2026-10-01T10:00:00Z", details: { kind: "note" } });
-    const byMember = await call(worker, asya, {
+    const byMember = await request(worker, asya, {
       method: "DELETE",
       path: `/api/pets/${worker.buickId}`,
       body: { petName: "Бьюик" },
     });
-    const misspelt = await call(worker, denis, {
+    const misspelt = await request(worker, denis, {
       method: "DELETE",
       path: `/api/pets/${worker.buickId}`,
       body: { petName: "Бьюи" },
     });
-    const deleted = await call(worker, denis, {
+    const deleted = await request(worker, denis, {
       method: "DELETE",
       path: `/api/pets/${worker.buickId}`,
       body: { petName: " Бьюик " },
     });
-    const pets = await call(worker, asya, { path: "/api/pets" });
-    const journal = await call(worker, asya, { path: `/api/pets/${worker.buickId}/care-entries` });
+    const pets = await request(worker, asya, { path: "/api/pets" });
+    const journal = await request(worker, asya, {
+      path: `/api/pets/${worker.buickId}/care-entries`,
+    });
 
     expect(byMember.status).toBe(403);
     expect(misspelt.status).toBe(400);

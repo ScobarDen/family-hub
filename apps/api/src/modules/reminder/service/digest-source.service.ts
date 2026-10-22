@@ -1,22 +1,47 @@
 import type { FeedUpcoming } from "@family-hub/contract";
-import { dayAfter, occurrenceMoment } from "@family-hub/recurrence";
+import { daysAfter, occurrenceMoment } from "@family-hub/recurrence";
 
 import { formatFloatingDate, openAppButton, snoozeMs, sourceIdOf } from "../reminder.lib.ts";
 import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DigestRow } from "../repo/source.repo.ts";
 
+// Telegram takes at most 4096 characters a message; a long list ends with how much is left out.
+const linesPerBlockMax = 10;
+const titleMaxLength = 120;
+
+function shortened(title: string): string {
+  return title.length > titleMaxLength ? `${title.slice(0, titleMaxLength - 1)}…` : title;
+}
+
 function lineOf(item: FeedUpcoming, { isOverdue }: { isOverdue: boolean }): string {
+  const title = shortened(item.title);
+
   if (isOverdue) {
-    return `• ${item.title} · ${formatFloatingDate(item.date)}`;
+    return `• ${title} · ${formatFloatingDate(item.date)}`;
   }
 
   const time = "time" in item ? item.time : null;
 
-  return time === null ? `• ${item.title}` : `• ${time} ${item.title}`;
+  return time === null ? `• ${title}` : `• ${time} ${title}`;
+}
+
+function blockOf(
+  heading: string,
+  items: FeedUpcoming[],
+  options: { isOverdue: boolean },
+): string | undefined {
+  if (items.length === 0) {
+    return undefined;
+  }
+
+  const shown = items.slice(0, linesPerBlockMax).map((item) => lineOf(item, options));
+  const rest = items.length - shown.length;
+
+  return [heading, ...shown, ...(rest > 0 ? [`…и ещё ${rest}`] : [])].join("\n");
 }
 
 // Only what this Member sees, and nothing at all on a day with nothing to say.
-export function digestText(
+function digestText(
   { overdue, today }: { overdue: FeedUpcoming[]; today: FeedUpcoming[] },
   day: string,
 ): string | undefined {
@@ -26,12 +51,8 @@ export function digestText(
 
   const blocks = [
     `☀️ Сводка на ${formatFloatingDate(day)}`,
-    overdue.length === 0
-      ? undefined
-      : ["⚠️ Просрочено", ...overdue.map((item) => lineOf(item, { isOverdue: true }))].join("\n"),
-    today.length === 0
-      ? undefined
-      : ["📅 Сегодня", ...today.map((item) => lineOf(item, { isOverdue: false }))].join("\n"),
+    blockOf("⚠️ Просрочено", overdue, { isOverdue: true }),
+    blockOf("📅 Сегодня", today, { isOverdue: false }),
   ];
 
   return blocks.filter((block) => block !== undefined).join("\n\n");
@@ -50,7 +71,7 @@ async function digestSource(
     recipientIds: [memberId],
     homeZone: undefined,
     first: (day) => day,
-    next: dayAfter,
+    next: (occurrence) => daysAfter(occurrence, 1),
     fireAt: (occurrence, timeZone) =>
       occurrenceMoment(occurrence, { time: settings.digestTime, timeZone }),
     emoji: "☀️",

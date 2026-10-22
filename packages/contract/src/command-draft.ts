@@ -10,6 +10,7 @@ import {
   recurrence,
 } from "./event.ts";
 import { visibility } from "./plan.ts";
+import { time } from "./primitive.ts";
 import { reminderTextMaxLength } from "./reminder.ts";
 
 export const commandDraftLifetimeMs = 86_400_000;
@@ -21,15 +22,13 @@ export const voiceMaxBytes = 2_097_152;
 
 const ambiguousCandidates = 2;
 
-const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/u);
-
 // What a Reminder needs and the phrase may lack; such a draft is shown without «Создать».
 export const reminderDraftField = z.enum(["text", "date", "time"]);
 
 export type ReminderDraftField = z.infer<typeof reminderDraftField>;
 
 // A name that matched several Members or Pets comes back with all of them to pick from.
-export const draftAmbiguity = z.object({
+const draftAmbiguity = z.object({
   field: z.enum(["recipients", "pet"]),
   mention: z.string(),
   candidateIds: z.array(z.string()).min(ambiguousCandidates),
@@ -81,7 +80,7 @@ export type CareEntryDraftField = z.infer<typeof careEntryDraftField>;
 
 // The fields of the Care Entry form. No date means now; a date alone («вчера») keeps the time of
 // day it was said at. Photos are added in the form only.
-export const careEntryDraft = z.object({
+const careEntryDraft = z.object({
   kind: z.literal("care_entry"),
   petId: z.string().nullable(),
   date: z.iso.date().nullable(),
@@ -94,15 +93,11 @@ export const careEntryDraft = z.object({
 
 export type CareEntryDraft = z.infer<typeof careEntryDraft>;
 
-export const commandKind = z.enum(["reminder", "event", "care_entry"]);
+const commandKind = z.enum(["reminder", "event", "care_entry"]);
 
 export type CommandKind = z.infer<typeof commandKind>;
 
-export const commandDraft = z.discriminatedUnion("kind", [
-  reminderDraft,
-  eventDraft,
-  careEntryDraft,
-]);
+const commandDraft = z.discriminatedUnion("kind", [reminderDraft, eventDraft, careEntryDraft]);
 
 export type CommandDraft = z.infer<typeof commandDraft>;
 
@@ -118,18 +113,12 @@ export const commandAnswer = z.discriminatedUnion("outcome", [
 export type CommandAnswer = z.infer<typeof commandAnswer>;
 
 // Why a command became no draft; the bot and the Mini App say the same words for each.
-export const commandFailure = z.enum([
-  "unrecognized",
-  "unsupported",
-  "quota",
-  "unheard",
-  "too_long",
-]);
+const commandFailure = z.enum(["unrecognized", "unsupported", "quota", "unheard", "too_long"]);
 
 export type CommandFailure = z.infer<typeof commandFailure>;
 
 // When and in which zone the phrase was said: the draft's dates and times are read there.
-export const commandPhrase = z.object({ saidAt: z.int(), timeZone: z.string() });
+const commandPhrase = z.object({ saidAt: z.int(), timeZone: z.string() });
 
 export type CommandPhrase = z.infer<typeof commandPhrase>;
 
@@ -148,8 +137,6 @@ export const commandOutcome = z.union([
 export type CommandOutcome = z.infer<typeof commandOutcome>;
 
 export const draftPick = z.object({ index: z.int().nonnegative() });
-
-export type DraftPick = z.infer<typeof draftPick>;
 
 export const draftCreated = z.object({ kind: commandKind, id: z.string() });
 

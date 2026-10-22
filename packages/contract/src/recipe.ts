@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { photo } from "./photo.ts";
+import { named } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const recipeTitleMaxLength = 200;
@@ -19,7 +20,7 @@ export const recipeChange = z.object({
 
 export type RecipeChange = z.infer<typeof recipeChange>;
 
-export const recipeTag = z.object({ id: z.string(), name: z.string() });
+export const recipeTag = named;
 
 export type RecipeTag = z.infer<typeof recipeTag>;
 
@@ -63,5 +64,3 @@ export type Recipe = z.infer<typeof recipe>;
 export const recipeList = z.array(recipe);
 
 export const recipeFavorite = z.object({ isFavorite: z.boolean() });
-
-export const recipeDeleted = z.object({ status: z.literal("deleted") });

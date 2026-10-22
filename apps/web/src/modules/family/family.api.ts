@@ -1,5 +1,5 @@
 import {
-  familyDeleted,
+  deleted,
   familyLeft,
   familyMemberList,
   familyOwnerChanged,
@@ -33,7 +33,7 @@ export function createFamilyApi(client: HttpClient) {
       client.request("/api/family", {
         method: "DELETE",
         body: { familyName } satisfies FamilyDeletion,
-        schema: familyDeleted,
+        schema: deleted,
       }),
   };
 }

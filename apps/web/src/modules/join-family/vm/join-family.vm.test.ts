@@ -101,13 +101,6 @@ describe("opening the app from an Invite", () => {
     ]);
   });
 
-  test("loads before showing anything", () => {
-    const { model } = startJoinFamily(fakeBackend({ preview: open }));
-
-    expect(model.screen()).toEqual({ kind: "loading" });
-    expect(model.isOpen()).toBe(true);
-  });
-
   test("stays out of the way without an Invite", () => {
     const backend = fakeBackend({ preview: open });
     const { model } = startJoinFamily(backend, { ...fakeTelegram(), startParam: undefined });

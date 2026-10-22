@@ -24,6 +24,7 @@ import type {
   PetSex,
   PetSpecies,
   PlanReminder,
+  Recurrence,
   Visibility,
 } from "@family-hub/contract";
 
@@ -238,7 +239,7 @@ export const events = sqliteTable(
     timeZone: text("time_zone"),
     endDate: text("end_date"),
     endTime: text("end_time"),
-    frequency: text("frequency").$type<"weekly" | "monthly" | "yearly">(),
+    frequency: text("frequency").$type<Recurrence["frequency"]>(),
     until: text("until"),
     skippedDates: text("skipped_dates", { mode: "json" }).$type<string[]>().notNull().default([]),
     reminderOffsets: text("reminder_offsets", { mode: "json" })
@@ -267,7 +268,7 @@ export const reminders = sqliteTable(
     startDate: text("start_date").notNull(),
     startTime: text("start_time").notNull(),
     timeZone: text("time_zone").notNull(),
-    frequency: text("frequency").$type<"weekly" | "monthly" | "yearly">(),
+    frequency: text("frequency").$type<Recurrence["frequency"]>(),
     until: text("until"),
     isForEveryone: integer("is_for_everyone", { mode: "boolean" }).notNull(),
     createdAt: integer("created_at").notNull(),
@@ -327,6 +328,7 @@ export const reminderDispatch = sqliteTable(
   (table) => [
     index("reminder_dispatch_next_fire_at_idx").on(table.nextFireAt),
     index("reminder_dispatch_source_idx").on(table.source, table.sourceId),
+    index("reminder_dispatch_member_idx").on(table.memberId),
   ],
 );
 
@@ -569,7 +571,7 @@ export const recipeCooks = sqliteTable(
 
 export type CommandSource = "bot_text" | "bot_voice" | "mini_app";
 
-export type CommandStatus = "pending" | "created" | "dismissed" | "failed";
+type CommandStatus = "pending" | "creating" | "created" | "dismissed" | "failed";
 
 // One row per command handled, failed ones included: it is also the Family's daily count.
 export const commandDrafts = sqliteTable(

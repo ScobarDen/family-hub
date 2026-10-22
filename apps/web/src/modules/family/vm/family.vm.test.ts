@@ -7,6 +7,7 @@ import { createHttpClient } from "@/common/http-client";
 import type { PopupParams } from "@/common/telegram";
 
 import { createFamilyApi } from "../family.api.ts";
+import { reatomFamilyMembers } from "./family-sources.vm.ts";
 import { reatomFamily } from "./family.vm.ts";
 
 const members: FamilyMemberList = [
@@ -73,8 +74,10 @@ function startFamily({
 } = {}) {
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const onLeft = vi.fn<() => void>();
+  const api = createFamilyApi(client);
   const model = reatomFamily({
-    api: createFamilyApi(client),
+    api,
+    members: reatomFamilyMembers(api),
     telegram,
     self: () => ({ memberId, familyName: "Гущины" }),
     onLeft,

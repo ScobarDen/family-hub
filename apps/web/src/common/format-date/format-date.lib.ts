@@ -6,10 +6,11 @@ const plural = new Intl.PluralRules("ru-RU");
 const years = { one: "год", few: "года", many: "лет", other: "года" } as const;
 const months = { one: "месяц", few: "месяца", many: "месяцев", other: "месяца" } as const;
 
-function countOf(count: number, forms: Record<"one" | "few" | "many" | "other", string>): string {
-  const form = plural.select(count);
-
-  return `${count} ${form === "zero" || form === "two" ? forms.other : forms[form]}`;
+function countOf(
+  count: number,
+  forms: Partial<Record<Intl.LDMLPluralRule, string>> & { other: string },
+): string {
+  return `${count} ${forms[plural.select(count)] ?? forms.other}`;
 }
 
 export function deviceTimeZone(): string {

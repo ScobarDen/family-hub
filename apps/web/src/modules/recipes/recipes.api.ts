@@ -1,8 +1,6 @@
 import {
-  photo,
-  photoDeleted,
   recipe,
-  recipeDeleted,
+  deleted,
   recipeList,
   recipeTag,
   recipeTagList,
@@ -11,7 +9,7 @@ import {
 } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
-import { resolvedPhoto, type PreparedPhoto } from "@/common/photo";
+import { createPhotoCalls, resolvedPhoto } from "@/common/photo";
 
 export type RecipeQuery = {
   text: string;
@@ -60,31 +58,7 @@ function tagCalls(client: HttpClient) {
         schema: recipeTag,
       }),
     removeTag: async (tagId: string) =>
-      client.request(`/api/recipe-tags/${tagId}`, { method: "DELETE", schema: recipeDeleted }),
-  };
-}
-
-function photoCalls(client: HttpClient) {
-  return {
-    async uploadPhoto({ file, takenAt }: PreparedPhoto) {
-      const form = new FormData();
-
-      form.append("file", file, "photo.jpg");
-
-      if (takenAt !== null) {
-        form.append("takenAt", String(takenAt));
-      }
-
-      const uploaded = await client.request("/api/photos", {
-        method: "POST",
-        body: form,
-        schema: photo,
-      });
-
-      return resolvedPhoto(uploaded, client.url);
-    },
-    deletePhoto: async (photoId: string) =>
-      client.request(`/api/photos/${photoId}`, { method: "DELETE", schema: photoDeleted }),
+      client.request(`/api/recipe-tags/${tagId}`, { method: "DELETE", schema: deleted }),
   };
 }
 
@@ -109,7 +83,7 @@ export function createRecipesApi(client: HttpClient) {
     update: async (recipeId: string, change: RecipeChange) =>
       one(`/api/recipes/${recipeId}`, { method: "PUT", body: change }),
     remove: async (recipeId: string) =>
-      client.request(`/api/recipes/${recipeId}`, { method: "DELETE", schema: recipeDeleted }),
+      client.request(`/api/recipes/${recipeId}`, { method: "DELETE", schema: deleted }),
     setFavorite: async (recipeId: string, isFavorite: boolean) =>
       one(`/api/recipes/${recipeId}/favorite`, { method: "PUT", body: { isFavorite } }),
     cook: async (recipeId: string, cookedAt: number | null) =>
@@ -117,7 +91,7 @@ export function createRecipesApi(client: HttpClient) {
     uncook: async (recipeId: string, cookId: string) =>
       one(`/api/recipes/${recipeId}/cooked/${cookId}`, { method: "DELETE" }),
     ...tagCalls(client),
-    ...photoCalls(client),
+    ...createPhotoCalls(client),
   };
 }
 

@@ -9,13 +9,14 @@ One Cloudflare Worker serving `/api/*`, `/bot/webhook` and the per-minute cron. 
   - `*.route.ts` — Hono routes: validate with `@hono/standard-validator` against schemas from `@family-hub/contract`, authorise, call the service, map the result to HTTP.
   - `*.service.ts` — use-cases and policies (Private / Shared visibility, Family Owner rights); receives its repositories as constructor arguments.
   - `*.repo.ts` — the only code that touches the database.
-- Shared infrastructure lives in `src/common/` (`db`, `clock`, `telegram`, then `auth`, `errors`); cron jobs in `src/jobs/`.
+- Shared infrastructure lives in `src/common/` (`db`, `clock`, `telegram`, then `auth`, `errors`, `visibility`); the per-minute cron is `runScheduled` in `src/app/worker.ts`.
 - Routes are chained (`new Hono().get(…).post(…)`) and mounted with `.route()`. Request and response shapes live in `@family-hub/contract`; `apps/web` parses responses with those schemas instead of importing the app type.
 - Authenticated routes put `requireMember` from `common/auth` in front; it reads the bearer token and the Member's Family membership from D1 and exposes it as `context.var.membership`.
 
 ## Rules
 
 - **Family isolation**: every repository method takes the session's `familyId` as a required argument and filters by it, child tables included. A query without `familyId` is a cross-Family leak. The exceptions: a Member's own `members` row (settings, zone), which belongs to no Family and is addressed by `memberId`; and the Reminder dispatch queue, where the cron claims due `reminder_dispatch` rows of every Family and, stopped by a 429, releases the unsent rest of that same batch, and a bot button names its row by id. Everything read or written after that takes the row's `family_id`, and the Recipient or presser must still be a Member of that Family.
+- **Table ownership**: a module's repo touches its own tables. Two exceptions are deliberate: `family` departure rewrites the owner of plans, events, reminders and goals in one batch, and the `feed`, reminder `source` and `album` repos read other modules' tables as read models (joins a public API cannot express). A new cross-module read belongs to one of these or gets its own line here.
 - **Session** ([ADR 0006](../../docs/adr/0006-session-token-carries-only-member-id.md)): a JWT (HS256, `hono/jwt`) holding only `memberId`; Family membership and Owner role are read from the database on every request. Expired → 401.
 - **Errors** are `{ code, message }` with an HTTP status; `code` comes from the enum in `@family-hub/contract`.
 - **Time** comes from the injected `Clock` as epoch ms; date math goes through `@family-hub/recurrence` (`temporal-dates` skill).

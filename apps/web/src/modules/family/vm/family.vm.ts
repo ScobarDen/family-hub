@@ -1,10 +1,11 @@
-import { action, atom, computed, noop } from "@reatom/core";
+import { action, atom, computed, reatomBoolean } from "@reatom/core";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { detached, readOnly } from "@/common/state";
 
 import { reatomDeletion, reatomLeave } from "./family-exit.vm.ts";
 import { reatomManage } from "./family-manage.vm.ts";
-import { reatomList, type FamilyDependencies, type FamilySources } from "./family-sources.vm.ts";
+import type { FamilyDependencies, FamilySources } from "./family-sources.vm.ts";
 
 export type FamilyMemberItem = {
   id: string;
@@ -15,7 +16,7 @@ export type FamilyMemberItem = {
 };
 
 function reatomSources(dependencies: FamilyDependencies): FamilySources {
-  const list = reatomList(dependencies.api);
+  const list = dependencies.members;
 
   return {
     ...dependencies,
@@ -44,12 +45,12 @@ function reatomMembers({ list, isOwner, self }: FamilySources) {
 }
 
 function reatomDeletionFlow(sources: FamilySources) {
-  const isOpen = atom(false, "family.isDeletionOpen");
+  const isOpen = reatomBoolean(false, "family.isDeletionOpen");
   const form = reatomDeletion(sources);
 
   return {
     deletion: form,
-    isDeletionOpen: computed(() => isOpen(), "family.isDeletionOpenNow"),
+    isDeletionOpen: readOnly(isOpen),
     isDeleting: computed(() => !form.submit.ready(), "family.isDeleting"),
     deletionFailure: reatomSubmitFailure(form, {
       message: "Не получилось удалить семью. Попробуйте ещё раз.",
@@ -57,16 +58,14 @@ function reatomDeletionFlow(sources: FamilySources) {
     }),
 
     openDeletion: action(() => {
-      isOpen.set(true);
+      isOpen.setTrue();
     }, "family.openDeletion"),
     closeDeletion: action(() => {
-      isOpen.set(false);
+      isOpen.setFalse();
 
       fillForm(form, { familyName: "" });
     }, "family.closeDeletion"),
-    deleteFamily: action(() => {
-      form.submit().catch(noop);
-    }, "family.deleteFamily"),
+    deleteFamily: detached(form.submit, "family.deleteFamily"),
   };
 }
 
@@ -83,17 +82,13 @@ export function reatomFamily(dependencies: FamilyDependencies) {
         sources.list.error() === undefined ? undefined : "Не получилось загрузить участников.",
       "family.loadFailure",
     ),
-    failure: computed(() => sources.failure(), "family.visibleFailure"),
-    canDeleteFamily: computed(() => sources.isOwner(), "family.canDeleteFamily"),
+    failure: readOnly(sources.failure),
+    canDeleteFamily: readOnly(sources.isOwner),
     isBusy: computed(() => !manage.ready() || !leave.ready(), "family.isBusy"),
     ...deletionFlow,
 
-    manage: action((memberId: string) => {
-      manage(memberId).catch(noop);
-    }, "family.manageOne"),
-    leave: action(() => {
-      leave().catch(noop);
-    }, "family.leaveFamily"),
+    manage: detached(manage, "family.manageOne"),
+    leave: detached(leave, "family.leaveFamily"),
   };
 }
 

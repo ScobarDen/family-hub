@@ -6,7 +6,7 @@ import { requireMember, type AuthEnv } from "@/common/auth";
 
 import type { PhotoStorageService } from "./photo-storage.service.ts";
 
-export type PhotoStorageEnv = {
+type PhotoStorageEnv = {
   Variables: AuthEnv["Variables"] & { photoStorage: PhotoStorageService };
 };
 

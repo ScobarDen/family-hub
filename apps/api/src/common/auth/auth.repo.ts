@@ -4,44 +4,40 @@ import { families, familyMembers, members, type Db } from "@/common/db";
 
 import type { Membership } from "./auth.types.ts";
 
-// Membership is what scopes every later query by familyId, so it alone is looked up without one.
-export function createMembershipRepo(db: Db) {
-  async function findWhere(condition: SQL): Promise<Membership | undefined> {
-    const row = await db
-      .select({
-        memberId: members.id,
-        memberName: members.name,
+async function findWhere(db: Db, condition: SQL): Promise<Membership | undefined> {
+  const row = await db
+    .select({
+      member: {
+        id: members.id,
+        name: members.name,
         telegramId: members.telegramId,
         canMessage: members.canMessage,
-        familyId: families.id,
-        familyName: families.name,
-        ownerMemberId: families.ownerMemberId,
-      })
-      .from(familyMembers)
-      .innerJoin(members, eq(members.id, familyMembers.memberId))
-      .innerJoin(families, eq(families.id, familyMembers.familyId))
-      .where(condition)
-      .get();
-
-    if (!row) {
-      return undefined;
-    }
-
-    return {
-      member: {
-        id: row.memberId,
-        name: row.memberName,
-        telegramId: row.telegramId,
-        canMessage: row.canMessage,
+        timeZone: members.timeZone,
       },
-      family: { id: row.familyId, name: row.familyName },
-      isFamilyOwner: row.ownerMemberId === row.memberId,
-    };
-  }
+      family: { id: families.id, name: families.name },
+      ownerMemberId: families.ownerMemberId,
+    })
+    .from(familyMembers)
+    .innerJoin(members, eq(members.id, familyMembers.memberId))
+    .innerJoin(families, eq(families.id, familyMembers.familyId))
+    .where(condition)
+    .get();
 
+  return (
+    row && {
+      member: row.member,
+      family: row.family,
+      isFamilyOwner: row.ownerMemberId === row.member.id,
+    }
+  );
+}
+
+// Membership is what scopes every later query by familyId, so it alone is looked up without one.
+export function createMembershipRepo(db: Db) {
   return {
-    findByMemberId: async (memberId: string) => findWhere(eq(members.id, memberId)),
-    findByTelegramId: async (telegramId: number) => findWhere(eq(members.telegramId, telegramId)),
+    findByMemberId: async (memberId: string) => findWhere(db, eq(members.id, memberId)),
+    findByTelegramId: async (telegramId: number) =>
+      findWhere(db, eq(members.telegramId, telegramId)),
 
     async setCanMessage(memberId: string, canMessage: boolean, now: number): Promise<void> {
       await db.update(members).set({ canMessage, updatedAt: now }).where(eq(members.id, memberId));

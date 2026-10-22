@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, isNotNull, isNull, lt, or } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import { families, familyMembers, invites, members, type Db } from "@/common/db";
 
 export type InviteRow = typeof invites.$inferSelect;
@@ -92,6 +93,7 @@ async function revoke(
 
 export function createInviteRepo(db: Db) {
   return {
+    ...bindFirst(db, { revoke, findByToken, claim, join }),
     async add(invite: InviteRow): Promise<void> {
       await db.insert(invites).values(invite);
     },
@@ -104,18 +106,12 @@ export function createInviteRepo(db: Db) {
         .orderBy(desc(invites.createdAt))
         .all(),
 
-    revoke: async (invite: OwnInvite) => revoke(db, invite),
-    findByToken: async (token: string) => findByToken(db, token),
-    claim: async (token: string, now: number) => claim(db, token, now),
-
     async release(invite: InviteRow, now: number): Promise<void> {
       await db
         .update(invites)
         .set({ usedAt: null, usedBy: null, updatedAt: now })
         .where(and(eq(invites.id, invite.id), eq(invites.familyId, invite.familyId)));
     },
-
-    join: async (joining: Joining) => join(db, joining),
 
     // An Invite nobody used is of no use once it expired or was revoked; a used one stays as history.
     async sweep(now: number): Promise<void> {

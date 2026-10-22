@@ -1,17 +1,17 @@
 import { Hono, type Context } from "hono";
 
-import { photoVariant, type ErrorCode, type Photo, type PhotoVariant } from "@family-hub/contract";
+import { photoVariant, type Photo, type PhotoVariant } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
-import { apiError, httpStatus } from "@/common/errors";
+import { apiError, httpStatus, refusalsOf } from "@/common/errors";
 
 import type { PhotoRefusal, PhotoService, SignedRequest } from "./photo.service.ts";
 
-export type PhotoEnv = {
+type PhotoEnv = {
   Variables: MemberEnv["Variables"] & { photos: PhotoService };
 };
 
-const refusals = {
+const refuse = refusalsOf<PhotoRefusal>({
   "storage-unavailable": {
     code: "PHOTO_STORAGE_UNAVAILABLE",
     message: "The Family has no Photo Storage connected",
@@ -32,16 +32,10 @@ const refusals = {
     message: "Only the Member who uploaded a photo or the Family Owner may delete it",
     status: httpStatus.forbidden,
   },
-} as const satisfies Record<PhotoRefusal, { code: ErrorCode; message: string; status: number }>;
+});
 
 // Signed links change hourly; the edge keeps one copy per photo and variant regardless.
 const cacheControl = "private, max-age=31536000, immutable";
-
-function refuse(context: Context<PhotoEnv>, refusal: PhotoRefusal) {
-  const { code, message, status } = refusals[refusal];
-
-  return context.json(apiError(code, message), status);
-}
 
 function signedRequestOf(context: Context<PhotoEnv>): SignedRequest | undefined {
   const variant = photoVariant.safeParse(context.req.param("variant"));
@@ -60,19 +54,32 @@ function cacheKeyOf(
   return new Request(new URL(`/photos/${photoId}/${variant}`, context.req.url));
 }
 
-async function freshPhoto(context: Context<PhotoEnv>, signed: SignedRequest): Promise<Response> {
-  const served = await context.var.photos.serve(signed);
+// Workers give the edge cache as caches.default; elsewhere there is none.
+async function cachedOrFresh(
+  context: Context<PhotoEnv>,
+  key: Request,
+  open: () => Promise<Response>,
+): Promise<Response> {
+  const cache = typeof caches === "undefined" ? undefined : caches.default;
+  const cached = await cache?.match(key);
 
-  if (served.status !== "ok") {
-    return context.body(null, served.status === "gone" ? httpStatus.gone : httpStatus.forbidden);
+  if (cached !== undefined) {
+    return cached;
   }
 
-  return new Response(served.body.body, {
+  const file = await open();
+  const response = new Response(file.body, {
     headers: { "content-type": "image/jpeg", "cache-control": cacheControl },
   });
+
+  if (file.ok && cache !== undefined) {
+    context.executionCtx.waitUntil(cache.put(key, response.clone()));
+  }
+
+  return response;
 }
 
-// Workers give the edge cache as caches.default; elsewhere, as in tests, there is none.
+// The cache only spares the Telegram download: the link and the photo are checked on every request.
 async function servePhoto(context: Context<PhotoEnv>): Promise<Response> {
   const signed = signedRequestOf(context);
 
@@ -80,25 +87,16 @@ async function servePhoto(context: Context<PhotoEnv>): Promise<Response> {
     return context.body(null, httpStatus.forbidden);
   }
 
-  const cache = typeof caches === "undefined" ? undefined : caches.default;
-  const key = cacheKeyOf(context, signed);
-  const cached = await cache?.match(key);
+  const served = await context.var.photos.serve(signed);
 
-  if (cached !== undefined) {
-    return cached;
+  if (served.status !== "ok") {
+    return context.body(null, served.status === "gone" ? httpStatus.gone : httpStatus.forbidden);
   }
 
-  const response = await freshPhoto(context, signed);
-
-  if (response.ok && cache !== undefined) {
-    context.executionCtx.waitUntil(cache.put(key, response.clone()));
-  }
-
-  return response;
+  return cachedOrFresh(context, cacheKeyOf(context, signed), served.open);
 }
 
 export const photoRoute = new Hono<PhotoEnv>()
-  .use("/api/photos", requireMember)
   .use("/api/photos/*", requireMember)
   .post("/api/photos", async (context) => {
     const form = await context.req.parseBody();

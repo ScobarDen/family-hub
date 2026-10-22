@@ -10,7 +10,7 @@ import type {
 import type { CareEntryRow } from "./care-entry.repo.ts";
 import { dueKeyOf, type OpenDueDate } from "./due-date/index.ts";
 
-export type PromotedColumns = {
+type PromotedColumns = {
   dueDate: string | null;
   dueKey: string | null;
   weightKg: number | null;
@@ -82,15 +82,6 @@ export function summaryOf(rows: CareEntryRow[]): ExpenseSummary {
 }
 
 // A Due Date is a calendar day, overdue once the Member's own day has passed it.
-export function todayIn(timeZone: string | null, now: number): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: timeZone ?? "UTC",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(now);
-}
-
 export function toDueDateItem(
   { entryId, kind, label, title, dueDate }: OpenDueDate,
   today: string,

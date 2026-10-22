@@ -5,7 +5,7 @@ import type { Membership } from "./auth.types.ts";
 import { verifyInitData, type TelegramUser } from "./lib/init-data.lib.ts";
 import { createSessionTokens } from "./lib/session-token.lib.ts";
 
-export type SignInResult =
+type SignInResult =
   | { status: "member"; token: string }
   | { status: "stranger"; telegramId: number }
   | { status: "invalid" };

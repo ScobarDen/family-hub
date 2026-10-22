@@ -16,7 +16,7 @@ function GoalRows({ goals, model }: { goals: GoalListItem[]; model: GoalsScreenM
       tone={goal.color}
       iconVariant="badge"
       title={goal.title}
-      subtitle={`${goal.subtitle} · ${goal.percent}%`}
+      subtitle={goal.progress}
       onClick={() => {
         model.open(goal.id);
       }}
@@ -32,7 +32,7 @@ export function GoalList({ model, screen }: { model: GoalsScreenModel; screen: L
       </Section>
       <Section title="Копим">
         <GoalRows goals={screen.active} model={model} />
-        <SectionItem icon={Plus} tone="teal" title="Новая цель" onClick={model.add} />
+        <SectionItem icon={Plus} title="Новая цель" onClick={model.add} />
       </Section>
       {screen.achieved.length > 0 && (
         <Section title="Достигнуты">

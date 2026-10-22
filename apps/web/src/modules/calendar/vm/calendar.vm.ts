@@ -1,10 +1,14 @@
-import { action, atom, computed, type Atom } from "@reatom/core";
+import { action, atom, type Atom, computed } from "@reatom/core";
 
-import type { PopupParams } from "@/common/telegram";
+import { daysAfter } from "@family-hub/recurrence";
+
+import { formatNearDate } from "@/common/format-date";
+import { readOnly } from "@/common/state";
+import type { Dialogs } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
 import {
-  daysAfter,
+  agendaRowsOf,
   itemsIn,
   monthGrid,
   monthRangeOf,
@@ -14,7 +18,7 @@ import {
   type CalendarItem,
   type DayCell,
 } from "../calendar.lib.ts";
-import { reatomCalendarData, type CalendarData } from "../calendar.model.ts";
+import { reatomCalendarData, type CalendarData, type CalendarLists } from "../calendar.model.ts";
 import { reatomEventDetails, type OpenedOccurrence } from "./event-details.vm.ts";
 import { reatomEventForm, type EventDraftOpening } from "./event-form.vm.ts";
 import { reatomReminderForm, type ReminderDraftOpening } from "./reminder-form.vm.ts";
@@ -25,15 +29,15 @@ export type CalendarScreen =
   | { kind: "event-form" }
   | { kind: "reminder-form" };
 
-type CalendarDependencies = {
+type CalendarDependencies = CalendarLists & {
   api: CalendarApi;
   today: () => string;
   timeZone: () => string;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   onOpenPet: (petId: string) => void;
   onOpenPlan: (planId: string) => void;
   self: () => string | undefined;
-  onDraftSaved?: (draftId: string) => void;
+  onDraftSaved: (draftId: string) => void;
 };
 
 const upcomingDays = 30;
@@ -70,6 +74,17 @@ function reatomViews(
   itemsOf: ReturnType<typeof reatomItems>,
 ) {
   const monthItems = computed(() => itemsOf(monthRangeOf(month())), "calendar.monthItems");
+  const dayItems = computed(
+    (): CalendarItem[] => monthItems().filter(({ date }) => date === selected()),
+    "calendar.dayItems",
+  );
+  const upcoming = computed(
+    (): CalendarItem[] => [
+      ...overdueDeadlines(data, today()),
+      ...itemsOf({ from: today(), to: daysAfter(today(), upcomingDays) }),
+    ],
+    "calendar.upcoming",
+  );
 
   return {
     monthTitle: computed(() => monthTitle(month()), "calendar.monthTitle"),
@@ -77,19 +92,13 @@ function reatomViews(
       (): DayCell[] => monthGrid(month(), { today: today(), items: monthItems() }),
       "calendar.grid",
     ),
-    today: computed(() => today(), "calendar.today"),
-    selected: computed(() => selected(), "calendar.selectedDate"),
-    dayItems: computed(
-      (): CalendarItem[] => monthItems().filter(({ date }) => date === selected()),
-      "calendar.dayItems",
-    ),
-    upcoming: computed(
-      (): CalendarItem[] => [
-        ...overdueDeadlines(data, today()),
-        ...itemsOf({ from: today(), to: daysAfter(today(), upcomingDays) }),
-      ],
-      "calendar.upcoming",
-    ),
+    today: readOnly(today),
+    selected: readOnly(selected),
+    dayItems,
+    upcoming,
+    dayTitle: computed(() => formatNearDate(selected(), today()), "calendar.dayTitle"),
+    dayRows: computed(() => agendaRowsOf(dayItems(), false), "calendar.dayRows"),
+    upcomingRows: computed(() => agendaRowsOf(upcoming(), true), "calendar.upcomingRows"),
   };
 }
 
@@ -270,6 +279,7 @@ export function reatomCalendar(dependencies: CalendarDependencies) {
     edit: action(() => {
       editOpened(screen, parts);
     }, "calendar.edit"),
+    reload: data.reload,
   };
 }
 

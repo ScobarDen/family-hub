@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { visibility } from "./plan.ts";
+import { named, rubles } from "./primitive.ts";
 import { optionalText } from "./text.ts";
 
 export const goalTitleMaxLength = 200;
@@ -29,8 +30,6 @@ export const goalColor = z.enum(["blue", "green", "orange", "red", "violet", "te
 
 export type GoalColor = z.infer<typeof goalColor>;
 
-const rubles = z.number().int().positive();
-
 export const goalChange = z.object({
   title: z.string().trim().min(1).max(goalTitleMaxLength),
   target: rubles,
@@ -43,7 +42,7 @@ export const goalChange = z.object({
 
 export type GoalChange = z.infer<typeof goalChange>;
 
-export const movementKind = z.enum(["contribution", "withdrawal"]);
+const movementKind = z.enum(["contribution", "withdrawal"]);
 
 export type MovementKind = z.infer<typeof movementKind>;
 
@@ -58,28 +57,26 @@ export const movementChange = z.object({
 
 export type MovementChange = z.infer<typeof movementChange>;
 
-export const goalOutcome = z.enum(["fulfilled", "cancelled"]);
+const goalOutcome = z.enum(["fulfilled", "cancelled"]);
 
 export type GoalOutcome = z.infer<typeof goalOutcome>;
 
 export const goalCompletion = z.object({ outcome: goalOutcome });
-
-const person = z.object({ id: z.string(), name: z.string() });
 
 export const movement = z.object({
   id: z.string(),
   kind: movementKind,
   amount: z.number(),
   date: z.string(),
-  member: person,
-  recordedBy: person,
+  member: named,
+  recordedBy: named,
   comment: z.string().nullable(),
   isOwn: z.boolean(),
 });
 
 export type Movement = z.infer<typeof movement>;
 
-export const goalShare = person.extend({ contributed: z.number(), withdrawn: z.number() });
+const goalShare = named.extend({ contributed: z.number(), withdrawn: z.number() });
 
 export type GoalShare = z.infer<typeof goalShare>;
 

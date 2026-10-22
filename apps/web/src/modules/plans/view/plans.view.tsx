@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { LoadState } from "@/common/ui";
 
 import type { PlansScreen, PlansScreenModel } from "../vm/plans.vm.ts";
 import { PlanDetails } from "./plan-details.view.tsx";
@@ -28,11 +28,7 @@ function contentOf(model: PlansScreenModel, screen: PlansScreen): ReactNode {
   }
 
   return (
-    <Section>
-      <SectionItem
-        title={screen.kind === "loading" ? "Загружаем…" : "Не получилось загрузить планы."}
-      />
-    </Section>
+    <LoadState failure={screen.kind === "failed" ? "Не получилось загрузить планы." : undefined} />
   );
 }
 

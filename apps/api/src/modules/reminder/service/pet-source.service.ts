@@ -1,4 +1,4 @@
-import { birthdayFrom, dayAfter, dueStepFrom, morningOf } from "@family-hub/recurrence";
+import { birthdayFrom, daysAfter, dueStepFrom, morningOf } from "@family-hub/recurrence";
 
 import { openDueDates, type OpenDueDate } from "@/modules/care-entry";
 
@@ -30,7 +30,7 @@ export async function birthdaySources(
       recipientIds: await dependencies.sources.memberIdsOf(pet.familyId),
       homeZone: undefined,
       first: (day) => birthdayFrom(birthDate, day),
-      next: (occurrence) => birthdayFrom(birthDate, dayAfter(occurrence)),
+      next: (occurrence) => birthdayFrom(birthDate, daysAfter(occurrence, 1)),
       fireAt: morningOf,
       emoji: "🎂",
       title: () => `Сегодня день рождения у ${pet.name}!`,
@@ -56,7 +56,7 @@ async function dueSource(
     recipientIds,
     homeZone: undefined,
     first: (day) => dueStepFrom(dueDate, day),
-    next: (occurrence) => dueStepFrom(dueDate, dayAfter(occurrence)),
+    next: (occurrence) => dueStepFrom(dueDate, daysAfter(occurrence, 1)),
     fireAt: morningOf,
     emoji: "💉",
     title: (occurrence) =>

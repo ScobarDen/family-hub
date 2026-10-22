@@ -113,11 +113,12 @@ export async function addPhotos(
 ): Promise<AlbumResult> {
   const familyId = membership.family.id;
   const source = await sourceOf(dependencies, membership, albumId);
-  const known = await dependencies.albums.knownPhotoIds(familyId, photoIds);
 
   if (!source) {
     return { status: "not-found" };
   }
+
+  const known = await dependencies.albums.knownPhotoIds(familyId, photoIds);
 
   if (photoIds.some((photoId) => !known.includes(photoId))) {
     return { status: "photo-not-found" };

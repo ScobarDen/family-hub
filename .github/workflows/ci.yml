@@ -28,17 +28,5 @@ jobs:
 
       - run: vp install --frozen-lockfile
 
-      - name: Lint, format check, typecheck
-        run: vp check
-
-      - name: FEOD levels and deep imports
-        run: vp run feod
-
-      - name: Tests
-        run: vp run -r test
-
-      - name: Build Mini App
-        run: vp run @family-hub/web#build
-
-      - name: Worker dry-run deploy
-        run: vp run @family-hub/api#build
+      - name: Check, FEOD, tests and builds
+        run: vp run ready

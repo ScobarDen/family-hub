@@ -60,6 +60,7 @@ function checkStagedFiles(files: readonly string[]): string[] {
 
   const command = `vp check --fix ${checked.map((file) => JSON.stringify(file)).join(" ")}`;
 
+  // A single pass leaves lint autofixes such as `curly` unformatted; the second pass formats them.
   return [command, command];
 }
 

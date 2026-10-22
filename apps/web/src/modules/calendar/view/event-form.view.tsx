@@ -1,54 +1,42 @@
 import { reatomComponent } from "@reatom/react";
-import type { FormEvent } from "react";
 
 import {
-  Button,
   Chip,
+  ChipGroup,
+  type Choice,
   ChoiceField,
-  FieldError,
-  Label,
+  FormShell,
   TextAreaField,
   TextField,
-  type Choice,
+  visibilityChoices,
 } from "@/common/ui";
 
+import { repeatChoices } from "../calendar.config.ts";
 import type { EventFormModel } from "../vm/event-form.vm.ts";
 
 const timings: Choice[] = [
   { value: "all-day", title: "Весь день" },
   { value: "timed", title: "Со временем" },
 ];
-const frequencies: Choice[] = [
-  { value: "", title: "Не повторять" },
-  { value: "weekly", title: "Каждую неделю" },
-  { value: "monthly", title: "Каждый месяц" },
-  { value: "yearly", title: "Каждый год" },
-];
-const visibilities: Choice[] = [
-  { value: "shared", title: "Для всей семьи" },
-  { value: "private", title: "Только я" },
-];
+const frequencies: Choice[] = [{ value: "", title: "Не повторять" }, ...repeatChoices];
 
 type EventFormProps = { model: EventFormModel; onCancel: () => void };
 
 const ReminderOffsets = reatomComponent(
   ({ model }: { model: EventFormModel }) => (
-    <div className="flex flex-col gap-2">
-      <Label>Напомнить</Label>
-      <div className="flex flex-wrap gap-2">
-        {model.offsets().map((choice) => (
-          <Chip
-            key={choice.offset}
-            isSelected={choice.isChosen}
-            onClick={() => {
-              model.toggleOffset(choice.offset);
-            }}
-          >
-            {choice.title}
-          </Chip>
-        ))}
-      </div>
-    </div>
+    <ChipGroup label="Напомнить">
+      {model.offsets().map((choice) => (
+        <Chip
+          key={choice.offset}
+          isSelected={choice.isChosen}
+          onClick={() => {
+            model.toggleOffset(choice.offset);
+          }}
+        >
+          {choice.title}
+        </Chip>
+      ))}
+    </ChipGroup>
   ),
   "ReminderOffsets",
 );
@@ -73,13 +61,8 @@ const EventWhen = reatomComponent(({ model }: { model: EventFormModel }) => {
 export const EventForm = reatomComponent(({ model, onCancel }: EventFormProps) => {
   const { fields } = model.form;
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    model.save();
-  }
-
   return (
-    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submit}>
+    <FormShell model={model} onCancel={onCancel}>
       <TextField
         field={fields.title}
         id="event-title"
@@ -93,16 +76,9 @@ export const EventForm = reatomComponent(({ model, onCancel }: EventFormProps) =
       )}
       <ReminderOffsets model={model} />
       {model.canChooseVisibility() && (
-        <ChoiceField field={fields.visibility} label="Кто видит" choices={visibilities} />
+        <ChoiceField field={fields.visibility} label="Кто видит" choices={visibilityChoices} />
       )}
       <TextAreaField field={fields.note} id="event-note" label="Заметка" />
-      <FieldError>{model.failure()}</FieldError>
-      <Button type="submit" size="lg" disabled={model.isSaving()}>
-        {model.isSaving() ? "Сохраняем…" : "Сохранить"}
-      </Button>
-      <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
-        Отмена
-      </Button>
-    </form>
+    </FormShell>
   );
 }, "EventForm");

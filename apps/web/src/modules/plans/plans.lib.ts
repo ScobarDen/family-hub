@@ -15,7 +15,7 @@ export type PlanListItem = {
   isCompleted: boolean;
 };
 
-export type SubplanItem = PlanListItem & { isLaterThanPlan: boolean };
+export type SubplanItem = PlanListItem;
 
 export type PlanDetails = {
   id: string;
@@ -23,6 +23,7 @@ export type PlanDetails = {
   note: string | undefined;
   facts: string | undefined;
   progress: string | undefined;
+  stepsTitle: string;
   completed: string | undefined;
   isCompleted: boolean;
   isPrivate: boolean;
@@ -55,14 +56,20 @@ function completedOf(completed: Completion | null, timeZone: string): string | u
   return `Выполнено ${joined([formatDay(completed.at, timeZone), completed.by ?? undefined])}`;
 }
 
+function isLaterThan(dueDate: string | null, planDueDate: string | null): boolean {
+  return dueDate !== null && planDueDate !== null && dueDate > planDueDate;
+}
+
 function toSubplanItem(subplan: Subplan, planDueDate: string | null): SubplanItem {
   return {
     id: subplan.id,
     title: subplan.title,
-    subtitle: joined([dueOf(subplan.dueDate), subplan.assignee?.name]),
+    subtitle: joined([
+      dueOf(subplan.dueDate),
+      subplan.assignee?.name,
+      isLaterThan(subplan.dueDate, planDueDate) ? "позже срока плана" : undefined,
+    ]),
     isCompleted: subplan.completed !== null,
-    isLaterThanPlan:
-      subplan.dueDate !== null && planDueDate !== null && subplan.dueDate > planDueDate,
   };
 }
 
@@ -82,6 +89,7 @@ export function toDetails(plan: Plan, timeZone: string): PlanDetails {
     note: plan.note ?? undefined,
     facts: joined([dueOf(plan.dueDate), plan.assignee?.name, plan.pet?.name]),
     progress: progressOf(plan),
+    stepsTitle: joined(["Шаги", progressOf(plan)]) ?? "Шаги",
     completed: completedOf(plan.completed, timeZone),
     isCompleted: plan.completed !== null,
     isPrivate: plan.visibility === "private",

@@ -91,7 +91,10 @@ export async function saveProfile(
     }),
   );
 
-  await dependencies.schedule.sourceChanged(membership.family.id, { kind: "pet", id: petId });
+  // A Pet's Reminders follow its birthday alone; its name is read when a message is sent.
+  if (pet.birthDate !== values.birthDate) {
+    await dependencies.schedule.sourceChanged(membership.family.id, { kind: "pet", id: petId });
+  }
 
   return result;
 }
