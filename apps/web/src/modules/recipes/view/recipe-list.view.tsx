@@ -20,7 +20,6 @@ export const RecipeList = reatomComponent(
           <SectionItem
             key={recipe.id}
             icon={recipe.isFavorite ? Star : CookingPot}
-            tone={recipe.isFavorite ? "orange" : "pink"}
             title={recipe.title}
             subtitle={recipe.tags.map(({ name }) => name).join(" · ") || undefined}
             onClick={() => {
@@ -28,8 +27,8 @@ export const RecipeList = reatomComponent(
             }}
           />
         ))}
-        <SectionItem icon={Plus} tone="green" title="Новый рецепт" onClick={model.add} />
-        <SectionItem icon={Tags} tone="gray" title="Теги" onClick={model.openTags} />
+        <SectionItem icon={Plus} title="Новый рецепт" onClick={model.add} />
+        <SectionItem icon={Tags} title="Теги" onClick={model.openTags} />
       </Section>
     </>
   ),

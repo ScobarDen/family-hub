@@ -39,7 +39,6 @@ export function PlanAlbum({ album, onOpen }: PlanAlbumProps) {
       )}
       <SectionItem
         icon={Images}
-        tone="violet"
         title="Открыть альбом"
         subtitle={`${album.photoCount} фото`}
         onClick={open}

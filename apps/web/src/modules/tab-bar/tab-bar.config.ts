@@ -11,8 +11,6 @@ import {
 
 import type { AppModule } from "@family-hub/contract";
 
-import type { IconTone } from "@/common/ui";
-
 export const moduleTitles: Record<AppModule, string> = {
   feed: "Лента",
   plans: "Планы",
@@ -31,14 +29,4 @@ export const moduleIcons: Record<AppModule, LucideIcon> = {
   goals: PiggyBank,
   albums: Images,
   recipes: CookingPot,
-};
-
-export const moduleTones: Record<AppModule, IconTone> = {
-  feed: "blue",
-  plans: "green",
-  calendar: "blue",
-  pet: "orange",
-  goals: "teal",
-  albums: "violet",
-  recipes: "pink",
 };

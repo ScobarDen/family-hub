@@ -19,7 +19,7 @@ const YearExpenses = reatomComponent(({ model }: CareProps) => {
   return (
     <>
       <Section title="За год">
-        <SectionItem icon={Wallet} tone="green" title={year.total} />
+        <SectionItem icon={Wallet} title={year.total} />
         {year.rows.map((row) => (
           <SectionItem key={row.title} title={row.title} after={row.amount} />
         ))}

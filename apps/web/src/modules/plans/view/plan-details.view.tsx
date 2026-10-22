@@ -14,7 +14,6 @@ const PlanHeader = reatomComponent(
     <Section footer={<FieldError>{model.failure()}</FieldError>}>
       <SectionItem
         icon={plan.isPrivate ? Lock : undefined}
-        tone="gray"
         title={plan.facts ?? "Без срока и исполнителя"}
         subtitle={plan.note}
         after={
@@ -25,7 +24,6 @@ const PlanHeader = reatomComponent(
       />
       <SectionItem
         icon={plan.isCompleted ? CircleCheck : Circle}
-        tone={plan.isCompleted ? "green" : "gray"}
         title={plan.isCompleted ? "Вернуть в работу" : "Отметить выполненным"}
         subtitle={plan.completed}
         disabled={model.isChanging()}
@@ -80,12 +78,12 @@ export function PlanDetails({ plan, model }: PlanDetailsProps) {
         {plan.subplans.map((subplan) => (
           <SubplanRow key={subplan.id} subplan={subplan} model={model} />
         ))}
-        <SectionItem icon={Plus} tone="green" title="Добавить шаг" onClick={model.addSubplan} />
+        <SectionItem icon={Plus} title="Добавить шаг" onClick={model.addSubplan} />
       </Section>
       {plan.album !== null && <PlanAlbum album={plan.album} onOpen={model.openAlbum} />}
       {plan.canDelete && (
         <Section>
-          <SectionItem icon={Trash2} tone="red" title="Удалить план" onClick={model.removePlan} />
+          <SectionItem icon={Trash2} isAlert title="Удалить план" onClick={model.removePlan} />
         </Section>
       )}
     </>

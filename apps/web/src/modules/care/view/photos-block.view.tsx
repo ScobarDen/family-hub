@@ -17,7 +17,7 @@ export const PhotosBlock = reatomComponent(({ model }: CareBlockProps) => {
     <>
       <Section title="Фото" footer={model.photoHint()}>
         {photos.length === 0 ? (
-          <SectionItem icon={Images} tone="violet" title="Фото пока нет — добавьте их к записи" />
+          <SectionItem icon={Images} title="Фото пока нет — добавьте их к записи" />
         ) : (
           <div className="pt-3">
             <PhotoThumbs

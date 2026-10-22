@@ -11,7 +11,6 @@ export function DonePlans({ model, screen }: ListProps) {
     <Section>
       <SectionItem
         icon={screen.isDoneShown ? ChevronUp : ChevronDown}
-        tone="gray"
         title={`Выполненные · ${screen.done.length}`}
         onClick={model.toggleDone}
       />
@@ -20,7 +19,6 @@ export function DonePlans({ model, screen }: ListProps) {
           <SectionItem
             key={plan.id}
             icon={CircleCheck}
-            tone="green"
             title={plan.title}
             subtitle={plan.subtitle}
             onClick={() => {

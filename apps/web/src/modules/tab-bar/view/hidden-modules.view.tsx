@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 
 import { SectionItem } from "@/common/ui";
 
-import { moduleIcons, moduleTones } from "../tab-bar.config.ts";
+import { moduleIcons } from "../tab-bar.config.ts";
 import type { TabBarModel } from "../vm/tab-bar.vm.ts";
 
 export type HiddenModulesProps = { model: TabBarModel };
@@ -13,7 +13,6 @@ export const HiddenModules = reatomComponent(
       <SectionItem
         key={module}
         icon={moduleIcons[module]}
-        tone={moduleTones[module]}
         title={title}
         onClick={() => {
           model.open(module);

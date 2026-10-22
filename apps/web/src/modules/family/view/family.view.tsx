@@ -19,7 +19,6 @@ export const Family = reatomComponent(({ model }: FamilyProps) => {
     <SectionItem
       key={member.id}
       icon={member.isFamilyOwner ? Crown : User}
-      tone={member.isFamilyOwner ? "orange" : "blue"}
       title={member.name}
       subtitle={member.role}
       disabled={isBusy}

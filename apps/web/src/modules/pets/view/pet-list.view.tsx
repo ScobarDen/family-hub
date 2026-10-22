@@ -25,7 +25,6 @@ export function PetList({ model, screen }: PetListProps) {
             <SectionItem
               key={pet.id}
               icon={PawPrint}
-              tone="orange"
               title={pet.name}
               subtitle={pet.subtitle}
               onClick={() => {
@@ -33,7 +32,7 @@ export function PetList({ model, screen }: PetListProps) {
               }}
             />
           ))}
-        <SectionItem icon={Plus} tone="green" title="Добавить питомца" onClick={model.add} />
+        <SectionItem icon={Plus} title="Добавить питомца" onClick={model.add} />
       </Section>
       {screen.archived.length > 0 && <ArchivedPets pets={screen.archived} onOpen={model.open} />}
     </>

@@ -18,14 +18,13 @@ export const UploadProgress = reatomComponent(({ model }: { model: BatchUploadMo
     >
       <SectionItem
         icon={LoaderCircle}
-        tone="violet"
         title={
           model.isRunning() ? `Загружаем ${model.progress()}` : `Загружено ${model.progress()}`
         }
         subtitle={failed > 0 ? `Не загрузилось: ${failed}` : undefined}
       />
       {failed > 0 && !model.isRunning() && (
-        <SectionItem icon={RotateCw} tone="orange" title="Повторить" onClick={model.retry} />
+        <SectionItem icon={RotateCw} title="Повторить" onClick={model.retry} />
       )}
     </Section>
   );

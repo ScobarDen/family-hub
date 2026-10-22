@@ -14,7 +14,6 @@ export const Invites = reatomComponent(({ model }: InvitesProps) => {
     <Section title="Приглашения" footer={<FieldError>{model.failure()}</FieldError>}>
       <SectionItem
         icon={UserPlus}
-        tone="green"
         title={isInviting ? "Создаём приглашение…" : "Пригласить в семью"}
         disabled={isInviting}
         onClick={model.invite}
@@ -23,7 +22,6 @@ export const Invites = reatomComponent(({ model }: InvitesProps) => {
         <SectionItem
           key={invite.id}
           icon={Link}
-          tone="gray"
           title={`Приглашение ${invite.expiresOn}`}
           after={
             <Button

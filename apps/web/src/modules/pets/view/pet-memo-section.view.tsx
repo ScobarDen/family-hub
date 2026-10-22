@@ -19,7 +19,7 @@ export function PetMemoSection({ memo, onEdit }: PetMemoSectionProps) {
         <SectionItem key={key} title={memo[key] ?? "—"} subtitle={label} />
       ))}
       {onEdit !== undefined && (
-        <SectionItem icon={NotebookPen} tone="blue" title="Изменить памятку" onClick={onEdit} />
+        <SectionItem icon={NotebookPen} title="Изменить памятку" onClick={onEdit} />
       )}
     </Section>
   );

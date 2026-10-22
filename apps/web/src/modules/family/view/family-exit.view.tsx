@@ -48,13 +48,13 @@ export const FamilyExit = reatomComponent(({ model }: FamilyExitProps) => {
     <Section footer={<FieldError>{model.failure()}</FieldError>}>
       <SectionItem
         icon={LogOut}
-        tone="red"
+        isAlert
         title="Покинуть семью"
         disabled={model.isBusy()}
         onClick={model.leave}
       />
       {model.canDeleteFamily() && (
-        <SectionItem icon={Trash2} tone="red" title="Удалить семью" onClick={model.openDeletion} />
+        <SectionItem icon={Trash2} isAlert title="Удалить семью" onClick={model.openDeletion} />
       )}
     </Section>
   );

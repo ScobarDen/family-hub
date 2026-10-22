@@ -17,7 +17,6 @@ export const RecipeIngredients = reatomComponent(
           // oxlint-disable-next-line react/no-array-index-key
           key={index}
           icon={checked.includes(index) ? CircleCheck : Circle}
-          tone={checked.includes(index) ? "green" : "gray"}
           title={ingredient}
           onClick={() => {
             model.toggleIngredient(index);

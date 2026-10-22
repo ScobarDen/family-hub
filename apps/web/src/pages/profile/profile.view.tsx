@@ -41,7 +41,7 @@ export function ProfilePage({
         <HiddenModules model={tabBar} />
         <SectionItem
           icon={PanelBottom}
-          tone="blue"
+
           title="Нижнее меню"
           onClick={onOpenTabBarMenu}
         />

@@ -34,10 +34,10 @@ export const AlbumDetails = reatomComponent(({ album, model }: DetailsProps) => 
           </label>
         )}
         {album.canEdit && (
-          <SectionItem icon={Pencil} tone="gray" title="Изменить альбом" onClick={model.edit} />
+          <SectionItem icon={Pencil} title="Изменить альбом" onClick={model.edit} />
         )}
         {album.canDelete && (
-          <SectionItem icon={Trash2} tone="red" title="Удалить альбом" onClick={model.remove} />
+          <SectionItem icon={Trash2} isAlert title="Удалить альбом" onClick={model.remove} />
         )}
       </Section>
       <UploadProgress model={model.batch} />

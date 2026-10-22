@@ -16,7 +16,6 @@ export const TimeZone = reatomComponent(({ model }: TimeZoneProps) => {
     <>
       <SectionItem
         icon={Smartphone}
-        tone="gray"
         title="Как на устройстве"
         after={
           <Switch
@@ -30,7 +29,6 @@ export const TimeZone = reatomComponent(({ model }: TimeZoneProps) => {
       />
       <SectionItem
         icon={Globe}
-        tone="teal"
         title="Часовой пояс"
         after={
           <TimeZoneSelect
