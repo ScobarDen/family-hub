@@ -25,6 +25,7 @@ import {
 } from "@family-hub/contract";
 
 import { HttpError } from "@/common/http-client";
+import { detached } from "@/common/state";
 
 import type { CommandApi } from "../command.api.ts";
 
@@ -108,13 +109,9 @@ function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseA
   }, "commandSheet.openDraft");
 
   return {
-    send: action((recording: Blob) => {
-      send(recording).catch(noop);
-    }, "commandSheet.sendRecording"),
+    send: detached(send, "commandSheet.sendRecording"),
     stopSending: send.abort,
-    openForEdit: action((draftId: string) => {
-      openForEdit(draftId).catch(noop);
-    }, "commandSheet.openForEdit"),
+    openForEdit: detached(openForEdit, "commandSheet.openForEdit"),
   };
 }
 
@@ -155,12 +152,8 @@ function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: Ph
   }, "commandSheet.pick");
 
   return {
-    create: action(() => {
-      create().catch(noop);
-    }, "commandSheet.createDraft"),
-    pick: action((index: number) => {
-      pick(index).catch(noop);
-    }, "commandSheet.pickCandidate"),
+    create: detached(create, "commandSheet.createDraft"),
+    pick: detached(pick, "commandSheet.pickCandidate"),
   };
 }
 

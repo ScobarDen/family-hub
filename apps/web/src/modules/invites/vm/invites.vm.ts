@@ -1,8 +1,9 @@
-import { action, atom, computed, noop, withAsync, withAsyncData, wrap } from "@reatom/core";
+import { action, atom, computed, withAsync, withAsyncData, wrap } from "@reatom/core";
 
 import type { Invite, InviteCreated } from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
+import { detached, readOnly } from "@/common/state";
 
 import type { InvitesApi } from "../invites.api.ts";
 
@@ -101,14 +102,10 @@ export function reatomInvites(dependencies: InvitesDependencies) {
     ),
     isInviting: computed(() => !create.ready(), "invites.isInviting"),
     isRevoking: computed(() => !revoke.ready(), "invites.isRevoking"),
-    failure: computed(() => failure(), "invites.visibleFailure"),
+    failure: readOnly(failure),
 
-    invite: action(() => {
-      create().catch(noop);
-    }, "invites.invite"),
-    revoke: action((inviteId: string) => {
-      revoke(inviteId).catch(noop);
-    }, "invites.revokeOne"),
+    invite: detached(create, "invites.invite"),
+    revoke: detached(revoke, "invites.revokeOne"),
   };
 }
 

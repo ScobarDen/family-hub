@@ -1,7 +1,9 @@
-import { action, computed, noop, reatomForm, wrap } from "@reatom/core";
+import { action, computed, reatomForm, wrap } from "@reatom/core";
 import { z } from "zod";
 
 import { familyNameMaxLength, type FamilyRequestStatus } from "@family-hub/contract";
+
+import { detached } from "@/common/state";
 
 import type { FamilyRequestApi, SubmitOutcome } from "../family-request.api.ts";
 
@@ -90,9 +92,7 @@ export function reatomFamilyRequest({
       return isRejectedByServer ? "Не получилось отправить заявку. Попробуйте ещё раз." : undefined;
     }, "familyRequest.failure"),
 
-    submit: action(() => {
-      form.submit().catch(noop);
-    }, "familyRequest.submit"),
+    submit: detached(form.submit, "familyRequest.submit"),
     back: action(onBack, "familyRequest.back"),
     check: action(onCheck, "familyRequest.check"),
   };

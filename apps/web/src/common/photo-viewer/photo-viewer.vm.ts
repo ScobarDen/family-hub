@@ -1,7 +1,8 @@
-import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, withAsync, wrap } from "@reatom/core";
 
 import type { Photo } from "@family-hub/contract";
 
+import { detached } from "@/common/state";
 import { didSucceedOrAlert, type Dialogs, type PopupParams } from "@/common/telegram";
 
 export type PhotoViewerDependencies = {
@@ -115,9 +116,7 @@ export function reatomPhotoViewer(dependencies: PhotoViewerDependencies) {
         dependencies.onPick?.(photo.id);
       }
     }, "photoViewer.pick"),
-    remove: action(() => {
-      remove().catch(noop);
-    }, "photoViewer.removePhoto"),
+    remove: detached(remove, "photoViewer.removePhoto"),
   };
 }
 

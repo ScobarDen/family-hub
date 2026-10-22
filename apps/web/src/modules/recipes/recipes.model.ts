@@ -1,5 +1,7 @@
 import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
 
+import { readOnly } from "@/common/state";
+
 import type { RecipesApi } from "./recipes.api.ts";
 
 // The list follows the search text, the tag chip and «⭐»; every change reloads it from the server.
@@ -11,7 +13,7 @@ export function reatomRecipesData({ api }: { api: RecipesApi }) {
   const ordering = atom<"title" | "forgotten">("title", "recipes.sort");
 
   return {
-    version: computed(() => version(), "recipes.changes"),
+    version: readOnly(version),
     text,
     tagId,
     isFavorite,

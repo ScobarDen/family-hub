@@ -1,4 +1,4 @@
-import { action, atom, computed, noop, reatomForm, wrap, type Atom } from "@reatom/core";
+import { action, atom, computed, reatomForm, wrap, type Atom } from "@reatom/core";
 import { z } from "zod";
 
 import {
@@ -9,6 +9,7 @@ import {
 } from "@family-hub/contract";
 
 import { reatomEditableRecord, type DraftOpening } from "@/common/form";
+import { detached } from "@/common/state";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
@@ -223,9 +224,7 @@ export function reatomReminderForm(dependencies: ReminderFormDependencies) {
     ...reatomRecipients(dependencies, chosen),
     ...reatomFlags(record),
     ...reatomStarts(record, chosen),
-    removeReminder: action(() => {
-      remove().catch(noop);
-    }, "calendar.reminderForm.removeReminder"),
+    removeReminder: detached(remove, "calendar.reminderForm.removeReminder"),
   };
 }
 

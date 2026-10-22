@@ -1,9 +1,10 @@
-import { action, atom, computed, noop, reatomForm, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, reatomForm, withAsync, wrap } from "@reatom/core";
 import { z } from "zod";
 
 import type { Pet } from "@family-hub/contract";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { detached, readOnly } from "@/common/state";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -71,17 +72,13 @@ export function reatomPetArchive(dependencies: PetArchiveDependencies) {
       message: "Не получилось удалить питомца. Попробуйте ещё раз.",
       name: "pets.archive.deletionFailure",
     }),
-    archiveFailure: computed(() => failure(), "pets.archive.visibleFailure"),
+    archiveFailure: readOnly(failure),
 
-    toggleArchive: action(() => {
-      toggle().catch(noop);
-    }, "pets.archive.toggleArchive"),
+    toggleArchive: detached(toggle, "pets.archive.toggleArchive"),
     resetDeletion: action(() => {
       fillForm(deletion, { petName: "" });
     }, "pets.archive.resetDeletion"),
-    deletePet: action(() => {
-      deletion.submit().catch(noop);
-    }, "pets.archive.deletePet"),
+    deletePet: detached(deletion.submit, "pets.archive.deletePet"),
   };
 }
 

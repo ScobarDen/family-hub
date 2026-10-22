@@ -1,5 +1,6 @@
 import { action, atom, computed, type Atom } from "@reatom/core";
 
+import { readOnly } from "@/common/state";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
@@ -77,8 +78,8 @@ function reatomViews(
       (): DayCell[] => monthGrid(month(), { today: today(), items: monthItems() }),
       "calendar.grid",
     ),
-    today: computed(() => today(), "calendar.today"),
-    selected: computed(() => selected(), "calendar.selectedDate"),
+    today: readOnly(today),
+    selected: readOnly(selected),
     dayItems: computed(
       (): CalendarItem[] => monthItems().filter(({ date }) => date === selected()),
       "calendar.dayItems",

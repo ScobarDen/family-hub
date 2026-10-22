@@ -1,10 +1,11 @@
-import { action, atom, computed, noop, withAbort, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, atom, computed, withAbort, withAsync, wrap, type Atom } from "@reatom/core";
 
 import type { CareEntry, CareKind } from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { PreparedPhoto } from "@/common/photo";
+import { detached, readOnly } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
@@ -173,12 +174,8 @@ function reatomOpening({ api, data, form, screen, onOpenPet }: Sources) {
   }, "care.followUpEntry").extend(withAbort());
 
   return {
-    openEntry: action((entryId: string) => {
-      openEntry(entryId).catch(noop);
-    }, "care.openEntry"),
-    followUp: action((entryId: string) => {
-      followUp(entryId).catch(noop);
-    }, "care.followUp"),
+    openEntry: detached(openEntry, "care.openEntry"),
+    followUp: detached(followUp, "care.followUp"),
   };
 }
 
@@ -268,18 +265,16 @@ export function reatomCare(dependencies: CareDependencies) {
     screen: reatomScreen(screen, form),
     title: reatomTitle(screen, form),
     canGoBack: computed(() => screen() !== "blocks", "care.canGoBack"),
-    isReadOnly: computed(() => dependencies.isReadOnly(), "care.isReadOnly"),
+    isReadOnly: readOnly(dependencies.isReadOnly),
     dueSources: reatomDueSources(data),
-    failure: computed(() => sources.failure(), "care.visibleFailure"),
+    failure: readOnly(sources.failure),
     form,
     ...photos,
     ...reatomViews(sources, weightRange),
     ...reatomMoves(sources, weightRange),
     ...reatomOpening(sources),
     ...reatomDraftEditing(sources),
-    remove: action(() => {
-      remove().catch(noop);
-    }, "care.removeEntry"),
+    remove: detached(remove, "care.removeEntry"),
     reload: data.reload,
   };
 }

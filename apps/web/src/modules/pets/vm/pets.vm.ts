@@ -1,6 +1,8 @@
-import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, withAsync, wrap } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
+
+import { detached } from "@/common/state";
 
 import type { SoonKind } from "../pets.lib.ts";
 import { reatomPetArchive } from "./pet-archive.vm.ts";
@@ -146,9 +148,7 @@ function reatomAvatar({ api, pets }: PetsDependencies, openedPet: () => Pet | un
   }, "pets.saveAvatar").extend(withAsync());
 
   return {
-    makeAvatar: action((photoId: string) => {
-      save(photoId).catch(noop);
-    }, "pets.makeAvatar"),
+    makeAvatar: detached(save, "pets.makeAvatar"),
   };
 }
 

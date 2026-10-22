@@ -5,6 +5,7 @@ import { careEntryPhotoMax, type Photo } from "@family-hub/contract";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoAttachments } from "@/common/photo-attachments";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
+import { readOnly } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
@@ -38,6 +39,6 @@ export function reatomCarePhotos(dependencies: CarePhotosDependencies, data: Car
       onDeleted: data.reload,
     }),
     petPhotos: computed((): Photo[] => petPhotosOf(data.entries.data() ?? []), "care.petPhotos"),
-    photoHint: computed(() => dependencies.photoHint(), "care.photoHint"),
+    photoHint: readOnly(dependencies.photoHint),
   };
 }

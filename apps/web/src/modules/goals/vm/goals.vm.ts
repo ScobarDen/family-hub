@@ -1,8 +1,9 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, atom, computed, withAsync, wrap, type Atom } from "@reatom/core";
 
 import type { Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
 
 import { formatRubles } from "@/common/format-money";
+import { detached } from "@/common/state";
 import type { PopupParams } from "@/common/telegram";
 
 import type { GoalsApi } from "../goals.api.ts";
@@ -244,12 +245,8 @@ export function reatomGoalsScreen(dependencies: GoalsDependencies) {
       "goals.canGoBack",
     ),
     isChanging: computed(() => !complete.ready() || !removeMovement.ready(), "goals.isChanging"),
-    complete: action((outcome: GoalOutcome) => {
-      complete(outcome).catch(noop);
-    }, "goals.completeGoal"),
-    removeMovement: action((movementId: string) => {
-      removeMovement(movementId).catch(noop);
-    }, "goals.removeOneMovement"),
+    complete: detached(complete, "goals.completeGoal"),
+    removeMovement: detached(removeMovement, "goals.removeOneMovement"),
     ...forms,
     ...reatomBrowsing(navigation),
     ...reatomEditing(navigation, { ...forms, openedGoal }),

@@ -2,6 +2,8 @@ import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
 
 import { defaultDigestTime, type DigestSettings } from "@family-hub/contract";
 
+import { readOnly } from "@/common/state";
+
 import type { DigestApi } from "../digest.api.ts";
 
 type DigestDependencies = {
@@ -43,7 +45,7 @@ export function reatomDigest({ api, saved }: DigestDependencies) {
           : "Выключена: бот не пишет по утрам",
       "digest.schedule",
     ),
-    failure: computed(() => failure(), "digest.visibleFailure"),
+    failure: readOnly(failure),
 
     toggle: action((isEnabled: boolean) => {
       save({ ...current(), isEnabled }).catch(noop);

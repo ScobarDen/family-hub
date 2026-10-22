@@ -1,17 +1,9 @@
-import {
-  action,
-  atom,
-  computed,
-  noop,
-  withAbort,
-  withAsync,
-  withAsyncData,
-  wrap,
-} from "@reatom/core";
+import { action, atom, computed, withAbort, withAsync, withAsyncData, wrap } from "@reatom/core";
 
 import type { FeedActivity } from "@family-hub/contract";
 
 import { reatomPhotoViewer } from "@/common/photo-viewer";
+import { detached, readOnly } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
 
 import type { FeedApi } from "../feed.api.ts";
@@ -199,7 +191,7 @@ export function reatomFeed(dependencies: FeedDependencies) {
   const complete = reatomCompletion(dependencies.api, pages);
 
   return {
-    filter: computed(() => filter(), "feed.chosenFilter"),
+    filter: readOnly(filter),
     isLoading: computed(
       () => pages.first.data() === undefined && !pages.first.ready(),
       "feed.isLoading",
@@ -220,12 +212,8 @@ export function reatomFeed(dependencies: FeedDependencies) {
       filter.set(chosen);
     }, "feed.choose"),
     reload: pages.reload,
-    loadMore: action(() => {
-      pages.loadMore().catch(noop);
-    }, "feed.more"),
-    complete: action((key: string) => {
-      complete(key).catch(noop);
-    }, "feed.completeStep"),
+    loadMore: detached(pages.loadMore, "feed.more"),
+    complete: detached(complete, "feed.completeStep"),
     ...reatomTaps(dependencies, pages),
     viewer: reatomPhotoViewer({
       ...dependencies,

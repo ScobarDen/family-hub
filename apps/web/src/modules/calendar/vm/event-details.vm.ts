@@ -4,6 +4,7 @@ import type { CalendarEvent } from "@family-hub/contract";
 import { occurrenceMoment, timeInZone } from "@family-hub/recurrence";
 
 import { formatDate, formatDay } from "@/common/format-date";
+import { readOnly } from "@/common/state";
 import type { PopupParams } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
@@ -162,7 +163,7 @@ export function reatomEventDetails(dependencies: EventDetailsDependencies) {
         ? undefined
         : detailsOf(current, target.occurrence ?? current.start.date, dependencies.timeZone());
     }, "calendar.details"),
-    failure: computed(() => failure(), "calendar.details.visibleFailure"),
+    failure: readOnly(failure),
     skipOccurrence: action(() => {
       change("skip").catch(noop);
     }, "calendar.details.skip"),

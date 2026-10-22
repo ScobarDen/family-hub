@@ -2,6 +2,7 @@ import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reato
 
 import type { Plan } from "@family-hub/contract";
 
+import { readOnly } from "@/common/state";
 import type { PopupParams } from "@/common/telegram";
 
 import type { PlansApi } from "../plans.api.ts";
@@ -131,7 +132,7 @@ export function reatomPlanActions(dependencies: PlanActionsDependencies) {
   const change = reatomPlanChange(dependencies, failure);
 
   return {
-    failure: computed(() => failure(), "plans.visibleFailure"),
+    failure: readOnly(failure),
     isChanging: computed(() => !change.ready(), "plans.isChanging"),
 
     togglePlan: action(() => {

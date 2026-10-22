@@ -3,6 +3,7 @@ import { Temporal } from "temporal-polyfill";
 
 import type { Recipe } from "@family-hub/contract";
 
+import { readOnly } from "@/common/state";
 import { didSucceedOrAlert, type Dialogs } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
@@ -48,8 +49,8 @@ export function reatomRecipeCooks(
 
   return {
     isCooking: computed(() => !change.ready(), "recipes.cooks.isCooking"),
-    today: computed(() => dependencies.today(), "recipes.cooks.today"),
-    ordering: computed(() => data.ordering(), "recipes.chosenOrdering"),
+    today: readOnly(dependencies.today),
+    ordering: readOnly(data.ordering),
     cook: action((date: string) => {
       change(async (recipe) =>
         dependencies.api.cook(recipe.id, cookedAtOf(dependencies, date)),

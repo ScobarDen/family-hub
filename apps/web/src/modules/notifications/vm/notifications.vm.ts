@@ -1,4 +1,6 @@
-import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, withAsync, wrap } from "@reatom/core";
+
+import { detached } from "@/common/state";
 
 type NotificationsDependencies = {
   canMessage: () => boolean | undefined;
@@ -18,9 +20,7 @@ export function reatomNotifications({ canMessage, telegram }: NotificationsDepen
     isOff: computed(() => canMessage() === false && !isAllowedNow(), "notifications.isOff"),
     isEnabling: computed(() => !request.ready(), "notifications.isEnabling"),
 
-    enable: action(() => {
-      request().catch(noop);
-    }, "notifications.enable"),
+    enable: detached(request, "notifications.enable"),
   };
 }
 

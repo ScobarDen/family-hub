@@ -1,7 +1,8 @@
-import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
+import { action, atom, noop, withAsync, wrap } from "@reatom/core";
 
 import { recipeTagNameMaxLength } from "@family-hub/contract";
 
+import { detached, readOnly } from "@/common/state";
 import type { PopupParams } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
@@ -47,7 +48,7 @@ export function reatomTagEditing({ api, telegram }: TagDependencies, data: Recip
   }, "recipes.tags.removeAsked").extend(withAsync());
 
   return {
-    tagFailure: computed(() => failure(), "recipes.tags.visibleFailure"),
+    tagFailure: readOnly(failure),
     addTag: action((text: string) => {
       const name = nameOf(text);
 
@@ -62,8 +63,6 @@ export function reatomTagEditing({ api, telegram }: TagDependencies, data: Recip
         change(async () => api.renameTag(tagId, name)).catch(noop);
       }
     }, "recipes.tags.rename"),
-    removeTag: action((tagId: string) => {
-      remove(tagId).catch(noop);
-    }, "recipes.tags.remove"),
+    removeTag: detached(remove, "recipes.tags.remove"),
   };
 }

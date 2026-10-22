@@ -4,6 +4,7 @@ import type { Photo } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
+import { detached, readOnly } from "@/common/state";
 import { didSucceedOrAlert, type Dialogs, type PopupParams } from "@/common/telegram";
 
 import type { AlbumsApi } from "../albums.api.ts";
@@ -167,7 +168,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
   return {
     screen,
     ...parts,
-    photoHint: computed(() => dependencies.photoHint(), "albums.photoHint"),
+    photoHint: readOnly(dependencies.photoHint),
     title: computed(() => titleOf(screen()), "albums.title"),
     canGoBack: computed(
       () => navigation.isEditing() || data.isAllShown() || navigation.openedId() !== undefined,
@@ -180,9 +181,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
       data.isAllShown.set(true);
     }, "albums.openAll"),
     ...reatomMoves({ data, navigation, form: parts.form, batch: parts.batch }),
-    remove: action(() => {
-      remove().catch(noop);
-    }, "albums.removeAlbum"),
+    remove: detached(remove, "albums.removeAlbum"),
   };
 }
 

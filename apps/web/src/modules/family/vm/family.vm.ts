@@ -1,6 +1,7 @@
-import { action, atom, computed, noop } from "@reatom/core";
+import { action, atom, computed } from "@reatom/core";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
+import { detached, readOnly } from "@/common/state";
 
 import { reatomDeletion, reatomLeave } from "./family-exit.vm.ts";
 import { reatomManage } from "./family-manage.vm.ts";
@@ -49,7 +50,7 @@ function reatomDeletionFlow(sources: FamilySources) {
 
   return {
     deletion: form,
-    isDeletionOpen: computed(() => isOpen(), "family.isDeletionOpenNow"),
+    isDeletionOpen: readOnly(isOpen),
     isDeleting: computed(() => !form.submit.ready(), "family.isDeleting"),
     deletionFailure: reatomSubmitFailure(form, {
       message: "Не получилось удалить семью. Попробуйте ещё раз.",
@@ -64,9 +65,7 @@ function reatomDeletionFlow(sources: FamilySources) {
 
       fillForm(form, { familyName: "" });
     }, "family.closeDeletion"),
-    deleteFamily: action(() => {
-      form.submit().catch(noop);
-    }, "family.deleteFamily"),
+    deleteFamily: detached(form.submit, "family.deleteFamily"),
   };
 }
 
@@ -83,17 +82,13 @@ export function reatomFamily(dependencies: FamilyDependencies) {
         sources.list.error() === undefined ? undefined : "Не получилось загрузить участников.",
       "family.loadFailure",
     ),
-    failure: computed(() => sources.failure(), "family.visibleFailure"),
-    canDeleteFamily: computed(() => sources.isOwner(), "family.canDeleteFamily"),
+    failure: readOnly(sources.failure),
+    canDeleteFamily: readOnly(sources.isOwner),
     isBusy: computed(() => !manage.ready() || !leave.ready(), "family.isBusy"),
     ...deletionFlow,
 
-    manage: action((memberId: string) => {
-      manage(memberId).catch(noop);
-    }, "family.manageOne"),
-    leave: action(() => {
-      leave().catch(noop);
-    }, "family.leaveFamily"),
+    manage: detached(manage, "family.manageOne"),
+    leave: detached(leave, "family.leaveFamily"),
   };
 }
 

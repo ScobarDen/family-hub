@@ -1,18 +1,10 @@
-import {
-  action,
-  atom,
-  computed,
-  noop,
-  withAsync,
-  withAsyncData,
-  wrap,
-  type Atom,
-} from "@reatom/core";
+import { action, atom, computed, withAsync, withAsyncData, wrap, type Atom } from "@reatom/core";
 
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
+import { detached, readOnly } from "@/common/state";
 import { didSucceedOrAlert, type Dialogs, type PopupParams } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
@@ -156,12 +148,8 @@ function reatomRecipeActions(
   }, "recipes.favorite").extend(withAsync());
 
   return {
-    remove: action(() => {
-      remove().catch(noop);
-    }, "recipes.removeRecipe"),
-    toggleFavorite: action(() => {
-      favorite().catch(noop);
-    }, "recipes.toggleFavorite"),
+    remove: detached(remove, "recipes.removeRecipe"),
+    toggleFavorite: detached(favorite, "recipes.toggleFavorite"),
     toggleIngredient: action((index: number) => {
       const current = navigation.checked();
 
@@ -174,9 +162,9 @@ function reatomRecipeActions(
 
 function reatomFilters(data: RecipesData) {
   return {
-    text: computed(() => data.text(), "recipes.searchText"),
-    tagId: computed(() => data.tagId(), "recipes.chosenTag"),
-    isFavorite: computed(() => data.isFavorite(), "recipes.isFavoriteShown"),
+    text: readOnly(data.text),
+    tagId: readOnly(data.tagId),
+    isFavorite: readOnly(data.isFavorite),
     search: action((text: string) => {
       data.text.set(text);
     }, "recipes.search"),
