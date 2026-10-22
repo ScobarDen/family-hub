@@ -5,7 +5,7 @@ import { detached, readOnly } from "@/common/state";
 
 import { reatomDeletion, reatomLeave } from "./family-exit.vm.ts";
 import { reatomManage } from "./family-manage.vm.ts";
-import { reatomList, type FamilyDependencies, type FamilySources } from "./family-sources.vm.ts";
+import type { FamilyDependencies, FamilySources } from "./family-sources.vm.ts";
 
 export type FamilyMemberItem = {
   id: string;
@@ -16,7 +16,7 @@ export type FamilyMemberItem = {
 };
 
 function reatomSources(dependencies: FamilyDependencies): FamilySources {
-  const list = reatomList(dependencies.api);
+  const list = dependencies.members;
 
   return {
     ...dependencies,

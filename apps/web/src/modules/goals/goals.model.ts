@@ -1,17 +1,23 @@
 import { action, computed, withAsyncData, wrap } from "@reatom/core";
 
-import type { Goal } from "@family-hub/contract";
+import type { FamilyMember, Goal } from "@family-hub/contract";
 
 import { upserted } from "@/common/records";
 
 import type { GoalsApi } from "./goals.api.ts";
 
-export function reatomGoals({ api }: { api: GoalsApi }) {
+export function reatomGoals({
+  api,
+  members,
+}: {
+  api: GoalsApi;
+  members: { data: () => FamilyMember[] | undefined };
+}) {
   const list = computed(async () => wrap(api.list()), "goals.list").extend(withAsyncData());
 
   return {
     list,
-    members: computed(async () => wrap(api.members()), "goals.members").extend(withAsyncData()),
+    members,
 
     // The total is the server's to count, so a saved Goal brings a fresh list with it.
     keep: action((saved: Goal) => {

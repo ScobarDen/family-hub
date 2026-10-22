@@ -1,14 +1,4 @@
-import {
-  action,
-  atom,
-  computed,
-  isAbort,
-  noop,
-  withAbort,
-  withAsyncData,
-  wrap,
-  type Atom,
-} from "@reatom/core";
+import { action, atom, computed, isAbort, noop, withAbort, wrap, type Atom } from "@reatom/core";
 
 import {
   draftRefusalTexts,
@@ -22,6 +12,8 @@ import {
   type CommandOutcome,
   type CommandPhrase,
   type DraftCreated,
+  type FamilyMember,
+  type Pet,
 } from "@family-hub/contract";
 
 import { HttpError } from "@/common/http-client";
@@ -32,7 +24,9 @@ import type { CommandApi } from "../command.api.ts";
 export type OpenedDraft = { draftId: string; draft: CommandDraft; phrase: CommandPhrase };
 
 type CommandSheetDependencies = {
-  api: Pick<CommandApi, "send" | "open" | "create" | "pick" | "dismiss" | "members" | "pets">;
+  api: Pick<CommandApi, "send" | "open" | "create" | "pick" | "dismiss">;
+  members: { data: () => FamilyMember[] | undefined };
+  pets: { data: () => Pet[] | undefined };
   // «Изменить» hands the draft to the module whose form creates that kind of record.
   onEdit: (opened: OpenedDraft) => void;
   onCreated: (created: DraftCreated) => void;
@@ -205,21 +199,18 @@ function sheetOf(current: Phase, names: FamilyNames): CommandSheet {
 export function reatomCommandSheet(dependencies: CommandSheetDependencies) {
   const phase = atom<Phase>({ kind: "closed" }, "commandSheet.phase");
   // Pets in care only, as the server offers them to the model.
-  const names = computed(async (): Promise<FamilyNames> => {
-    const [members, pets] = await wrap(
-      Promise.all([dependencies.api.members(), dependencies.api.pets()]),
-    );
-
-    return { members, pets: pets.filter(({ archivedAt }) => archivedAt === null) };
-  }, "commandSheet.names").extend(withAsyncData());
+  const names = computed(
+    (): FamilyNames => ({
+      members: dependencies.members.data() ?? [],
+      pets: (dependencies.pets.data() ?? []).filter(({ archivedAt }) => archivedAt === null),
+    }),
+    "commandSheet.names",
+  );
 
   const { stopSending, ...requests } = reatomRequests(dependencies, phase);
 
   return {
-    sheet: computed(
-      () => sheetOf(phase(), names.data() ?? { members: [], pets: [] }),
-      "commandSheet.sheet",
-    ),
+    sheet: computed(() => sheetOf(phase(), names()), "commandSheet.sheet"),
     ...requests,
     ...reatomDecisions(dependencies, phase),
     ...reatomLeaving(dependencies, { phase, stopSending }),

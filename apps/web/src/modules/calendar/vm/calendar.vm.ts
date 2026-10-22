@@ -15,7 +15,7 @@ import {
   type CalendarItem,
   type DayCell,
 } from "../calendar.lib.ts";
-import { reatomCalendarData, type CalendarData } from "../calendar.model.ts";
+import { reatomCalendarData, type CalendarData, type CalendarLists } from "../calendar.model.ts";
 import { reatomEventDetails, type OpenedOccurrence } from "./event-details.vm.ts";
 import { reatomEventForm, type EventDraftOpening } from "./event-form.vm.ts";
 import { reatomReminderForm, type ReminderDraftOpening } from "./reminder-form.vm.ts";
@@ -26,7 +26,7 @@ export type CalendarScreen =
   | { kind: "event-form" }
   | { kind: "reminder-form" };
 
-type CalendarDependencies = {
+type CalendarDependencies = CalendarLists & {
   api: CalendarApi;
   today: () => string;
   timeZone: () => string;

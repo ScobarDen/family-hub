@@ -122,15 +122,27 @@ function fakeBackend(outcome: CommandOutcome) {
   };
 }
 
+function sheetOver(
+  backend: ReturnType<typeof fakeBackend>,
+  {
+    onEdit = noop,
+    onCreated = noop,
+  }: { onEdit?: (opened: OpenedDraft) => void; onCreated?: (created: DraftCreated) => void } = {},
+) {
+  return reatomCommandSheet({
+    api: createCommandApi(createHttpClient({ baseUrl: "https://api.test", fetch: backend.fetch })),
+    members: { data: () => members },
+    pets: { data: () => pets },
+    onEdit,
+    onCreated,
+  });
+}
+
 function startSheet(draft: ReminderDraft = internet) {
   const backend = fakeBackend({ status: "draft", draftId: "draft-1", phrase, heard, draft });
   const edited: OpenedDraft[] = [];
   const created: DraftCreated[] = [];
-  const api = createCommandApi(
-    createHttpClient({ baseUrl: "https://api.test", fetch: backend.fetch }),
-  );
-  const model = reatomCommandSheet({
-    api,
+  const model = sheetOver(backend, {
     onEdit: (opened) => {
       edited.push(opened);
     },
@@ -328,13 +340,7 @@ describe("the preview sheet", () => {
         ambiguities: [],
       },
     });
-    const model = reatomCommandSheet({
-      api: createCommandApi(
-        createHttpClient({ baseUrl: "https://api.test", fetch: backend.fetch }),
-      ),
-      onEdit: noop,
-      onCreated: noop,
-    });
+    const model = sheetOver(backend);
 
     model.send(new Blob(["voice"]));
 
@@ -372,13 +378,7 @@ describe("the preview sheet", () => {
         ambiguities: [{ field: "pet", mention: "", candidateIds: ["pet-1", "pet-2"] }],
       },
     });
-    const model = reatomCommandSheet({
-      api: createCommandApi(
-        createHttpClient({ baseUrl: "https://api.test", fetch: backend.fetch }),
-      ),
-      onEdit: noop,
-      onCreated: noop,
-    });
+    const model = sheetOver(backend);
 
     model.send(new Blob(["voice"]));
 
@@ -404,13 +404,7 @@ describe("the preview sheet", () => {
 
   test("says what went wrong with the bot's words", async () => {
     const backend = fakeBackend({ status: "unheard", heard: null, message: "Не расслышал" });
-    const model = reatomCommandSheet({
-      api: createCommandApi(
-        createHttpClient({ baseUrl: "https://api.test", fetch: backend.fetch }),
-      ),
-      onEdit: noop,
-      onCreated: noop,
-    });
+    const model = sheetOver(backend);
 
     model.send(new Blob(["voice"]));
 

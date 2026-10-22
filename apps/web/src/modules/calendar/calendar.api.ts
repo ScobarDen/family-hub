@@ -3,8 +3,6 @@ import {
   calendarEventList,
   dueDateList,
   eventDeleted,
-  familyMemberList,
-  petList,
   planList,
   reminder,
   reminderDeleted,
@@ -18,7 +16,6 @@ import type { HttpClient } from "@/common/http-client";
 export function createCalendarApi(client: HttpClient) {
   return {
     events: async () => client.request("/api/events", { schema: calendarEventList }),
-    pets: async () => client.request("/api/pets", { schema: petList }),
     dueDates: async (petId: string) =>
       client.request(`/api/pets/${petId}/due-dates`, { schema: dueDateList }),
 
@@ -40,7 +37,6 @@ export function createCalendarApi(client: HttpClient) {
       client.request(`/api/events/${eventId}`, { method: "DELETE", schema: eventDeleted }),
 
     plans: async () => client.request("/api/plans", { schema: planList }),
-    members: async () => client.request("/api/family/members", { schema: familyMemberList }),
     reminders: async () => client.request("/api/reminders", { schema: reminderList }),
     createReminder: async (change: ReminderChange) =>
       client.request("/api/reminders", { method: "POST", body: change, schema: reminder }),

@@ -1,7 +1,5 @@
 import {
   albumList,
-  familyMemberList,
-  petList,
   plan,
   planDeleted,
   planList,
@@ -65,8 +63,6 @@ export function createPlansApi(client: HttpClient) {
 
       return plans.map((each) => resolvedPlan(client, each));
     },
-    members: async () => client.request("/api/family/members", { schema: familyMemberList }),
-    pets: async () => client.request("/api/pets", { schema: petList }),
     albums: async () => client.request("/api/albums", { schema: albumList }),
 
     create: async (change: PlanChange) => post("/api/plans", change),

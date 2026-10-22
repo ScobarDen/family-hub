@@ -13,16 +13,16 @@ import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCareApi, reatomCare } from "@/modules/care";
 import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
 import { createDigestApi, reatomDigest } from "@/modules/digest";
-import { createFamilyApi, reatomFamily } from "@/modules/family";
+import { createFamilyApi, reatomFamily, reatomFamilyMembers } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
 import { createFeedApi, reatomFeed } from "@/modules/feed";
-import { createGoalsApi, reatomGoals, reatomGoalsScreen } from "@/modules/goals";
+import { createGoalsApi, reatomGoalsScreen } from "@/modules/goals";
 import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import { reatomNotifications } from "@/modules/notifications";
 import { createPetsApi, reatomPets, reatomPetsScreen } from "@/modules/pets";
 import { createPhotoStorageApi, reatomPhotoStorage } from "@/modules/photo-storage";
-import { createPlansApi, reatomPlans, reatomPlansScreen } from "@/modules/plans";
+import { createPlansApi, reatomPlansScreen } from "@/modules/plans";
 import { createRecipesApi, reatomRecipesScreen } from "@/modules/recipes";
 import { createSessionApi, reatomSession } from "@/modules/session";
 import {
@@ -92,6 +92,11 @@ function self(): string | undefined {
 }
 
 const commandApi = createCommandApi(httpClient);
+const familyApi = createFamilyApi(httpClient);
+// One query each for the Family's Members and Pets, so every picker sees the same list.
+const members = reatomFamilyMembers(familyApi);
+const petsApi = createPetsApi(httpClient);
+const petsModel = reatomPets({ api: petsApi });
 
 async function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
@@ -123,10 +128,10 @@ const recipes = reatomRecipesScreen({
   preparePhoto: prepare,
   photoHint: photoStorage.uploadHint,
 });
-const plansApi = createPlansApi(httpClient);
 const plans = reatomPlansScreen({
-  api: plansApi,
-  plans: reatomPlans({ api: plansApi }),
+  api: createPlansApi(httpClient),
+  members,
+  pets: petsModel.list,
   telegram,
   self,
   timeZone: zone,
@@ -134,17 +139,14 @@ const plans = reatomPlansScreen({
     opener.open({ kind: "album", albumId });
   },
 });
-const goalsApi = createGoalsApi(httpClient);
 const goals = reatomGoalsScreen({
-  api: goalsApi,
-  goals: reatomGoals({ api: goalsApi }),
+  api: createGoalsApi(httpClient),
+  members,
   telegram,
   self,
   today,
   timeZone: zone,
 });
-const petsApi = createPetsApi(httpClient);
-const petsModel = reatomPets({ api: petsApi });
 const pets = reatomPetsScreen({
   api: petsApi,
   pets: petsModel,
@@ -186,6 +188,8 @@ const care = reatomCare({
 });
 const calendar = reatomCalendar({
   api: createCalendarApi(httpClient),
+  members,
+  pets: petsModel.list,
   today,
   timeZone: zone,
   telegram,
@@ -203,6 +207,8 @@ const calendar = reatomCalendar({
 
 const commandSheet = reatomCommandSheet({
   api: commandApi,
+  members,
+  pets: petsModel.list,
   onEdit: (opened) => {
     opener.editDraft(opened);
   },
@@ -296,7 +302,8 @@ const home = {
     saved: () => session.member()?.settings.digest,
   }),
   family: reatomFamily({
-    api: createFamilyApi(httpClient),
+    api: familyApi,
+    members,
     telegram,
     self: () => {
       const current = session.member();

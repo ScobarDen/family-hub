@@ -9,7 +9,7 @@ import {
   wrap,
 } from "@reatom/core";
 
-import type { Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
+import type { FamilyMember, Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
 
 import { formatRubles } from "@/common/format-money";
 import { detached } from "@/common/state";
@@ -17,7 +17,7 @@ import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram"
 
 import type { GoalsApi } from "../goals.api.ts";
 import { sectionsOf, toDetails, type GoalDetails, type GoalSections } from "../goals.lib.ts";
-import type { GoalsModel } from "../goals.model.ts";
+import { reatomGoals, type GoalsModel } from "../goals.model.ts";
 import { reatomGoalForm } from "./goal-form.vm.ts";
 import { reatomMovementForm } from "./movement-form.vm.ts";
 
@@ -225,7 +225,10 @@ function titleOf(screen: GoalsScreen): string {
   return "Цели";
 }
 
-export function reatomGoalsScreen(dependencies: GoalsDependencies) {
+export function reatomGoalsScreen(
+  input: Omit<GoalsDependencies, "goals"> & { members: { data: () => FamilyMember[] | undefined } },
+) {
+  const dependencies: GoalsDependencies = { ...input, goals: reatomGoals(input) };
   const navigation: Navigation = {
     editing: atom<"goal" | "movement" | undefined>(undefined, "goals.editing"),
     openedGoalId: atom<string | undefined>(undefined, "goals.openedGoalId"),

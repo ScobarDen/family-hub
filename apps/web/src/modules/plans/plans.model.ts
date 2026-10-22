@@ -1,18 +1,23 @@
 import { action, computed, withAsyncData, wrap } from "@reatom/core";
 
-import type { Plan } from "@family-hub/contract";
+import type { FamilyMember, Pet, Plan } from "@family-hub/contract";
 
 import { byDueDate, upserted, withoutId } from "@/common/records";
 
 import type { PlansApi } from "./plans.api.ts";
 
-export function reatomPlans({ api }: { api: PlansApi }) {
+export type SharedLists = {
+  members: { data: () => FamilyMember[] | undefined };
+  pets: { data: () => Pet[] | undefined };
+};
+
+export function reatomPlans({ api, members, pets }: { api: PlansApi } & SharedLists) {
   const list = computed(async () => wrap(api.list()), "plans.list").extend(withAsyncData());
 
   return {
     list,
-    members: computed(async () => wrap(api.members()), "plans.members").extend(withAsyncData()),
-    pets: computed(async () => wrap(api.pets()), "plans.pets").extend(withAsyncData()),
+    members,
+    pets,
     albums: computed(async () => wrap(api.albums()), "plans.albums").extend(withAsyncData()),
 
     keep: action((saved: Plan) => {

@@ -4,8 +4,8 @@ The «Планы» tab: the Family's Plans with their Subplans, Assignees and pr
 
 ## Injected
 
-- `api` — `createPlansApi(httpClient)`: the Plans the session Member may see, their Subplans, completing and reopening, and the Family's Members for the Assignee choice.
-- `plans` — `reatomPlans({ api })`: the Plans (`withAsyncData`, loaded when the tab subscribes) and the Members; a saved Plan replaces its old copy and keeps the list sorted.
+- `api` — `createPlansApi(httpClient)`: the Plans the session Member may see, their Subplans, completing and reopening.
+- `members`, `pets` — the Family's shared queries from `app/main.tsx` (`reatomFamilyMembers` of the family module, the pets module's list), so every picker shows the same Members and Pets. `reatomPlansScreen` builds `reatomPlans` over them: the Plans (`withAsyncData`, loaded when the tab subscribes); a saved Plan replaces its old copy and keeps the list sorted.
 - `telegram` — `showPopup` from `common/telegram` for the confirmations.
 - `self` — the session Member's id: a Private Plan's Assignee is its owner or nobody.
 - `timeZone` — the zone «Выполнено …» is shown in; the Member's own zone, the device's until it is known.

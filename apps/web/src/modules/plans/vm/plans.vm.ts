@@ -6,7 +6,7 @@ import type { Dialogs } from "@/common/telegram";
 
 import type { PlansApi } from "../plans.api.ts";
 import { toDetails, toListItem, type PlanDetails, type PlanListItem } from "../plans.lib.ts";
-import type { PlansModel } from "../plans.model.ts";
+import { reatomPlans, type PlansModel, type SharedLists } from "../plans.model.ts";
 import { reatomPlanActions } from "./plan-actions.vm.ts";
 import { reatomPlanFormModel } from "./plan-form.vm.ts";
 import { reatomSubplanFormModel } from "./subplan-form.vm.ts";
@@ -156,7 +156,16 @@ function titleOf(screen: PlansScreen): string {
   return screen.kind === "subplan-form" ? "Шаг" : "Планы";
 }
 
-export function reatomPlansScreen(dependencies: PlansDependencies) {
+// The pet card shows its open Plans in «Скоро»; the plans module stays their only source.
+function openPlansOf(plans: PlansModel) {
+  return (petId: string) =>
+    (plans.list.data() ?? []).filter(
+      ({ pet, completed }) => pet?.id === petId && completed === null,
+    );
+}
+
+export function reatomPlansScreen(input: Omit<PlansDependencies, "plans"> & SharedLists) {
+  const dependencies: PlansDependencies = { ...input, plans: reatomPlans(input) };
   const navigation: Navigation = {
     editing: atom<"plan" | "subplan" | undefined>(undefined, "plans.editing"),
     openedPlanId: atom<string | undefined>(undefined, "plans.openedPlanId"),
@@ -180,11 +189,7 @@ export function reatomPlansScreen(dependencies: PlansDependencies) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "plans.title"),
-    // The pet card shows its open Plans in «Скоро»; the plans module stays their only source.
-    openPlansOf: (petId: string) =>
-      (dependencies.plans.list.data() ?? []).filter(
-        ({ pet, completed }) => pet?.id === petId && completed === null,
-      ),
+    openPlansOf: openPlansOf(dependencies.plans),
     canGoBack: computed(
       () => navigation.editing() !== undefined || openedPlan() !== undefined,
       "plans.canGoBack",

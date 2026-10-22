@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { planChange, type FamilyMemberList, type Plan, type PlanList } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
+import { createPetsApi, reatomPets } from "@/modules/pets";
 
 import { createPlansApi } from "../plans.api.ts";
-import { reatomPlans } from "../plans.model.ts";
 import { reatomPlansScreen } from "./plans.vm.ts";
 
 const members: FamilyMemberList = [
@@ -147,7 +148,8 @@ function startPlans(backend = fakeBackend(), telegram = fakeTelegram()) {
   const openedAlbums: string[] = [];
   const model = reatomPlansScreen({
     api,
-    plans: reatomPlans({ api }),
+    members: reatomFamilyMembers(createFamilyApi(client)),
+    pets: reatomPets({ api: createPetsApi(client) }).list,
     telegram,
     self: () => "member-1",
     timeZone: () => "Europe/Moscow",
