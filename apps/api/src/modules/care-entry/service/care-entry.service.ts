@@ -11,7 +11,7 @@ import type { Clock } from "@/common/clock";
 import type { PhotoLinks } from "@/common/photo-link";
 
 import { columnsOf, summaryOf, toDueDateItem, todayIn } from "../care-entry.lib.ts";
-import type { CareEntryRepo } from "../care-entry.repo.ts";
+import type { CareEntryRepo, CareEntryRow } from "../care-entry.repo.ts";
 import { openDueDates } from "../due-date/index.ts";
 import { hasForeignPhotos, withPhotos } from "./entry-photo.service.ts";
 
@@ -75,10 +75,25 @@ async function writableEntry(
   dependencies: CareEntryDependencies,
   membership: Membership,
   entryId: string,
-): Promise<CareRefusal | undefined> {
+): Promise<CareEntryRow | CareRefusal> {
   const entry = await dependencies.entries.find(membership.family.id, entryId);
 
-  return entry ? writablePet(dependencies, membership, entry.petId) : "not-found";
+  if (entry === undefined) {
+    return "not-found";
+  }
+
+  return (await writablePet(dependencies, membership, entry.petId)) ?? entry;
+}
+
+// Only an entry with a Due Date, before or after the change, moves the Pet's Reminders.
+async function scheduleIfDue(
+  { schedule }: CareEntryDependencies,
+  { family }: Membership,
+  { petId, dueKeys }: { petId: string; dueKeys: Array<string | null> },
+): Promise<void> {
+  if (dueKeys.some((dueKey) => dueKey !== null)) {
+    await schedule.sourceChanged(family.id, { kind: "pet", id: petId });
+  }
 }
 
 async function photoRefusal(
@@ -89,18 +104,6 @@ async function photoRefusal(
   return (await hasForeignPhotos(dependencies, membership, photoIds))
     ? "photo-not-found"
     : undefined;
-}
-
-async function scheduleOfEntry(
-  { entries, schedule }: CareEntryDependencies,
-  { family }: Membership,
-  entryId: string,
-): Promise<void> {
-  const entry = await entries.find(family.id, entryId);
-
-  if (entry !== undefined) {
-    await schedule.sourceChanged(family.id, { kind: "pet", id: entry.petId });
-  }
 }
 
 async function create(
@@ -118,12 +121,13 @@ async function create(
 
   const now = dependencies.clock.now();
   const id = uuidv7(now);
+  const values = valuesOf(change);
 
   await dependencies.entries.add({
     id,
     familyId: membership.family.id,
     petId,
-    ...valuesOf(change),
+    ...values,
     createdAt: now,
     createdBy: membership.member.id,
     updatedAt: now,
@@ -133,7 +137,7 @@ async function create(
     entryId: id,
     photoIds: change.photoIds,
   });
-  await dependencies.schedule.sourceChanged(membership.family.id, { kind: "pet", id: petId });
+  await scheduleIfDue(dependencies, membership, { petId, dueKeys: [values.dueKey] });
 
   return current(dependencies, membership, id);
 }
@@ -144,16 +148,22 @@ async function update(
   membership: Membership,
   { entryId, change }: { entryId: string; change: CareEntryChange },
 ): Promise<CareResult> {
-  const refusal =
-    (await writableEntry(dependencies, membership, entryId)) ??
-    (await photoRefusal(dependencies, membership, change));
+  const entry = await writableEntry(dependencies, membership, entryId);
+
+  if (typeof entry === "string") {
+    return { status: entry };
+  }
+
+  const refusal = await photoRefusal(dependencies, membership, change);
 
   if (refusal !== undefined) {
     return { status: refusal };
   }
 
+  const values = valuesOf(change);
+
   await dependencies.entries.update(membership.family.id, entryId, {
-    ...valuesOf(change),
+    ...values,
     updatedAt: dependencies.clock.now(),
   });
   await dependencies.entries.setPhotos({
@@ -161,7 +171,10 @@ async function update(
     entryId,
     photoIds: change.photoIds,
   });
-  await scheduleOfEntry(dependencies, membership, entryId);
+  await scheduleIfDue(dependencies, membership, {
+    petId: entry.petId,
+    dueKeys: [entry.dueKey, values.dueKey],
+  });
 
   return current(dependencies, membership, entryId);
 }
@@ -171,22 +184,14 @@ async function remove(
   membership: Membership,
   entryId: string,
 ): Promise<RemoveResult> {
-  const refusal = await writableEntry(dependencies, membership, entryId);
+  const entry = await writableEntry(dependencies, membership, entryId);
 
-  if (refusal !== undefined) {
-    return { status: refusal };
+  if (typeof entry === "string") {
+    return { status: entry };
   }
-
-  const entry = await dependencies.entries.find(membership.family.id, entryId);
 
   await dependencies.entries.delete(membership.family.id, entryId);
-
-  if (entry !== undefined) {
-    await dependencies.schedule.sourceChanged(membership.family.id, {
-      kind: "pet",
-      id: entry.petId,
-    });
-  }
+  await scheduleIfDue(dependencies, membership, { petId: entry.petId, dueKeys: [entry.dueKey] });
 
   return { status: "deleted" };
 }
