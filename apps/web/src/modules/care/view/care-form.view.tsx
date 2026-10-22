@@ -1,8 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 import type { FormEvent, ReactNode } from "react";
 
-import type { CareKind } from "@family-hub/contract";
-
 import {
   Button,
   ChoiceField,
@@ -12,7 +10,7 @@ import {
   type Choice,
 } from "@/common/ui";
 
-import { categoryTitles, kindTitles } from "../care.config.ts";
+import { kindTitles } from "../care.config.ts";
 import type { CareFormModel } from "../vm/care-form.vm.ts";
 
 type CareFormProps = {
@@ -25,62 +23,31 @@ type CareFormProps = {
 
 type ActionsProps = Omit<CareFormProps, "photos">;
 
-type Fields = CareFormModel["form"]["fields"];
-
 const kindChoices: Choice[] = Object.entries(kindTitles).map(([value, title]) => ({
   value,
   title,
 }));
-const categoryChoices: Choice[] = Object.entries(categoryTitles).map(([value, title]) => ({
-  value,
-  title,
-}));
-const costChoices: Choice[] = [
-  { value: "vet", title: categoryTitles.vet },
-  { value: "medicine", title: categoryTitles.medicine },
-];
-const nameLabels: Partial<Record<CareKind, string>> = {
-  vaccination: "Вакцина",
-  treatment: "От чего",
-};
 
-function MedicalFields({ fields, kind }: { fields: Fields; kind: CareKind }) {
-  const nameLabel = nameLabels[kind];
+const KindFields = reatomComponent(({ model }: { model: CareFormModel }) => {
+  const { fields } = model.form;
 
-  return (
-    <>
-      {nameLabel !== undefined && (
-        <TextField field={fields.name} id="care-name" label={nameLabel} />
-      )}
-      {kind === "treatment" && (
-        <TextField field={fields.product} id="care-product" label="Препарат" />
-      )}
-      {kind === "vet_visit" && <TextField field={fields.reason} id="care-reason" label="Причина" />}
-      <TextField field={fields.costAmount} id="care-cost" label="Стоимость, ₽" />
-      <ChoiceField field={fields.costCategory} label="Стоимость — это" choices={costChoices} />
-      <TextField field={fields.dueDate} id="care-due-date" label="Повторить до" type="date" />
-    </>
-  );
-}
-
-function kindFields(fields: Fields, kind: CareKind): ReactNode {
-  if (kind === "weight") {
-    return (
-      <TextField field={fields.weightKg} id="care-weight" label="Вес, кг" placeholder="12,4" />
+  return model
+    .kindFields()
+    .map(({ name, label, placeholder, type, choices }) =>
+      choices === undefined ? (
+        <TextField
+          key={name}
+          field={fields[name]}
+          id={`care-${name}`}
+          label={label}
+          {...(placeholder === undefined ? {} : { placeholder })}
+          {...(type === undefined ? {} : { type })}
+        />
+      ) : (
+        <ChoiceField key={name} field={fields[name]} label={label} choices={choices} />
+      ),
     );
-  }
-
-  if (kind === "expense") {
-    return (
-      <>
-        <TextField field={fields.amount} id="care-amount" label="Сумма, ₽" />
-        <ChoiceField field={fields.category} label="Категория" choices={categoryChoices} />
-      </>
-    );
-  }
-
-  return kind === "note" ? undefined : <MedicalFields fields={fields} kind={kind} />;
-}
+}, "KindFields");
 
 const Actions = reatomComponent(({ model, isReadOnly, onCancel, onRemove }: ActionsProps) => {
   const isSaving = model.isSaving();
@@ -125,7 +92,7 @@ export const CareForm = reatomComponent(({ photos, ...props }: CareFormProps) =>
       <fieldset className="flex min-w-0 flex-col gap-4" disabled={isReadOnly}>
         <ChoiceField field={fields.kind} label="Что записать" choices={kindChoices} />
         <TextField field={fields.occurredAt} id="care-time" label="Когда" type="datetime-local" />
-        {kindFields(fields, model.kind())}
+        <KindFields model={model} />
         <TextAreaField field={fields.note} id="care-note" label="Заметка" />
         {photos}
       </fieldset>
