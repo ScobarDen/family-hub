@@ -58,7 +58,8 @@ async function uploadedOrRateLimit(
   }
 }
 
-// The same picture uploaded twice is one photo: Telegram gives it the same file_unique_id.
+// The same picture uploaded twice, even at once, is one photo: Telegram gives it the same
+// file_unique_id, and the first row written wins.
 async function upload(
   dependencies: PhotoDependencies,
   membership: Membership,
@@ -81,9 +82,8 @@ async function upload(
     return { status: "rate-limited", retryAfterSeconds: uploaded.retryAfterSeconds };
   }
 
-  const known = await dependencies.photos.findByUnique(familyId, uploaded.fileUniqueId);
   const now = dependencies.clock.now();
-  const row = known ?? {
+  const fresh = {
     id: uuidv7(now),
     familyId,
     ...uploaded,
@@ -92,9 +92,9 @@ async function upload(
     createdBy: membership.member.id,
   };
 
-  if (known === undefined) {
-    await dependencies.photos.add(row);
-  }
+  await dependencies.photos.add(fresh);
+
+  const row = (await dependencies.photos.findByUnique(familyId, uploaded.fileUniqueId)) ?? fresh;
 
   return { status: "ok", photo: await dependencies.links.photoOf(row, viewerOf(membership)) };
 }

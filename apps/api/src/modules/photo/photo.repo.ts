@@ -37,7 +37,7 @@ export function createPhotoRepo(db: Db) {
       db.select().from(photos).where(eq(photos.id, photoId)).get(),
 
     async add(photo: typeof photos.$inferInsert): Promise<void> {
-      await db.insert(photos).values(photo);
+      await db.insert(photos).values(photo).onConflictDoNothing();
     },
     async delete({ familyId, photoId }: PhotoTarget): Promise<void> {
       await db.delete(photos).where(and(eq(photos.familyId, familyId), eq(photos.id, photoId)));
