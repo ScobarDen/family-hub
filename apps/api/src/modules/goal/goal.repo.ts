@@ -1,8 +1,9 @@
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { bindFirst } from "@/common/bind";
 import { familyMembers, goalMovements, goals, members, type Db } from "@/common/db";
+import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
 
 export type GoalRow = typeof goals.$inferSelect & { completedByName: string | null };
 
@@ -31,7 +32,7 @@ async function listVisible(db: Db, { familyId, memberId, goalId }: Viewer): Prom
         goalId === undefined ? undefined : eq(goals.id, goalId),
       ),
     )
-    .orderBy(asc(goals.createdAt))
+    .orderBy(asc(goals.createdAt), asc(sql`${goals}.rowid`))
     .all();
 
   return rows.map(({ goal, completedByName }) => ({ ...goal, completedByName }));
@@ -58,6 +59,68 @@ async function movementsOf(db: Db, familyId: string, goalIds: string[]): Promise
   }));
 }
 
+const movementKeyed = { at: goalMovements.createdAt, key: keyOf("movement", goalMovements.id) };
+const closingKeyed = { at: goals.completedAt, key: keyOf("goal", goals.id) };
+
+function isVisibleTo({ familyId, memberId }: Viewer) {
+  return and(
+    eq(goals.familyId, familyId),
+    or(eq(goals.visibility, "shared"), eq(goals.ownerMemberId, memberId)),
+  );
+}
+
+// A Private Goal hides its money along with it.
+async function movementsBefore(db: Db, viewer: Viewer, { keyset, limit }: KeysetPage) {
+  return db
+    .select({
+      key: movementKeyed.key,
+      kind: goalMovements.kind,
+      amount: goalMovements.amount,
+      createdAt: goalMovements.createdAt,
+      memberName: owners.name,
+      goalId: goals.id,
+      goalTitle: goals.title,
+    })
+    .from(goalMovements)
+    .innerJoin(goals, eq(goals.id, goalMovements.goalId))
+    .innerJoin(owners, eq(owners.id, goalMovements.memberId))
+    .where(
+      and(
+        eq(goalMovements.familyId, viewer.familyId),
+        isVisibleTo(viewer),
+        olderThan(movementKeyed, keyset),
+      ),
+    )
+    .orderBy(...newestFirstBy(movementKeyed))
+    .limit(limit)
+    .all();
+}
+
+async function closingsBefore(db: Db, viewer: Viewer, { keyset, limit }: KeysetPage) {
+  return db
+    .select({
+      key: closingKeyed.key,
+      goalId: goals.id,
+      title: goals.title,
+      outcome: goals.outcome,
+      completedAt: goals.completedAt,
+      memberName: members.name,
+    })
+    .from(goals)
+    .leftJoin(members, eq(members.id, goals.completedBy))
+    .where(
+      and(
+        isVisibleTo(viewer),
+        isNotNull(goals.completedAt),
+        isNotNull(goals.outcome),
+        olderThan(closingKeyed, keyset),
+      ),
+    )
+    .orderBy(...newestFirstBy(closingKeyed))
+    .limit(limit)
+    .all();
+}
+
 function ofGoal({ familyId, goalId }: GoalTarget) {
   return and(eq(goals.familyId, familyId), eq(goals.id, goalId));
 }
@@ -68,7 +131,7 @@ function ofMovement({ familyId, movementId }: { familyId: string; movementId: st
 
 export function createGoalRepo(db: Db) {
   return {
-    ...bindFirst(db, { listVisible, movementsOf }),
+    ...bindFirst(db, { listVisible, movementsOf, movementsBefore, closingsBefore }),
 
     async isInFamily(familyId: string, memberId: string): Promise<boolean> {
       const row = await db

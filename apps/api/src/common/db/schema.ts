@@ -184,7 +184,7 @@ export const plans = sqliteTable(
     updatedAt: integer("updated_at").notNull(),
   },
   (table) => [
-    index("plans_family_id_idx").on(table.familyId),
+    index("plans_family_id_completed_at_idx").on(table.familyId, table.completedAt),
     index("plans_parent_id_idx").on(table.parentId),
   ],
 );
@@ -218,7 +218,7 @@ export const careEntries = sqliteTable(
   },
   (table) => [
     index("care_entries_pet_id_occurred_at_idx").on(table.petId, table.occurredAt),
-    index("care_entries_family_id_idx").on(table.familyId),
+    index("care_entries_family_id_created_at_idx").on(table.familyId, table.createdAt),
   ],
 );
 
@@ -357,7 +357,7 @@ export const goals = sqliteTable(
       .references(() => members.id),
     updatedAt: integer("updated_at").notNull(),
   },
-  (table) => [index("goals_family_id_idx").on(table.familyId)],
+  (table) => [index("goals_family_id_completed_at_idx").on(table.familyId, table.completedAt)],
 );
 
 export const goalMovements = sqliteTable(
@@ -383,7 +383,10 @@ export const goalMovements = sqliteTable(
       .references(() => members.id),
     updatedAt: integer("updated_at").notNull(),
   },
-  (table) => [index("goal_movements_goal_id_idx").on(table.goalId)],
+  (table) => [
+    index("goal_movements_goal_id_idx").on(table.goalId),
+    index("goal_movements_family_id_created_at_idx").on(table.familyId, table.createdAt),
+  ],
 );
 
 export type PhotoVariants = { thumb: string; medium: string; full: string };
@@ -444,6 +447,30 @@ export const albums = sqliteTable(
   (table) => [index("albums_family_id_idx").on(table.familyId)],
 );
 
+// Photos one Member added to one Album in one sitting: it goes on while the pauses stay under
+// uploadBatchGapMs, and the Feed shows it as one line ordered by its latest photo.
+export const albumUploadBatches = sqliteTable(
+  "album_upload_batches",
+  {
+    id: text("id").primaryKey(),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    albumId: text("album_id")
+      .notNull()
+      .references(() => albums.id, { onDelete: "cascade" }),
+    lastAddedAt: integer("last_added_at").notNull(),
+    createdAt: integer("created_at").notNull(),
+    createdBy: text("created_by")
+      .notNull()
+      .references(() => members.id),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    index("album_upload_batches_family_id_last_added_at_idx").on(table.familyId, table.lastAddedAt),
+  ],
+);
+
 export const albumPhotos = sqliteTable(
   "album_photos",
   {
@@ -460,8 +487,14 @@ export const albumPhotos = sqliteTable(
     addedBy: text("added_by")
       .notNull()
       .references(() => members.id),
+    // shortcut: nullable while a Worker from before Upload Batches may still add photos; make it
+    // NOT NULL in a later release.
+    batchId: text("batch_id").references(() => albumUploadBatches.id),
   },
-  (table) => [primaryKey({ columns: [table.albumId, table.photoId] })],
+  (table) => [
+    primaryKey({ columns: [table.albumId, table.photoId] }),
+    index("album_photos_batch_id_idx").on(table.batchId),
+  ],
 );
 
 // Recipes are always Shared: any Member edits one, its author deletes it.
@@ -566,7 +599,10 @@ export const recipeCooks = sqliteTable(
       .notNull()
       .references(() => members.id),
   },
-  (table) => [index("recipe_cooks_recipe_id_idx").on(table.recipeId)],
+  (table) => [
+    index("recipe_cooks_recipe_id_idx").on(table.recipeId),
+    index("recipe_cooks_family_id_cooked_at_idx").on(table.familyId, table.cookedAt),
+  ],
 );
 
 export type CommandSource = "bot_text" | "bot_voice" | "mini_app";

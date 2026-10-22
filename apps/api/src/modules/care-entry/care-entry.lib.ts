@@ -1,11 +1,15 @@
-import type {
-  CareDetails,
-  CareEntry,
-  DueDateItem,
-  ExpenseCategory,
-  ExpenseSummary,
-  Photo,
+import {
+  careKindTitles,
+  expenseCategoryTitles,
+  type CareDetails,
+  type CareEntry,
+  type DueDateItem,
+  type ExpenseCategory,
+  type ExpenseSummary,
+  type Photo,
 } from "@family-hub/contract";
+
+import { formatRubles } from "@/common/money";
 
 import type { CareEntryRow } from "./care-entry.repo.ts";
 import { dueKeyOf, type OpenDueDate } from "./due-date/index.ts";
@@ -87,4 +91,28 @@ export function toDueDateItem(
   today: string,
 ): DueDateItem {
   return { entryId, kind, label, title, dueDate, isOverdue: dueDate < today };
+}
+
+export function careTitleOf(details: CareDetails): string {
+  if (details.kind === "vaccination") {
+    return `${careKindTitles.vaccination}: ${details.vaccine}`;
+  }
+
+  if (details.kind === "treatment") {
+    return `${careKindTitles.treatment}: ${details.target}`;
+  }
+
+  if (details.kind === "vet_visit") {
+    return details.reason === null
+      ? careKindTitles.vet_visit
+      : `${careKindTitles.vet_visit}: ${details.reason}`;
+  }
+
+  if (details.kind === "weight") {
+    return `${careKindTitles.weight}: ${details.weightKg} кг`;
+  }
+
+  return details.kind === "expense"
+    ? `${expenseCategoryTitles[details.category]}: ${formatRubles(details.amount)}`
+    : careKindTitles.note;
 }

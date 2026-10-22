@@ -126,3 +126,25 @@ export function timeInZone(epochMs: number, timeZone: string): string {
     .toPlainTime()
     .toString({ smallestUnit: "minute" });
 }
+
+export type ZonedDays = DateRange & { timeZone: string };
+
+type Series = { startDate: string; recurrence: Recurrence | null; skipped?: string[] };
+
+export type PlacedOccurrence<Moment> = { occurrence: string; date: string; moment: Moment };
+
+// An all-day Occurrence keeps its date; a timed one is a moment in its creator's zone and falls on
+// the viewer's day of that moment, possibly the day before or after its own date.
+export function occurrencesOnDays<Moment extends number | undefined>(
+  { startDate, recurrence, skipped }: Series,
+  { days, momentOf }: { days: ZonedDays; momentOf: (occurrence: string) => Moment },
+): Array<PlacedOccurrence<Moment>> {
+  const range = { from: daysAfter(days.from, -1), to: daysAfter(days.to, 1) };
+
+  return occurrenceDates(startDate, recurrence, { range, skipped }).flatMap((occurrence) => {
+    const moment = momentOf(occurrence);
+    const date = moment === undefined ? occurrence : dateInZone(moment, days.timeZone);
+
+    return date >= days.from && date <= days.to ? [{ occurrence, date, moment }] : [];
+  });
+}

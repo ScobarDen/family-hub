@@ -38,6 +38,10 @@ _Avoid_: Image, picture, attachment
 A named, always Shared selection of the Family's Photos; each Pet also has an automatic Album of its Care Entry photos.
 _Avoid_: Gallery, folder, collection
 
+**Upload Batch**:
+Photos one Member added to one Album in a single sitting, shown in the Feed as one Activity; it continues while the pauses between additions stay short and disappears with its last Photo.
+_Avoid_: Upload, batch upload, post
+
 **Photo Storage**:
 A Family's own private Telegram channel, connected by its Family Owner, where the Family's photos are kept.
 _Avoid_: Bucket, gallery, media library

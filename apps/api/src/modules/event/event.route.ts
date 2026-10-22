@@ -11,7 +11,7 @@ import {
 import { requireMember, type MemberEnv } from "@/common/auth";
 import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
 
-import type { EventRefusal, EventResult, EventService } from "./event.service.ts";
+import type { EventRefusal, EventResult, EventService } from "./service/event.service.ts";
 
 type EventEnv = {
   Variables: MemberEnv["Variables"] & { events: EventService };

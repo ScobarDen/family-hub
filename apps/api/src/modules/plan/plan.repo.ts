@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or, type SQL } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, ne, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import { bindFirst } from "@/common/bind";
@@ -12,6 +12,7 @@ import {
   plans,
   type Db,
 } from "@/common/db";
+import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
 
 export type PlanRow = typeof plans.$inferSelect & {
   assigneeName: string | null;
@@ -25,6 +26,7 @@ type Completing = { familyId: string; planId: string; memberId: string; now: num
 
 const assignees = alias(members, "assignees");
 const completers = alias(members, "completers");
+const rootPlans = alias(plans, "roots");
 
 async function selectWhere(db: Db, condition: SQL | undefined): Promise<PlanRow[]> {
   const rows = await db
@@ -39,7 +41,7 @@ async function selectWhere(db: Db, condition: SQL | undefined): Promise<PlanRow[
     .leftJoin(completers, eq(completers.id, plans.completedBy))
     .leftJoin(pets, eq(pets.id, plans.petId))
     .where(condition)
-    .orderBy(asc(plans.createdAt))
+    .orderBy(asc(plans.createdAt), asc(sql`${plans}.rowid`))
     .all();
 
   return rows.map(({ plan, assigneeName, completedByName, petName }) => ({
@@ -84,6 +86,47 @@ async function listVisible(db: Db, familyId: string, memberId: string): Promise<
     root,
     subplans: subplans.filter(({ parentId }) => parentId === root.id),
   }));
+}
+
+const keyed = { at: plans.completedAt, key: keyOf("plan", plans.id) };
+
+type Viewer = { familyId: string; memberId: string };
+
+// A Subplan is as Private as its root. The last Subplan completes its Plan at the same moment, and
+// the Plan's own line tells both.
+async function activityBefore(
+  db: Db,
+  { familyId, memberId }: Viewer,
+  { keyset, limit }: KeysetPage,
+) {
+  return db
+    .select({
+      id: plans.id,
+      key: keyed.key,
+      title: plans.title,
+      rootId: rootPlans.id,
+      rootTitle: rootPlans.title,
+      completedAt: plans.completedAt,
+      memberName: completers.name,
+    })
+    .from(plans)
+    .leftJoin(rootPlans, eq(rootPlans.id, plans.parentId))
+    .leftJoin(completers, eq(completers.id, plans.completedBy))
+    .where(
+      and(
+        eq(plans.familyId, familyId),
+        isNotNull(plans.completedAt),
+        or(
+          eq(sql`coalesce(${rootPlans.visibility}, ${plans.visibility})`, "shared"),
+          eq(sql`coalesce(${rootPlans.ownerMemberId}, ${plans.ownerMemberId})`, memberId),
+        ),
+        or(isNull(rootPlans.completedAt), ne(rootPlans.completedAt, plans.completedAt)),
+        olderThan(keyed, keyset),
+      ),
+    )
+    .orderBy(...newestFirstBy(keyed))
+    .limit(limit)
+    .all();
 }
 
 async function findTree(db: Db, familyId: string, planId: string): Promise<PlanTree | undefined> {
@@ -167,7 +210,15 @@ async function albumOf(
 
 export function createPlanRepo(db: Db) {
   return {
-    ...bindFirst(db, { listVisible, findTree, isInFamily, hasPet, albumOf, completeWithSubplans }),
+    ...bindFirst(db, {
+      listVisible,
+      findTree,
+      isInFamily,
+      hasPet,
+      albumOf,
+      completeWithSubplans,
+      activityBefore,
+    }),
 
     async parentOf(familyId: string, subplanId: string): Promise<string | undefined> {
       const row = await db
