@@ -69,6 +69,8 @@ export function reatomTabBarMenu({ modules }: { modules: TabBarModules }) {
 
   return {
     items,
+    shownItems: computed(() => items().filter(({ isEnabled }) => isEnabled), "tabBarMenu.shown"),
+    hiddenItems: computed(() => items().filter(({ isEnabled }) => !isEnabled), "tabBarMenu.hidden"),
     isSaving: computed(() => !modules.save.ready(), "tabBarMenu.isSaving"),
     failure: modules.failure,
 

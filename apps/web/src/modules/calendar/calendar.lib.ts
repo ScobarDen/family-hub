@@ -248,3 +248,64 @@ export function shiftMonth(month: string, months: number): string {
 export function daysAfter(date: string, days: number): string {
   return Temporal.PlainDate.from(date).add({ days }).toString();
 }
+
+// The day's list leads with the time, the month's with the date, shown once for a run of one day.
+export type AgendaMark =
+  | { kind: "time"; text: string }
+  | { kind: "date"; day: number; month: string }
+  | { kind: "same-day" };
+
+export type AgendaRow = {
+  item: CalendarItem;
+  subtitle: string;
+  isOverdue: boolean;
+  mark: AgendaMark;
+};
+
+const agendaKinds = {
+  event: "Событие",
+  reminder: "Напоминание",
+  birthday: "День рождения",
+  due: "Уход за питомцем",
+  plan: "Срок плана",
+} as const;
+
+function isOverdueItem(item: CalendarItem): boolean {
+  return (item.kind === "plan" || item.kind === "due") && item.isOverdue;
+}
+
+function markOf(
+  item: CalendarItem,
+  { isDated, isSameDay }: { isDated: boolean; isSameDay: boolean },
+): AgendaMark {
+  if (!isDated) {
+    return { kind: "time", text: item.time ?? "весь день" };
+  }
+
+  if (isSameDay) {
+    return { kind: "same-day" };
+  }
+
+  const date = Temporal.PlainDate.from(item.date);
+
+  return {
+    kind: "date",
+    day: date.day,
+    month: date.toLocaleString("ru-RU", { month: "short" }).replace(".", ""),
+  };
+}
+
+export function agendaRowsOf(items: CalendarItem[], isDated: boolean): AgendaRow[] {
+  return items.map((item, index) => {
+    const isOverdue = isOverdueItem(item);
+
+    return {
+      item,
+      isOverdue,
+      subtitle: [isOverdue ? "Просрочено" : agendaKinds[item.kind], isDated ? item.time : undefined]
+        .filter((part) => part !== undefined)
+        .join(" · "),
+      mark: markOf(item, { isDated, isSameDay: items[index - 1]?.date === item.date }),
+    };
+  });
+}

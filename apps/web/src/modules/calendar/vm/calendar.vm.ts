@@ -1,10 +1,12 @@
 import { action, atom, type Atom, computed } from "@reatom/core";
 
+import { formatNearDate } from "@/common/format-date";
 import { readOnly } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
 import {
+  agendaRowsOf,
   daysAfter,
   itemsIn,
   monthGrid,
@@ -71,6 +73,17 @@ function reatomViews(
   itemsOf: ReturnType<typeof reatomItems>,
 ) {
   const monthItems = computed(() => itemsOf(monthRangeOf(month())), "calendar.monthItems");
+  const dayItems = computed(
+    (): CalendarItem[] => monthItems().filter(({ date }) => date === selected()),
+    "calendar.dayItems",
+  );
+  const upcoming = computed(
+    (): CalendarItem[] => [
+      ...overdueDeadlines(data, today()),
+      ...itemsOf({ from: today(), to: daysAfter(today(), upcomingDays) }),
+    ],
+    "calendar.upcoming",
+  );
 
   return {
     monthTitle: computed(() => monthTitle(month()), "calendar.monthTitle"),
@@ -80,17 +93,11 @@ function reatomViews(
     ),
     today: readOnly(today),
     selected: readOnly(selected),
-    dayItems: computed(
-      (): CalendarItem[] => monthItems().filter(({ date }) => date === selected()),
-      "calendar.dayItems",
-    ),
-    upcoming: computed(
-      (): CalendarItem[] => [
-        ...overdueDeadlines(data, today()),
-        ...itemsOf({ from: today(), to: daysAfter(today(), upcomingDays) }),
-      ],
-      "calendar.upcoming",
-    ),
+    dayItems,
+    upcoming,
+    dayTitle: computed(() => formatNearDate(selected(), today()), "calendar.dayTitle"),
+    dayRows: computed(() => agendaRowsOf(dayItems(), false), "calendar.dayRows"),
+    upcomingRows: computed(() => agendaRowsOf(upcoming(), true), "calendar.upcomingRows"),
   };
 }
 

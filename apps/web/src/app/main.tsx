@@ -306,9 +306,9 @@ const home = {
     members,
     telegram,
     self: () => {
-      const current = session.member();
+      const memberId = self();
 
-      return current && { memberId: current.member.id, familyName: current.family.name };
+      return memberId === undefined ? undefined : { memberId, familyName: session.familyName() };
     },
     onLeft: session.signIn,
   }),

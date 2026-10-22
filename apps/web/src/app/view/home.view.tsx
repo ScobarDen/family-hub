@@ -54,13 +54,11 @@ export type HomeProps = {
 };
 
 function profileOf(props: HomeProps): ReactNode {
-  const member = props.session.member();
-
   return (
     <ProfilePage
       {...props}
-      memberName={member?.member.name ?? ""}
-      familyName={member?.family.name ?? ""}
+      memberName={props.session.memberName()}
+      familyName={props.session.familyName()}
       onOpenTabBarMenu={props.navigation.openTabBarMenu}
     />
   );

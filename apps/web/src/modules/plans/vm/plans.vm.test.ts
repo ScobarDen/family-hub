@@ -228,8 +228,16 @@ describe("a Plan", () => {
         progress: "1 из 2",
         completed: undefined,
         subplans: [
-          { title: "Купить обои", isCompleted: true, isLaterThanPlan: true },
-          { title: "Поклеить", isCompleted: false, isLaterThanPlan: false },
+          {
+            title: "Купить обои",
+            isCompleted: true,
+            subtitle: expect.stringContaining("позже срока плана"),
+          },
+          {
+            title: "Поклеить",
+            isCompleted: false,
+            subtitle: expect.not.stringContaining("позже срока плана"),
+          },
         ],
       },
     });

@@ -15,7 +15,7 @@ export type PlanListItem = {
   isCompleted: boolean;
 };
 
-export type SubplanItem = PlanListItem & { isLaterThanPlan: boolean };
+export type SubplanItem = PlanListItem;
 
 export type PlanDetails = {
   id: string;
@@ -55,14 +55,20 @@ function completedOf(completed: Completion | null, timeZone: string): string | u
   return `Выполнено ${joined([formatDay(completed.at, timeZone), completed.by ?? undefined])}`;
 }
 
+function isLaterThan(dueDate: string | null, planDueDate: string | null): boolean {
+  return dueDate !== null && planDueDate !== null && dueDate > planDueDate;
+}
+
 function toSubplanItem(subplan: Subplan, planDueDate: string | null): SubplanItem {
   return {
     id: subplan.id,
     title: subplan.title,
-    subtitle: joined([dueOf(subplan.dueDate), subplan.assignee?.name]),
+    subtitle: joined([
+      dueOf(subplan.dueDate),
+      subplan.assignee?.name,
+      isLaterThan(subplan.dueDate, planDueDate) ? "позже срока плана" : undefined,
+    ]),
     isCompleted: subplan.completed !== null,
-    isLaterThanPlan:
-      subplan.dueDate !== null && planDueDate !== null && subplan.dueDate > planDueDate,
   };
 }
 

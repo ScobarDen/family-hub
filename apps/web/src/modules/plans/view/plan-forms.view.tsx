@@ -46,10 +46,10 @@ export const PlanForm = reatomComponent(({ model, onCancel }: PlanFormProps) => 
         />
       )}
       <ChoiceField field={fields.assigneeId} label="Исполнитель" choices={model.assignees()} />
-      {model.pets().length > 1 && (
+      {model.hasPetChoice() && (
         <ChoiceField field={fields.petId} label="Питомец" choices={model.pets()} />
       )}
-      {model.albums().length > 1 && (
+      {model.hasAlbumChoice() && (
         <ChoiceField field={fields.albumId} label="Альбом" choices={model.albums()} />
       )}
     </FormShell>

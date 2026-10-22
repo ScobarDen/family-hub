@@ -81,14 +81,17 @@ export function reatomSession({ api, telegram, isJoiningFamily }: SessionDepende
     return outcome?.status === "stranger" ? outcome.familyRequest : undefined;
   }, "session.familyRequestStatus");
 
+  const member = computed((): CurrentMember | undefined => {
+    const outcome = signIn.data();
+
+    return outcome?.status === "member" ? outcome.member : undefined;
+  }, "session.member");
+
   return {
     familyRequestStatus,
-
-    member: computed((): CurrentMember | undefined => {
-      const outcome = signIn.data();
-
-      return outcome?.status === "member" ? outcome.member : undefined;
-    }, "session.member"),
+    member,
+    memberName: computed(() => member()?.member.name ?? "", "session.memberName"),
+    familyName: computed(() => member()?.family.name ?? "", "session.familyName"),
 
     screen: computed(
       () => currentScreen({ api, signIn, isJoiningFamily, isRequestingFamily }),

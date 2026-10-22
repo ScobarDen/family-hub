@@ -121,10 +121,16 @@ function reatomMovementRecord(
 export function reatomMovementForm(dependencies: MovementFormDependencies) {
   const goal = atom<Goal | undefined>(undefined, "goals.movementForm.goal");
   const { startCreating, startEditing, ...record } = reatomMovementRecord(dependencies, goal);
+  const contributors = reatomContributors(dependencies, goal);
 
   return {
     ...record,
-    contributors: reatomContributors(dependencies, goal),
+    contributors,
+    // A Goal with one possible contributor needs no «Чей вклад».
+    hasContributorChoice: computed(
+      () => contributors().length > 1,
+      "goals.movementForm.hasContributorChoice",
+    ),
 
     startAdding: action((target: Goal, kind: MovementKind) => {
       goal.set(target);

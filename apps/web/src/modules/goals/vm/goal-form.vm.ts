@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import {
   goalChange,
+  goalColor,
+  goalIcon,
   goalNoteMaxLength,
   goalTitleMaxLength,
   type Goal,
@@ -82,6 +84,14 @@ export function reatomGoalForm({ api, goals, onSaved }: GoalFormDependencies) {
     canChooseVisibility: computed(
       () => record.edited()?.visibility !== "shared",
       "goals.form.canChooseVisibility",
+    ),
+    // The fields hold free strings until saved; the cover preview needs a known icon and colour.
+    cover: computed(
+      () => ({
+        icon: goalIcon.catch("piggy-bank").parse(record.form.fields.icon()),
+        color: goalColor.catch("teal").parse(record.form.fields.color()),
+      }),
+      "goals.form.cover",
     ),
     startCreating: action(() => {
       record.startCreating(emptyGoal);

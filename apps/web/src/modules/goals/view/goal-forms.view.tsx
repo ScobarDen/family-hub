@@ -14,7 +14,7 @@ import {
   visibilityChoices,
 } from "@/common/ui";
 
-import { goalIcons } from "../goals.config.ts";
+import { goalColorTitles, goalIconTitles, goalIcons } from "../goals.config.ts";
 import type { GoalFormModel } from "../vm/goal-form.vm.ts";
 import type { MovementFormModel } from "../vm/movement-form.vm.ts";
 
@@ -25,7 +25,7 @@ const kindChoices: Choice[] = [
 
 const CoverPicker = reatomComponent(({ model }: { model: GoalFormModel }) => {
   const { icon, color } = model.form.fields;
-  const chosenColor = goalColor.catch("teal").parse(color());
+  const cover = model.cover();
 
   return (
     <div className="flex flex-col gap-2">
@@ -35,13 +35,13 @@ const CoverPicker = reatomComponent(({ model }: { model: GoalFormModel }) => {
           <Chip
             key={name}
             className="px-2"
-            aria-label={name}
+            aria-label={goalIconTitles[name]}
             isSelected={icon() === name}
             onClick={() => {
               icon.set(name);
             }}
           >
-            <IconBadge icon={goalIcons[name]} tone={chosenColor} />
+            <IconBadge icon={goalIcons[name]} tone={cover.color} />
           </Chip>
         ))}
       </div>
@@ -50,13 +50,13 @@ const CoverPicker = reatomComponent(({ model }: { model: GoalFormModel }) => {
           <Chip
             key={name}
             className="px-2"
-            aria-label={name}
+            aria-label={goalColorTitles[name]}
             isSelected={color() === name}
             onClick={() => {
               color.set(name);
             }}
           >
-            <IconBadge icon={goalIcons[goalIcon.catch("piggy-bank").parse(icon())]} tone={name} />
+            <IconBadge icon={goalIcons[cover.icon]} tone={name} />
           </Chip>
         ))}
       </div>
@@ -98,7 +98,7 @@ export const MovementForm = reatomComponent(
         <ChoiceField field={fields.kind} label="Что" choices={kindChoices} />
         <TextField field={fields.amount} id="movement-amount" label="Сумма, ₽" placeholder="5000" />
         <TextField field={fields.date} id="movement-date" label="Дата" type="date" />
-        {model.contributors().length > 1 && (
+        {model.hasContributorChoice() && (
           <ChoiceField field={fields.memberId} label="Чей вклад" choices={model.contributors()} />
         )}
         <TextField field={fields.comment} id="movement-comment" label="Комментарий" />

@@ -37,7 +37,6 @@ const PlanHeader = reatomComponent(
 type SubplanRowProps = { subplan: SubplanItem; model: PlansScreenModel };
 
 const SubplanRow = reatomComponent(({ subplan, model }: SubplanRowProps) => {
-  const lateness = subplan.isLaterThanPlan ? "позже срока плана" : undefined;
   const buttons = [
     {
       label: subplan.isCompleted ? "Вернуть в работу" : "Выполнено",
@@ -51,7 +50,7 @@ const SubplanRow = reatomComponent(({ subplan, model }: SubplanRowProps) => {
   return (
     <SectionItem
       title={subplan.title}
-      subtitle={[subplan.subtitle, lateness].filter(Boolean).join(" · ") || undefined}
+      subtitle={subplan.subtitle}
       after={buttons.map(({ label, icon, onClick }) => (
         <Button
           key={label}
