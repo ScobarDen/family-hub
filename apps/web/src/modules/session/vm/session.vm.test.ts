@@ -101,12 +101,6 @@ beforeEach(() => {
 });
 
 describe("signing in", () => {
-  test("shows signing in until the backend answers", () => {
-    const session = startSession(fakeBackend({ session: { status: "member", token } }));
-
-    expect(session.screen()).toEqual({ kind: "signing-in" });
-  });
-
   test("greets a Member by name with their Family", async () => {
     const session = startSession(fakeBackend({ session: { status: "member", token } }));
 

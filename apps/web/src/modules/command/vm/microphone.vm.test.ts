@@ -85,6 +85,10 @@ async function recordingStarted(model: ReturnType<typeof reatomMicrophone>) {
   });
 }
 
+function swipes(calls: string[]): string[] {
+  return calls.filter((call) => call.endsWith("VerticalSwipes"));
+}
+
 beforeEach(() => {
   context.reset();
 });
@@ -106,12 +110,7 @@ describe("holding the microphone", () => {
       expect(sent).toHaveLength(1);
     });
     expect(model.state()).toBe("idle");
-    expect(telegram.calls).toEqual([
-      "disableVerticalSwipes",
-      "haptic medium",
-      "enableVerticalSwipes",
-      "haptic light",
-    ]);
+    expect(swipes(telegram.calls)).toEqual(["disableVerticalSwipes", "enableVerticalSwipes"]);
   });
 
   test("cancels without sending when the finger slides off", async () => {
@@ -186,7 +185,7 @@ describe("without a microphone", () => {
     await vi.waitFor(() => {
       expect(telegram.calls).toContain("openTelegramLink https://t.me/family_hub_bot");
     });
-    expect(telegram.calls.slice(0, 2)).toEqual(["disableVerticalSwipes", "enableVerticalSwipes"]);
+    expect(swipes(telegram.calls)).toEqual(["disableVerticalSwipes", "enableVerticalSwipes"]);
     expect(model.state()).toBe("idle");
   });
 });

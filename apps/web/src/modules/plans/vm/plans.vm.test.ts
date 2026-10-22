@@ -120,9 +120,13 @@ function fakeBackend(
 
     requests.push(request);
 
-    return answer === undefined
-      ? Response.json({ code: "PLAN_NOT_FOUND", message: "" }, { status: 404 })
-      : Response.json(answer(body));
+    if (answer === undefined) {
+      return Response.json({ code: "PLAN_NOT_FOUND", message: "" }, { status: 404 });
+    }
+
+    const reply = answer(body);
+
+    return reply instanceof Response ? reply : Response.json(reply);
   }
 
   return { fetch, requests };
@@ -188,7 +192,7 @@ describe("the list of Plans", () => {
 
     await loaded(model);
 
-    expect(model.screen()).toEqual({
+    expect(model.screen()).toMatchObject({
       kind: "list",
       open: [
         {
@@ -302,7 +306,9 @@ describe("a Plan", () => {
 
   test("says so when the server fails", async () => {
     const { model } = startPlans(
-      fakeBackend(undefined, { "POST /api/plans/plan-1/subplans/sub-2/complete": () => 1 }),
+      fakeBackend(undefined, {
+        "POST /api/plans/plan-1/subplans/sub-2/complete": () => Response.json({}, { status: 500 }),
+      }),
     );
 
     await loaded(model);

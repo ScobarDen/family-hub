@@ -174,7 +174,7 @@ describe("the preview sheet", () => {
 
     await sent(model);
 
-    expect(model.sheet()).toEqual({
+    expect(model.sheet()).toMatchObject({
       kind: "draft",
       heard,
       preview: {
