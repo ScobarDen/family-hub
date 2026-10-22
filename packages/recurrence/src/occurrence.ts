@@ -1,8 +1,8 @@
 import { Temporal } from "temporal-polyfill";
 
-type Frequency = "weekly" | "monthly" | "yearly";
+import type { Recurrence } from "@family-hub/contract";
 
-export type Recurrence = { frequency: Frequency; until: string | null };
+type Frequency = Recurrence["frequency"];
 
 export type DateRange = { from: string; to: string };
 
@@ -94,9 +94,10 @@ export function occurrenceDates(
 
   const last = lastDateOf(range, recurrence);
   const dates: string[] = [];
+  const first = startingIndex(start, recurrence.frequency, range.from);
 
   for (
-    let index = 0, date = start;
+    let index = first, date = nthOccurrence(start, recurrence.frequency, first);
     !isBefore(last, date);
     index += 1, date = nthOccurrence(start, recurrence.frequency, index)
   ) {

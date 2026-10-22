@@ -440,6 +440,9 @@ importers:
 
   packages/recurrence:
     dependencies:
+      '@family-hub/contract':
+        specifier: workspace:*
+        version: link:../contract
       temporal-polyfill:
         specifier: 'catalog:'
         version: 1.0.6

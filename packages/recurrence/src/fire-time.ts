@@ -1,14 +1,12 @@
 import { Temporal } from "temporal-polyfill";
 
+import type { CalendarEvent, EventReminderOffset, PlanReminder } from "@family-hub/contract";
+
 import { occurrenceMoment } from "./occurrence.ts";
-
-type EventOffset = "at-start" | "15m" | "1h" | "1d" | "1w";
-
-type EventStart = { date: string; time: string | null; timeZone: string | null };
 
 const morningTime = "09:00";
 
-const offsetBefore: Record<EventOffset, Temporal.DurationLike> = {
+const offsetBefore: Record<EventReminderOffset, Temporal.DurationLike> = {
   "at-start": { minutes: 0 },
   "15m": { minutes: 15 },
   "1h": { hours: 1 },
@@ -16,9 +14,7 @@ const offsetBefore: Record<EventOffset, Temporal.DurationLike> = {
   "1w": { weeks: 1 },
 };
 
-type PlanLead = "on-day" | "1d" | "1w";
-
-const planLeadDays: Record<PlanLead, number> = { "on-day": 0, "1d": 1, "1w": 7 };
+const planLeadDays: Record<PlanReminder, number> = { "on-day": 0, "1d": 1, "1w": 7 };
 
 const dueLeadDays = 7;
 const overdueRepeatDays = 7;
@@ -36,7 +32,7 @@ export function eventReminderMoment(
     start,
     offset,
     recipientZone,
-  }: { start: EventStart; offset: EventOffset; recipientZone: string },
+  }: { start: CalendarEvent["start"]; offset: EventReminderOffset; recipientZone: string },
 ): number {
   if (start.time === null || start.timeZone === null) {
     const day = Temporal.PlainDate.from(occurrence).subtract(offsetBefore[offset]);
@@ -71,7 +67,7 @@ export function dueStepFrom(dueDate: string, day: string): string {
 // A Plan's deadline nudges at 09:00 on the Recipient's clock: on the day, a day or a week before.
 export function planReminderMoment(
   dueDate: string,
-  { lead, recipientZone }: { lead: PlanLead; recipientZone: string },
+  { lead, recipientZone }: { lead: PlanReminder; recipientZone: string },
 ): number {
   const day = Temporal.PlainDate.from(dueDate).subtract({ days: planLeadDays[lead] });
 
