@@ -170,6 +170,26 @@ describe("a session", () => {
     expect(await response.json()).toMatchObject({ code: "UNAUTHENTICATED" });
   });
 
+  test("is asked for by every record collection", async () => {
+    const { worker } = await startWithFamily();
+    const paths = [
+      "/api/albums",
+      "/api/photos",
+      "/api/commands",
+      "/api/events",
+      "/api/feed",
+      "/api/goals",
+      "/api/pets",
+      "/api/plans",
+      "/api/recipes",
+      "/api/recipe-tags",
+      "/api/reminders",
+    ];
+    const responses = await Promise.all(paths.map(async (path) => worker.request(path)));
+
+    expect(responses.map(({ status }) => status)).toEqual(paths.map(() => 401));
+  });
+
   test("is refused with a token signed by someone else", async () => {
     const { worker } = await startWithFamily();
     const token = await signIn(worker);

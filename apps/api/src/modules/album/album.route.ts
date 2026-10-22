@@ -67,9 +67,7 @@ function bodyOf<Schema extends typeof albumChange | typeof albumPhotos>(schema: 
 }
 
 export const albumRoute = new Hono<AlbumEnv>()
-  .use("/api/albums", requireMember)
   .use("/api/albums/*", requireMember)
-  .use("/api/photos", requireMember)
   .get("/api/photos", async (context) =>
     context.json<Photo[]>(await context.var.albums.allPhotos(context.var.membership)),
   )

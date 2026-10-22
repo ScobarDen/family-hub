@@ -62,7 +62,6 @@ const pickBody = sValidator("json", draftPick, (result, context) =>
 );
 
 export const commandRoute = new Hono<CommandEnv>()
-  .use("/api/commands", requireMember)
   .use("/api/commands/*", requireMember)
   .get("/api/commands/bot", async (context) =>
     context.json<BotChat>(await context.var.commands.miniApp.botChat()),

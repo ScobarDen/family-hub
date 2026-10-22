@@ -82,7 +82,6 @@ const subplanPath = "/api/plans/:id/subplans/:subplanId";
 
 export const planRoute = new Hono<PlanEnv>()
   .use("/api/plans/*", requireMember)
-  .use("/api/plans", requireMember)
   .get("/api/plans", async (context) =>
     context.json<PlanList>(await context.var.plans.list(context.var.membership)),
   )

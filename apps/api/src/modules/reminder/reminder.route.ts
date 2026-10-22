@@ -68,7 +68,6 @@ const body = sValidator("json", reminderChange, (result, context) =>
 );
 
 export const reminderRoute = new Hono<ReminderEnv>()
-  .use("/api/reminders", requireMember)
   .use("/api/reminders/*", requireMember)
   .get("/api/reminders", async (context) =>
     context.json<ReminderList>(await context.var.reminders.list(context.var.membership)),

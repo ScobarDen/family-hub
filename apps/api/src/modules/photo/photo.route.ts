@@ -103,7 +103,6 @@ async function servePhoto(context: Context<PhotoEnv>): Promise<Response> {
 }
 
 export const photoRoute = new Hono<PhotoEnv>()
-  .use("/api/photos", requireMember)
   .use("/api/photos/*", requireMember)
   .post("/api/photos", async (context) => {
     const form = await context.req.parseBody();

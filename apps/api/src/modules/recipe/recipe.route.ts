@@ -84,7 +84,6 @@ function bodyOf<
 }
 
 const tagRoute = new Hono<RecipeEnv>()
-  .use("/api/recipe-tags", requireMember)
   .use("/api/recipe-tags/*", requireMember)
   .get("/api/recipe-tags", async (context) =>
     context.json<RecipeTag[]>(await context.var.recipes.tags(context.var.membership)),
@@ -116,7 +115,6 @@ const tagRoute = new Hono<RecipeEnv>()
   });
 
 export const recipeRoute = new Hono<RecipeEnv>()
-  .use("/api/recipes", requireMember)
   .use("/api/recipes/*", requireMember)
   .get("/api/recipes", async (context) =>
     context.json<Recipe[]>(

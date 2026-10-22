@@ -61,7 +61,6 @@ function bodyOf<Schema extends typeof eventChange | typeof occurrenceSkip>(schem
 }
 
 export const eventRoute = new Hono<EventEnv>()
-  .use("/api/events", requireMember)
   .use("/api/events/*", requireMember)
   .get("/api/events", async (context) =>
     context.json<CalendarEventList>(await context.var.events.list(context.var.membership)),

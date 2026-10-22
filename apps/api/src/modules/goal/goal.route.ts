@@ -94,7 +94,6 @@ const movementPath = "/api/goals/:id/movements/:movementId";
 
 export const goalRoute = new Hono<GoalEnv>()
   .use("/api/goals/*", requireMember)
-  .use("/api/goals", requireMember)
   .get("/api/goals", async (context) =>
     context.json<GoalList>(await context.var.goals.list(context.var.membership)),
   )
