@@ -1,4 +1,14 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  noop,
+  reatomBoolean,
+  withAsync,
+  wrap,
+  type Atom,
+  type BooleanAtom,
+} from "@reatom/core";
 
 import type { Photo } from "@family-hub/contract";
 
@@ -30,7 +40,7 @@ type AlbumsDependencies = {
   photoHint: () => string | undefined;
 };
 
-type Navigation = { openedId: Atom<string | undefined>; isEditing: Atom<boolean> };
+type Navigation = { openedId: Atom<string | undefined>; isEditing: BooleanAtom };
 
 const deleteQuestion: PopupParams = {
   title: "Удалить альбом?",
@@ -140,7 +150,7 @@ function reatomParts(
     form: reatomAlbumForm({
       api,
       onSaved: (saved) => {
-        navigation.isEditing.set(false);
+        navigation.isEditing.setFalse();
         navigation.openedId.set(saved.id);
         data.reload();
       },
@@ -158,7 +168,7 @@ function reatomParts(
 export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
   const navigation: Navigation = {
     openedId: atom<string | undefined>(undefined, "albums.openedId"),
-    isEditing: atom(false, "albums.isEditing"),
+    isEditing: reatomBoolean(false, "albums.isEditing"),
   };
   const data = reatomAlbumsData({ api: dependencies.api, openedId: navigation.openedId });
   const parts = reatomParts(dependencies, { data, navigation });
@@ -178,7 +188,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
       navigation.openedId.set(albumId);
     }, "albums.open"),
     openAll: action(() => {
-      data.isAllShown.set(true);
+      data.isAllShown.setTrue();
     }, "albums.openAll"),
     ...reatomMoves({ data, navigation, form: parts.form, batch: parts.batch }),
     remove: detached(remove, "albums.removeAlbum"),
@@ -199,14 +209,14 @@ function reatomMoves({
   return {
     add: action(() => {
       form.startCreating();
-      navigation.isEditing.set(true);
+      navigation.isEditing.setTrue();
     }, "albums.add"),
     edit: action(() => {
       const album = data.opened.data();
 
       if (album !== undefined) {
         form.startEditing(album);
-        navigation.isEditing.set(true);
+        navigation.isEditing.setTrue();
       }
     }, "albums.edit"),
     upload: action((files: Blob[]) => {
@@ -214,9 +224,9 @@ function reatomMoves({
     }, "albums.upload"),
     back: action(() => {
       if (navigation.isEditing()) {
-        navigation.isEditing.set(false);
+        navigation.isEditing.setFalse();
       } else if (data.isAllShown()) {
-        data.isAllShown.set(false);
+        data.isAllShown.setFalse();
       } else {
         navigation.openedId.set(undefined);
         batch.dismiss();

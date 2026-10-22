@@ -1,4 +1,13 @@
-import { action, atom, computed, withAsync, wrap, type Atom } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  reatomBoolean,
+  withAsync,
+  wrap,
+  type Atom,
+  type BooleanAtom,
+} from "@reatom/core";
 
 import type { Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
 
@@ -32,7 +41,7 @@ type GoalsDependencies = {
 type Navigation = {
   editing: Atom<"goal" | "movement" | undefined>;
   openedGoalId: Atom<string | undefined>;
-  isCelebrating: Atom<boolean>;
+  isCelebrating: BooleanAtom;
 };
 
 const outcomeQuestions: Record<GoalOutcome, PopupParams> = {
@@ -156,7 +165,7 @@ function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation) {
   return {
     open: action((goalId: string) => {
       openedGoalId.set(goalId);
-      isCelebrating.set(false);
+      isCelebrating.setFalse();
     }, "goals.open"),
     back: action(() => {
       if (editing() === undefined) {
@@ -165,7 +174,7 @@ function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation) {
         editing.set(undefined);
       }
 
-      isCelebrating.set(false);
+      isCelebrating.setFalse();
     }, "goals.back"),
   };
 }
@@ -226,7 +235,7 @@ export function reatomGoalsScreen(dependencies: GoalsDependencies) {
   const navigation: Navigation = {
     editing: atom<"goal" | "movement" | undefined>(undefined, "goals.editing"),
     openedGoalId: atom<string | undefined>(undefined, "goals.openedGoalId"),
-    isCelebrating: atom(false, "goals.isCelebrating"),
+    isCelebrating: reatomBoolean(false, "goals.isCelebrating"),
   };
   const openedGoal = computed(
     () => dependencies.goals.list.data()?.goals.find(({ id }) => id === navigation.openedGoalId()),

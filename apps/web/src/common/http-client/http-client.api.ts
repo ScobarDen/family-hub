@@ -1,4 +1,4 @@
-import { abortVar, atom, noop, wrap } from "@reatom/core";
+import { abortVar, atom, noop, reatomBoolean, wrap } from "@reatom/core";
 import type { z } from "zod";
 
 import { apiError, type ErrorCode } from "@family-hub/contract";
@@ -94,7 +94,7 @@ export function createHttpClient({
   timeoutMs = defaultTimeoutMs,
 }: HttpClientOptions) {
   const token = atom<string | undefined>(undefined, "httpClient.token");
-  const isSessionLost = atom(false, "httpClient.isSessionLost");
+  const isSessionLost = reatomBoolean(false, "httpClient.isSessionLost");
 
   async function request<Schema extends z.ZodType>(
     path: string,
@@ -113,7 +113,7 @@ export function createHttpClient({
     );
 
     if (response.status === unauthorizedStatus) {
-      isSessionLost.set(true);
+      isSessionLost.setTrue();
     }
 
     if (!response.ok) {

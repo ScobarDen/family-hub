@@ -1,4 +1,4 @@
-import { action, atom, computed } from "@reatom/core";
+import { action, atom, computed, reatomBoolean } from "@reatom/core";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
 import { detached, readOnly } from "@/common/state";
@@ -45,7 +45,7 @@ function reatomMembers({ list, isOwner, self }: FamilySources) {
 }
 
 function reatomDeletionFlow(sources: FamilySources) {
-  const isOpen = atom(false, "family.isDeletionOpen");
+  const isOpen = reatomBoolean(false, "family.isDeletionOpen");
   const form = reatomDeletion(sources);
 
   return {
@@ -58,10 +58,10 @@ function reatomDeletionFlow(sources: FamilySources) {
     }),
 
     openDeletion: action(() => {
-      isOpen.set(true);
+      isOpen.setTrue();
     }, "family.openDeletion"),
     closeDeletion: action(() => {
-      isOpen.set(false);
+      isOpen.setFalse();
 
       fillForm(form, { familyName: "" });
     }, "family.closeDeletion"),

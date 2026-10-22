@@ -1,4 +1,14 @@
-import { action, atom, computed, withAsync, withAsyncData, wrap, type Atom } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  reatomSet,
+  withAsync,
+  withAsyncData,
+  wrap,
+  type Atom,
+  type SetAtom,
+} from "@reatom/core";
 
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
@@ -34,7 +44,7 @@ type Navigation = {
   openedId: Atom<string | undefined>;
   editing: Atom<"recipe" | "tags" | undefined>;
   // Ticked ingredients live on the screen only: they are for the cook at the stove.
-  checked: Atom<number[]>;
+  checked: SetAtom<number>;
 };
 
 const deleteQuestion: PopupParams = {
@@ -84,7 +94,7 @@ function reatomScreen({
     const recipe = opened.data();
 
     if (navigation.openedId() !== undefined && recipe !== undefined) {
-      return { kind: "recipe", recipe, checked: navigation.checked() };
+      return { kind: "recipe", recipe, checked: [...navigation.checked()] };
     }
 
     const list = data.list.data();
@@ -151,11 +161,7 @@ function reatomRecipeActions(
     remove: detached(remove, "recipes.removeRecipe"),
     toggleFavorite: detached(favorite, "recipes.toggleFavorite"),
     toggleIngredient: action((index: number) => {
-      const current = navigation.checked();
-
-      navigation.checked.set(
-        current.includes(index) ? current.filter((each) => each !== index) : [...current, index],
-      );
+      navigation.checked.toggle(index);
     }, "recipes.toggleIngredient"),
   };
 }
@@ -189,7 +195,7 @@ function reatomMoves({
   return {
     open: action((recipeId: string) => {
       navigation.openedId.set(recipeId);
-      navigation.checked.set([]);
+      navigation.checked.clear();
     }, "recipes.open"),
     add: action(() => {
       form.startCreating();
@@ -220,7 +226,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   const navigation: Navigation = {
     openedId: atom<string | undefined>(undefined, "recipes.openedId"),
     editing: atom<"recipe" | "tags" | undefined>(undefined, "recipes.editing"),
-    checked: atom<number[]>([], "recipes.checked"),
+    checked: reatomSet<number>([], "recipes.checked"),
   };
   const data = reatomRecipesData(dependencies);
   const opened = reatomOpened(dependencies.api, { data, navigation });

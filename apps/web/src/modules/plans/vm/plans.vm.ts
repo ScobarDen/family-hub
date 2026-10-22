@@ -1,4 +1,4 @@
-import { action, atom, computed, type Atom } from "@reatom/core";
+import { action, atom, computed, reatomBoolean, type Atom, type BooleanAtom } from "@reatom/core";
 
 import type { Plan } from "@family-hub/contract";
 
@@ -31,7 +31,7 @@ type PlansDependencies = {
 type Navigation = {
   editing: Atom<"plan" | "subplan" | undefined>;
   openedPlanId: Atom<string | undefined>;
-  isDoneShown: Atom<boolean>;
+  isDoneShown: BooleanAtom;
 };
 
 type Forms = ReturnType<typeof reatomForms>;
@@ -96,7 +96,7 @@ function reatomBrowsing({ editing, openedPlanId, isDoneShown }: Navigation) {
       openedPlanId.set(planId);
     }, "plans.open"),
     toggleDone: action(() => {
-      isDoneShown.set(!isDoneShown());
+      isDoneShown.toggle();
     }, "plans.toggleDone"),
     back: action(() => {
       if (editing() === undefined) {
@@ -160,7 +160,7 @@ export function reatomPlansScreen(dependencies: PlansDependencies) {
   const navigation: Navigation = {
     editing: atom<"plan" | "subplan" | undefined>(undefined, "plans.editing"),
     openedPlanId: atom<string | undefined>(undefined, "plans.openedPlanId"),
-    isDoneShown: atom(false, "plans.isDoneShown"),
+    isDoneShown: reatomBoolean(false, "plans.isDoneShown"),
   };
   const openedPlan = computed(
     () => dependencies.plans.list.data()?.find(({ id }) => id === navigation.openedPlanId()),

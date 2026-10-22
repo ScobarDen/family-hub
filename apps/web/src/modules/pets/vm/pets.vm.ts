@@ -1,4 +1,4 @@
-import { action, atom, computed, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, reatomBoolean, withAsync, wrap } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
@@ -97,12 +97,12 @@ function reatomBrowsing(
       openedPetId.set(petId);
     }, "pets.open"),
     showAll: action(() => {
-      isListShown.set(true);
+      isListShown.setTrue();
     }, "pets.showAll"),
     // The only Pet in care is the choice itself, so its card opens straight away.
     showChoice: action(() => {
       editing.set(undefined);
-      isListShown.set(false);
+      isListShown.setFalse();
       openedPetId.set(undefined);
     }, "pets.showChoice"),
     canGoBack: computed(
@@ -116,7 +116,7 @@ function reatomBrowsing(
       if (editing() !== undefined) {
         editing.set(undefined);
       } else if (openedPetId() === undefined) {
-        isListShown.set(false);
+        isListShown.setFalse();
       } else {
         openedPetId.set(undefined);
       }
@@ -156,7 +156,7 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
   const navigation: Navigation = {
     editing: atom<Editing | undefined>(undefined, "pets.editing"),
     openedPetId: atom<string | undefined>(undefined, "pets.openedPetId"),
-    isListShown: atom(false, "pets.isListShown"),
+    isListShown: reatomBoolean(false, "pets.isListShown"),
   };
   const forms = reatomForms(dependencies, navigation);
   const openedPet = reatomOpenedPet(dependencies, navigation);

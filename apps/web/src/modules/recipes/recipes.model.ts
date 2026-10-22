@@ -1,4 +1,12 @@
-import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  reatomBoolean,
+  reatomEnum,
+  withAsyncData,
+  wrap,
+} from "@reatom/core";
 
 import { readOnly } from "@/common/state";
 
@@ -9,8 +17,8 @@ export function reatomRecipesData({ api }: { api: RecipesApi }) {
   const version = atom(0, "recipes.version");
   const text = atom("", "recipes.text");
   const tagId = atom<string | undefined>(undefined, "recipes.tagId");
-  const isFavorite = atom(false, "recipes.isFavorite");
-  const ordering = atom<"title" | "forgotten">("title", "recipes.sort");
+  const isFavorite = reatomBoolean(false, "recipes.isFavorite");
+  const ordering = reatomEnum(["title", "forgotten"], "recipes.sort");
 
   return {
     version: readOnly(version),

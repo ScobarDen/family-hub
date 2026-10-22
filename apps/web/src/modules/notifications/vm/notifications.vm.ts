@@ -1,4 +1,4 @@
-import { action, atom, computed, withAsync, wrap } from "@reatom/core";
+import { action, computed, reatomBoolean, withAsync, wrap } from "@reatom/core";
 
 import { detached } from "@/common/state";
 
@@ -9,10 +9,10 @@ type NotificationsDependencies = {
 
 export function reatomNotifications({ canMessage, telegram }: NotificationsDependencies) {
   // The server learns of the new write access from initData at the next launch.
-  const isAllowedNow = atom(false, "notifications.isAllowedNow");
+  const isAllowedNow = reatomBoolean(false, "notifications.isAllowedNow");
   const request = action(async () => {
     if (await wrap(telegram.requestWriteAccess())) {
-      isAllowedNow.set(true);
+      isAllowedNow.setTrue();
     }
   }, "notifications.request").extend(withAsync());
 

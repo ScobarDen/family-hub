@@ -1,4 +1,4 @@
-import { computed, type Atom } from "@reatom/core";
+import { computed, type Atom, type BooleanAtom } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
@@ -29,7 +29,7 @@ export type PetsDependencies = {
 export type Navigation = {
   editing: Atom<Editing | undefined>;
   openedPetId: Atom<string | undefined>;
-  isListShown: Atom<boolean>;
+  isListShown: BooleanAtom;
 };
 
 export type PetsScreen =
