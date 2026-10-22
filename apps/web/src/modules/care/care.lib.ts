@@ -122,6 +122,33 @@ function sinceOf(range: WeightRange, today: string, timeZone: string): number {
   return range === "year" ? startOfDay(date.subtract({ years: 1 }), timeZone) : 0;
 }
 
+export type WeightSummary = { latest: string; change: string | undefined };
+
+const signedKilograms = new Intl.NumberFormat("ru-RU", {
+  maximumFractionDigits: 1,
+  signDisplay: "exceptZero",
+});
+
+// The change is counted between the first and the last weighing shown, so it names the chart's own span.
+export function weightSummaryOf(points: WeightPoint[]): WeightSummary | undefined {
+  const first = points.at(0);
+  const last = points.at(-1);
+
+  if (first === undefined || last === undefined) {
+    return undefined;
+  }
+
+  const delta = Number((last.kg - first.kg).toFixed(1));
+
+  return {
+    latest: formatKilograms(last.kg),
+    change:
+      first === last
+        ? undefined
+        : `${delta === 0 ? "Без изменений" : `${signedKilograms.format(delta)} кг`} с ${first.label}`,
+  };
+}
+
 export function weightPoints(
   entries: CareEntry[],
   { range, today, timeZone }: { range: WeightRange; today: string; timeZone: string },

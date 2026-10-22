@@ -6,14 +6,16 @@ type MonthHeaderProps = { title: string; onPrevious: () => void; onNext: () => v
 
 export function MonthHeader({ title, onPrevious, onNext }: MonthHeaderProps) {
   return (
-    <div className="flex items-center justify-between">
-      <Button size="icon" variant="ghost" aria-label="Предыдущий месяц" onClick={onPrevious}>
-        <ChevronLeft />
-      </Button>
-      <h2 className="font-semibold">{title}</h2>
-      <Button size="icon" variant="ghost" aria-label="Следующий месяц" onClick={onNext}>
-        <ChevronRight />
-      </Button>
+    <div className="flex items-center justify-between py-1 pl-3">
+      <h2 className="text-[1.0625rem] font-semibold tracking-tight capitalize">{title}</h2>
+      <div className="flex">
+        <Button size="icon-lg" variant="ghost" aria-label="Предыдущий месяц" onClick={onPrevious}>
+          <ChevronLeft />
+        </Button>
+        <Button size="icon-lg" variant="ghost" aria-label="Следующий месяц" onClick={onNext}>
+          <ChevronRight />
+        </Button>
+      </div>
     </div>
   );
 }

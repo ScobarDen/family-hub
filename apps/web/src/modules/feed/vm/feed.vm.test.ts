@@ -170,6 +170,15 @@ describe("the Feed", () => {
     expect(model.blocks()[2]?.rows[0]?.subtitle).toBe("Ася · 10:00");
   });
 
+  test("sums up what is overdue under the title and names who did each thing", async () => {
+    const { model } = startFeed();
+
+    await loaded(model);
+
+    expect(model.summary()).toBe("Просрочено: 1");
+    expect(model.blocks()[2]?.rows[0]?.author).toBe("Ася");
+  });
+
   test("narrows to one module by its chip", async () => {
     const { model } = startFeed();
 
@@ -194,7 +203,7 @@ describe("the Feed", () => {
     expect(model.canLoadMore()).toBe(false);
     expect(requests).toContain("GET /api/feed?before=1760367600000.plan-plan-2");
     expect(model.blocks().at(-1)).toMatchObject({
-      title: "1 октября 2026 г.",
+      title: "1 октября",
       rows: [{ title: "Ася теперь в семье" }],
     });
   });

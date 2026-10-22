@@ -6,7 +6,13 @@ import { reatomPhotoViewer } from "@/common/photo-viewer";
 import type { PopupParams } from "@/common/telegram";
 
 import type { FeedApi } from "../feed.api.ts";
-import { blocksOf, type FeedBlock, type FeedFilter, type FeedItem } from "../feed.lib.ts";
+import {
+  blocksOf,
+  summaryOf,
+  type FeedBlock,
+  type FeedFilter,
+  type FeedItem,
+} from "../feed.lib.ts";
 
 export type FeedTarget =
   | { kind: "plan"; planId: string }
@@ -176,6 +182,11 @@ export function reatomFeed(dependencies: FeedDependencies) {
       "feed.isLoading",
     ),
     blocks: reatomBlocks(dependencies, pages, filter),
+    summary: computed((): string | undefined => {
+      const page = pages.first.data();
+
+      return page === undefined ? undefined : summaryOf(page, dependencies.today());
+    }, "feed.summary"),
     canLoadMore: computed(
       () => pages.next() !== null && pages.loadMore.ready(),
       "feed.canLoadMore",

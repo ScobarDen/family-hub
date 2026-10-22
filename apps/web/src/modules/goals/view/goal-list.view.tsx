@@ -14,6 +14,7 @@ function GoalRows({ goals, model }: { goals: GoalListItem[]; model: GoalsScreenM
       key={goal.id}
       icon={goalIcons[goal.icon]}
       tone={goal.color}
+      iconVariant="badge"
       title={goal.title}
       subtitle={`${goal.subtitle} · ${goal.percent}%`}
       onClick={() => {

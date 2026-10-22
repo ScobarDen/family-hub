@@ -1,7 +1,7 @@
 import type { FeedActivity, FeedUpcoming, Photo } from "@family-hub/contract";
-import { dateInZone, dayBefore, timeInZone } from "@family-hub/recurrence";
+import { dateInZone, timeInZone } from "@family-hub/recurrence";
 
-import { formatDate } from "@/common/format-date";
+import { formatNearDate } from "@/common/format-date";
 
 export type FeedFilter = "all" | "plans" | "calendar" | "pet" | "goals" | "albums" | "recipes";
 
@@ -17,6 +17,7 @@ export type FeedRow = {
   canRecord: boolean;
   photos: Photo[];
   morePhotos: number;
+  author: string | undefined;
 };
 
 export type FeedBlock = { title: string; rows: FeedRow[] };
@@ -46,19 +47,20 @@ export function isShownBy(item: FeedItem, filter: FeedFilter): boolean {
   return filter === "all" || modules[item.kind] === filter;
 }
 
-function aheadRow(item: FeedUpcoming, isOverdue: boolean): FeedRow {
+function aheadRow(item: FeedUpcoming, isOverdue: boolean, { today }: Viewer): FeedRow {
   const time = "time" in item ? item.time : null;
 
   return {
     key: item.key,
     kind: item.kind,
     title: item.title,
-    subtitle: [formatDate(item.date), time].filter((part) => part !== null).join(", "),
+    subtitle: [formatNearDate(item.date, today), time].filter((part) => part !== null).join(", "),
     isOverdue,
     canComplete: item.kind === "plan",
     canRecord: item.kind === "due",
     photos: [],
     morePhotos: 0,
+    author: undefined,
   };
 }
 
@@ -97,15 +99,8 @@ function activityRow(item: FeedActivity, timeZone: string): FeedRow {
     canComplete: false,
     canRecord: false,
     ...photosOf(item),
+    author: item.memberName,
   };
-}
-
-function dayTitle(date: string, { today }: Viewer): string {
-  if (date === today) {
-    return "Сегодня";
-  }
-
-  return date === dayBefore(today) ? "Вчера" : formatDate(date);
 }
 
 // Activity comes newest first, so each day's rows already follow one another.
@@ -113,7 +108,7 @@ function activityBlocks(activity: FeedActivity[], viewer: Viewer): FeedBlock[] {
   const blocks: FeedBlock[] = [];
 
   for (const item of activity) {
-    const title = dayTitle(dateInZone(item.at, viewer.timeZone), viewer);
+    const title = formatNearDate(dateInZone(item.at, viewer.timeZone), viewer.today);
     const last = blocks.at(-1);
     const row = activityRow(item, viewer.timeZone);
 
@@ -127,6 +122,19 @@ function activityBlocks(activity: FeedActivity[], viewer: Viewer): FeedBlock[] {
   return blocks;
 }
 
+export function summaryOf(
+  { overdue, upcoming }: Pick<FeedData, "overdue" | "upcoming">,
+  today: string,
+): string {
+  const dueToday = upcoming.filter((item) => item.date === today).length;
+  const parts = [
+    overdue.length > 0 ? `Просрочено: ${overdue.length}` : undefined,
+    dueToday > 0 ? `Сегодня: ${dueToday}` : undefined,
+  ].filter((part) => part !== undefined);
+
+  return parts.length === 0 ? "На сегодня ничего не запланировано" : parts.join(" · ");
+}
+
 export function blocksOf(
   data: FeedData,
   { filter, viewer }: { filter: FeedFilter; viewer: Viewer },
@@ -136,8 +144,8 @@ export function blocksOf(
   }
 
   return [
-    { title: "Просрочено", rows: shown(data.overdue).map((item) => aheadRow(item, true)) },
-    { title: "Предстоит", rows: shown(data.upcoming).map((item) => aheadRow(item, false)) },
+    { title: "Просрочено", rows: shown(data.overdue).map((item) => aheadRow(item, true, viewer)) },
+    { title: "Предстоит", rows: shown(data.upcoming).map((item) => aheadRow(item, false, viewer)) },
     ...activityBlocks(shown(data.activity), viewer),
   ].filter(({ rows }) => rows.length > 0);
 }

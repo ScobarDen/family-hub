@@ -9,6 +9,7 @@ import { moduleTitles } from "@/modules/tab-bar";
 type ModulePageProps = {
   module: AppModule;
   title?: string;
+  subtitle?: string | undefined;
   children?: ReactNode;
   banner: ReactNode;
   // Telegram before 7.0 has no «⋯ → Настройки», so the Profile needs a button of its own.
@@ -18,6 +19,7 @@ type ModulePageProps = {
 export function ModulePage({
   module,
   title = moduleTitles[module],
+  subtitle,
   children,
   banner,
   onOpenProfile,
@@ -25,10 +27,10 @@ export function ModulePage({
   return (
     <>
       <div className="flex items-start justify-between">
-        <ScreenTitle title={title} />
+        <ScreenTitle title={title} {...(subtitle === undefined ? {} : { subtitle })} />
         {onOpenProfile !== undefined && (
           <Button
-            className="mt-6 mr-4"
+            className="mt-5 mr-3"
             size="icon-lg"
             variant="ghost"
             aria-label="Профиль"

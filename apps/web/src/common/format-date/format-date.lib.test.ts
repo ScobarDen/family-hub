@@ -1,6 +1,6 @@
 import { expect, test } from "vite-plus/test";
 
-import { formatAge, formatDate, formatDay } from "./format-date.lib.ts";
+import { formatAge, formatDate, formatDay, formatNearDate } from "./format-date.lib.ts";
 
 const lateEveningInUtc = Date.parse("2026-10-11T22:30:00Z");
 
@@ -31,4 +31,14 @@ test("counts a year only once the birthday has come", () => {
 
 test("names a calendar date with its year", () => {
   expect(formatDate("2022-05-14")).toBe("14 мая 2022 г.");
+});
+
+test.each([
+  ["2026-10-10", "Вчера"],
+  ["2026-10-11", "Сегодня"],
+  ["2026-10-12", "Завтра"],
+  ["2026-10-23", "23 октября"],
+  ["2027-01-05", "5 января 2027 г."],
+])("names %s near 11 October 2026 in words, without this year", (date, words) => {
+  expect(formatNearDate(date, "2026-10-11")).toBe(words);
 });

@@ -67,7 +67,7 @@ function profileOf(props: HomeProps): ReactNode {
   );
 }
 
-type ModuleContent = { title: string; content: ReactNode };
+type ModuleContent = { title: string; subtitle?: string | undefined; content: ReactNode };
 
 function petContentOf(pets: PetsScreenModel, care: CareModel): ModuleContent {
   if (care.canGoBack()) {
@@ -113,7 +113,7 @@ function contentOf(
   }
 
   if (module === "feed") {
-    return { title: "Лента", content: <Feed model={feed} /> };
+    return { title: "Лента", subtitle: feed.summary(), content: <Feed model={feed} /> };
   }
 
   if (module === "calendar") {
@@ -148,6 +148,7 @@ function screenOf(props: HomeProps): ReactNode {
       <ModulePage
         module={screen.module}
         title={contentOf(props, screen.module)?.title}
+        subtitle={contentOf(props, screen.module)?.subtitle}
         banner={<NotificationsBanner model={notifications} />}
         onOpenProfile={navigation.hasProfileButton ? navigation.openProfile : undefined}
       >
