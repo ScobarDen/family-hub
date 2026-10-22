@@ -218,7 +218,8 @@ function reatomStarts(record: EventRecord, chosenOffsets: Atom<EventReminderOffs
   };
 }
 
-// A timed Event keeps the zone it was set in; a new one takes the zone of whoever creates it.
+// A timed Event keeps the zone it was set in; a new one takes the zone of whoever creates it,
+// or of the phrase its Command Draft was said in.
 function reatomEventRecord(
   dependencies: EventFormDependencies,
   chosenOffsets: Atom<EventReminderOffset[]>,
@@ -236,7 +237,8 @@ function reatomEventRecord(
     failureMessage: "Не получилось сохранить событие. Попробуйте ещё раз.",
     valuesOf,
     valuesOfDraft,
-    create: async (values) => dependencies.api.create(changeFor(values, dependencies.timeZone())),
+    create: async (values, { phrase }) =>
+      dependencies.api.create(changeFor(values, phrase?.timeZone ?? dependencies.timeZone())),
     update: async (event: CalendarEvent, values) =>
       dependencies.api.update(
         event.id,

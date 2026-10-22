@@ -182,7 +182,8 @@ function reatomStarts(record: ReminderRecord, chosen: Atom<string[]>) {
   };
 }
 
-// A Reminder fires at its time in the zone it was set in; a new one takes its creator's zone.
+// A Reminder fires at its time in the zone it was set in; a new one takes its creator's zone,
+// or that of the phrase its Command Draft was said in.
 function reatomReminderRecord(dependencies: ReminderFormDependencies, chosen: Atom<string[]>) {
   function changeFor(values: ReminderValues, timeZone: string): ReminderChange {
     return changeOf(values, {
@@ -198,8 +199,10 @@ function reatomReminderRecord(dependencies: ReminderFormDependencies, chosen: At
     failureMessage: "Не получилось сохранить напоминание. Попробуйте ещё раз.",
     valuesOf,
     valuesOfDraft,
-    create: async (values) =>
-      dependencies.api.createReminder(changeFor(values, dependencies.timeZone())),
+    create: async (values, { phrase }) =>
+      dependencies.api.createReminder(
+        changeFor(values, phrase?.timeZone ?? dependencies.timeZone()),
+      ),
     update: async (reminder: Reminder, values) =>
       dependencies.api.updateReminder(reminder.id, changeFor(values, reminder.start.timeZone)),
     onSaved: (saved) => {

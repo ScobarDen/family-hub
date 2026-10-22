@@ -47,7 +47,11 @@ function startNotes({ failSaving = false } = {}) {
     failureMessage,
     valuesOf: (note: Note) => ({ title: note.title }),
     valuesOfDraft: (draft: { title: string | null }) => ({ title: draft.title ?? "" }),
-    create: async ({ title }) => answer(`create ${title}`, { id: "note-new", title }),
+    create: async ({ title }, { phrase: said }) =>
+      answer(said === undefined ? `create ${title}` : `create ${title} said in ${said.timeZone}`, {
+        id: "note-new",
+        title,
+      }),
     update: async (note, { title }) => answer(`update ${note.id} ${title}`, { ...note, title }),
     onSaved: (note) => {
       saved.push(note);
@@ -183,6 +187,21 @@ describe("a record without drafts", () => {
 });
 
 describe("a record started from a draft", () => {
+  test("is created with the phrase the draft was said in", async () => {
+    const { notes, requests } = startNotes();
+
+    notes.startFromDraft({
+      draftId: "draft-1",
+      phrase: { ...phrase, timeZone: "Asia/Vladivostok" },
+      draft: { title: "Груминг" },
+    });
+    notes.save();
+
+    await vi.waitFor(() => {
+      expect(requests).toEqual(["create Груминг said in Asia/Vladivostok"]);
+    });
+  });
+
   test("is created with the draft's values and settles the draft once", async () => {
     const { notes, requests, settledDrafts } = startNotes();
 

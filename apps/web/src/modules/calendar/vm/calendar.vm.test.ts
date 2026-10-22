@@ -6,9 +6,11 @@ import {
   reminderChange,
   type CalendarEvent,
   type DueDateItem,
+  type EventDraft,
   type Pet,
   type Plan,
   type Reminder,
+  type ReminderDraft,
 } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
@@ -421,6 +423,18 @@ describe("a standalone Reminder", () => {
   });
 });
 
+const internetReminder: ReminderDraft = {
+  kind: "reminder",
+  text: "Оплатить интернет",
+  date: "2026-10-16",
+  time: null,
+  recurrence: { frequency: "monthly", until: null },
+  visibility: "shared",
+  recipientIds: ["member-2"],
+  missing: ["time"],
+  ambiguities: [],
+};
+
 describe("a Command Draft opened by «Изменить»", () => {
   test("fills the Reminder form and saves what it shows", async () => {
     const { model, backend } = startCalendar();
@@ -429,17 +443,7 @@ describe("a Command Draft opened by «Изменить»", () => {
     model.openReminderDraft({
       draftId: "draft-1",
       phrase,
-      draft: {
-        kind: "reminder",
-        text: "Оплатить интернет",
-        date: "2026-10-16",
-        time: null,
-        recurrence: { frequency: "monthly", until: null },
-        visibility: "shared",
-        recipientIds: ["member-2"],
-        missing: ["time"],
-        ambiguities: [],
-      },
+      draft: internetReminder,
     });
 
     expect(model.screen()).toEqual({ kind: "reminder-form" });
@@ -461,6 +465,21 @@ describe("a Command Draft opened by «Изменить»", () => {
   });
 });
 
+const mumsBirthday: EventDraft = {
+  kind: "event",
+  title: "День рождения мамы",
+  note: null,
+  date: "2027-03-03",
+  time: null,
+  endDate: null,
+  endTime: null,
+  recurrence: { frequency: "yearly", until: null },
+  visibility: "shared",
+  reminderOffsets: ["1d"],
+  missing: [],
+  ambiguities: [],
+};
+
 describe("an Event draft opened by «Изменить»", () => {
   test("fills the Event form, all day with its Reminders, and saves what it shows", async () => {
     const { model, backend } = startCalendar();
@@ -469,20 +488,7 @@ describe("an Event draft opened by «Изменить»", () => {
     model.openEventDraft({
       draftId: "draft-2",
       phrase,
-      draft: {
-        kind: "event",
-        title: "День рождения мамы",
-        note: null,
-        date: "2027-03-03",
-        time: null,
-        endDate: null,
-        endTime: null,
-        recurrence: { frequency: "yearly", until: null },
-        visibility: "shared",
-        reminderOffsets: ["1d"],
-        missing: [],
-        ambiguities: [],
-      },
+      draft: mumsBirthday,
     });
 
     expect(model.screen()).toEqual({ kind: "event-form" });
@@ -502,6 +508,48 @@ describe("an Event draft opened by «Изменить»", () => {
       start: { date: "2027-03-03", time: null, timeZone: null },
       recurrence: { frequency: "yearly", until: null },
       reminderOffsets: ["1d"],
+    });
+  });
+});
+
+describe("a draft said in another zone", () => {
+  const saidInVladivostok = { ...phrase, timeZone: "Asia/Vladivostok" };
+
+  test("keeps a timed Event at its time in the zone it was said in", async () => {
+    const { model, backend } = startCalendar({ timeZone: "Europe/Moscow" });
+
+    await loaded(model);
+    model.openEventDraft({
+      draftId: "draft-3",
+      phrase: saidInVladivostok,
+      draft: { ...mumsBirthday, time: "10:00", recurrence: null, reminderOffsets: [] },
+    });
+    model.form.save();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "event" });
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({
+      start: { date: "2027-03-03", time: "10:00", timeZone: "Asia/Vladivostok" },
+    });
+  });
+
+  test("keeps a Reminder at its time in the zone it was said in", async () => {
+    const { model, backend } = startCalendar({ timeZone: "Europe/Moscow" });
+
+    await loaded(model);
+    model.openReminderDraft({
+      draftId: "draft-4",
+      phrase: saidInVladivostok,
+      draft: { ...internetReminder, time: "08:30", missing: [] },
+    });
+    model.reminderForm.save();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "calendar" });
+    });
+    expect(backend.requests.at(-1)?.body).toMatchObject({
+      start: { date: "2026-10-16", time: "08:30", timeZone: "Asia/Vladivostok" },
     });
   });
 });

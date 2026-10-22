@@ -46,9 +46,12 @@ export function reatomSubmitFailure(
 type Mode<Edited> =
   | { kind: "creating" }
   | { kind: "editing"; edited: Edited }
-  | { kind: "drafting"; draftId: string };
+  | { kind: "drafting"; draftId: string; phrase: CommandPhrase };
 
 export type DraftOpening<Draft> = { draftId: string; draft: Draft; phrase: CommandPhrase };
+
+// A record created from a Command Draft knows the phrase, so its moments keep the phrase's zone.
+export type Creation = { phrase: CommandPhrase | undefined };
 
 type RecordForm<Values> = Fillable<Values> &
   Submittable & { submit: (() => Promise<unknown>) & { ready: () => boolean } };
@@ -59,7 +62,7 @@ export type EditableRecordOptions<Values, Form extends RecordForm<Values>, Edite
   form: (onSubmit: (values: Values) => Promise<void>) => Form;
   failureMessage: string;
   valuesOf: (edited: Edited) => Values;
-  create: (values: Values) => Promise<Saved>;
+  create: (values: Values, creation: Creation) => Promise<Saved>;
   update: (edited: Edited, values: Values) => Promise<Saved>;
   onSaved: (saved: Saved) => void;
 };
@@ -100,7 +103,11 @@ function submitWith<Values, Form extends RecordForm<Values>, Edited, Draft, Save
   return async (values: Values): Promise<void> => {
     const current = mode();
     const saved = await wrap(
-      current.kind === "editing" ? options.update(current.edited, values) : options.create(values),
+      current.kind === "editing"
+        ? options.update(current.edited, values)
+        : options.create(values, {
+            phrase: current.kind === "drafting" ? current.phrase : undefined,
+          }),
     );
 
     if (current.kind === "drafting") {
@@ -120,7 +127,7 @@ function reatomDraftStart<Values, Edited, Draft>(
   start: (next: Mode<Edited>, values: Values) => void,
 ) {
   return action(({ draftId, draft, phrase }: DraftOpening<Draft>) => {
-    start({ kind: "drafting", draftId }, valuesOfDraft(draft, phrase));
+    start({ kind: "drafting", draftId, phrase }, valuesOfDraft(draft, phrase));
   }, `${name}.startFromDraft`);
 }
 
