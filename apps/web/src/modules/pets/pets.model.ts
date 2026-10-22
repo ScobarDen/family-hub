@@ -2,6 +2,8 @@ import { action, computed, withAsyncData, wrap } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
+import { upserted, withoutId } from "@/common/records";
+
 import type { PetsApi } from "./pets.api.ts";
 
 export function reatomPets({ api }: { api: PetsApi }) {
@@ -31,16 +33,10 @@ export function reatomPets({ api }: { api: PetsApi }) {
     }, "pets.tabTitle"),
 
     keep: action((saved: Pet) => {
-      const current = list.data() ?? [];
-
-      list.data.set(
-        current.some((pet) => pet.id === saved.id)
-          ? current.map((pet) => (pet.id === saved.id ? saved : pet))
-          : [...current, saved],
-      );
+      list.data.set(upserted(list.data() ?? [], saved));
     }, "pets.keep"),
     drop: action((petId: string) => {
-      list.data.set(list.data()?.filter((pet) => pet.id !== petId));
+      list.data.set(withoutId(list.data() ?? [], petId));
     }, "pets.drop"),
   };
 }

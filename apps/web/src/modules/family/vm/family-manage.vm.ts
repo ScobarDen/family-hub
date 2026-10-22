@@ -2,6 +2,8 @@ import { action, withAsync, wrap } from "@reatom/core";
 
 import type { FamilyMember } from "@family-hub/contract";
 
+import { withoutId } from "@/common/records";
+
 import { isConfirmed, type FamilySources } from "./family-sources.vm.ts";
 
 async function remove({ api, telegram, list, failure }: FamilySources, member: FamilyMember) {
@@ -20,7 +22,7 @@ async function remove({ api, telegram, list, failure }: FamilySources, member: F
 
   try {
     await wrap(api.remove(member.id));
-    list.data.set(list.data()?.filter(({ id }) => id !== member.id));
+    list.data.set(withoutId(list.data() ?? [], member.id));
   } catch {
     failure.set("Не получилось исключить участника. Попробуйте ещё раз.");
   }

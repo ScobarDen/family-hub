@@ -3,6 +3,7 @@ import { action, computed, withAsync, withAsyncData, wrap } from "@reatom/core";
 import type { Invite, InviteCreated } from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
+import { withoutId } from "@/common/records";
 import { detached, reatomFailure } from "@/common/state";
 
 import type { InvitesApi } from "../invites.api.ts";
@@ -63,7 +64,7 @@ function reatomRevoke({ api, list }: Sources) {
   return action(async (inviteId: string) => {
     const revoked = list.data()?.find((invite) => invite.id === inviteId);
 
-    list.data.set(list.data()?.filter((invite) => invite.id !== inviteId));
+    list.data.set(withoutId(list.data() ?? [], inviteId));
 
     try {
       await wrap(api.revoke(inviteId));

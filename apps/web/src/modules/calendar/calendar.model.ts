@@ -2,6 +2,8 @@ import { action, computed, noop, withAsyncData, wrap } from "@reatom/core";
 
 import type { CalendarEvent, Pet, Reminder } from "@family-hub/contract";
 
+import { upserted, withoutId } from "@/common/records";
+
 import type { CalendarApi } from "./calendar.api.ts";
 import type { PetDue } from "./calendar.lib.ts";
 
@@ -12,10 +14,9 @@ async function duesOf(api: CalendarApi, pet: Pet): Promise<PetDue[]> {
 }
 
 // Due Dates belong to each Pet in care, so they are gathered Pet by Pet.
-function reatomDues(api: CalendarApi) {
+function reatomDues(api: CalendarApi, pets: { data: () => Pet[] | undefined }) {
   return computed(async (): Promise<PetDue[]> => {
-    const all = await wrap(api.pets());
-    const inCare = all.filter(({ archivedAt }) => archivedAt === null);
+    const inCare = (pets.data() ?? []).filter(({ archivedAt }) => archivedAt === null);
     const lists = await wrap(Promise.all(inCare.map(async (pet) => duesOf(api, pet))));
 
     return lists.flat();
@@ -33,7 +34,7 @@ export function reatomCalendarData({ api }: { api: CalendarApi }) {
     withAsyncData(),
   );
 
-  const dues = reatomDues(api);
+  const dues = reatomDues(api, pets);
 
   return {
     events,
@@ -50,20 +51,16 @@ export function reatomCalendarData({ api }: { api: CalendarApi }) {
     }, "calendar.reload"),
 
     keep: action((saved: CalendarEvent) => {
-      const others = (events.data() ?? []).filter(({ id }) => id !== saved.id);
-
-      events.data.set([...others, saved]);
+      events.data.set(upserted(events.data() ?? [], saved));
     }, "calendar.keep"),
     drop: action((eventId: string) => {
-      events.data.set(events.data()?.filter(({ id }) => id !== eventId));
+      events.data.set(withoutId(events.data() ?? [], eventId));
     }, "calendar.drop"),
     keepReminder: action((saved: Reminder) => {
-      const others = (reminders.data() ?? []).filter(({ id }) => id !== saved.id);
-
-      reminders.data.set([...others, saved]);
+      reminders.data.set(upserted(reminders.data() ?? [], saved));
     }, "calendar.keepReminder"),
     dropReminder: action((reminderId: string) => {
-      reminders.data.set(reminders.data()?.filter(({ id }) => id !== reminderId));
+      reminders.data.set(withoutId(reminders.data() ?? [], reminderId));
     }, "calendar.dropReminder"),
   };
 }

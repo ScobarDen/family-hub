@@ -2,6 +2,8 @@ import { action, computed, withAsyncData, wrap } from "@reatom/core";
 
 import type { Goal } from "@family-hub/contract";
 
+import { upserted } from "@/common/records";
+
 import type { GoalsApi } from "./goals.api.ts";
 
 export function reatomGoals({ api }: { api: GoalsApi }) {
@@ -16,13 +18,9 @@ export function reatomGoals({ api }: { api: GoalsApi }) {
       const current = list.data();
 
       if (current !== undefined) {
-        const goals = current.goals.map((goal) => (goal.id === saved.id ? saved : goal));
-        const isNew = !current.goals.some(({ id }) => id === saved.id);
+        const goals = upserted(current.goals, saved);
 
-        list.data.set({
-          goals: isNew ? [...goals, saved] : goals,
-          totalSaved: totalOf(isNew ? [...goals, saved] : goals),
-        });
+        list.data.set({ goals, totalSaved: totalOf(goals) });
       }
     }, "goals.keep"),
   };
