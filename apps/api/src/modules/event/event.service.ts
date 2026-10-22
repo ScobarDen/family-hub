@@ -1,6 +1,7 @@
 import { uuidv7, type CalendarEvent, type EventChange } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 import type { Clock } from "@/common/clock";
 import { isHiddenFrom, isTurnedPrivate } from "@/common/visibility";
 
@@ -138,19 +139,16 @@ async function remove(
 
 export function createEventService(dependencies: EventDependencies) {
   return {
+    ...bindFirst(dependencies, { create, remove }),
     async list({ family, member }: Membership): Promise<CalendarEvent[]> {
       const rows = await dependencies.events.listVisible(family.id, member.id);
 
       return rows.map((row) => toEvent(row, member.id));
     },
-    create: async (membership: Membership, change: EventChange) =>
-      create(dependencies, membership, change),
     update: async (membership: Membership, eventId: string, change: EventChange) =>
       update(dependencies, membership, { eventId, change }),
     skip: async (membership: Membership, eventId: string, date: string) =>
       skip(dependencies, membership, { eventId, date }),
-    remove: async (membership: Membership, eventId: string) =>
-      remove(dependencies, membership, eventId),
   };
 }
 

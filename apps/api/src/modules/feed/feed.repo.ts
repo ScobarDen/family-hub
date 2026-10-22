@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import {
   albumPhotos,
   albums,
@@ -221,6 +222,18 @@ async function recipePhotosOf(db: Db, familyId: string): Promise<FeedRecipePhoto
 
 export function createFeedRepo(db: Db) {
   return {
+    ...bindFirst(db, {
+      plans: plansOf,
+      dues: duesOf,
+      careBefore,
+      joins: joinsOf,
+      goals: goalsOf,
+      entryPhotosOf,
+      uploadsOf,
+      cooksOf,
+      recipePhotosOf,
+      movements: movementsOf,
+    }),
     events: async (viewer: Viewer) =>
       db.select().from(events).where(isVisible(events, viewer)).all(),
     reminders: async (viewer: Viewer) =>
@@ -233,18 +246,6 @@ export function createFeedRepo(db: Db) {
         .all(),
     petsOf: async (familyId: string) =>
       db.select().from(pets).where(eq(pets.familyId, familyId)).all(),
-    plans: async (familyId: string) => plansOf(db, familyId),
-    dues: async (familyId: string) => duesOf(db, familyId),
-    careBefore: async (query: { familyId: string; before: number; limit: number }) =>
-      careBefore(db, query),
-    joins: async (familyId: string) => joinsOf(db, familyId),
-    goals: async (familyId: string) => goalsOf(db, familyId),
-    entryPhotosOf: async (familyId: string, entryIds: string[]) =>
-      entryPhotosOf(db, familyId, entryIds),
-    uploadsOf: async (familyId: string) => uploadsOf(db, familyId),
-    cooksOf: async (familyId: string) => cooksOf(db, familyId),
-    recipePhotosOf: async (familyId: string) => recipePhotosOf(db, familyId),
-    movements: async (familyId: string) => movementsOf(db, familyId),
   };
 }
 

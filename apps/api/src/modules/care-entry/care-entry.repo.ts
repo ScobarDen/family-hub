@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, lt, sql, type SQL } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import { careEntries, careEntryPhotos, members, pets, photos, type Db } from "@/common/db";
 import { knownPhotoIds } from "@/modules/photo";
 
@@ -94,16 +95,9 @@ async function setPhotos(db: Db, { familyId, entryId, photoIds }: PhotoLinks): P
 
 export function createCareEntryRepo(db: Db) {
   return {
+    ...bindFirst(db, { find, petOf, dueCandidates, expenses, photosOf, knownPhotoIds, setPhotos }),
     list: async (familyId: string, petId: string) =>
       selectWhere(db, and(eq(careEntries.familyId, familyId), eq(careEntries.petId, petId))),
-    find: async (familyId: string, entryId: string) => find(db, familyId, entryId),
-    petOf: async (familyId: string, petId: string) => petOf(db, familyId, petId),
-    dueCandidates: async (familyId: string, petId: string) => dueCandidates(db, familyId, petId),
-    expenses: async (query: ExpenseQuery) => expenses(db, query),
-    photosOf: async (familyId: string, entryIds: string[]) => photosOf(db, familyId, entryIds),
-    knownPhotoIds: async (familyId: string, photoIds: string[]) =>
-      knownPhotoIds(db, familyId, photoIds),
-    setPhotos: async (links: PhotoLinks) => setPhotos(db, links),
 
     async add(entry: typeof careEntries.$inferInsert): Promise<void> {
       await db.insert(careEntries).values(entry);

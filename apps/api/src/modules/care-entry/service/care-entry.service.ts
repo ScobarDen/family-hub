@@ -8,6 +8,7 @@ import {
 import { dateInZone } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 import { fallbackTimeZone, type Clock } from "@/common/clock";
 import type { PhotoLinks } from "@/common/photo-link";
 
@@ -214,21 +215,16 @@ export function createCareEntryService(dependencies: CareEntryDependencies) {
   const { entries } = dependencies;
 
   return {
+    ...bindFirst(dependencies, { get: current, remove, dueDates }),
     async list(membership: Membership, petId: string): Promise<CareEntry[]> {
       const rows = await entries.list(membership.family.id, petId);
 
       return withPhotos(dependencies, membership, rows);
     },
-    get: async (membership: Membership, entryId: string) =>
-      current(dependencies, membership, entryId),
     create: async (membership: Membership, petId: string, change: CareEntryChange) =>
       create(dependencies, membership, { petId, change }),
     update: async (membership: Membership, entryId: string, change: CareEntryChange) =>
       update(dependencies, membership, { entryId, change }),
-    remove: async (membership: Membership, entryId: string) =>
-      remove(dependencies, membership, entryId),
-    dueDates: async (membership: Membership, petId: string) =>
-      dueDates(dependencies, membership, petId),
 
     async expenses({ family }: Membership, petId: string, range: Range): Promise<ExpenseSummary> {
       return summaryOf(await entries.expenses({ familyId: family.id, petId, ...range }));

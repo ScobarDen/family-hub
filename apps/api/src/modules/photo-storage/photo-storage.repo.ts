@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import { families, members, type Db } from "@/common/db";
 
 export type ChannelRow = {
@@ -35,7 +36,7 @@ export async function storageChannelOf(db: Db, familyId: string): Promise<Channe
 
 export function createPhotoStorageRepo(db: Db) {
   return {
-    channelOf: async (familyId: string) => storageChannelOf(db, familyId),
+    ...bindFirst(db, { channelOf: storageChannelOf }),
 
     // A channel event names no Family, so the Family is found by the channel it holds.
     connectedTo: async (channelId: number): Promise<ChannelRow | undefined> =>

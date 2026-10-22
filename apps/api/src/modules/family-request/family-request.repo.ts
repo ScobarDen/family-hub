@@ -1,5 +1,6 @@
 import { and, desc, eq, lt, ne } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import { families, familyMembers, familyRequests, members, type Db } from "@/common/db";
 
 export type FamilyRequest = typeof familyRequests.$inferSelect;
@@ -62,6 +63,7 @@ async function sweepDecidedBefore(db: Db, moment: number): Promise<void> {
 
 export function createFamilyRequestRepo(db: Db) {
   return {
+    ...bindFirst(db, { cancelPendingOf, sweepDecidedBefore, createFamily }),
     findById: async (id: string) =>
       db.select().from(familyRequests).where(eq(familyRequests.id, id)).get(),
 
@@ -91,18 +93,12 @@ export function createFamilyRequestRepo(db: Db) {
       return closed;
     },
 
-    cancelPendingOf: async (telegramId: number, now: number) =>
-      cancelPendingOf(db, telegramId, now),
-
-    sweepDecidedBefore: async (moment: number) => sweepDecidedBefore(db, moment),
-
     async reopen(id: string, now: number): Promise<void> {
       await db
         .update(familyRequests)
         .set({ status: "pending", decidedAt: null, updatedAt: now })
         .where(eq(familyRequests.id, id));
     },
-    createFamily: async (family: NewFamily) => createFamily(db, family),
   };
 }
 

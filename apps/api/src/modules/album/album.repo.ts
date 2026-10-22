@@ -1,5 +1,6 @@
 import { and, eq, inArray, isNull, ne, notInArray } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import {
   albumPhotos,
   albums,
@@ -128,20 +129,24 @@ async function allPhotosOf(db: Db, familyId: string): Promise<PhotoRow[]> {
 
 export function createAlbumRepo(db: Db) {
   return {
+    ...bindFirst(db, {
+      albumPhotosOf,
+      petPhotosOf,
+      allPhotos: allPhotosOf,
+      knownPhotoIds,
+      delete: deleteAlbum,
+      addPhotos,
+      removePhoto,
+    }),
     albumsOf: async (familyId: string) =>
       db.select().from(albums).where(eq(albums.familyId, familyId)).all(),
     find: async (target: AlbumTarget) => db.select().from(albums).where(ofAlbum(target)).get(),
-    albumPhotosOf: async (familyId: string) => albumPhotosOf(db, familyId),
-    petPhotosOf: async (familyId: string) => petPhotosOf(db, familyId),
     petsOf: async (familyId: string): Promise<PetRow[]> =>
       db
         .select({ id: pets.id, name: pets.name })
         .from(pets)
         .where(and(eq(pets.familyId, familyId), isNull(pets.archivedAt)))
         .all(),
-    allPhotos: async (familyId: string) => allPhotosOf(db, familyId),
-    knownPhotoIds: async (familyId: string, photoIds: string[]) =>
-      knownPhotoIds(db, familyId, photoIds),
 
     async add(row: typeof albums.$inferInsert): Promise<void> {
       await db.insert(albums).values(row);
@@ -149,9 +154,6 @@ export function createAlbumRepo(db: Db) {
     async update(target: AlbumTarget, values: Partial<typeof albums.$inferInsert>): Promise<void> {
       await db.update(albums).set(values).where(ofAlbum(target));
     },
-    delete: async (target: AlbumTarget, scope: AlbumDeletion) => deleteAlbum(db, target, scope),
-    addPhotos: async (adding: Adding) => addPhotos(db, adding),
-    removePhoto: async (target: AlbumTarget & { photoId: string }) => removePhoto(db, target),
   };
 }
 

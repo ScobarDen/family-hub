@@ -1,5 +1,6 @@
 import { and, asc, eq, gte, inArray, isNull, lt, lte, notInArray, or } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import { familyMembers, reminderDispatch, type DispatchSource, type Db } from "@/common/db";
 
 import { sourceIdOf } from "../reminder.lib.ts";
@@ -143,7 +144,7 @@ async function update(
 
 export function createDispatchRepo(db: Db) {
   return {
-    claimDue: async (claim: { now: number; limit: number }) => claimDue(db, claim),
+    ...bindFirst(db, { claimDue, removeDeparted, release }),
     // A bot button names its row by id alone; the row names its Family.
     find: async (dispatchId: string): Promise<DispatchRow | undefined> =>
       db.select().from(reminderDispatch).where(eq(reminderDispatch.id, dispatchId)).get(),
@@ -172,9 +173,7 @@ export function createDispatchRepo(db: Db) {
     ofHolder: async (holder: HolderRows): Promise<DispatchRow[]> =>
       db.select().from(reminderDispatch).where(ofHolder(holder)).all(),
     write: async (changes: DispatchChanges, newId: () => string) => write(db, changes, newId),
-    removeDeparted: async (familyId: string) => removeDeparted(db, familyId),
     // The rest of a claimed batch spans Families, as the claim did.
-    release: async (dispatchIds: string[]) => release(db, dispatchIds),
     update: async (familyId: string, dispatchId: string, values: DispatchValues) =>
       update(db, { familyId, dispatchId }, values),
   };

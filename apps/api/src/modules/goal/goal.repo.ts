@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
+import { bindFirst } from "@/common/bind";
 import { familyMembers, goalMovements, goals, members, type Db } from "@/common/db";
 
 export type GoalRow = typeof goals.$inferSelect & { completedByName: string | null };
@@ -67,8 +68,7 @@ function ofMovement({ familyId, movementId }: { familyId: string; movementId: st
 
 export function createGoalRepo(db: Db) {
   return {
-    listVisible: async (viewer: Viewer) => listVisible(db, viewer),
-    movementsOf: async (familyId: string, goalIds: string[]) => movementsOf(db, familyId, goalIds),
+    ...bindFirst(db, { listVisible, movementsOf }),
 
     async isInFamily(familyId: string, memberId: string): Promise<boolean> {
       const row = await db

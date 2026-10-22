@@ -1,5 +1,6 @@
 import { and, asc, eq, gte, isNull, lt, lte, sql } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import { commandDrafts, familyMembers, members, pets, type Db } from "@/common/db";
 
 export type CommandDraftRow = typeof commandDrafts.$inferSelect;
@@ -65,7 +66,7 @@ async function reserve(
 
 export function createCommandRepo(db: Db) {
   return {
-    reserve: async (row: DraftInsert, quota: Quota) => reserve(db, row, quota),
+    ...bindFirst(db, { reserve }),
     // The bot's buttons know a draft by its id alone; the row names its Family and author.
     find: async (draftId: string): Promise<CommandDraftRow | undefined> =>
       db.select().from(commandDrafts).where(eq(commandDrafts.id, draftId)).get(),

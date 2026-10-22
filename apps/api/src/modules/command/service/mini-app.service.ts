@@ -2,6 +2,7 @@ import type { CommandOutcome } from "@family-hub/contract";
 import type { Phrase } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 
 import { failureTexts } from "../command.lib.ts";
 import type { CommandDependencies } from "../command.types.ts";
@@ -82,9 +83,8 @@ export function createMiniAppCommands(dependencies: CommandDependencies) {
   }
 
   return {
+    ...bindFirst(dependencies, { fromAudio: commandFromAudio }),
     botChat: async () => ({ url: await dependencies.appLinks.chatLink() }),
-    fromAudio: async (membership: Membership, audio: Audio) =>
-      commandFromAudio(dependencies, membership, audio),
     open: async (membership: Membership, draftId: string) =>
       withPress(membership, draftId, async (press) =>
         outcomeFor(

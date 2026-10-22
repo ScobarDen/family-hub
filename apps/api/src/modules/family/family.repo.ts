@@ -1,5 +1,6 @@
 import { and, eq, exists, gt, isNull, sql } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import {
   events,
   families,
@@ -95,6 +96,7 @@ async function handOver(
 
 export function createFamilyRepo(db: Db) {
   return {
+    ...bindFirst(db, { depart, handOver }),
     findMember: async (familyId: string, memberId: string): Promise<FamilyMemberRow | undefined> =>
       db
         .select({ id: members.id, name: members.name, telegramId: members.telegramId })
@@ -105,9 +107,6 @@ export function createFamilyRepo(db: Db) {
 
     countMembers: async (familyId: string) =>
       db.$count(familyMembers, eq(familyMembers.familyId, familyId)),
-
-    depart: async (departure: Departure) => depart(db, departure),
-    handOver: async (change: HandOver) => handOver(db, change),
 
     // Everything of the Family cascades from its row; Member rows stay, as they belong to no Family.
     async delete(familyId: string): Promise<void> {

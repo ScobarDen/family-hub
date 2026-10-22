@@ -1,6 +1,7 @@
 import { photoMaxBytes, uuidv7, type Photo, type PhotoVariant } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
+import { bindFirst } from "@/common/bind";
 import type { Clock } from "@/common/clock";
 import { httpStatus } from "@/common/errors";
 import type { PhotoLinks } from "@/common/photo-link";
@@ -139,11 +140,7 @@ async function serve(
 
 export function createPhotoService(dependencies: PhotoDependencies) {
   return {
-    upload: async (membership: Membership, picked: { file: Blob; takenAt: number | null }) =>
-      upload(dependencies, membership, picked),
-    remove: async (membership: Membership, photoId: string) =>
-      remove(dependencies, membership, photoId),
-    serve: async (request: SignedRequest) => serve(dependencies, request),
+    ...bindFirst(dependencies, { upload, remove, serve }),
   };
 }
 

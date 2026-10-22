@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, notInArray, or, type SQL } from "drizzle-orm";
 
+import { bindFirst } from "@/common/bind";
 import { familyMembers, members, reminderRecipients, reminders, type Db } from "@/common/db";
 
 export type ReminderRow = typeof reminders.$inferSelect;
@@ -130,13 +131,8 @@ async function removeDepartedRecipients(db: Db, familyId: string): Promise<void>
 
 export function createReminderRepo(db: Db) {
   return {
-    familyMembersOf: async (familyId: string) => familyMembersOf(db, familyId),
-    listVisible: async (familyId: string, memberId: string) => listVisible(db, familyId, memberId),
+    ...bindFirst(db, { familyMembersOf, listVisible, save, removeDepartedRecipients, areMembers }),
     find: async (reminderTarget: ReminderTarget) => findWhere(db, target(reminderTarget)),
-    save: async (saving: Saving, recipientIds: string[]) => save(db, saving, recipientIds),
-    removeDepartedRecipients: async (familyId: string) => removeDepartedRecipients(db, familyId),
-    areMembers: async (familyId: string, memberIds: string[]) =>
-      areMembers(db, familyId, memberIds),
 
     async delete(reminderTarget: ReminderTarget): Promise<void> {
       await db.delete(reminders).where(target(reminderTarget));
