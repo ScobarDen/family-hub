@@ -155,6 +155,23 @@ describe("the morning digest", () => {
     expect(digestsTo(worker, asya)).toEqual([]);
   });
 
+  test("fits a long list into one message and says how much is left out", async () => {
+    const worker = await startWithFamily();
+
+    for (let index = 1; index <= 25; index += 1) {
+      await addPlan(worker, denis, {
+        title: `${"Разобрать антресоль ".repeat(9)}${index}`,
+        dueDate: "2026-09-28",
+      });
+    }
+
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    const [digest] = digestsTo(worker, denis);
+
+    expect(digest?.text.split("\n").at(-1)).toBe("…и ещё 15");
+  });
+
   test("says nothing on an empty day", async () => {
     const worker = await startWithFamily();
 
