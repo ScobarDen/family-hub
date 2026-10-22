@@ -194,4 +194,30 @@ describe("the morning digest", () => {
     expect(settings.canMessage).toBe(false);
     expect(digestsTo(worker, denis)).toEqual([]);
   });
+
+  test("comes back to a Member who left and joined again by an Invite", async () => {
+    const worker = await startWithFamily();
+
+    await addPlan(worker, denis, { title: "Отправить документы", dueDate: "2026-09-28" });
+    await request(worker, asya, { method: "POST", path: "/api/family/leave" });
+
+    const invite = await request(worker, denis, { method: "POST", path: "/api/invites" });
+    const { link } = await invite.json<{ link: string }>();
+    const token = new URL(link).searchParams.get("startapp")?.replace(/^inv_/u, "") ?? "";
+
+    await worker.request(`/api/invites/${token}/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        initData: signInitData({
+          botToken: worker.env.BOT_TOKEN,
+          user: asya,
+          authDate: worker.clock.iso(),
+        }),
+      }),
+    });
+    await tickAt(worker, "2026-10-01T23:00:00Z");
+
+    expect(digestsTo(worker, asya)).toHaveLength(1);
+  });
 });

@@ -61,8 +61,11 @@ export async function familySources(
   familyId: string,
 ): Promise<Source[]> {
   const holders = await dependencies.sources.holdersOf(familyId);
+  const memberIds = await dependencies.sources.memberIdsOf(familyId);
   const groups = await Promise.all(
-    holders.map(async (holder) => sourcesOf(dependencies, { ...holder, familyId })),
+    [...holders, ...memberIds.map((id) => ({ kind: "member" as const, id }))].map(async (holder) =>
+      sourcesOf(dependencies, { ...holder, familyId }),
+    ),
   );
 
   return groups.flat();
