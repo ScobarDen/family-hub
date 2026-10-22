@@ -16,7 +16,7 @@ export const PhotoStorage = reatomComponent(({ model }: PhotoStorageProps) => {
 
   return (
     <Section title="Хранилище фото" footer={view.description}>
-      <SectionItem icon={Images} tone={view.isConnected ? "violet" : "gray"} title={view.title} />
+      <SectionItem icon={Images} title={view.title} />
     </Section>
   );
 }, "PhotoStorage");

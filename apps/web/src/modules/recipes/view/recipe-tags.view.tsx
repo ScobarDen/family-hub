@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 import { Plus } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import type { FormEvent } from "react";
 
 import type { RecipeTag } from "@family-hub/contract";
 
@@ -12,12 +12,9 @@ import { TagRow } from "./tag-row.view.tsx";
 type RecipeTagsProps = { model: RecipesScreenModel; tags: RecipeTag[] };
 
 export const RecipeTags = reatomComponent(({ model, tags }: RecipeTagsProps) => {
-  const [draft, setDraft] = useState("");
-
   function add(event: FormEvent) {
     event.preventDefault();
-    model.addTag(draft);
-    setDraft("");
+    model.addTag();
   }
 
   return (
@@ -31,18 +28,16 @@ export const RecipeTags = reatomComponent(({ model, tags }: RecipeTagsProps) => 
         <Input
           placeholder="Новый тег"
           aria-label="Новый тег"
-          value={draft}
+          value={model.newTag()}
           onChange={(event) => {
-            setDraft(event.target.value);
+            model.typeNewTag(event.target.value);
           }}
         />
         <Button type="submit" size="icon" aria-label="Добавить тег">
           <Plus />
         </Button>
       </form>
-      <div className="px-4 pt-2">
-        <FieldError>{model.tagFailure()}</FieldError>
-      </div>
+      <FieldError className="px-4 pt-2">{model.tagFailure()}</FieldError>
     </>
   );
 }, "RecipeTags");

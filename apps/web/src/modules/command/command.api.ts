@@ -1,11 +1,4 @@
-import {
-  botChat,
-  commandOutcome,
-  draftCreated,
-  draftSettled,
-  familyMemberList,
-  petList,
-} from "@family-hub/contract";
+import { botChat, commandOutcome, draftCreated, draftSettled } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
 
@@ -31,8 +24,6 @@ export function createCommandApi(client: HttpClient) {
       client.request(`/api/commands/${draftId}/dismiss`, { method: "POST", schema: draftSettled }),
     markCreated: async (draftId: string) =>
       client.request(`/api/commands/${draftId}/created`, { method: "POST", schema: draftSettled }),
-    members: async () => client.request("/api/family/members", { schema: familyMemberList }),
-    pets: async () => client.request("/api/pets", { schema: petList }),
     botChat: async () => client.request("/api/commands/bot", { schema: botChat }),
   };
 }

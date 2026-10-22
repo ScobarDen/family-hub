@@ -1,4 +1,4 @@
-import { action, atom, computed, noop } from "@reatom/core";
+import { action, computed, noop, reatomBoolean } from "@reatom/core";
 
 import type { CurrentMember, FamilyRequestStatus } from "@family-hub/contract";
 
@@ -74,21 +74,24 @@ function currentScreen({
 
 export function reatomSession({ api, telegram, isJoiningFamily }: SessionDependencies) {
   const signIn = reatomSignIn({ api, initData: telegram.initData });
-  const isRequestingFamily = atom(false, "session.isRequestingFamily");
+  const isRequestingFamily = reatomBoolean(false, "session.isRequestingFamily");
   const familyRequestStatus = computed((): FamilyRequestStatus | undefined => {
     const outcome = signIn.data();
 
     return outcome?.status === "stranger" ? outcome.familyRequest : undefined;
   }, "session.familyRequestStatus");
 
+  const member = computed((): CurrentMember | undefined => {
+    const outcome = signIn.data();
+
+    return outcome?.status === "member" ? outcome.member : undefined;
+  }, "session.member");
+
   return {
     familyRequestStatus,
-
-    member: computed((): CurrentMember | undefined => {
-      const outcome = signIn.data();
-
-      return outcome?.status === "member" ? outcome.member : undefined;
-    }, "session.member"),
+    member,
+    memberName: computed(() => member()?.member.name ?? "", "session.memberName"),
+    familyName: computed(() => member()?.family.name ?? "", "session.familyName"),
 
     screen: computed(
       () => currentScreen({ api, signIn, isJoiningFamily, isRequestingFamily }),
@@ -105,11 +108,11 @@ export function reatomSession({ api, telegram, isJoiningFamily }: SessionDepende
     }, "session.showInviteHelp"),
 
     requestFamily: action(() => {
-      isRequestingFamily.set(true);
+      isRequestingFamily.setTrue();
     }, "session.requestFamily"),
 
     closeFamilyRequest: action(() => {
-      isRequestingFamily.set(false);
+      isRequestingFamily.setFalse();
     }, "session.closeFamilyRequest"),
   };
 }

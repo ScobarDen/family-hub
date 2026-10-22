@@ -13,7 +13,6 @@ export function ArchivedPets({ pets, onOpen }: ArchivedPetsProps) {
         <SectionItem
           key={pet.id}
           icon={Archive}
-          tone="gray"
           title={pet.name}
           subtitle={pet.subtitle}
           onClick={() => {

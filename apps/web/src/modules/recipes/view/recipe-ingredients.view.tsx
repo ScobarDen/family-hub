@@ -13,9 +13,10 @@ export const RecipeIngredients = reatomComponent(
       {ingredients.length === 0 && <SectionItem title="Ингредиенты не записаны" />}
       {ingredients.map((ingredient, index) => (
         <SectionItem
-          key={ingredient}
+          // Two lines of a recipe may read the same, so the position is the identity.
+          // oxlint-disable-next-line react/no-array-index-key
+          key={index}
           icon={checked.includes(index) ? CircleCheck : Circle}
-          tone={checked.includes(index) ? "green" : "gray"}
           title={ingredient}
           onClick={() => {
             model.toggleIngredient(index);

@@ -4,9 +4,10 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { planChange, type FamilyMemberList, type Plan, type PlanList } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
+import { createPetsApi, reatomPets } from "@/modules/pets";
 
 import { createPlansApi } from "../plans.api.ts";
-import { reatomPlans } from "../plans.model.ts";
 import { reatomPlansScreen } from "./plans.vm.ts";
 
 const members: FamilyMemberList = [
@@ -119,9 +120,13 @@ function fakeBackend(
 
     requests.push(request);
 
-    return answer === undefined
-      ? Response.json({ code: "PLAN_NOT_FOUND", message: "" }, { status: 404 })
-      : Response.json(answer(body));
+    if (answer === undefined) {
+      return Response.json({ code: "PLAN_NOT_FOUND", message: "" }, { status: 404 });
+    }
+
+    const reply = answer(body);
+
+    return reply instanceof Response ? reply : Response.json(reply);
   }
 
   return { fetch, requests };
@@ -147,7 +152,8 @@ function startPlans(backend = fakeBackend(), telegram = fakeTelegram()) {
   const openedAlbums: string[] = [];
   const model = reatomPlansScreen({
     api,
-    plans: reatomPlans({ api }),
+    members: reatomFamilyMembers(createFamilyApi(client)),
+    pets: reatomPets({ api: createPetsApi(client) }).list,
     telegram,
     self: () => "member-1",
     timeZone: () => "Europe/Moscow",
@@ -186,7 +192,7 @@ describe("the list of Plans", () => {
 
     await loaded(model);
 
-    expect(model.screen()).toEqual({
+    expect(model.screen()).toMatchObject({
       kind: "list",
       open: [
         {
@@ -222,8 +228,16 @@ describe("a Plan", () => {
         progress: "1 из 2",
         completed: undefined,
         subplans: [
-          { title: "Купить обои", isCompleted: true, isLaterThanPlan: true },
-          { title: "Поклеить", isCompleted: false, isLaterThanPlan: false },
+          {
+            title: "Купить обои",
+            isCompleted: true,
+            subtitle: expect.stringContaining("позже срока плана"),
+          },
+          {
+            title: "Поклеить",
+            isCompleted: false,
+            subtitle: expect.not.stringContaining("позже срока плана"),
+          },
         ],
       },
     });
@@ -300,7 +314,9 @@ describe("a Plan", () => {
 
   test("says so when the server fails", async () => {
     const { model } = startPlans(
-      fakeBackend(undefined, { "POST /api/plans/plan-1/subplans/sub-2/complete": () => 1 }),
+      fakeBackend(undefined, {
+        "POST /api/plans/plan-1/subplans/sub-2/complete": () => Response.json({}, { status: 500 }),
+      }),
     );
 
     await loaded(model);

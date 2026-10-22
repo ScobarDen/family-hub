@@ -1,11 +1,12 @@
-import { action, atom, computed, noop, withAbort, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, atom, type Atom, computed, withAbort, withAsync, wrap } from "@reatom/core";
 
 import type { CareEntry, CareKind } from "@family-hub/contract";
 
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { PreparedPhoto } from "@/common/photo";
-import type { PopupParams } from "@/common/telegram";
+import { detached, readOnly, reatomFailure } from "@/common/state";
+import { type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import { categoryTitles, type WeightRange } from "../care.config.ts";
@@ -34,14 +35,14 @@ type CareDependencies = {
   today: () => string;
   now: () => string;
   timeZone: () => string;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Dialogs;
   isReadOnly: () => boolean;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   // Why photos cannot be added now, from photo-storage; undefined when they can.
   photoHint: () => string | undefined;
   onMakeAvatar: (photoId: string) => void;
   onOpenPet: (petId: string) => void;
-  onDraftSaved?: (draftId: string) => void;
+  onDraftSaved: (draftId: string) => void;
 };
 
 export type DueSource = { id: string; title: string; dueDate: string; kind: "due" };
@@ -54,7 +55,6 @@ type Sources = CareDependencies & {
   data: CareData;
   form: CareFormModel;
   screen: Atom<CareScreen["kind"]>;
-  failure: Atom<string | undefined>;
 };
 
 function reatomWeight({ data, timeZone, today }: Sources, weightRange: Atom<WeightRange>) {
@@ -89,10 +89,11 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
         (data.entries.data() ?? []).map((entry) => toJournalItem(entry, timeZone())),
       "care.journal",
     ),
-    month: computed((): ExpensesView | undefined => {
+    // Until the month arrives it reads as nothing spent.
+    month: computed((): ExpensesView => {
       const summary = data.month.data();
 
-      return summary === undefined ? undefined : toExpensesView(summary);
+      return summary === undefined ? { total: formatRubles(0), rows: [] } : toExpensesView(summary);
     }, "care.monthView"),
     year: computed((): YearExpenses | undefined => {
       const summary = data.year.data();
@@ -112,33 +113,24 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
   };
 }
 
-function reatomRemove({ api, data, form, screen, failure, telegram }: Sources) {
+function reatomRemove({ api, data, form, screen, telegram }: Sources) {
   return action(async () => {
     const entryId = form.editedId();
-    const choice = await wrap(
-      telegram.showPopup({
+    const isSure = await wrap(
+      isConfirmed(telegram, {
         title: "Удалить запись?",
         message: "Запись пропадёт из журнала и трат у всей семьи.",
-        buttons: [
-          { id: "delete", type: "destructive", text: "Удалить" },
-          { id: "cancel", type: "cancel" },
-        ],
+        button: "Удалить",
       }),
     );
 
-    if (entryId === undefined || choice !== "delete") {
+    if (entryId === undefined || !isSure) {
       return;
     }
 
-    failure.set(undefined);
-
-    try {
-      await wrap(api.remove(entryId));
-      data.reload();
-      screen.set("blocks");
-    } catch {
-      failure.set("Не получилось удалить запись. Попробуйте ещё раз.");
-    }
+    await wrap(api.remove(entryId));
+    data.reload();
+    screen.set("blocks");
   }, "care.remove").extend(withAsync());
 }
 
@@ -173,12 +165,8 @@ function reatomOpening({ api, data, form, screen, onOpenPet }: Sources) {
   }, "care.followUpEntry").extend(withAbort());
 
   return {
-    openEntry: action((entryId: string) => {
-      openEntry(entryId).catch(noop);
-    }, "care.openEntry"),
-    followUp: action((entryId: string) => {
-      followUp(entryId).catch(noop);
-    }, "care.followUp"),
+    openEntry: detached(openEntry, "care.openEntry"),
+    followUp: detached(followUp, "care.followUp"),
   };
 }
 
@@ -259,7 +247,6 @@ export function reatomCare(dependencies: CareDependencies) {
     data,
     form,
     screen,
-    failure: atom<string | undefined>(undefined, "care.failure"),
   };
   const weightRange = atom<WeightRange>("quarter", "care.weightRange");
   const remove = reatomRemove(sources);
@@ -268,18 +255,20 @@ export function reatomCare(dependencies: CareDependencies) {
     screen: reatomScreen(screen, form),
     title: reatomTitle(screen, form),
     canGoBack: computed(() => screen() !== "blocks", "care.canGoBack"),
-    isReadOnly: computed(() => dependencies.isReadOnly(), "care.isReadOnly"),
+    isReadOnly: readOnly(dependencies.isReadOnly),
     dueSources: reatomDueSources(data),
-    failure: computed(() => sources.failure(), "care.visibleFailure"),
+    failure: reatomFailure(remove, {
+      message: "Не получилось удалить запись. Попробуйте ещё раз.",
+      name: "care.failure",
+    }),
     form,
     ...photos,
     ...reatomViews(sources, weightRange),
     ...reatomMoves(sources, weightRange),
     ...reatomOpening(sources),
     ...reatomDraftEditing(sources),
-    remove: action(() => {
-      remove().catch(noop);
-    }, "care.removeEntry"),
+    remove: detached(remove, "care.removeEntry"),
+    reload: data.reload,
   };
 }
 

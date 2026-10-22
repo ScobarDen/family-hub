@@ -161,8 +161,9 @@ function startCare(choices: string[] = []) {
     today: () => "2026-10-11",
     now: () => "2026-10-11T18:30",
     timeZone: () => "Europe/Moscow",
-    telegram: { showPopup: async () => pending.shift() },
+    telegram: { showPopup: async () => pending.shift(), showAlert: noop },
     isReadOnly: () => isArchived(),
+    onDraftSaved: noop,
     preparePhoto: async (file) => {
       if (file === tooLarge) {
         throw new PhotoTooLargeError();
@@ -191,7 +192,7 @@ type Model = ReturnType<typeof startCare>["model"];
 async function loaded(model: Model) {
   await vi.waitFor(() => {
     expect(model.journal()).toHaveLength(3);
-    expect(model.month()).toBeDefined();
+    expect(model.month().rows).not.toEqual([]);
   });
 }
 
@@ -329,7 +330,7 @@ describe("the entry form", () => {
   });
 
   test("deletes an entry after a confirmation", async () => {
-    const { model, backend } = startCare(["delete"]);
+    const { model, backend } = startCare(["confirm"]);
 
     await loaded(model);
     model.edit("entry-2");
@@ -375,7 +376,7 @@ describe("a Care Entry's photos", () => {
   });
 
   test("open full screen, become the avatar and are deleted after a confirmation", async () => {
-    const { model, backend, avatars } = startCare(["delete"]);
+    const { model, backend, avatars } = startCare(["confirm"]);
 
     model.viewer.open([walk], "photo-1");
     model.viewer.pick();

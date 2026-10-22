@@ -2,6 +2,7 @@ import { action, atom, computed, noop, wrap } from "@reatom/core";
 
 import { voiceMaxSeconds } from "@family-hub/contract";
 
+import { readOnly } from "@/common/state";
 import type { HapticImpact } from "@/common/telegram";
 import type { Recording, VoiceRecorder } from "@/common/voice-recorder";
 
@@ -189,9 +190,9 @@ export function reatomMicrophone(dependencies: MicrophoneDependencies) {
   };
 
   return {
-    state: computed(() => current.state(), "microphone.stateView"),
+    state: readOnly(current.state),
     timer: computed(() => timerOf(current.elapsed()), "microphone.timer"),
-    hint: computed(() => current.hint(), "microphone.hintView"),
+    hint: readOnly(current.hint),
     ...reatomFinger(dependencies, current, { finish, steps }),
   };
 }

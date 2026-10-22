@@ -17,6 +17,7 @@ Shows what was heard and the draft as the bot shows it: both read it with `previ
 - `botChat` — the bot chat link from `GET /api/commands/bot`, since the Mini App does not know its bot's name.
 - `wait` — the one-second tick of the recording timer.
 - `onRecorded` — the composition root passes the recording to the sheet.
+- `members`, `pets` — the Family's shared queries from `app/main.tsx`, which name the candidates of the preview sheet.
 - `onEdit` — the app's opener opens the form of the draft's kind; the form reports back so the draft becomes `created`.
 - `onCreated` — what «Создать» made, for the module that lists it.
 

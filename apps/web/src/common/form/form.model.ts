@@ -70,7 +70,7 @@ export type EditableRecordOptions<Values, Form extends RecordForm<Values>, Edite
 export type DraftOptions<Values, Draft> = {
   valuesOfDraft: (draft: Draft, phrase: CommandPhrase) => Values;
   // A record saved from a draft settles that draft, once.
-  onDraftSaved?: (draftId: string) => void;
+  onDraftSaved: (draftId: string) => void;
 };
 
 export type EditableRecord<Values, Form, Edited> = {

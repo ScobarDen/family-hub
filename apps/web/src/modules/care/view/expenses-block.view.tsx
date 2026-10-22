@@ -6,9 +6,7 @@ import { Button, Section } from "@/common/ui";
 import type { CareModel } from "../vm/care.vm.ts";
 import { ExpenseRows } from "./expense-rows.view.tsx";
 
-export type CareBlockProps = { model: CareModel };
-
-export const ExpensesBlock = reatomComponent(({ model }: CareBlockProps) => {
+export const ExpensesBlock = reatomComponent(({ model }: { model: CareModel }) => {
   const month = model.month();
 
   return (
@@ -25,9 +23,7 @@ export const ExpensesBlock = reatomComponent(({ model }: CareBlockProps) => {
       }
     >
       <div className="flex items-end justify-between gap-3 px-4 pt-4 pb-3">
-        <span className="text-[1.75rem] leading-none tracking-tight">
-          {month === undefined || month.rows.length === 0 ? "0 ₽" : month.total}
-        </span>
+        <span className="text-[1.75rem] leading-none tracking-tight">{month.total}</span>
         {!model.isReadOnly() && (
           <Button
             size="sm"
@@ -40,7 +36,7 @@ export const ExpensesBlock = reatomComponent(({ model }: CareBlockProps) => {
           </Button>
         )}
       </div>
-      <ExpenseRows rows={month?.rows ?? []} />
+      <ExpenseRows rows={month.rows} />
     </Section>
   );
 }, "ExpensesBlock");

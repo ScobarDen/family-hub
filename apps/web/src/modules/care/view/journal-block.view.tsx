@@ -2,17 +2,17 @@ import { reatomComponent } from "@reatom/react";
 import { Plus } from "lucide-react";
 import { Fragment } from "react";
 
+import { PhotoThumbs } from "@/common/photo-viewer";
 import { Chip, Section, SectionItem } from "@/common/ui";
 
 import { weightRanges, type WeightRange } from "../care.config.ts";
-import type { CareBlockProps } from "./expenses-block.view.tsx";
-import { PhotoThumbs } from "./photo-thumbs.view.tsx";
+import type { CareModel } from "../vm/care.vm.ts";
 import { WeightChart } from "./weight-chart.view.tsx";
 import { WeightHeader } from "./weight-header.view.tsx";
 
 const ranges: WeightRange[] = ["quarter", "year", "all"];
 
-const WeightBlock = reatomComponent(({ model }: CareBlockProps) => {
+const WeightBlock = reatomComponent(({ model }: { model: CareModel }) => {
   const weight = model.weight();
 
   return (
@@ -44,7 +44,7 @@ const WeightBlock = reatomComponent(({ model }: CareBlockProps) => {
 }, "WeightBlock");
 
 export const JournalBlock = reatomComponent(
-  ({ model }: CareBlockProps) => (
+  ({ model }: { model: CareModel }) => (
     <>
       <WeightBlock model={model} />
       <Section title="Журнал">
@@ -71,6 +71,8 @@ export const JournalBlock = reatomComponent(
               }
             />
             <PhotoThumbs
+              className="flex flex-wrap gap-1 px-4 pb-2"
+              thumbClassName="size-16 rounded-md"
               photos={item.photos}
               onOpen={(photoId) => {
                 model.viewer.open(item.photos, photoId);

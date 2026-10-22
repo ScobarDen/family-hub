@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { LoadState } from "@/common/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 import { PetCard } from "./pet-card.view.tsx";
@@ -48,11 +48,9 @@ function contentOf({ model, expenses, journal, photos }: PetsProps, screen: Pets
   }
 
   return (
-    <Section>
-      <SectionItem
-        title={screen.kind === "loading" ? "Загружаем…" : "Не получилось загрузить питомцев."}
-      />
-    </Section>
+    <LoadState
+      failure={screen.kind === "failed" ? "Не получилось загрузить питомцев." : undefined}
+    />
   );
 }
 

@@ -1,12 +1,14 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, type Atom, computed, noop, withAsync, wrap } from "@reatom/core";
 
 import type { CalendarEvent } from "@family-hub/contract";
 import { occurrenceMoment, timeInZone } from "@family-hub/recurrence";
 
 import { formatDate, formatDay } from "@/common/format-date";
-import type { PopupParams } from "@/common/telegram";
+import { reatomFailure } from "@/common/state";
+import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { CalendarApi } from "../calendar.api.ts";
+import { repeatTitles } from "../calendar.config.ts";
 import type { CalendarData } from "../calendar.model.ts";
 
 export type OpenedOccurrence = { eventId: string; occurrence: string | undefined };
@@ -25,14 +27,10 @@ type EventDetailsDependencies = {
   api: CalendarApi;
   data: Pick<CalendarData, "events" | "keep" | "drop">;
   timeZone: () => string;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   opened: Atom<OpenedOccurrence | undefined>;
   onClosed: () => void;
 };
-
-type Confirmation = { title: string; message: string; button: string };
-
-const repeatTitles = { weekly: "Каждую неделю", monthly: "Каждый месяц", yearly: "Каждый год" };
 
 const confirmations: Record<"skip" | "delete", Confirmation> = {
   skip: {
@@ -83,27 +81,8 @@ function detailsOf(event: CalendarEvent, occurrence: string, viewerZone: string)
   };
 }
 
-async function isConfirmed(
-  { telegram }: EventDetailsDependencies,
-  { title, message, button }: Confirmation,
-): Promise<boolean> {
-  const choice = await wrap(
-    telegram.showPopup({
-      title,
-      message,
-      buttons: [
-        { id: "confirm", type: "destructive", text: button },
-        { id: "cancel", type: "cancel" },
-      ],
-    }),
-  );
-
-  return choice === "confirm";
-}
-
 type ChangeSources = EventDetailsDependencies & {
   event: () => CalendarEvent | undefined;
-  failure: Atom<string | undefined>;
 };
 
 async function apply(
@@ -128,29 +107,22 @@ function reatomChange(sources: ChangeSources) {
   return action(async (kind: "skip" | "delete") => {
     const target = sources.opened();
 
-    if (target === undefined || !(await wrap(isConfirmed(sources, confirmations[kind])))) {
+    if (target === undefined || !(await wrap(isConfirmed(sources.telegram, confirmations[kind])))) {
       return;
     }
 
-    sources.failure.set(undefined);
-
-    try {
-      await wrap(apply(sources, { kind, target }));
-      sources.onClosed();
-    } catch {
-      sources.failure.set("Не получилось. Попробуйте ещё раз.");
-    }
+    await wrap(apply(sources, { kind, target }));
+    sources.onClosed();
   }, "calendar.details.change").extend(withAsync());
 }
 
 export function reatomEventDetails(dependencies: EventDetailsDependencies) {
   const { data, opened } = dependencies;
-  const failure = atom<string | undefined>(undefined, "calendar.details.failure");
   const event = computed(
     () => data.events.data()?.find(({ id }) => id === opened()?.eventId),
     "calendar.details.event",
   );
-  const change = reatomChange({ ...dependencies, event, failure });
+  const change = reatomChange({ ...dependencies, event });
 
   return {
     event,
@@ -162,7 +134,10 @@ export function reatomEventDetails(dependencies: EventDetailsDependencies) {
         ? undefined
         : detailsOf(current, target.occurrence ?? current.start.date, dependencies.timeZone());
     }, "calendar.details"),
-    failure: computed(() => failure(), "calendar.details.visibleFailure"),
+    failure: reatomFailure(change, {
+      message: "Не получилось. Попробуйте ещё раз.",
+      name: "calendar.details.failure",
+    }),
     skipOccurrence: action(() => {
       change("skip").catch(noop);
     }, "calendar.details.skip"),
@@ -171,5 +146,3 @@ export function reatomEventDetails(dependencies: EventDetailsDependencies) {
     }, "calendar.details.remove"),
   };
 }
-
-export type EventDetailsModel = ReturnType<typeof reatomEventDetails>;

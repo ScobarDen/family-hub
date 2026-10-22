@@ -1,8 +1,9 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, computed, noop, withAsync, wrap } from "@reatom/core";
 
 import type { Plan } from "@family-hub/contract";
 
-import type { PopupParams } from "@/common/telegram";
+import { reatomFailure } from "@/common/state";
+import { type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { PlansApi } from "../plans.api.ts";
 import type { PlansModel } from "../plans.model.ts";
@@ -10,30 +11,10 @@ import type { PlansModel } from "../plans.model.ts";
 export type PlanActionsDependencies = {
   api: PlansApi;
   plans: Pick<PlansModel, "keep" | "drop">;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   openedPlan: () => Plan | undefined;
   onDeleted: () => void;
 };
-
-type Confirmation = { title: string; message: string; button: string };
-
-async function isConfirmed(
-  { telegram }: PlanActionsDependencies,
-  { title, message, button }: Confirmation,
-): Promise<boolean> {
-  const choice = await wrap(
-    telegram.showPopup({
-      title,
-      message,
-      buttons: [
-        { id: "confirm", type: "default", text: button },
-        { id: "cancel", type: "cancel" },
-      ],
-    }),
-  );
-
-  return choice === "confirm";
-}
 
 async function togglePlan(
   dependencies: PlanActionsDependencies,
@@ -49,10 +30,11 @@ async function togglePlan(
   const isSure =
     openCount === 0 ||
     (await wrap(
-      isConfirmed(dependencies, {
+      isConfirmed(dependencies.telegram, {
         title: "Завершить план?",
         message: `Открытые шаги (${openCount}) тоже будут отмечены выполненными.`,
         button: "Завершить",
+        isDestructive: false,
       }),
     ));
 
@@ -68,7 +50,7 @@ async function toggleSubplan({ api }: PlanActionsDependencies, plan: Plan, subpl
 
 async function removeSubplan(dependencies: PlanActionsDependencies, plan: Plan, subplanId: string) {
   const isSure = await wrap(
-    isConfirmed(dependencies, {
+    isConfirmed(dependencies.telegram, {
       title: "Удалить шаг?",
       message: "Шаг пропадёт из плана у всей семьи.",
       button: "Удалить",
@@ -80,7 +62,7 @@ async function removeSubplan(dependencies: PlanActionsDependencies, plan: Plan, 
 
 async function removePlan(dependencies: PlanActionsDependencies, plan: Plan): Promise<void> {
   const isSure = await wrap(
-    isConfirmed(dependencies, {
+    isConfirmed(dependencies.telegram, {
       title: "Удалить план?",
       message: "План и все его шаги пропадут у всей семьи.",
       button: "Удалить",
@@ -105,10 +87,7 @@ async function kept(
   }
 }
 
-function reatomPlanChange(
-  dependencies: PlanActionsDependencies,
-  failure: Atom<string | undefined>,
-) {
+function reatomPlanChange(dependencies: PlanActionsDependencies) {
   return action(async (change: (plan: Plan) => Promise<void>) => {
     const plan = dependencies.openedPlan();
 
@@ -116,22 +95,18 @@ function reatomPlanChange(
       return;
     }
 
-    failure.set(undefined);
-
-    try {
-      await wrap(change(plan));
-    } catch {
-      failure.set("Не получилось сохранить. Попробуйте ещё раз.");
-    }
+    await wrap(change(plan));
   }, "plans.change").extend(withAsync());
 }
 
 export function reatomPlanActions(dependencies: PlanActionsDependencies) {
-  const failure = atom<string | undefined>(undefined, "plans.failure");
-  const change = reatomPlanChange(dependencies, failure);
+  const change = reatomPlanChange(dependencies);
 
   return {
-    failure: computed(() => failure(), "plans.visibleFailure"),
+    failure: reatomFailure(change, {
+      message: "Не получилось сохранить. Попробуйте ещё раз.",
+      name: "plans.failure",
+    }),
     isChanging: computed(() => !change.ready(), "plans.isChanging"),
 
     togglePlan: action(() => {
@@ -152,5 +127,3 @@ export function reatomPlanActions(dependencies: PlanActionsDependencies) {
     }, "plans.removePlan"),
   };
 }
-
-export type PlanActions = ReturnType<typeof reatomPlanActions>;

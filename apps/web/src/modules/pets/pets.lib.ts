@@ -1,6 +1,7 @@
 import type { Pet, PetMemo } from "@family-hub/contract";
 
 import { formatAge, formatDate, formatDay } from "@/common/format-date";
+import { byDueDate } from "@/common/records";
 
 import { sexTitles, speciesTitles } from "./pets.config.ts";
 
@@ -41,18 +42,6 @@ export type SoonItem = {
   subtitle: string | undefined;
   isOverdue: boolean;
 };
-
-function byDueDate(left: SoonSource, right: SoonSource): number {
-  if (left.dueDate === right.dueDate) {
-    return 0;
-  }
-
-  if (left.dueDate === null || right.dueDate === null) {
-    return left.dueDate === null ? 1 : -1;
-  }
-
-  return left.dueDate < right.dueDate ? -1 : 1;
-}
 
 export function toSoon(sources: SoonSource[], today: string): SoonItem[] {
   return sources.toSorted(byDueDate).map(({ id, title, dueDate, kind }) => {

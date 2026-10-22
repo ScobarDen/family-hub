@@ -1,6 +1,7 @@
 export type Recording = { stop(): Promise<Blob>; cancel(): void };
 
-export type RecordingRefusal = "denied" | "unavailable";
+// Refused or missing, the microphone sends the Member to the bot chat either way.
+export type RecordingRefusal = "refused";
 
 export type VoiceRecorder = {
   isAvailable: boolean;
@@ -23,12 +24,6 @@ export type RecorderEnvironment<Stream extends MicrophoneStream> = {
 
 // iOS WebViews record only mp4; the others take webm. Whatever comes first and works wins.
 const formats = ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
-
-function refusalOf(error: unknown): RecordingRefusal {
-  return error instanceof DOMException && error.name === "NotAllowedError"
-    ? "denied"
-    : "unavailable";
-}
 
 function recordingOf(Recorder: typeof MediaRecorder, stream: MediaStream): Recording {
   const format = formats.find((each) => Recorder.isTypeSupported(each));
@@ -124,13 +119,13 @@ export function voiceRecorderOver<Stream extends MicrophoneStream>(
     isAvailable: record !== undefined && requestMicrophone !== undefined,
     async start() {
       if (record === undefined) {
-        return "unavailable";
+        return "refused";
       }
 
       try {
         return record(await microphone());
-      } catch (error) {
-        return refusalOf(error);
+      } catch {
+        return "refused";
       }
     },
   };

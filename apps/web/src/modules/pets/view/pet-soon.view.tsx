@@ -21,14 +21,12 @@ function iconOf(item: SoonItem) {
 export function PetSoon({ soon, onOpen, onPlan }: PetSoonProps) {
   return (
     <Section title="Скоро">
-      {soon.length === 0 && (
-        <SectionItem icon={CalendarClock} tone="gray" title="Ближайших дел нет" />
-      )}
+      {soon.length === 0 && <SectionItem icon={CalendarClock} title="Ближайших дел нет" />}
       {soon.map((item) => (
         <SectionItem
           key={`${item.kind}-${item.id}`}
           icon={iconOf(item)}
-          tone={item.isOverdue ? "red" : "blue"}
+          isAlert={item.isOverdue}
           title={item.title}
           subtitle={item.subtitle}
           onClick={() => {
@@ -37,7 +35,7 @@ export function PetSoon({ soon, onOpen, onPlan }: PetSoonProps) {
         />
       ))}
       {onPlan !== undefined && (
-        <SectionItem icon={CalendarPlus} tone="green" title="Запланировать" onClick={onPlan} />
+        <SectionItem icon={CalendarPlus} title="Запланировать" onClick={onPlan} />
       )}
     </Section>
   );

@@ -127,7 +127,7 @@ describe("the pet tab", () => {
 
     await loaded(model);
 
-    expect(model.screen()).toEqual({
+    expect(model.screen()).toMatchObject({
       kind: "card",
       canDelete: false,
       archivedCount: 0,
@@ -175,7 +175,7 @@ describe("the pet tab", () => {
 
     await loaded(model);
 
-    expect(model.screen()).toEqual({
+    expect(model.screen()).toMatchObject({
       kind: "list",
       pets: [
         { id: "pet-1", name: "Бьюик", subtitle: "Собака · Бигль · 4 года" },

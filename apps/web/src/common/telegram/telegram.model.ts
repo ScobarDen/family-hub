@@ -2,20 +2,13 @@ import { action, atom, effect, noop, withConnectHook, wrap } from "@reatom/core"
 
 import type {
   ColorScheme,
-  PopupParams,
   HapticImpact,
-  SafeAreaInset,
+  PopupParams,
   TelegramButton,
   TelegramWebApp,
-  ThemeParams,
-  Viewport,
 } from "./telegram.types.ts";
 
 type WebAppEvent = Parameters<TelegramWebApp["onEvent"]>[0];
-
-export type Theme = { colorScheme: ColorScheme; params: ThemeParams };
-
-const noInset: SafeAreaInset = { top: 0, bottom: 0, left: 0, right: 0 };
 const writeAccessVersion = "6.9";
 const shareMessageVersion = "8.0";
 const backButtonVersion = "6.1";
@@ -42,30 +35,6 @@ function reatomWebAppState<State>(
       };
     }),
   );
-}
-
-function reatomLayout(webApp: TelegramWebApp) {
-  return {
-    viewport: reatomWebAppState<Viewport>(webApp, {
-      name: "telegram.viewport",
-      event: "viewportChanged",
-      read: () => ({
-        height: webApp.viewportHeight,
-        stableHeight: webApp.viewportStableHeight,
-        isExpanded: webApp.isExpanded,
-      }),
-    }),
-    safeArea: reatomWebAppState<SafeAreaInset>(webApp, {
-      name: "telegram.safeArea",
-      event: "safeAreaChanged",
-      read: () => ({ ...noInset, ...webApp.safeAreaInset }),
-    }),
-    contentSafeArea: reatomWebAppState<SafeAreaInset>(webApp, {
-      name: "telegram.contentSafeArea",
-      event: "contentSafeAreaChanged",
-      read: () => ({ ...noInset, ...webApp.contentSafeAreaInset }),
-    }),
-  };
 }
 
 function reatomDialogs(webApp: TelegramWebApp) {
@@ -178,10 +147,10 @@ function lookOf(platform: string): PlatformLook {
 }
 
 export function reatomTelegram(webApp: TelegramWebApp) {
-  const theme = reatomWebAppState<Theme>(webApp, {
-    name: "telegram.theme",
+  const colorScheme = reatomWebAppState<ColorScheme>(webApp, {
+    name: "telegram.colorScheme",
     event: "themeChanged",
-    read: () => ({ colorScheme: webApp.colorScheme, params: { ...webApp.themeParams } }),
+    read: () => webApp.colorScheme,
   });
 
   return {
@@ -189,7 +158,6 @@ export function reatomTelegram(webApp: TelegramWebApp) {
     // Display-only like the rest of initDataUnsafe: the server reads the signed initData.
     startParam: webApp.initDataUnsafe.start_param,
     canShareMessage: webApp.isVersionAtLeast(shareMessageVersion),
-    platform: atom(webApp.platform, "telegram.platform"),
     backButton: reatomButton(webApp, {
       button: webApp.BackButton,
       version: backButtonVersion,
@@ -200,8 +168,6 @@ export function reatomTelegram(webApp: TelegramWebApp) {
       version: settingsButtonVersion,
       name: "telegram.settingsButton",
     }),
-    theme,
-    ...reatomLayout(webApp),
     launch: action(() => {
       webApp.ready();
       webApp.expand();
@@ -210,7 +176,7 @@ export function reatomTelegram(webApp: TelegramWebApp) {
     // Colours themselves arrive as --tg-theme-* variables; only Tailwind's dark: variant needs the class.
     followColorScheme: (element: HTMLElement) =>
       effect(() => {
-        element.classList.toggle("dark", theme().colorScheme === "dark");
+        element.classList.toggle("dark", colorScheme() === "dark");
       }, "telegram.followColorScheme"),
     followPlatform: (element: HTMLElement) => {
       element.dataset.platform = lookOf(webApp.platform);

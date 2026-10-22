@@ -13,6 +13,7 @@ import {
 import { reatomEditableRecord } from "@/common/form";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoAttachments } from "@/common/photo-attachments";
+import { readOnly } from "@/common/state";
 
 import type { RecipesApi } from "../recipes.api.ts";
 
@@ -80,7 +81,7 @@ export function reatomRecipeForm(dependencies: RecipeFormDependencies) {
   return {
     ...record,
     photos,
-    chosenTags: computed(() => chosenTags(), "recipes.form.tags"),
+    chosenTags: readOnly(chosenTags),
     isSaving: computed(() => record.isSaving() || photos.isUploading(), "recipes.form.isSaving"),
     toggleTag: reatomTagChoice(chosenTags),
 

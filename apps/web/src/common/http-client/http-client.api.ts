@@ -1,4 +1,4 @@
-import { atom, noop, wrap } from "@reatom/core";
+import { abortVar, atom, noop, reatomBoolean, wrap } from "@reatom/core";
 import type { z } from "zod";
 
 import { apiError, type ErrorCode } from "@family-hub/contract";
@@ -20,6 +20,14 @@ export class HttpError extends Error {
     this.code = code;
     this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+// A refusal the server names by its code becomes the caller's outcome; anything else stays an error.
+export function refusalOf<Outcome>(
+  error: unknown,
+  refusals: Partial<Record<ErrorCode, Outcome>>,
+): Outcome | undefined {
+  return error instanceof HttpError && error.code !== undefined ? refusals[error.code] : undefined;
 }
 
 function retryAfterOf(response: Response): number | undefined {
@@ -69,29 +77,51 @@ function headersFor(body: unknown, token: string | undefined): Headers {
   return headers;
 }
 
+// A request stops with the Reatom process that made it, or after the timeout.
+async function fetchUntilAborted(
+  fetch: Fetch,
+  { url, init, timeoutMs }: { url: URL; init: RequestInit; timeoutMs: number },
+): Promise<Response> {
+  const { controller, unsubscribe } = abortVar.subscribe();
+
+  try {
+    return await wrap(
+      fetch(url, {
+        ...init,
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(timeoutMs)]),
+      }),
+    );
+  } finally {
+    unsubscribe();
+  }
+}
+
 export function createHttpClient({
   baseUrl,
   fetch,
   timeoutMs = defaultTimeoutMs,
 }: HttpClientOptions) {
   const token = atom<string | undefined>(undefined, "httpClient.token");
-  const isSessionLost = atom(false, "httpClient.isSessionLost");
+  const isSessionLost = reatomBoolean(false, "httpClient.isSessionLost");
 
   async function request<Schema extends z.ZodType>(
     path: string,
     { schema, method = "GET", body }: RequestOptions<Schema>,
   ): Promise<z.infer<Schema>> {
     const response = await wrap(
-      fetch(new URL(path, baseUrl), {
-        method,
-        headers: headersFor(body, token()),
-        body: body === undefined || isRaw(body) ? body : JSON.stringify(body),
-        signal: AbortSignal.timeout(timeoutMs),
+      fetchUntilAborted(fetch, {
+        url: new URL(path, baseUrl),
+        init: {
+          method,
+          headers: headersFor(body, token()),
+          body: body === undefined || isRaw(body) ? body : JSON.stringify(body),
+        },
+        timeoutMs,
       }),
     );
 
     if (response.status === unauthorizedStatus) {
-      isSessionLost.set(true);
+      isSessionLost.setTrue();
     }
 
     if (!response.ok) {

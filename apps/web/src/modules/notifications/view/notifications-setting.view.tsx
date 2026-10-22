@@ -13,7 +13,7 @@ export const NotificationsSetting = reatomComponent(({ model }: NotificationsSet
   return (
     <SectionItem
       icon={Bell}
-      tone={isOff ? "red" : "gray"}
+      isAlert={isOff}
       title="Уведомления от бота"
       subtitle={isOff ? "Выключены — напоминания не дойдут" : "Включены"}
       after={

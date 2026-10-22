@@ -2,6 +2,8 @@ import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
 
 import { defaultDigestTime, type DigestSettings } from "@family-hub/contract";
 
+import { reatomFailure } from "@/common/state";
+
 import type { DigestApi } from "../digest.api.ts";
 
 type DigestDependencies = {
@@ -15,21 +17,19 @@ const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/u;
 // A change shows at once and stays unless the server refuses it.
 export function reatomDigest({ api, saved }: DigestDependencies) {
   const draft = atom<DigestSettings | undefined>(undefined, "digest.draft");
-  const failure = atom<string | undefined>(undefined, "digest.failure");
   const current = computed(
     (): DigestSettings => draft() ?? saved() ?? { isEnabled: true, time: defaultDigestTime },
     "digest.current",
   );
 
   const save = action(async (next: DigestSettings) => {
-    failure.set(undefined);
     draft.set(next);
 
     try {
       await wrap(api.save(next));
-    } catch {
+    } catch (error) {
       draft.set(undefined);
-      failure.set("Не получилось сохранить сводку. Попробуйте ещё раз.");
+      throw error;
     }
   }, "digest.save").extend(withAsync());
 
@@ -43,7 +43,10 @@ export function reatomDigest({ api, saved }: DigestDependencies) {
           : "Выключена: бот не пишет по утрам",
       "digest.schedule",
     ),
-    failure: computed(() => failure(), "digest.visibleFailure"),
+    failure: reatomFailure(save, {
+      message: "Не получилось сохранить сводку. Попробуйте ещё раз.",
+      name: "digest.failure",
+    }),
 
     toggle: action((isEnabled: boolean) => {
       save({ ...current(), isEnabled }).catch(noop);

@@ -1,8 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
-import type { ChangeEvent } from "react";
 
-import { Button, Label } from "@/common/ui";
+import { Button, ChipGroup, FilePick } from "@/common/ui";
 
 import type { Attachment, PhotoAttachmentsModel } from "./photo-attachments.vm.ts";
 
@@ -36,16 +35,10 @@ function Tile({ item, onRemove }: { item: Attachment; onRemove: () => void }) {
   );
 }
 
-export const PhotoAttachments = reatomComponent(({ model, hint }: AttachmentsProps) => {
-  function pick(event: ChangeEvent<HTMLInputElement>) {
-    model.add([...(event.target.files ?? [])]);
-    event.target.value = "";
-  }
-
-  return (
+export const PhotoAttachments = reatomComponent(
+  ({ model, hint }: AttachmentsProps) => (
     <div className="flex flex-col gap-2">
-      <Label>Фото</Label>
-      <div className="flex flex-wrap gap-2">
+      <ChipGroup label="Фото">
         {model.items().map((item) => (
           <Tile
             key={item.key}
@@ -56,13 +49,17 @@ export const PhotoAttachments = reatomComponent(({ model, hint }: AttachmentsPro
           />
         ))}
         {model.canAdd() && (
-          <label className="flex size-20 cursor-pointer items-center justify-center rounded-lg border border-dashed text-muted-foreground">
-            <ImagePlus aria-label="Добавить фото" />
-            <input type="file" accept="image/*" multiple className="hidden" onChange={pick} />
-          </label>
+          <FilePick
+            className="flex size-20 items-center justify-center rounded-lg border border-dashed text-muted-foreground"
+            onPick={model.add}
+          >
+            <ImagePlus aria-hidden />
+            <span className="sr-only">Добавить фото</span>
+          </FilePick>
         )}
-      </div>
+      </ChipGroup>
       {hint !== undefined && <p className="text-sm text-muted-foreground">{hint}</p>}
     </div>
-  );
-}, "PhotoAttachments");
+  ),
+  "PhotoAttachments",
+);

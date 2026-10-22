@@ -12,7 +12,6 @@ export function PlanList({ model, screen }: ListProps) {
           <SectionItem
             key={plan.id}
             icon={Circle}
-            tone="gray"
             title={plan.title}
             subtitle={plan.subtitle}
             onClick={() => {
@@ -20,7 +19,7 @@ export function PlanList({ model, screen }: ListProps) {
             }}
           />
         ))}
-        <SectionItem icon={Plus} tone="green" title="Новый план" onClick={model.add} />
+        <SectionItem icon={Plus} title="Новый план" onClick={model.add} />
       </Section>
       {screen.done.length > 0 && <DonePlans model={model} screen={screen} />}
     </>

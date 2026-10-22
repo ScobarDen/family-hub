@@ -1,5 +1,4 @@
 import {
-  familyMemberList,
   goal,
   goalList,
   type GoalChange,
@@ -14,7 +13,6 @@ export type MovementTarget = { goalId: string; movementId: string };
 export function createGoalsApi(client: HttpClient) {
   return {
     list: async () => client.request("/api/goals", { schema: goalList }),
-    members: async () => client.request("/api/family/members", { schema: familyMemberList }),
 
     create: async (change: GoalChange) =>
       client.request("/api/goals", { method: "POST", body: change, schema: goal }),

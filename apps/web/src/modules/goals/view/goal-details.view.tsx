@@ -13,7 +13,7 @@ export function GoalDetails({ goal, isCelebrating, model }: DetailsProps) {
     <>
       {isCelebrating && (
         <p className="animate-bounce px-4 py-2 text-center text-2xl" role="status">
-          🎉 Цель достигнута! 🎆
+          Цель достигнута!
         </p>
       )}
       <Section>

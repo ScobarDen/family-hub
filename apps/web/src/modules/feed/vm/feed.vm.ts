@@ -1,9 +1,10 @@
-import { action, atom, computed, noop, withAsync, withAsyncData, wrap } from "@reatom/core";
+import { action, atom, computed, withAbort, withAsync, withAsyncData, wrap } from "@reatom/core";
 
 import type { FeedActivity } from "@family-hub/contract";
 
 import { reatomPhotoViewer } from "@/common/photo-viewer";
-import type { PopupParams } from "@/common/telegram";
+import { detached, readOnly } from "@/common/state";
+import type { Dialogs } from "@/common/telegram";
 
 import type { FeedApi } from "../feed.api.ts";
 import {
@@ -30,7 +31,7 @@ export type FeedDependencies = {
   timeZone: () => string;
   onOpen: (target: FeedTarget) => void;
   onRecord: (due: { petId: string; entryId: string }) => void;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Dialogs;
 };
 
 export const feedFilters: Array<{ value: FeedFilter; title: string }> = [
@@ -101,9 +102,16 @@ function reatomPages(api: FeedApi) {
       older.set([...older(), ...page.activity]);
       olderNext.set(page.next);
     }
-  }, "feed.loadMore").extend(withAsync());
+  }, "feed.loadMore").extend(withAsync(), withAbort());
+  // Older pages hang off the first one's cursor, so a fresh first page drops them.
+  const reload = action(() => {
+    loadMore.abort();
+    older.set([]);
+    olderNext.set(undefined);
+    version.set(version() + 1);
+  }, "feed.reload");
 
-  return { first, older, next, loadMore, version };
+  return { first, older, next, loadMore, reload };
 }
 
 type Pages = ReturnType<typeof reatomPages>;
@@ -183,7 +191,7 @@ export function reatomFeed(dependencies: FeedDependencies) {
   const complete = reatomCompletion(dependencies.api, pages);
 
   return {
-    filter: computed(() => filter(), "feed.chosenFilter"),
+    filter: readOnly(filter),
     isLoading: computed(
       () => pages.first.data() === undefined && !pages.first.ready(),
       "feed.isLoading",
@@ -203,18 +211,13 @@ export function reatomFeed(dependencies: FeedDependencies) {
     choose: action((chosen: FeedFilter) => {
       filter.set(chosen);
     }, "feed.choose"),
-    loadMore: action(() => {
-      pages.loadMore().catch(noop);
-    }, "feed.more"),
-    complete: action((key: string) => {
-      complete(key).catch(noop);
-    }, "feed.completeStep"),
+    reload: pages.reload,
+    loadMore: detached(pages.loadMore, "feed.more"),
+    complete: detached(complete, "feed.completeStep"),
     ...reatomTaps(dependencies, pages),
     viewer: reatomPhotoViewer({
       ...dependencies,
-      onDeleted: () => {
-        pages.version.set(pages.version() + 1);
-      },
+      onDeleted: pages.reload,
     }),
   };
 }

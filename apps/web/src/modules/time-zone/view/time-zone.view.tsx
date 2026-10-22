@@ -16,7 +16,6 @@ export const TimeZone = reatomComponent(({ model }: TimeZoneProps) => {
     <>
       <SectionItem
         icon={Smartphone}
-        tone="gray"
         title="Как на устройстве"
         after={
           <Switch
@@ -30,7 +29,6 @@ export const TimeZone = reatomComponent(({ model }: TimeZoneProps) => {
       />
       <SectionItem
         icon={Globe}
-        tone="teal"
         title="Часовой пояс"
         after={
           <TimeZoneSelect
@@ -40,11 +38,7 @@ export const TimeZone = reatomComponent(({ model }: TimeZoneProps) => {
           />
         }
       />
-      {failure !== undefined && (
-        <div className="px-4 py-2">
-          <FieldError>{failure}</FieldError>
-        </div>
-      )}
+      <FieldError className="px-4 py-2">{failure}</FieldError>
     </>
   );
 }, "TimeZone");

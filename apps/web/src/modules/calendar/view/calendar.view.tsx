@@ -1,7 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 import { BellPlus, Plus } from "lucide-react";
 
-import { formatNearDate } from "@/common/format-date";
 import { Button } from "@/common/ui";
 
 import type { CalendarModel } from "../vm/calendar.vm.ts";
@@ -40,16 +39,14 @@ export const Calendar = reatomComponent(({ model }: CalendarProps) => {
         </Button>
       </div>
       <Agenda
-        title={formatNearDate(model.selected(), model.today())}
-        items={model.dayItems()}
-        isDated={false}
+        title={model.dayTitle()}
+        rows={model.dayRows()}
         empty="Ничего не запланировано"
         onOpen={model.openItem}
       />
       <Agenda
         title="Ближайшее"
-        items={model.upcoming()}
-        isDated
+        rows={model.upcomingRows()}
         empty="В ближайший месяц ничего нет"
         onOpen={model.openItem}
       />

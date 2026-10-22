@@ -41,8 +41,9 @@ function replyOf(url: URL, method: string, body: unknown): unknown {
   return url.searchParams.has("q") ? [lasagna] : [borscht, lasagna];
 }
 
-function startRecipes() {
+function startRecipes({ failing = "" }: { failing?: string } = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
+  const alerts: string[] = [];
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
     const request = `${init.method ?? "GET"} ${url.pathname}${url.search}`;
@@ -50,12 +51,21 @@ function startRecipes() {
 
     requests.push({ request, body });
 
+    if (request === failing) {
+      return Response.json({}, { status: 500 });
+    }
+
     return Response.json(replyOf(url, init.method ?? "GET", body));
   }
 
   const model = reatomRecipesScreen({
     api: createRecipesApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
-    telegram: { showPopup: async () => "delete" },
+    telegram: {
+      showPopup: async () => "confirm",
+      showAlert(message: string) {
+        alerts.push(message);
+      },
+    },
     preparePhoto: async (file) => ({ file, takenAt: null }),
     photoHint: () => "Загрузка фото выключена",
     today: () => "2026-10-21",
@@ -64,7 +74,7 @@ function startRecipes() {
 
   model.screen.subscribe(noop);
 
-  return { model, requests };
+  return { model, requests, alerts };
 }
 
 type Model = ReturnType<typeof startRecipes>["model"];
@@ -126,6 +136,22 @@ describe("the Recipes", () => {
     expect(model.screen()).toMatchObject({ checked: [] });
   });
 
+  test("stay open with a word when one cannot be deleted", async () => {
+    const { model, alerts } = startRecipes({ failing: "DELETE /api/recipes/recipe-1" });
+
+    await listed(model);
+    model.open("recipe-1");
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("recipe");
+    });
+    model.remove();
+    await vi.waitFor(() => {
+      expect(alerts).toEqual(["Не получилось удалить рецепт. Попробуйте ещё раз."]);
+    });
+
+    expect(model.screen().kind).toBe("recipe");
+  });
+
   test("are written with their tags and opened once saved", async () => {
     const { model, requests } = startRecipes();
 
@@ -146,6 +172,38 @@ describe("the Recipes", () => {
       tagIds: ["tag-1"],
       photoIds: [],
     });
+  });
+});
+
+describe("the Family's tags", () => {
+  test("keep a new tag's text when the server refuses it", async () => {
+    const { model } = startRecipes({ failing: "POST /api/recipe-tags" });
+
+    await listed(model);
+    model.typeNewTag("Супы");
+    model.addTag();
+    await vi.waitFor(() => {
+      expect(model.tagFailure()).toBe("Не получилось сохранить тег. Попробуйте ещё раз.");
+    });
+
+    expect(model.newTag()).toBe("Супы");
+  });
+
+  test("show the saved name again when a rename fails", async () => {
+    const { model } = startRecipes({ failing: "PUT /api/recipe-tags/tag-1" });
+    const [pasta] = lasagna.tags;
+
+    await listed(model);
+    model.typeTagName("tag-1", "Макароны");
+
+    expect(pasta && model.tagNameOf(pasta)).toBe("Макароны");
+
+    model.renameTag("tag-1");
+    await vi.waitFor(() => {
+      expect(model.tagFailure()).toBeDefined();
+    });
+
+    expect(pasta && model.tagNameOf(pasta)).toBe("Паста");
   });
 });
 
@@ -170,11 +228,13 @@ describe("cooking a Recipe", () => {
     await vi.waitFor(() => {
       expect(model.screen().kind).toBe("recipe");
     });
-    model.cook("2026-10-21");
+    model.chooseCookDay("2026-10-21");
+    model.cook();
     await vi.waitFor(() => {
       expect(model.isCooking()).toBe(false);
     });
-    model.cook("2026-10-18");
+    model.chooseCookDay("2026-10-18");
+    model.cook();
     await vi.waitFor(() => {
       expect(requests.filter(({ request }) => request.endsWith("/cooked"))).toHaveLength(2);
     });

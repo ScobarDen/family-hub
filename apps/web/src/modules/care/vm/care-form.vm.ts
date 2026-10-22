@@ -14,6 +14,7 @@ import { reatomEditableRecord, type DraftOpening } from "@/common/form";
 import type { PhotoAttachmentsModel } from "@/common/photo-attachments";
 
 import type { CareApi } from "../care.api.ts";
+import { kindFields } from "../care.config.ts";
 import {
   changeOf,
   detailsOf,
@@ -31,7 +32,7 @@ type CareFormDependencies = {
   photos: PhotoAttachmentsModel;
   onSaved: () => void;
   // An entry saved from a Command Draft settles that draft.
-  onDraftSaved?: (draftId: string) => void;
+  onDraftSaved: (draftId: string) => void;
 };
 
 export type CareEntryDraftOpening = DraftOpening<CareEntryDraft>;
@@ -142,10 +143,13 @@ function reatomCareRecord(dependencies: CareFormDependencies) {
 export function reatomCareForm(dependencies: CareFormDependencies) {
   const record = reatomCareRecord(dependencies);
 
+  const kind = computed(() => careKind.parse(record.form.fields.kind()), "care.form.kind");
+
   return {
     ...record,
     editedId: computed(() => record.edited()?.id, "care.form.editedId"),
-    kind: computed(() => careKind.parse(record.form.fields.kind()), "care.form.kind"),
+    kind,
+    kindFields: computed(() => kindFields[kind()], "care.form.kindFields"),
     isSaving: computed(
       () => record.isSaving() || dependencies.photos.isUploading(),
       "care.form.isSaving",

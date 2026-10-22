@@ -4,43 +4,17 @@ import {
   careEntryList,
   dueDateList,
   expenseSummary,
-  photo,
-  photoDeleted,
   type CareEntry,
   type CareEntryChange,
 } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
-import { resolvedPhoto, type PreparedPhoto } from "@/common/photo";
+import { createPhotoCalls, resolvedPhoto } from "@/common/photo";
 
 export type Range = { from: number; to: number };
 
 function resolvedEntry(client: HttpClient, entry: CareEntry): CareEntry {
   return { ...entry, photos: entry.photos.map((each) => resolvedPhoto(each, client.url)) };
-}
-
-function photoCalls(client: HttpClient) {
-  return {
-    async uploadPhoto({ file, takenAt }: PreparedPhoto) {
-      const form = new FormData();
-
-      form.append("file", file, "photo.jpg");
-
-      if (takenAt !== null) {
-        form.append("takenAt", String(takenAt));
-      }
-
-      const uploaded = await client.request("/api/photos", {
-        method: "POST",
-        body: form,
-        schema: photo,
-      });
-
-      return resolvedPhoto(uploaded, client.url);
-    },
-    deletePhoto: async (photoId: string) =>
-      client.request(`/api/photos/${photoId}`, { method: "DELETE", schema: photoDeleted }),
-  };
 }
 
 async function entriesOf(client: HttpClient, petId: string): Promise<CareEntry[]> {
@@ -88,7 +62,7 @@ export function createCareApi(client: HttpClient) {
         schema: expenseSummary,
       }),
 
-    ...photoCalls(client),
+    ...createPhotoCalls(client),
   };
 }
 

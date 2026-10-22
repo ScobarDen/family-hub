@@ -1,13 +1,23 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import {
+  action,
+  atom,
+  type Atom,
+  type BooleanAtom,
+  computed,
+  reatomBoolean,
+  withAsync,
+  wrap,
+} from "@reatom/core";
 
-import type { Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
+import type { FamilyMember, Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
 
 import { formatRubles } from "@/common/format-money";
-import type { PopupParams } from "@/common/telegram";
+import { detached } from "@/common/state";
+import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { GoalsApi } from "../goals.api.ts";
 import { sectionsOf, toDetails, type GoalDetails, type GoalSections } from "../goals.lib.ts";
-import type { GoalsModel } from "../goals.model.ts";
+import { reatomGoals, type GoalsModel } from "../goals.model.ts";
 import { reatomGoalForm } from "./goal-form.vm.ts";
 import { reatomMovementForm } from "./movement-form.vm.ts";
 
@@ -22,7 +32,7 @@ export type GoalsScreen =
 type GoalsDependencies = {
   api: GoalsApi;
   goals: GoalsModel;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Pick<Dialogs, "showPopup">;
   self: () => string | undefined;
   today: () => string;
   timeZone: () => string;
@@ -31,25 +41,20 @@ type GoalsDependencies = {
 type Navigation = {
   editing: Atom<"goal" | "movement" | undefined>;
   openedGoalId: Atom<string | undefined>;
-  isCelebrating: Atom<boolean>;
+  isCelebrating: BooleanAtom;
 };
 
-const outcomeQuestions: Record<GoalOutcome, PopupParams> = {
+const outcomeQuestions: Record<GoalOutcome, Confirmation> = {
   fulfilled: {
     title: "Цель исполнена?",
     message: "Цель уйдёт в архив и больше не будет меняться.",
-    buttons: [
-      { id: "confirm", type: "default", text: "Исполнена" },
-      { id: "cancel", type: "cancel" },
-    ],
+    button: "Исполнена",
+    isDestructive: false,
   },
   cancelled: {
     title: "Отменить цель?",
     message: "Цель уйдёт в архив с тем, что на ней накоплено, и больше не будет меняться.",
-    buttons: [
-      { id: "confirm", type: "destructive", text: "Отменить цель" },
-      { id: "cancel", type: "cancel" },
-    ],
+    button: "Отменить цель",
   },
 };
 
@@ -119,9 +124,11 @@ function reatomScreen(
 function reatomCompletion(dependencies: GoalsDependencies, openedGoal: () => Goal | undefined) {
   return action(async (outcome: GoalOutcome) => {
     const goal = openedGoal();
-    const choice = goal && (await wrap(dependencies.telegram.showPopup(outcomeQuestions[outcome])));
+    const isSure =
+      goal !== undefined &&
+      (await wrap(isConfirmed(dependencies.telegram, outcomeQuestions[outcome])));
 
-    if (goal !== undefined && choice === "confirm") {
+    if (isSure) {
       dependencies.goals.keep(await wrap(dependencies.api.complete(goal.id, outcome)));
     }
   }, "goals.complete").extend(withAsync());
@@ -130,20 +137,17 @@ function reatomCompletion(dependencies: GoalsDependencies, openedGoal: () => Goa
 function reatomRemoval(dependencies: GoalsDependencies, openedGoal: () => Goal | undefined) {
   return action(async (movementId: string) => {
     const goal = openedGoal();
-    const choice =
-      goal &&
+    const isSure =
+      goal !== undefined &&
       (await wrap(
-        dependencies.telegram.showPopup({
+        isConfirmed(dependencies.telegram, {
           title: "Удалить запись?",
           message: "Баланс цели пересчитается.",
-          buttons: [
-            { id: "confirm", type: "destructive", text: "Удалить" },
-            { id: "cancel", type: "cancel" },
-          ],
+          button: "Удалить",
         }),
       ));
 
-    if (goal !== undefined && choice === "confirm") {
+    if (isSure) {
       dependencies.goals.keep(
         await wrap(dependencies.api.removeMovement({ goalId: goal.id, movementId })),
       );
@@ -155,7 +159,7 @@ function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation) {
   return {
     open: action((goalId: string) => {
       openedGoalId.set(goalId);
-      isCelebrating.set(false);
+      isCelebrating.setFalse();
     }, "goals.open"),
     back: action(() => {
       if (editing() === undefined) {
@@ -164,7 +168,7 @@ function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation) {
         editing.set(undefined);
       }
 
-      isCelebrating.set(false);
+      isCelebrating.setFalse();
     }, "goals.back"),
   };
 }
@@ -221,11 +225,14 @@ function titleOf(screen: GoalsScreen): string {
   return "Цели";
 }
 
-export function reatomGoalsScreen(dependencies: GoalsDependencies) {
+export function reatomGoalsScreen(
+  input: Omit<GoalsDependencies, "goals"> & { members: { data: () => FamilyMember[] | undefined } },
+) {
+  const dependencies: GoalsDependencies = { ...input, goals: reatomGoals(input) };
   const navigation: Navigation = {
     editing: atom<"goal" | "movement" | undefined>(undefined, "goals.editing"),
     openedGoalId: atom<string | undefined>(undefined, "goals.openedGoalId"),
-    isCelebrating: atom(false, "goals.isCelebrating"),
+    isCelebrating: reatomBoolean(false, "goals.isCelebrating"),
   };
   const openedGoal = computed(
     () => dependencies.goals.list.data()?.goals.find(({ id }) => id === navigation.openedGoalId()),
@@ -244,12 +251,8 @@ export function reatomGoalsScreen(dependencies: GoalsDependencies) {
       "goals.canGoBack",
     ),
     isChanging: computed(() => !complete.ready() || !removeMovement.ready(), "goals.isChanging"),
-    complete: action((outcome: GoalOutcome) => {
-      complete(outcome).catch(noop);
-    }, "goals.completeGoal"),
-    removeMovement: action((movementId: string) => {
-      removeMovement(movementId).catch(noop);
-    }, "goals.removeOneMovement"),
+    complete: detached(complete, "goals.completeGoal"),
+    removeMovement: detached(removeMovement, "goals.removeOneMovement"),
     ...forms,
     ...reatomBrowsing(navigation),
     ...reatomEditing(navigation, { ...forms, openedGoal }),

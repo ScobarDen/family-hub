@@ -42,7 +42,6 @@ const ViewerBar = reatomComponent(
   "ViewerBar",
 );
 
-// Full screen over everything, as Telegram's own photo viewer is.
 const StepButtons = reatomComponent(
   ({ model }: { model: PhotoViewerModel }) => (
     <>
@@ -89,6 +88,7 @@ function useSwipe(model: PhotoViewerModel) {
   };
 }
 
+// Full screen over everything, as Telegram's own photo viewer is.
 export const PhotoViewer = reatomComponent(({ model, pickAction }: ViewerProps) => {
   const current = model.current();
   const photo = current?.photo;

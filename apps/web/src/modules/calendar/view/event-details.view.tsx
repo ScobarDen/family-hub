@@ -13,18 +13,14 @@ function EventFacts({ details, model }: { details: EventDetailsData; model: Cale
     <>
       <SectionItem
         icon={details.isPrivate ? Lock : undefined}
-        tone="gray"
         title={details.when}
         subtitle={details.note}
       />
-      {details.repeats !== undefined && (
-        <SectionItem icon={Repeat} tone="blue" title={details.repeats} />
-      )}
-      <SectionItem icon={Pencil} tone="blue" title="Изменить" onClick={model.edit} />
+      {details.repeats !== undefined && <SectionItem icon={Repeat} title={details.repeats} />}
+      <SectionItem icon={Pencil} title="Изменить" onClick={model.edit} />
       {details.isRecurring && (
         <SectionItem
           icon={CalendarX}
-          tone="orange"
           title="Пропустить этот раз"
           onClick={model.details.skipOccurrence}
         />
@@ -53,7 +49,7 @@ export const EventDetails = reatomComponent(({ model }: EventDetailsProps) => {
         <Section>
           <SectionItem
             icon={Trash2}
-            tone="red"
+            isAlert
             title="Удалить событие"
             onClick={model.details.removeEvent}
           />

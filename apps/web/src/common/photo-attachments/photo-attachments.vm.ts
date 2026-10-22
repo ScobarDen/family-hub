@@ -3,6 +3,7 @@ import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reato
 import type { Photo } from "@family-hub/contract";
 
 import { PhotoTooLargeError, type PreparedPhoto } from "@/common/photo";
+import { readOnly } from "@/common/state";
 
 export type Attachment =
   | { key: string; status: "uploading" }
@@ -63,7 +64,7 @@ export function reatomPhotoAttachments({
   const uploadOne = reatomUpload({ api, preparePhoto }, items);
 
   return {
-    items: computed(() => items(), "photoAttachments.list"),
+    items: readOnly(items),
     photoIds: computed(
       () => items().flatMap((item) => (item.status === "ready" ? [item.photo.id] : [])),
       "photoAttachments.ids",

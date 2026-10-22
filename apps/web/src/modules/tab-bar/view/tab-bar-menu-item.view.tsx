@@ -2,7 +2,7 @@ import type { AppModule } from "@family-hub/contract";
 
 import { SectionItem, Switch } from "@/common/ui";
 
-import { moduleIcons, moduleTones } from "../tab-bar.config.ts";
+import { moduleIcons } from "../tab-bar.config.ts";
 import type { TabBarMenuItem as Item } from "../vm/tab-bar-menu.vm.ts";
 import { TabBarMoveButtons } from "./tab-bar-move-buttons.view.tsx";
 
@@ -17,7 +17,6 @@ export function TabBarMenuItem({ item, onToggle, onMoveUp, onMoveDown }: TabBarM
   return (
     <SectionItem
       icon={moduleIcons[item.module]}
-      tone={moduleTones[item.module]}
       title={item.title}
       after={
         <span className="flex items-center gap-1">

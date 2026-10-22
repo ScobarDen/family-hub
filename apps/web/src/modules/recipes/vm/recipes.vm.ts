@@ -1,21 +1,29 @@
 import {
   action,
   atom,
+  type Atom,
   computed,
-  noop,
+  reatomSet,
+  type SetAtom,
   withAsync,
   withAsyncData,
   wrap,
-  type Atom,
 } from "@reatom/core";
 
-import type { Recipe, RecipeTag } from "@family-hub/contract";
+import type { RecipeTag } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
-import type { PopupParams } from "@/common/telegram";
+import { detached, readOnly } from "@/common/state";
+import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
+import {
+  toRecipeDetails,
+  toRecipeItem,
+  type RecipeDetails,
+  type RecipeItem,
+} from "../recipes.lib.ts";
 import { reatomRecipesData, type RecipesData } from "../recipes.model.ts";
 import { reatomRecipeCooks } from "./recipe-cooks.vm.ts";
 import { reatomRecipeForm } from "./recipe-form.vm.ts";
@@ -24,14 +32,14 @@ import { reatomTagEditing } from "./recipe-tags.vm.ts";
 export type RecipesScreen =
   | { kind: "loading" }
   | { kind: "failed" }
-  | { kind: "list"; recipes: Recipe[]; tags: RecipeTag[] }
-  | { kind: "recipe"; recipe: Recipe; checked: number[] }
+  | { kind: "list"; recipes: RecipeItem[]; tags: RecipeTag[] }
+  | { kind: "recipe"; recipe: RecipeDetails; checked: number[] }
   | { kind: "form"; isCreating: boolean; tags: RecipeTag[] }
   | { kind: "tags"; tags: RecipeTag[] };
 
 type RecipesDependencies = {
   api: RecipesApi;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Dialogs;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   today: () => string;
@@ -42,16 +50,13 @@ type Navigation = {
   openedId: Atom<string | undefined>;
   editing: Atom<"recipe" | "tags" | undefined>;
   // Ticked ingredients live on the screen only: they are for the cook at the stove.
-  checked: Atom<number[]>;
+  checked: SetAtom<number>;
 };
 
-const deleteQuestion: PopupParams = {
+const deleteQuestion: Confirmation = {
   title: "Удалить рецепт?",
   message: "Рецепт пропадёт у всей семьи вместе со своими фото.",
-  buttons: [
-    { id: "delete", type: "destructive", text: "Удалить" },
-    { id: "cancel", type: "cancel" },
-  ],
+  button: "Удалить",
 };
 
 function reatomOpened(
@@ -73,11 +78,13 @@ function reatomScreen({
   navigation,
   opened,
   form,
+  timeZone,
 }: {
   data: RecipesData;
   navigation: Navigation;
   opened: Opened;
   form: { isCreating: () => boolean };
+  timeZone: () => string;
 }) {
   return computed((): RecipesScreen => {
     const tags = data.tags.data() ?? [];
@@ -92,7 +99,11 @@ function reatomScreen({
     const recipe = opened.data();
 
     if (navigation.openedId() !== undefined && recipe !== undefined) {
-      return { kind: "recipe", recipe, checked: navigation.checked() };
+      return {
+        kind: "recipe",
+        recipe: toRecipeDetails(recipe, timeZone()),
+        checked: [...navigation.checked()],
+      };
     }
 
     const list = data.list.data();
@@ -101,55 +112,74 @@ function reatomScreen({
       return data.list.error() === undefined ? { kind: "loading" } : { kind: "failed" };
     }
 
-    return { kind: "list", recipes: list, tags };
+    return { kind: "list", recipes: list.map(toRecipeItem), tags };
   }, "recipes.screen");
 }
 
-function reatomRecipeActions(
-  dependencies: RecipesDependencies,
+function reatomRecipeRemoval(
+  { api, telegram }: RecipesDependencies,
   { data, navigation, opened }: { data: RecipesData; navigation: Navigation; opened: Opened },
 ) {
-  const remove = action(async () => {
+  return action(async () => {
     const recipe = opened.data();
-    const choice = await wrap(dependencies.telegram.showPopup(deleteQuestion));
+    const isSure = await wrap(isConfirmed(telegram, deleteQuestion));
 
-    if (recipe !== undefined && choice === "delete") {
-      await wrap(dependencies.api.remove(recipe.id));
+    if (recipe === undefined || !isSure) {
+      return;
+    }
+
+    const isRemoved = await wrap(
+      didSucceedOrAlert(telegram, {
+        failure: "Не получилось удалить рецепт. Попробуйте ещё раз.",
+        call: api.remove(recipe.id),
+      }),
+    );
+
+    if (isRemoved) {
       navigation.openedId.set(undefined);
       data.reload();
     }
   }, "recipes.remove").extend(withAsync());
+}
+
+function reatomRecipeActions(
+  dependencies: RecipesDependencies,
+  sources: { data: RecipesData; navigation: Navigation; opened: Opened },
+) {
+  const { data, navigation, opened } = sources;
+  const { api, telegram } = dependencies;
+  const remove = reatomRecipeRemoval(dependencies, sources);
   const favorite = action(async () => {
     const recipe = opened.data();
 
-    if (recipe !== undefined) {
-      await wrap(dependencies.api.setFavorite(recipe.id, !recipe.isFavorite));
+    const isMarked =
+      recipe !== undefined &&
+      (await wrap(
+        didSucceedOrAlert(telegram, {
+          failure: "Не получилось отметить рецепт. Попробуйте ещё раз.",
+          call: api.setFavorite(recipe.id, !recipe.isFavorite),
+        }),
+      ));
+
+    if (isMarked) {
       data.reload();
     }
   }, "recipes.favorite").extend(withAsync());
 
   return {
-    remove: action(() => {
-      remove().catch(noop);
-    }, "recipes.removeRecipe"),
-    toggleFavorite: action(() => {
-      favorite().catch(noop);
-    }, "recipes.toggleFavorite"),
+    remove: detached(remove, "recipes.removeRecipe"),
+    toggleFavorite: detached(favorite, "recipes.toggleFavorite"),
     toggleIngredient: action((index: number) => {
-      const current = navigation.checked();
-
-      navigation.checked.set(
-        current.includes(index) ? current.filter((each) => each !== index) : [...current, index],
-      );
+      navigation.checked.toggle(index);
     }, "recipes.toggleIngredient"),
   };
 }
 
 function reatomFilters(data: RecipesData) {
   return {
-    text: computed(() => data.text(), "recipes.searchText"),
-    tagId: computed(() => data.tagId(), "recipes.chosenTag"),
-    isFavorite: computed(() => data.isFavorite(), "recipes.isFavoriteShown"),
+    text: readOnly(data.text),
+    tagId: readOnly(data.tagId),
+    isFavorite: readOnly(data.isFavorite),
     search: action((text: string) => {
       data.text.set(text);
     }, "recipes.search"),
@@ -174,7 +204,7 @@ function reatomMoves({
   return {
     open: action((recipeId: string) => {
       navigation.openedId.set(recipeId);
-      navigation.checked.set([]);
+      navigation.checked.clear();
     }, "recipes.open"),
     add: action(() => {
       form.startCreating();
@@ -205,7 +235,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   const navigation: Navigation = {
     openedId: atom<string | undefined>(undefined, "recipes.openedId"),
     editing: atom<"recipe" | "tags" | undefined>(undefined, "recipes.editing"),
-    checked: atom<number[]>([], "recipes.checked"),
+    checked: reatomSet<number>([], "recipes.checked"),
   };
   const data = reatomRecipesData(dependencies);
   const opened = reatomOpened(dependencies.api, { data, navigation });
@@ -217,11 +247,12 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
       data.reload();
     },
   });
-  const screen = reatomScreen({ data, navigation, opened, form });
+  const screen = reatomScreen({ data, navigation, opened, form, timeZone: dependencies.timeZone });
 
   return {
     screen,
     form,
+    photoHint: readOnly(dependencies.photoHint),
     title: computed(() => titleOf(screen()), "recipes.title"),
     canGoBack: computed(
       () => navigation.editing() !== undefined || navigation.openedId() !== undefined,

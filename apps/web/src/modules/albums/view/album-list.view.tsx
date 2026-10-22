@@ -11,7 +11,7 @@ export function AlbumList({ model, albums }: AlbumListProps) {
   return (
     <>
       <Section>
-        <SectionItem icon={Images} tone="violet" title="Все фото" onClick={model.openAll} />
+        <SectionItem icon={Images} title="Все фото" onClick={model.openAll} />
       </Section>
       <Section title="Альбомы">
         {albums.map((album) => (
@@ -33,7 +33,7 @@ export function AlbumList({ model, albums }: AlbumListProps) {
             }}
           />
         ))}
-        <SectionItem icon={Plus} tone="green" title="Новый альбом" onClick={model.add} />
+        <SectionItem icon={Plus} title="Новый альбом" onClick={model.add} />
       </Section>
     </>
   );
