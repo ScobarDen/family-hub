@@ -1,4 +1,14 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  isAbort,
+  noop,
+  withAbort,
+  withAsync,
+  wrap,
+  type Atom,
+} from "@reatom/core";
 
 import { albumBatchMax, type Photo } from "@family-hub/contract";
 
@@ -13,7 +23,8 @@ export type BatchUploadDependencies = {
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   upload: (prepared: PreparedPhoto) => Promise<Photo>;
   // Each photo joins the Album as soon as it is up, so a closed app loses only the rest.
-  onUploaded: (photo: Photo) => Promise<unknown>;
+  addToAlbum: (albumId: string, photo: Photo) => Promise<unknown>;
+  onFinished: () => void;
   wait: (ms: number) => Promise<void>;
 };
 
@@ -33,28 +44,46 @@ function reatomStatuses(items: Atom<BatchItem[]>) {
   };
 }
 
-// Photos go up one by one; Telegram's 429 is a pause for as long as it asks, not a failure.
-async function uploadOne(
-  dependencies: BatchUploadDependencies,
-  item: BatchItem,
-): Promise<"done" | "failed"> {
+// Telegram's 429 is a pause for as long as it asks, not a failure.
+async function patiently<Result>(
+  wait: BatchUploadDependencies["wait"],
+  step: () => Promise<Result>,
+): Promise<Result> {
   for (;;) {
     try {
-      const prepared = await wrap(dependencies.preparePhoto(item.file));
-      const photo = await wrap(dependencies.upload(prepared));
-
-      await wrap(dependencies.onUploaded(photo));
-
-      return "done";
+      return await wrap(step());
     } catch (error) {
       const ms = waitOf(error);
 
       if (ms === undefined) {
-        return "failed";
+        throw error;
       }
 
-      await wrap(dependencies.wait(ms));
+      await wrap(wait(ms));
     }
+  }
+}
+
+async function uploadOne(
+  dependencies: BatchUploadDependencies,
+  albumId: string,
+  item: BatchItem,
+): Promise<"done" | "failed"> {
+  try {
+    const prepared = await wrap(dependencies.preparePhoto(item.file));
+    const photo = await wrap(
+      patiently(dependencies.wait, async () => dependencies.upload(prepared)),
+    );
+
+    await wrap(patiently(dependencies.wait, async () => dependencies.addToAlbum(albumId, photo)));
+
+    return "done";
+  } catch (error) {
+    if (isAbort(error)) {
+      throw error;
+    }
+
+    return "failed";
   }
 }
 
@@ -70,17 +99,35 @@ function retried(item: BatchItem): BatchItem {
   return item.status === "failed" ? { ...item, status: "waiting" } : item;
 }
 
+function reatomRun(
+  dependencies: BatchUploadDependencies,
+  { items, albumId }: { items: Atom<BatchItem[]>; albumId: Atom<string | undefined> },
+) {
+  const mark = reatomStatuses(items);
+
+  return action(async () => {
+    const target = albumId();
+
+    if (target === undefined) {
+      return;
+    }
+
+    try {
+      for (const item of items().filter(({ status }) => status === "waiting")) {
+        mark(item.key, "uploading");
+        mark(item.key, await wrap(uploadOne(dependencies, target, item)));
+      }
+    } finally {
+      dependencies.onFinished();
+    }
+  }, "albums.batch.run").extend(withAsync(), withAbort());
+}
+
 export function reatomBatchUpload(dependencies: BatchUploadDependencies) {
   const items = atom<BatchItem[]>([], "albums.batch.items");
-  const mark = reatomStatuses(items);
+  const albumId = atom<string | undefined>(undefined, "albums.batch.albumId");
+  const run = reatomRun(dependencies, { items, albumId });
   let lastKey = 0;
-
-  const run = action(async () => {
-    for (const item of items().filter(({ status }) => status === "waiting")) {
-      mark(item.key, "uploading");
-      mark(item.key, await wrap(uploadOne(dependencies, item)));
-    }
-  }, "albums.batch.run").extend(withAsync());
 
   return {
     isActive: computed(() => items().length > 0, "albums.batch.isActive"),
@@ -91,7 +138,8 @@ export function reatomBatchUpload(dependencies: BatchUploadDependencies) {
     ),
     failedCount: computed(() => countOf(items(), "failed"), "albums.batch.failedCount"),
 
-    start: action((files: Blob[]) => {
+    start: action((target: string | undefined, files: Blob[]) => {
+      albumId.set(target);
       items.set(
         files.slice(0, albumBatchMax).map((file) => {
           lastKey += 1;
@@ -106,6 +154,7 @@ export function reatomBatchUpload(dependencies: BatchUploadDependencies) {
       run().catch(noop);
     }, "albums.batch.retry"),
     dismiss: action(() => {
+      run.abort();
       items.set([]);
     }, "albums.batch.dismiss"),
   };

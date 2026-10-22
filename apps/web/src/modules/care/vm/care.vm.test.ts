@@ -161,7 +161,7 @@ function startCare(choices: string[] = []) {
     today: () => "2026-10-11",
     now: () => "2026-10-11T18:30",
     timeZone: () => "Europe/Moscow",
-    telegram: { showPopup: async () => pending.shift() },
+    telegram: { showPopup: async () => pending.shift(), showAlert: noop },
     isReadOnly: () => isArchived(),
     preparePhoto: async (file) => {
       if (file === tooLarge) {

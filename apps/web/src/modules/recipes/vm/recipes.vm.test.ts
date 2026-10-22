@@ -41,8 +41,9 @@ function replyOf(url: URL, method: string, body: unknown): unknown {
   return url.searchParams.has("q") ? [lasagna] : [borscht, lasagna];
 }
 
-function startRecipes() {
+function startRecipes({ failing = "" }: { failing?: string } = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
+  const alerts: string[] = [];
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
     const request = `${init.method ?? "GET"} ${url.pathname}${url.search}`;
@@ -50,12 +51,21 @@ function startRecipes() {
 
     requests.push({ request, body });
 
+    if (request === failing) {
+      return Response.json({}, { status: 500 });
+    }
+
     return Response.json(replyOf(url, init.method ?? "GET", body));
   }
 
   const model = reatomRecipesScreen({
     api: createRecipesApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
-    telegram: { showPopup: async () => "delete" },
+    telegram: {
+      showPopup: async () => "delete",
+      showAlert(message: string) {
+        alerts.push(message);
+      },
+    },
     preparePhoto: async (file) => ({ file, takenAt: null }),
     photoHint: () => "Загрузка фото выключена",
     today: () => "2026-10-21",
@@ -64,7 +74,7 @@ function startRecipes() {
 
   model.screen.subscribe(noop);
 
-  return { model, requests };
+  return { model, requests, alerts };
 }
 
 type Model = ReturnType<typeof startRecipes>["model"];
@@ -124,6 +134,22 @@ describe("the Recipes", () => {
     model.open("recipe-1");
 
     expect(model.screen()).toMatchObject({ checked: [] });
+  });
+
+  test("stay open with a word when one cannot be deleted", async () => {
+    const { model, alerts } = startRecipes({ failing: "DELETE /api/recipes/recipe-1" });
+
+    await listed(model);
+    model.open("recipe-1");
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("recipe");
+    });
+    model.remove();
+    await vi.waitFor(() => {
+      expect(alerts).toEqual(["Не получилось удалить рецепт. Попробуйте ещё раз."]);
+    });
+
+    expect(model.screen().kind).toBe("recipe");
   });
 
   test("are written with their tags and opened once saved", async () => {

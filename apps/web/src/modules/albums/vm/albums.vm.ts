@@ -4,7 +4,7 @@ import type { Photo } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
-import type { PopupParams } from "@/common/telegram";
+import { didSucceedOrAlert, type Dialogs, type PopupParams } from "@/common/telegram";
 
 import type { AlbumsApi } from "../albums.api.ts";
 import { subtitleOf, toItem, type AlbumItem, type AlbumView } from "../albums.lib.ts";
@@ -22,7 +22,7 @@ export type AlbumsScreen =
 
 type AlbumsDependencies = {
   api: AlbumsApi;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Dialogs;
   timeZone: () => string;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   wait: (ms: number) => Promise<void>;
@@ -82,8 +82,18 @@ function reatomRemoval(
     const albumId = navigation.openedId();
     const choice = await wrap(dependencies.telegram.showPopup(deleteQuestion));
 
-    if (albumId !== undefined && (choice === "album-only" || choice === "with-photos")) {
-      await wrap(dependencies.api.remove(albumId, choice));
+    if (albumId === undefined || (choice !== "album-only" && choice !== "with-photos")) {
+      return;
+    }
+
+    const isRemoved = await wrap(
+      didSucceedOrAlert(dependencies.telegram, {
+        failure: "Не получилось удалить альбом. Попробуйте ещё раз.",
+        call: dependencies.api.remove(albumId, choice),
+      }),
+    );
+
+    if (isRemoved) {
       navigation.openedId.set(undefined);
       data.reload();
     }
@@ -93,22 +103,27 @@ function reatomRemoval(
 // In an Album the viewer's own action picks the photo shown as its cover.
 function reatomAlbumViewer(dependencies: AlbumsDependencies, data: AlbumsData) {
   const { api } = dependencies;
+  const pickCover = action(async (photoId: string) => {
+    const album = data.opened.data();
+
+    if (album?.canEdit !== true) {
+      return;
+    }
+
+    await wrap(
+      api.update(album.id, {
+        title: album.title,
+        description: album.description,
+        coverPhotoId: photoId,
+      }),
+    );
+    data.reload();
+  }, "albums.pickCover").extend(withAsync());
 
   return reatomPhotoViewer({
     ...dependencies,
     onPick: (photoId) => {
-      const album = data.opened.data();
-
-      if (album?.canEdit === true) {
-        api
-          .update(album.id, {
-            title: album.title,
-            description: album.description,
-            coverPhotoId: photoId,
-          })
-          .then(data.reload)
-          .catch(noop);
-      }
+      pickCover(photoId).catch(noop);
     },
     onDeleted: data.reload,
   });
@@ -132,12 +147,8 @@ function reatomParts(
     batch: reatomBatchUpload({
       ...dependencies,
       upload: async (prepared) => api.uploadPhoto(prepared),
-      onUploaded: async (photo) => {
-        const albumId = navigation.openedId();
-
-        await (albumId === undefined ? Promise.resolve() : api.addPhotos(albumId, [photo.id]));
-        data.reload();
-      },
+      addToAlbum: async (albumId, photo) => api.addPhotos(albumId, [photo.id]),
+      onFinished: data.reload,
     }),
     viewer: reatomAlbumViewer(dependencies, data),
   };
@@ -200,7 +211,7 @@ function reatomMoves({
       }
     }, "albums.edit"),
     upload: action((files: Blob[]) => {
-      batch.start(files);
+      batch.start(navigation.openedId(), files);
     }, "albums.upload"),
     back: action(() => {
       if (navigation.isEditing()) {

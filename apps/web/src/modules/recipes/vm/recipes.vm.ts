@@ -13,7 +13,7 @@ import type { Recipe, RecipeTag } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
-import type { PopupParams } from "@/common/telegram";
+import { didSucceedOrAlert, type Dialogs, type PopupParams } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import { reatomRecipesData, type RecipesData } from "../recipes.model.ts";
@@ -31,7 +31,7 @@ export type RecipesScreen =
 
 type RecipesDependencies = {
   api: RecipesApi;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Dialogs;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   today: () => string;
@@ -105,25 +105,52 @@ function reatomScreen({
   }, "recipes.screen");
 }
 
-function reatomRecipeActions(
-  dependencies: RecipesDependencies,
+function reatomRecipeRemoval(
+  { api, telegram }: RecipesDependencies,
   { data, navigation, opened }: { data: RecipesData; navigation: Navigation; opened: Opened },
 ) {
-  const remove = action(async () => {
+  return action(async () => {
     const recipe = opened.data();
-    const choice = await wrap(dependencies.telegram.showPopup(deleteQuestion));
+    const choice = await wrap(telegram.showPopup(deleteQuestion));
 
-    if (recipe !== undefined && choice === "delete") {
-      await wrap(dependencies.api.remove(recipe.id));
+    if (recipe === undefined || choice !== "delete") {
+      return;
+    }
+
+    const isRemoved = await wrap(
+      didSucceedOrAlert(telegram, {
+        failure: "Не получилось удалить рецепт. Попробуйте ещё раз.",
+        call: api.remove(recipe.id),
+      }),
+    );
+
+    if (isRemoved) {
       navigation.openedId.set(undefined);
       data.reload();
     }
   }, "recipes.remove").extend(withAsync());
+}
+
+function reatomRecipeActions(
+  dependencies: RecipesDependencies,
+  sources: { data: RecipesData; navigation: Navigation; opened: Opened },
+) {
+  const { data, navigation, opened } = sources;
+  const { api, telegram } = dependencies;
+  const remove = reatomRecipeRemoval(dependencies, sources);
   const favorite = action(async () => {
     const recipe = opened.data();
 
-    if (recipe !== undefined) {
-      await wrap(dependencies.api.setFavorite(recipe.id, !recipe.isFavorite));
+    const isMarked =
+      recipe !== undefined &&
+      (await wrap(
+        didSucceedOrAlert(telegram, {
+          failure: "Не получилось отметить рецепт. Попробуйте ещё раз.",
+          call: api.setFavorite(recipe.id, !recipe.isFavorite),
+        }),
+      ));
+
+    if (isMarked) {
       data.reload();
     }
   }, "recipes.favorite").extend(withAsync());

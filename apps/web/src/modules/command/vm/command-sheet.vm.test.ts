@@ -17,6 +17,7 @@ import { createHttpClient } from "@/common/http-client";
 import { createCommandApi } from "../command.api.ts";
 import {
   createFailedText,
+  pickFailedText,
   reatomCommandSheet,
   staleDraftText,
   type OpenedDraft,
@@ -69,6 +70,7 @@ function buickPet(id: string, name: string): Pet {
 function fakeBackend(outcome: CommandOutcome) {
   const requests: string[] = [];
   let createFailure: Response | undefined;
+  let pickFailure: Response | undefined;
   const replies: Record<string, (body: unknown) => Response> = {
     "POST /api/commands/voice": () => Response.json(outcome),
     "GET /api/family/members": () => Response.json(members),
@@ -81,6 +83,7 @@ function fakeBackend(outcome: CommandOutcome) {
       }),
     "POST /api/commands/draft-1/dismiss": () => Response.json({ status: "dismissed" }),
     "POST /api/commands/draft-1/pick": (body) =>
+      pickFailure ??
       Response.json({
         status: "draft",
         draftId: "draft-1",
@@ -112,6 +115,9 @@ function fakeBackend(outcome: CommandOutcome) {
     },
     breakCreate() {
       createFailure = Response.json({}, { status: 500 });
+    },
+    breakPick() {
+      pickFailure = Response.json({}, { status: 500 });
     },
   };
 }
@@ -251,6 +257,18 @@ describe("the preview sheet", () => {
         heard,
         preview: { question: undefined, details: ["пт 16 окт, 19:00", "каждый месяц", "Ася"] },
       });
+    });
+  });
+
+  test("keeps the draft with a word when a pick fails", async () => {
+    const { model, backend } = startSheet();
+
+    await sent(model);
+    backend.breakPick();
+    model.pick(0);
+
+    await vi.waitFor(() => {
+      expect(model.sheet()).toMatchObject({ kind: "draft", error: pickFailedText });
     });
   });
 

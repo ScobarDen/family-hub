@@ -2,11 +2,11 @@ import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
 
 import type { Photo } from "@family-hub/contract";
 
-import type { PopupParams } from "@/common/telegram";
+import { didSucceedOrAlert, type Dialogs, type PopupParams } from "@/common/telegram";
 
 export type PhotoViewerDependencies = {
   api: { deletePhoto: (photoId: string) => Promise<unknown> };
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Dialogs;
   // A module's own action on the photo shown, such as making it a Pet's avatar.
   onPick?: (photoId: string) => void;
   onDeleted: () => void;
@@ -66,8 +66,16 @@ function reatomPhotoRemoval(
 
     const choice = await wrap(dependencies.telegram.showPopup(deleteQuestion));
 
-    if (choice === "delete") {
-      await wrap(dependencies.api.deletePhoto(photo.id));
+    const isDeleted =
+      choice === "delete" &&
+      (await wrap(
+        didSucceedOrAlert(dependencies.telegram, {
+          failure: "Не получилось удалить фото. Попробуйте ещё раз.",
+          call: dependencies.api.deletePhoto(photo.id),
+        }),
+      ));
+
+    if (isDeleted) {
       dependencies.onDeleted();
       opened.set(without(current, photo.id));
     }

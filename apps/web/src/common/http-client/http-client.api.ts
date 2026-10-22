@@ -1,4 +1,4 @@
-import { atom, noop, wrap } from "@reatom/core";
+import { abortVar, atom, noop, wrap } from "@reatom/core";
 import type { z } from "zod";
 
 import { apiError, type ErrorCode } from "@family-hub/contract";
@@ -69,6 +69,25 @@ function headersFor(body: unknown, token: string | undefined): Headers {
   return headers;
 }
 
+// A request stops with the Reatom process that made it, or after the timeout.
+async function fetchUntilAborted(
+  fetch: Fetch,
+  { url, init, timeoutMs }: { url: URL; init: RequestInit; timeoutMs: number },
+): Promise<Response> {
+  const { controller, unsubscribe } = abortVar.subscribe();
+
+  try {
+    return await wrap(
+      fetch(url, {
+        ...init,
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(timeoutMs)]),
+      }),
+    );
+  } finally {
+    unsubscribe();
+  }
+}
+
 export function createHttpClient({
   baseUrl,
   fetch,
@@ -82,11 +101,14 @@ export function createHttpClient({
     { schema, method = "GET", body }: RequestOptions<Schema>,
   ): Promise<z.infer<Schema>> {
     const response = await wrap(
-      fetch(new URL(path, baseUrl), {
-        method,
-        headers: headersFor(body, token()),
-        body: body === undefined || isRaw(body) ? body : JSON.stringify(body),
-        signal: AbortSignal.timeout(timeoutMs),
+      fetchUntilAborted(fetch, {
+        url: new URL(path, baseUrl),
+        init: {
+          method,
+          headers: headersFor(body, token()),
+          body: body === undefined || isRaw(body) ? body : JSON.stringify(body),
+        },
+        timeoutMs,
       }),
     );
 

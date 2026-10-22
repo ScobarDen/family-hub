@@ -1,3 +1,4 @@
+export { didSucceedOrAlert, type Dialogs } from "./telegram.lib.ts";
 export { reatomTelegram, type Telegram, type Theme } from "./telegram.model.ts";
 export type {
   ColorScheme,

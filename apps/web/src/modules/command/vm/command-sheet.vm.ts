@@ -1,4 +1,14 @@
-import { action, atom, computed, noop, withAsyncData, wrap, type Atom } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  isAbort,
+  noop,
+  withAbort,
+  withAsyncData,
+  wrap,
+  type Atom,
+} from "@reatom/core";
 
 import {
   draftRefusalTexts,
@@ -45,6 +55,7 @@ type PhaseAtom = Atom<Phase>;
 export const sendFailedText = "Не получилось отправить запись. Попробуйте ещё раз.";
 export const createFailedText = "Не получилось создать. Попробуйте ещё раз или нажмите «Изменить».";
 export const staleDraftText = "Черновик устарел или уже решён — скажите команду ещё раз.";
+export const pickFailedText = "Не получилось выбрать. Попробуйте ещё раз.";
 
 function draftOf(phase: Phase): (OpenedDraft & { heard: string | null }) | undefined {
   return phase.kind === "outcome" && phase.outcome.status === "draft"
@@ -74,10 +85,14 @@ function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseA
 
     try {
       phase.set({ kind: "outcome", outcome: await wrap(api.send(recording)) });
-    } catch {
+    } catch (error) {
+      if (isAbort(error)) {
+        throw error;
+      }
+
       phase.set(failure(sendFailedText));
     }
-  }, "commandSheet.send");
+  }, "commandSheet.send").extend(withAbort());
 
   // The bot's «Изменить» arrives as start_param and goes straight to the form.
   const openForEdit = action(async (draftId: string) => {
@@ -96,6 +111,7 @@ function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseA
     send: action((recording: Blob) => {
       send(recording).catch(noop);
     }, "commandSheet.sendRecording"),
+    stopSending: send.abort,
     openForEdit: action((draftId: string) => {
       openForEdit(draftId).catch(noop);
     }, "commandSheet.openForEdit"),
@@ -122,12 +138,19 @@ function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: Ph
   }, "commandSheet.create");
 
   const pick = action(async (index: number) => {
-    const opened = draftOf(phase());
+    const before = phase();
+    const opened = draftOf(before);
 
-    if (opened !== undefined) {
+    if (opened === undefined || before.kind !== "outcome") {
+      return;
+    }
+
+    try {
       const outcome = await wrap(api.pick(opened.draftId, index));
 
       phase.set({ kind: "outcome", outcome: { ...outcome, heard: opened.heard } });
+    } catch {
+      phase.set({ ...before, error: pickFailedText });
     }
   }, "commandSheet.pick");
 
@@ -141,7 +164,10 @@ function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: Ph
   };
 }
 
-function reatomLeaving({ api, onEdit }: CommandSheetDependencies, phase: PhaseAtom) {
+function reatomLeaving(
+  { api, onEdit }: CommandSheetDependencies,
+  { phase, stopSending }: { phase: PhaseAtom; stopSending: () => void },
+) {
   return {
     edit: action(() => {
       const opened = draftOf(phase());
@@ -156,6 +182,7 @@ function reatomLeaving({ api, onEdit }: CommandSheetDependencies, phase: PhaseAt
     close: action(() => {
       const opened = draftOf(phase());
 
+      stopSending();
       phase.set({ kind: "closed" });
 
       if (opened !== undefined) {
@@ -193,14 +220,16 @@ export function reatomCommandSheet(dependencies: CommandSheetDependencies) {
     return { members, pets: pets.filter(({ archivedAt }) => archivedAt === null) };
   }, "commandSheet.names").extend(withAsyncData());
 
+  const { stopSending, ...requests } = reatomRequests(dependencies, phase);
+
   return {
     sheet: computed(
       () => sheetOf(phase(), names.data() ?? { members: [], pets: [] }),
       "commandSheet.sheet",
     ),
-    ...reatomRequests(dependencies, phase),
+    ...requests,
     ...reatomDecisions(dependencies, phase),
-    ...reatomLeaving(dependencies, phase),
+    ...reatomLeaving(dependencies, { phase, stopSending }),
   };
 }
 

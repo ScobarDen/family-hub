@@ -40,6 +40,11 @@ export function reatomTagEditing({ api, telegram }: TagDependencies, data: Recip
       failure.set("Не получилось сохранить тег. Попробуйте ещё раз.");
     }
   }, "recipes.tags.change").extend(withAsync());
+  const remove = action(async (tagId: string) => {
+    if ((await wrap(telegram.showPopup(deleteQuestion))) === "delete") {
+      await wrap(change(async () => api.removeTag(tagId)));
+    }
+  }, "recipes.tags.removeAsked").extend(withAsync());
 
   return {
     tagFailure: computed(() => failure(), "recipes.tags.visibleFailure"),
@@ -58,11 +63,7 @@ export function reatomTagEditing({ api, telegram }: TagDependencies, data: Recip
       }
     }, "recipes.tags.rename"),
     removeTag: action((tagId: string) => {
-      change(async () => {
-        const choice = await telegram.showPopup(deleteQuestion);
-
-        return choice === "delete" ? api.removeTag(tagId) : undefined;
-      }).catch(noop);
+      remove(tagId).catch(noop);
     }, "recipes.tags.remove"),
   };
 }

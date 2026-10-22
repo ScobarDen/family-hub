@@ -5,7 +5,7 @@ import type { CareEntry, CareKind } from "@family-hub/contract";
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { PreparedPhoto } from "@/common/photo";
-import type { PopupParams } from "@/common/telegram";
+import type { Dialogs } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import { categoryTitles, type WeightRange } from "../care.config.ts";
@@ -34,7 +34,7 @@ type CareDependencies = {
   today: () => string;
   now: () => string;
   timeZone: () => string;
-  telegram: { showPopup: (params: PopupParams) => Promise<string | undefined> };
+  telegram: Dialogs;
   isReadOnly: () => boolean;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   // Why photos cannot be added now, from photo-storage; undefined when they can.
@@ -280,6 +280,7 @@ export function reatomCare(dependencies: CareDependencies) {
     remove: action(() => {
       remove().catch(noop);
     }, "care.removeEntry"),
+    reload: data.reload,
   };
 }
 

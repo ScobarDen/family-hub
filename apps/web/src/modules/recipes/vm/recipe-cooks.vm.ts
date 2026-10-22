@@ -3,10 +3,17 @@ import { Temporal } from "temporal-polyfill";
 
 import type { Recipe } from "@family-hub/contract";
 
+import { didSucceedOrAlert, type Dialogs } from "@/common/telegram";
+
 import type { RecipesApi } from "../recipes.api.ts";
 import type { RecipesData } from "../recipes.model.ts";
 
-type CookDependencies = { api: RecipesApi; today: () => string; timeZone: () => string };
+type CookDependencies = {
+  api: RecipesApi;
+  today: () => string;
+  timeZone: () => string;
+  telegram: Pick<Dialogs, "showAlert">;
+};
 
 const middayTime = "12:00";
 
@@ -25,8 +32,16 @@ export function reatomRecipeCooks(
   const change = action(async (doing: (recipe: Recipe) => Promise<unknown>) => {
     const recipe = opened();
 
-    if (recipe !== undefined) {
-      await wrap(doing(recipe));
+    const isSaved =
+      recipe !== undefined &&
+      (await wrap(
+        didSucceedOrAlert(dependencies.telegram, {
+          failure: "Не получилось сохранить готовку. Попробуйте ещё раз.",
+          call: doing(recipe),
+        }),
+      ));
+
+    if (isSaved) {
       data.reload();
     }
   }, "recipes.cooks.change").extend(withAsync());
