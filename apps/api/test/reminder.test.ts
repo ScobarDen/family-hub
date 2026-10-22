@@ -182,6 +182,22 @@ describe("delivering a Reminder", () => {
 });
 
 describe("the bot's limits", () => {
+  test("a garbled answer for one row lets the rest go and tries that row again", async () => {
+    const worker = await startWithFamily();
+
+    await createReminder(worker);
+    worker.clock.set(firesAt);
+    worker.bot.breakNextCall();
+    await worker.tick();
+
+    expect(worker.bot.sentMessages()).toHaveLength(1);
+
+    worker.clock.set("2026-10-04T10:01:01Z");
+    await worker.tick();
+
+    expect(worker.bot.sentMessages()).toHaveLength(2);
+  });
+
   test("a 429 leaves the rows for the next tick", async () => {
     const worker = await startWithFamily();
 

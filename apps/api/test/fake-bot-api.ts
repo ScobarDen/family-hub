@@ -17,10 +17,16 @@ type FakeBotState = {
   pendingRateLimit: { retryAfterSeconds: number; method: BotMethod | undefined } | undefined;
   lastMessageId: number;
   files: string[];
+  isNextCallBroken: boolean;
 };
 
 function rejectUndeliverable(state: FakeBotState, method: BotMethod, params: unknown): void {
   const limit = state.pendingRateLimit;
+
+  if (state.isNextCallBroken) {
+    state.isNextCallBroken = false;
+    throw new SyntaxError("Unexpected token '<', \"<html>\" is not valid JSON");
+  }
 
   if (limit !== undefined && (limit.method === undefined || limit.method === method)) {
     state.pendingRateLimit = undefined;
@@ -110,6 +116,7 @@ function emptyState(): FakeBotState {
     pendingRateLimit: undefined,
     lastMessageId: 0,
     files: [],
+    isNextCallBroken: false,
   };
 }
 
@@ -152,6 +159,10 @@ export function createFakeBotApi() {
     },
     rateLimitNextCall(retryAfterSeconds: number, method?: BotMethod) {
       state.pendingRateLimit = { retryAfterSeconds, method };
+    },
+    // What a 502 page from a proxy in front of Telegram does to reading the answer as JSON.
+    breakNextCall() {
+      state.isNextCallBroken = true;
     },
   };
 }
