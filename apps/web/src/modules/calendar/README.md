@@ -5,7 +5,7 @@ The «Календарь» tab: a month grid over the Family's dates and, below 
 ## Injected
 
 - `api` — `createCalendarApi(httpClient)`: the Events and standalone Reminders the session Member may see, the Family's Members as Recipients, creating, changing, skipping an Occurrence and deleting; the Pets and each Pet's Due Dates.
-- `today`, `timeZone` — the viewer's date and zone; still the device's.
+- `today`, `timeZone` — the viewer's date and zone; the Member's own zone, the device's until it is known.
 - `telegram` — `showPopup` from `common/telegram` for the confirmations.
 - `self` — the session Member's id.
 - `onOpenPlan` — opens a Plan from its deadline; the app's opener switches to the plans tab.

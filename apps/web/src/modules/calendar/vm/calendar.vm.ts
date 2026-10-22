@@ -270,6 +270,7 @@ export function reatomCalendar(dependencies: CalendarDependencies) {
     edit: action(() => {
       editOpened(screen, parts);
     }, "calendar.edit"),
+    reload: data.reload,
   };
 }
 

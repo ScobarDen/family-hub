@@ -15,7 +15,7 @@ type InvitesDependencies = {
     shareMessage: (preparedMessageId: string) => Promise<boolean>;
     openTelegramLink: (url: string) => void;
   };
-  timeZone: string;
+  timeZone: () => string;
 };
 
 const shareText = "Присоединяйтесь к нашей семье в Family Hub";
@@ -92,7 +92,7 @@ export function reatomInvites(dependencies: InvitesDependencies) {
 
   return {
     invites: computed(
-      () => (list.data() ?? []).map((invite) => toItem(invite, dependencies.timeZone)),
+      () => (list.data() ?? []).map((invite) => toItem(invite, dependencies.timeZone())),
       "invites.items",
     ),
     isLoading: computed(

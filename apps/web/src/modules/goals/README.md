@@ -12,6 +12,6 @@ The Goal and movement forms are `reatomEditableRecord`s from `common/form`: they
 - `goals` — `reatomGoals({ api })`: the list (`withAsyncData`, loaded when the tab subscribes) and the Members; a saved Goal replaces its old copy and recounts the total.
 - `telegram` — `showPopup` from `common/telegram` for the confirmations.
 - `self` — the session Member's id: a Private Goal takes only its owner's money.
-- `today`, `timeZone` — the viewer's date for the monthly hint and new movements, and the zone «Исполнена …» is shown in; still the device's.
+- `today`, `timeZone` — the viewer's date for the monthly hint and new movements, and the zone «Исполнена …» is shown in; the Member's own zone, the device's until it is known.
 
 The server owns the rules: a Balance never drops below zero, Achieved follows the Balance both ways, a Shared Goal never turns Private and a Completed Goal refuses every change. `reatomGoalsScreen` goes to the navigation as the goals module's `nestedBack`.

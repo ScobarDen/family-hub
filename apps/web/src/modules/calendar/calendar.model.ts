@@ -1,4 +1,4 @@
-import { action, computed, withAsyncData, wrap } from "@reatom/core";
+import { action, computed, noop, withAsyncData, wrap } from "@reatom/core";
 
 import type { CalendarEvent, Pet, Reminder } from "@family-hub/contract";
 
@@ -9,6 +9,17 @@ async function duesOf(api: CalendarApi, pet: Pet): Promise<PetDue[]> {
   const dues = await api.dueDates(pet.id);
 
   return dues.map((due) => ({ ...due, petId: pet.id }));
+}
+
+// Due Dates belong to each Pet in care, so they are gathered Pet by Pet.
+function reatomDues(api: CalendarApi) {
+  return computed(async (): Promise<PetDue[]> => {
+    const all = await wrap(api.pets());
+    const inCare = all.filter(({ archivedAt }) => archivedAt === null);
+    const lists = await wrap(Promise.all(inCare.map(async (pet) => duesOf(api, pet))));
+
+    return lists.flat();
+  }, "calendar.dues").extend(withAsyncData());
 }
 
 export function reatomCalendarData({ api }: { api: CalendarApi }) {
@@ -22,21 +33,21 @@ export function reatomCalendarData({ api }: { api: CalendarApi }) {
     withAsyncData(),
   );
 
+  const dues = reatomDues(api);
+
   return {
     events,
     pets,
     plans,
     reminders,
     members: computed(async () => wrap(api.members()), "calendar.members").extend(withAsyncData()),
+    dues,
 
-    // Due Dates belong to each Pet in care, so they are gathered Pet by Pet.
-    dues: computed(async (): Promise<PetDue[]> => {
-      const all = await wrap(api.pets());
-      const inCare = all.filter(({ archivedAt }) => archivedAt === null);
-      const lists = await wrap(Promise.all(inCare.map(async (pet) => duesOf(api, pet))));
-
-      return lists.flat();
-    }, "calendar.dues").extend(withAsyncData()),
+    reload: action(() => {
+      for (const records of [events, reminders, dues]) {
+        records.retry().catch(noop);
+      }
+    }, "calendar.reload"),
 
     keep: action((saved: CalendarEvent) => {
       const others = (events.data() ?? []).filter(({ id }) => id !== saved.id);

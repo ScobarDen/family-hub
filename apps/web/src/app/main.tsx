@@ -3,7 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Temporal } from "temporal-polyfill";
 
-import { deviceTimeZone, today } from "@/common/format-date";
+import { deviceTimeZone, today as todayIn } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { preparePhoto } from "@/common/photo";
 import { reatomTelegram } from "@/common/telegram";
@@ -67,6 +67,30 @@ const familyRequest = reatomFamilyRequest({
   onCheck: session.signIn,
 });
 
+const timeZone = reatomTimeZone({
+  api: createTimeZoneApi(httpClient),
+  saved: () => session.member()?.settings.timeZone,
+  deviceZone: deviceTimeZone(),
+  zones: Intl.supportedValuesOf("timeZone"),
+});
+
+// The zone picked in the Profile wins; the device's is the fallback until the settings arrive.
+function zone(): string {
+  return timeZone.zone()?.timeZone ?? deviceTimeZone();
+}
+
+function today(): string {
+  return todayIn(zone());
+}
+
+async function prepare(file: Blob) {
+  return preparePhoto(file, zone());
+}
+
+function self(): string | undefined {
+  return session.member()?.member.id;
+}
+
 const commandApi = createCommandApi(httpClient);
 
 async function wait(ms: number): Promise<void> {
@@ -86,17 +110,17 @@ const photoStorage = reatomPhotoStorage({
 const albums = reatomAlbumsScreen({
   api: createAlbumsApi(httpClient),
   telegram,
-  timeZone: deviceTimeZone,
-  preparePhoto: async (file) => preparePhoto(file, deviceTimeZone()),
+  timeZone: zone,
+  preparePhoto: prepare,
   wait,
   photoHint: photoStorage.uploadHint,
 });
 const recipes = reatomRecipesScreen({
   api: createRecipesApi(httpClient),
   telegram,
-  today: () => today(deviceTimeZone()),
-  timeZone: deviceTimeZone,
-  preparePhoto: async (file) => preparePhoto(file, deviceTimeZone()),
+  today,
+  timeZone: zone,
+  preparePhoto: prepare,
   photoHint: photoStorage.uploadHint,
 });
 const plansApi = createPlansApi(httpClient);
@@ -104,8 +128,8 @@ const plans = reatomPlansScreen({
   api: plansApi,
   plans: reatomPlans({ api: plansApi }),
   telegram,
-  self: () => session.member()?.member.id,
-  timeZone: deviceTimeZone,
+  self,
+  timeZone: zone,
   onOpenAlbum: (albumId) => {
     opener.open({ kind: "album", albumId });
   },
@@ -115,16 +139,16 @@ const goals = reatomGoalsScreen({
   api: goalsApi,
   goals: reatomGoals({ api: goalsApi }),
   telegram,
-  self: () => session.member()?.member.id,
-  today: () => today(deviceTimeZone()),
-  timeZone: deviceTimeZone,
+  self,
+  today,
+  timeZone: zone,
 });
 const petsApi = createPetsApi(httpClient);
 const petsModel = reatomPets({ api: petsApi });
 const pets = reatomPetsScreen({
   api: petsApi,
   pets: petsModel,
-  viewer: () => ({ today: today(deviceTimeZone()), timeZone: deviceTimeZone() }),
+  viewer: () => ({ today: today(), timeZone: zone() }),
   isFamilyOwner: () => session.member()?.isFamilyOwner === true,
   soon: (petId) => [
     ...plans.openPlansOf(petId).map(({ id, title, dueDate }) => ({
@@ -145,12 +169,12 @@ const pets = reatomPetsScreen({
 const care = reatomCare({
   api: createCareApi(httpClient),
   petId: () => pets.openedPetId(),
-  today: () => today(deviceTimeZone()),
-  now: () => Temporal.Now.plainDateTimeISO(deviceTimeZone()).toString({ smallestUnit: "minute" }),
-  timeZone: deviceTimeZone,
+  today,
+  now: () => Temporal.Now.plainDateTimeISO(zone()).toString({ smallestUnit: "minute" }),
+  timeZone: zone,
   telegram,
   isReadOnly: () => pets.isOpenedPetArchived(),
-  preparePhoto: async (file) => preparePhoto(file, deviceTimeZone()),
+  preparePhoto: prepare,
   photoHint: photoStorage.uploadHint,
   onMakeAvatar: (photoId) => {
     pets.makeAvatar(photoId);
@@ -162,8 +186,8 @@ const care = reatomCare({
 });
 const calendar = reatomCalendar({
   api: createCalendarApi(httpClient),
-  today: () => today(deviceTimeZone()),
-  timeZone: deviceTimeZone,
+  today,
+  timeZone: zone,
   telegram,
   onOpenPet: (petId) => {
     opener.open({ kind: "pet", petId });
@@ -171,7 +195,7 @@ const calendar = reatomCalendar({
   onOpenPlan: (planId) => {
     opener.open({ kind: "plan", planId });
   },
-  self: () => session.member()?.member.id,
+  self,
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
@@ -182,7 +206,11 @@ const commandSheet = reatomCommandSheet({
   onEdit: (opened) => {
     opener.editDraft(opened);
   },
-  onCreated: noop,
+  onCreated: () => {
+    calendar.reload();
+    care.reload();
+    feed.reload();
+  },
 });
 const microphone = reatomMicrophone({
   recorder: createVoiceRecorder(),
@@ -198,8 +226,8 @@ const microphone = reatomMicrophone({
 
 const feed = reatomFeed({
   api: createFeedApi(httpClient),
-  today: () => today(deviceTimeZone()),
-  timeZone: deviceTimeZone,
+  today,
+  timeZone: zone,
   onOpen: (target) => {
     opener.open(target);
   },
@@ -244,12 +272,6 @@ const opener = reatomOpener({
   recipes,
   commandSheet,
 });
-const timeZone = reatomTimeZone({
-  api: createTimeZoneApi(httpClient),
-  saved: () => session.member()?.settings.timeZone,
-  deviceZone: deviceTimeZone(),
-  zones: Intl.supportedValuesOf("timeZone"),
-});
 const home = {
   session,
   navigation,
@@ -286,7 +308,7 @@ const home = {
   invites: reatomInvites({
     api: createInvitesApi(httpClient),
     telegram,
-    timeZone: deviceTimeZone(),
+    timeZone: zone,
   }),
   pets,
   plans,

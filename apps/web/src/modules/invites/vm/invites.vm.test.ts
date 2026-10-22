@@ -68,7 +68,7 @@ function startInvites(backend = fakeBackend(), telegram = fakeTelegram()) {
   const model = reatomInvites({
     api: createInvitesApi(client),
     telegram,
-    timeZone: "Europe/Moscow",
+    timeZone: () => "Europe/Moscow",
   });
 
   model.invites.subscribe(noop);
