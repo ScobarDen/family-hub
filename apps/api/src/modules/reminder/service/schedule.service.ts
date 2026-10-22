@@ -1,12 +1,17 @@
 import { uuidv7 } from "@family-hub/contract";
 import { dateInZone, dayBefore } from "@family-hub/recurrence";
 
-import { fallbackTimeZone } from "../reminder.lib.ts";
+import { changesOf, fallbackTimeZone, rowKey, type PlannedRow } from "../reminder.lib.ts";
 import type { SourceHolder, HolderKind, ReminderDependencies, Source } from "../reminder.types.ts";
-import type { DispatchRow, NewRow } from "../repo/dispatch.repo.ts";
 import { familySources, kindsOf, sourceOfRow, sourcesOf } from "./source.service.ts";
 
 export type Fire = { occurrence: string; fireAt: number };
+
+type Planning = {
+  sources: Source[];
+  now: number;
+  isMissing?: (key: Omit<PlannedRow, "fire">) => boolean;
+};
 
 export async function zoneOf(
   { sources }: ReminderDependencies,
@@ -43,30 +48,25 @@ export function fireAfter(
     : { occurrence: next, fireAt: source.fireAt(next, timeZone) };
 }
 
-async function rowsOf(
+async function plannedOf(
   dependencies: ReminderDependencies,
-  { source, memberIds, now }: { source: Source; memberIds: string[]; now: number },
-): Promise<NewRow[]> {
-  const rows: NewRow[] = [];
+  { sources, now, isMissing = () => true }: Planning,
+): Promise<PlannedRow[]> {
+  const planned: PlannedRow[] = [];
 
-  for (const memberId of memberIds) {
-    const fire = upcoming(source, {
-      timeZone: await zoneOf(dependencies, { memberId, source }),
-      now,
-    });
+  for (const source of sources) {
+    for (const memberId of source.recipientIds) {
+      const key = { source: source.kind, sourceId: source.sourceId, memberId };
 
-    if (fire !== undefined) {
-      rows.push({
-        source: source.kind,
-        sourceId: source.sourceId,
-        memberId,
-        occurrence: fire.occurrence,
-        nextFireAt: fire.fireAt,
-      });
+      if (isMissing(key)) {
+        const timeZone = await zoneOf(dependencies, { memberId, source });
+
+        planned.push({ ...key, fire: upcoming(source, { timeZone, now }) });
+      }
     }
   }
 
-  return rows;
+  return planned;
 }
 
 export async function sourceChanged(
@@ -74,21 +74,18 @@ export async function sourceChanged(
   holder: SourceHolder & { kind: HolderKind },
 ): Promise<void> {
   const now = dependencies.clock.now();
-  const sources = await sourcesOf(dependencies, holder);
-  const rows = await Promise.all(
-    sources.map(async (source) =>
-      rowsOf(dependencies, { source, memberIds: source.recipientIds, now }),
-    ),
-  );
+  const planned = await plannedOf(dependencies, {
+    sources: await sourcesOf(dependencies, holder),
+    now,
+  });
+  const existing = await dependencies.dispatch.ofHolder({
+    familyId: holder.familyId,
+    sources: kindsOf(holder.kind),
+    holderId: holder.id,
+  });
 
-  await dependencies.dispatch.replace(
-    {
-      familyId: holder.familyId,
-      sources: kindsOf(holder.kind),
-      holderId: holder.id,
-      rows: rows.flat(),
-      now,
-    },
+  await dependencies.dispatch.write(
+    { familyId: holder.familyId, now, ...changesOf({ existing, planned, now }) },
     () => uuidv7(now),
   );
 }
@@ -132,14 +129,6 @@ export async function zoneChanged(dependencies: ReminderDependencies, memberId: 
   }
 }
 
-function rowKey({
-  source,
-  sourceId,
-  memberId,
-}: Pick<DispatchRow, "source" | "sourceId" | "memberId">) {
-  return `${source}|${sourceId}|${memberId}`;
-}
-
 // Rows already there stay as they are, snoozes included: a Member who joined gets rows for every
 // source that now reaches them, and one who left loses theirs along with their chosen-Recipient places.
 export async function membershipChanged(dependencies: ReminderDependencies, familyId: string) {
@@ -148,18 +137,16 @@ export async function membershipChanged(dependencies: ReminderDependencies, fami
   await dependencies.reminders.removeDepartedRecipients(familyId);
   await dependencies.dispatch.removeDeparted(familyId);
 
-  const kept = await dependencies.dispatch.ofFamily(familyId);
-  const existing = new Set(kept.map(rowKey));
-  const rows: NewRow[] = [];
+  const rows = await dependencies.dispatch.ofFamily(familyId);
+  const kept = new Set(rows.map(rowKey));
+  const planned = await plannedOf(dependencies, {
+    sources: await familySources(dependencies, familyId),
+    now,
+    isMissing: (key) => !kept.has(rowKey(key)),
+  });
 
-  for (const source of await familySources(dependencies, familyId)) {
-    const memberIds = source.recipientIds.filter(
-      (memberId) =>
-        !existing.has(rowKey({ source: source.kind, sourceId: source.sourceId, memberId })),
-    );
-
-    rows.push(...(await rowsOf(dependencies, { source, memberIds, now })));
-  }
-
-  await dependencies.dispatch.add({ familyId, rows, now }, () => uuidv7(now));
+  await dependencies.dispatch.write(
+    { familyId, now, ...changesOf({ existing: [], planned, now }) },
+    () => uuidv7(now),
+  );
 }

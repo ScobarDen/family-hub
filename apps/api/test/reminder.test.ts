@@ -271,6 +271,49 @@ describe("the Reminder buttons", () => {
     expect(messagesTo(worker, asya)).toHaveLength(1);
   });
 
+  test("still work on a sent message after the Reminder is edited", async () => {
+    const worker = await startWithFamily();
+    const reminder = await createReminder(worker);
+
+    worker.clock.set(firesAt);
+    await worker.tick();
+    await press(worker, denis, lastCallbackOf(worker, denis, "snooze"));
+    await request(worker, denis, {
+      method: "PUT",
+      path: `/api/reminders/${reminder.id}`,
+      body: { ...internet, text: "Оплатить интернет и ТВ" },
+    });
+    await press(worker, asya, lastCallbackOf(worker, asya, "done"));
+
+    const edits = worker.bot.editedMessages().map(({ chat_id: chatId, text }) => [chatId, text]);
+
+    expect(edits).toContainEqual([asya.id, "✅ Сделал(а) Ася: Оплатить интернет и ТВ"]);
+    expect(edits).toContainEqual([denis.id, "✅ Сделал(а) Ася: Оплатить интернет и ТВ"]);
+  });
+
+  test("keep a snooze through an edit of the Reminder", async () => {
+    const worker = await startWithFamily();
+    const reminder = await createReminder(worker);
+
+    worker.clock.set(firesAt);
+    await worker.tick();
+    await press(worker, denis, lastCallbackOf(worker, denis, "snooze"));
+    worker.clock.set("2026-10-04T10:30:00Z");
+    await request(worker, denis, {
+      method: "PUT",
+      path: `/api/reminders/${reminder.id}`,
+      body: { ...internet, text: "Оплатить интернет и ТВ" },
+    });
+    worker.clock.set("2026-10-04T11:00:00Z");
+    await worker.tick();
+
+    expect(messagesTo(worker, denis).map(({ text }) => text)).toEqual([
+      "🔔 Оплатить интернет",
+      "🔔 Оплатить интернет и ТВ",
+    ]);
+    expect(messagesTo(worker, asya)).toHaveLength(1);
+  });
+
   test("answer someone else's press with «это не ваше напоминание» and change nothing", async () => {
     const worker = await startWithFamily();
 
