@@ -97,7 +97,7 @@ async function advance(
       ? { sentOccurrence: row.occurrence, ...delivery.sent, doneAt: null, doneBy: null }
       : {};
 
-  await dispatch.update(row.id, {
+  await dispatch.update(row.familyId, row.id, {
     occurrence: next?.occurrence ?? null,
     nextFireAt: next?.fireAt ?? null,
     lockedUntil: null,

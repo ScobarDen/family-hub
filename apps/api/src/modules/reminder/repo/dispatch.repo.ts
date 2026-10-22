@@ -16,6 +16,8 @@ export type NewRow = {
 
 export type HolderRows = { familyId: string; sources: DispatchSource[]; holderId: string };
 
+type DispatchValues = Partial<typeof reminderDispatch.$inferInsert>;
+
 type SourceRows = { familyId: string; source: DispatchSource; sourceId: string };
 
 type Replacement = HolderRows & { rows: NewRow[]; now: number };
@@ -100,6 +102,17 @@ async function release(db: Db, dispatchIds: string[]): Promise<void> {
   }
 }
 
+async function update(
+  db: Db,
+  { familyId, dispatchId }: { familyId: string; dispatchId: string },
+  values: DispatchValues,
+): Promise<void> {
+  await db
+    .update(reminderDispatch)
+    .set(values)
+    .where(and(eq(reminderDispatch.familyId, familyId), eq(reminderDispatch.id, dispatchId)));
+}
+
 export function createDispatchRepo(db: Db) {
   return {
     claimDue: async (claim: { now: number; limit: number }) => claimDue(db, claim),
@@ -132,11 +145,10 @@ export function createDispatchRepo(db: Db) {
     removeDeparted: async (familyId: string) => removeDeparted(db, familyId),
     replace: async (replacement: Replacement, newId: () => string) =>
       replace(db, replacement, newId),
+    // The rest of a claimed batch spans Families, as the claim did.
     release: async (dispatchIds: string[]) => release(db, dispatchIds),
-
-    async update(dispatchId: string, values: Partial<typeof reminderDispatch.$inferInsert>) {
-      await db.update(reminderDispatch).set(values).where(eq(reminderDispatch.id, dispatchId));
-    },
+    update: async (familyId: string, dispatchId: string, values: DispatchValues) =>
+      update(db, { familyId, dispatchId }, values),
   };
 }
 

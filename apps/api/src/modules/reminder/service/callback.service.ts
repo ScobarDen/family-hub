@@ -33,7 +33,11 @@ async function closeMessage(closing: Closing, other: DispatchRow) {
       }),
     }),
   );
-  await dispatch.update(other.id, { doneAt: now, doneBy: presser.member.id, updatedAt: now });
+  await dispatch.update(other.familyId, other.id, {
+    doneAt: now,
+    doneBy: presser.member.id,
+    updatedAt: now,
+  });
 }
 
 async function moveOn(closing: Closing, other: DispatchRow) {
@@ -46,7 +50,7 @@ async function moveOn(closing: Closing, other: DispatchRow) {
           timeZone: await zoneOf(closing, { memberId: other.memberId, source }),
         });
 
-  await dispatch.update(other.id, {
+  await dispatch.update(other.familyId, other.id, {
     occurrence: next?.occurrence ?? null,
     nextFireAt: next?.fireAt ?? null,
     updatedAt: now,
@@ -83,7 +87,11 @@ async function snooze(dependencies: ReminderDependencies, { row, source, presser
   const occurrence = row.sentOccurrence ?? row.occurrence;
   const timeZone = await zoneOf(dependencies, { memberId: presser.member.id, source });
 
-  await dispatch.update(row.id, { occurrence, nextFireAt: until, updatedAt: clock.now() });
+  await dispatch.update(row.familyId, row.id, {
+    occurrence,
+    nextFireAt: until,
+    updatedAt: clock.now(),
+  });
 
   if (row.chatId !== null && row.messageId !== null) {
     await ignoringBotErrors(

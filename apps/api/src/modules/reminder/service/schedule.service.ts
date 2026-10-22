@@ -124,7 +124,7 @@ export async function zoneChanged(dependencies: ReminderDependencies, memberId: 
     const timeZone = await zoneOf(dependencies, { memberId, source });
     const fire = source === undefined ? undefined : upcoming(source, { timeZone, now });
 
-    await dependencies.dispatch.update(row.id, {
+    await dependencies.dispatch.update(familyId, row.id, {
       occurrence: fire?.occurrence ?? null,
       nextFireAt: fire?.fireAt ?? null,
       updatedAt: now,
