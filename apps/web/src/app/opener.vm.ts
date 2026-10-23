@@ -17,7 +17,7 @@ type TargetFields = {
   plan: { planId: string };
   "plan-for-pet": { petId: string };
   event: { eventId: string };
-  calendar: Record<never, never>;
+  calendar: object;
   pet: { petId: string };
   "care-entry": { entryId: string; petId?: string };
   "due-date": { entryId: string; petId?: string };

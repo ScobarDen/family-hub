@@ -13,29 +13,29 @@ catalog:
   "@reatom/react": ^1001.0.1
   "@stylistic/eslint-plugin": ^5.10.0
   "@tailwindcss/vite": ^4.3.3
-  "@types/node": ^24
+  "@types/node": ^24.19.2
   "@types/react": ^19.3.0
   "@types/react-dom": ^19.3.0
-  "@vitejs/plugin-react": ^6.1.1
+  "@vitejs/plugin-react": ^6.1.2
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
   drizzle-kit: ^0.31.11
-  drizzle-orm: ^0.45.3
-  eslint-plugin-unicorn: ^77.0.0
-  hono: ^4.13.0
-  lucide-react: ^1.56.0
-  react: ^19.3.0
-  react-dom: ^19.3.0
-  react-is: ^19.3.0
+  drizzle-orm: ^0.45.4
+  eslint-plugin-unicorn: ^78.0.0
+  hono: ^4.13.13
+  lucide-react: ^1.61.0
+  react: ^19.3.1
+  react-dom: ^19.3.1
+  react-is: ^19.3.1
   recharts: ^3.10.1
   tailwind-merge: ^3.7.0
   tailwindcss: ^4.3.3
   temporal-polyfill: ^1.0.6
   tw-animate-css: ^1.4.0
   typescript: ^7.0.2
-  vite: npm:@voidzero-dev/vite-plus-core@1.0.0
-  vite-plus: 1.0.0
-  wrangler: ^4.147.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.3.0
+  vite-plus: 1.3.0
+  wrangler: ^4.151.3
   zod: ^4.6.7
 
 overrides:
