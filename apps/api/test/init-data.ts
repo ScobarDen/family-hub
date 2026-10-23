@@ -6,6 +6,7 @@ export type TelegramUserFixture = {
   last_name?: string;
   username?: string;
   allows_write_to_pm?: boolean;
+  photo_url?: string;
 };
 
 type SignInitDataOptions = {

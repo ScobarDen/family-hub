@@ -11,8 +11,8 @@ import { reatomFamilyMembers } from "./family-sources.vm.ts";
 import { reatomFamily } from "./family.vm.ts";
 
 const members: FamilyMemberList = [
-  { id: "member-1", name: "Денис", isFamilyOwner: true },
-  { id: "member-2", name: "Ася", isFamilyOwner: false },
+  { id: "member-1", name: "Денис", isFamilyOwner: true, profilePicture: null },
+  { id: "member-2", name: "Ася", isFamilyOwner: false, profilePicture: null },
 ];
 
 function fakeBackend(replies: Record<string, unknown> = {}) {
@@ -116,10 +116,18 @@ describe("the Family's Members in the Profile", () => {
           id: "member-1",
           name: "Денис",
           isFamilyOwner: true,
+          profilePicture: null,
           role: "Владелец",
           isManageable: false,
         },
-        { id: "member-2", name: "Ася", isFamilyOwner: false, role: undefined, isManageable: true },
+        {
+          id: "member-2",
+          name: "Ася",
+          isFamilyOwner: false,
+          profilePicture: null,
+          role: undefined,
+          isManageable: true,
+        },
       ]);
     });
   });

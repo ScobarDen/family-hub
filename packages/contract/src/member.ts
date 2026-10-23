@@ -60,7 +60,10 @@ export const memberSettings = z.object({
 
 export type MemberSettings = z.infer<typeof memberSettings>;
 
-const familyMember = named.extend({ isFamilyOwner: z.boolean() });
+// A URL straight from Telegram, either JPEG or SVG.
+export const profilePicture = z.string().nullable();
+
+const familyMember = named.extend({ isFamilyOwner: z.boolean(), profilePicture });
 
 export type FamilyMember = z.infer<typeof familyMember>;
 

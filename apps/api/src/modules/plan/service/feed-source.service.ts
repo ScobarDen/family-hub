@@ -24,6 +24,7 @@ async function activityBefore(
     key: row.key,
     at: row.completedAt ?? 0,
     memberName: row.memberName ?? "",
+    memberPicture: row.memberPicture,
     title: titleOf(row, row.rootTitle === null ? null : { title: row.rootTitle }),
     planId: row.rootId ?? row.id,
   }));

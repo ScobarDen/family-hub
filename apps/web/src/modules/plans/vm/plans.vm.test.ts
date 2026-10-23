@@ -11,8 +11,8 @@ import { createPlansApi } from "../plans.api.ts";
 import { reatomPlansScreen } from "./plans.vm.ts";
 
 const members: FamilyMemberList = [
-  { id: "member-1", name: "Денис", isFamilyOwner: true },
-  { id: "member-2", name: "Ася", isFamilyOwner: false },
+  { id: "member-1", name: "Денис", isFamilyOwner: true, profilePicture: null },
+  { id: "member-2", name: "Ася", isFamilyOwner: false, profilePicture: null },
 ];
 
 const doneAt = Date.parse("2026-10-05T18:30:00Z");
@@ -424,7 +424,7 @@ describe("the Plan form", () => {
 
     expect(model.planForm.assignees()).toEqual([
       { value: "", title: "Никто" },
-      { value: "member-1", title: "Денис" },
+      { value: "member-1", title: "Денис", member: { name: "Денис", profilePicture: null } },
     ]);
     expect(model.planForm.form.fields.assigneeId()).toBe("");
   });

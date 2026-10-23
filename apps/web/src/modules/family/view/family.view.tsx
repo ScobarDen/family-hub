@@ -1,7 +1,6 @@
 import { reatomComponent } from "@reatom/react";
-import { Crown, User } from "lucide-react";
 
-import { SectionItem } from "@/common/ui";
+import { PersonAvatar, SectionItem } from "@/common/ui";
 
 import type { FamilyModel } from "../vm/family.vm.ts";
 
@@ -18,7 +17,7 @@ export const Family = reatomComponent(({ model }: FamilyProps) => {
   return model.members().map((member) => (
     <SectionItem
       key={member.id}
-      icon={member.isFamilyOwner ? Crown : User}
+      leading={<PersonAvatar member={member} />}
       title={member.name}
       subtitle={member.role}
       disabled={isBusy}

@@ -34,6 +34,7 @@ async function activityBefore(
       key: row.key,
       at: row.createdAt,
       memberName: row.memberName,
+      memberPicture: row.memberPicture,
       title: `${careTitleOf(row.details)} — ${row.petName}`,
       petId: row.petId,
       entryId: row.id,

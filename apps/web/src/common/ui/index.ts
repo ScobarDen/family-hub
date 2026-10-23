@@ -13,7 +13,7 @@ export { Input } from "./input.view.tsx";
 export { Label } from "./label.view.tsx";
 export { LoadState } from "./load-state.view.tsx";
 export { Notice } from "./notice.view.tsx";
-export { PersonAvatar } from "./person-avatar.view.tsx";
+export { PersonAvatar, type AvatarMember } from "./person-avatar.view.tsx";
 export { PrimaryButton, primaryActionClass } from "./primary-button.view.tsx";
 export { ScreenTitle } from "./screen-title.view.tsx";
 export { SectionLayout } from "./section-layout.view.tsx";

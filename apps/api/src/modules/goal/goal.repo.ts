@@ -78,6 +78,7 @@ async function movementsBefore(db: Db, viewer: Viewer, { keyset, limit }: Keyset
       amount: goalMovements.amount,
       createdAt: goalMovements.createdAt,
       memberName: owners.name,
+      memberPicture: owners.profilePicture,
       goalId: goals.id,
       goalTitle: goals.title,
     })
@@ -105,6 +106,7 @@ async function closingsBefore(db: Db, viewer: Viewer, { keyset, limit }: KeysetP
       outcome: goals.outcome,
       completedAt: goals.completedAt,
       memberName: members.name,
+      memberPicture: members.profilePicture,
     })
     .from(goals)
     .leftJoin(members, eq(members.id, goals.completedBy))

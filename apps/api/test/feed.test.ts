@@ -218,6 +218,25 @@ describe("the Feed", () => {
     });
   });
 
+  test("shows each author's Profile Picture as of their last login", async () => {
+    const worker = await startWithFamily();
+    const asyaPictured = { ...asya, photo_url: "https://t.me/i/userpic/320/asya.jpg" };
+
+    const plan = await addPlan(worker, asyaPictured, {});
+
+    await request(worker, asyaPictured, { method: "POST", path: `/api/plans/${plan.id}/complete` });
+
+    const feed = await feedOf(worker, denis);
+
+    expect(
+      feed.activity.map(({ memberName, memberPicture }) => [memberName, memberPicture]),
+    ).toEqual([
+      ["Ася", "https://t.me/i/userpic/320/asya.jpg"],
+      ["Ася", "https://t.me/i/userpic/320/asya.jpg"],
+      ["Денис", null],
+    ]);
+  });
+
   test("shows a Plan completed by its last Subplan as one line", async () => {
     const worker = await startWithFamily();
     const plan = await addPlan(worker, denis, {});

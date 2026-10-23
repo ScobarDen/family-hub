@@ -30,6 +30,7 @@ async function cookedBefore(
         key: cook.key,
         at: cook.cookedAt,
         memberName: cook.memberName,
+        memberPicture: cook.memberPicture,
         title: cook.title,
         recipeId: cook.recipeId,
         ...(await previewOf(links, { rows: first === undefined ? [] : [first.photo], viewer })),

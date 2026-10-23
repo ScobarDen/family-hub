@@ -27,6 +27,7 @@ async function uploadsBefore(
       key: batch.key,
       at: batch.lastAddedAt,
       memberName: batch.memberName,
+      memberPicture: batch.memberPicture,
       albumId: batch.albumId,
       albumTitle: batch.albumTitle,
       ...(await previewOf(links, {

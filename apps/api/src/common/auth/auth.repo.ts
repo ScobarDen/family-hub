@@ -10,6 +10,7 @@ async function findWhere(db: Db, condition: SQL): Promise<Membership | undefined
       member: {
         id: members.id,
         name: members.name,
+        profilePicture: members.profilePicture,
         telegramId: members.telegramId,
         canMessage: members.canMessage,
         timeZone: members.timeZone,
@@ -41,6 +42,13 @@ export function createMembershipRepo(db: Db) {
 
     async setCanMessage(memberId: string, canMessage: boolean, now: number): Promise<void> {
       await db.update(members).set({ canMessage, updatedAt: now }).where(eq(members.id, memberId));
+    },
+
+    async setProfilePicture(memberId: string, profilePicture: string | null, now: number) {
+      await db
+        .update(members)
+        .set({ profilePicture, updatedAt: now })
+        .where(eq(members.id, memberId));
     },
   };
 }

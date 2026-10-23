@@ -102,6 +102,7 @@ async function joinsBefore(db: Db, familyId: string, { keyset, limit }: KeysetPa
     .select({
       key: joinKeyed.key,
       memberName: members.name,
+      memberPicture: members.profilePicture,
       createdAt: familyMembers.createdAt,
     })
     .from(familyMembers)

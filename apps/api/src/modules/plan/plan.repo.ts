@@ -110,6 +110,7 @@ async function activityBefore(
       rootTitle: rootPlans.title,
       completedAt: plans.completedAt,
       memberName: completers.name,
+      memberPicture: completers.profilePicture,
     })
     .from(plans)
     .leftJoin(rootPlans, eq(rootPlans.id, plans.parentId))

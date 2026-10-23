@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { dueCareKind } from "./care-entry.ts";
+import { profilePicture } from "./member.ts";
 import { photo } from "./photo.ts";
 
 export const feedPageSize = 30;
@@ -40,7 +41,12 @@ export const feedUpcoming = z.discriminatedUnion("kind", [
 
 export type FeedUpcoming = z.infer<typeof feedUpcoming>;
 
-const done = { key: z.string(), at: z.number(), memberName: z.string() };
+const done = {
+  key: z.string(),
+  at: z.number(),
+  memberName: z.string(),
+  memberPicture: profilePicture,
+};
 
 // Up to three thumbnails come along; photoCount says how many there are in all.
 const withPhotos = { photos: z.array(photo), photoCount: z.number() };

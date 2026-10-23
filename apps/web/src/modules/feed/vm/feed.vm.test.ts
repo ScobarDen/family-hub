@@ -58,6 +58,7 @@ const firstPage: FeedPage = {
       key: "care-entry-2",
       at: Date.parse("2026-10-14T07:00:00Z"),
       memberName: "Ася",
+      memberPicture: "https://t.me/i/userpic/320/asya.jpg",
       title: "Вес: 30 кг — Бьюик",
       petId: "pet-1",
       entryId: "entry-2",
@@ -69,6 +70,7 @@ const firstPage: FeedPage = {
       key: "plan-plan-2",
       at: Date.parse("2026-10-13T15:00:00Z"),
       memberName: "Денис",
+      memberPicture: null,
       title: "Купить диван",
       planId: "plan-2",
     },
@@ -85,6 +87,7 @@ const olderPage: FeedPage = {
       key: "joined-member-2",
       at: Date.parse("2026-10-01T09:00:00Z"),
       memberName: "Ася",
+      memberPicture: null,
     },
   ],
   next: null,
@@ -177,7 +180,10 @@ describe("the Feed", () => {
     await loaded(model);
 
     expect(model.summary()).toBe("Просрочено: 1");
-    expect(model.blocks()[2]?.rows[0]?.author).toBe("Ася");
+    expect(model.blocks()[2]?.rows[0]?.author).toEqual({
+      name: "Ася",
+      profilePicture: "https://t.me/i/userpic/320/asya.jpg",
+    });
   });
 
   test("narrows to one module by its chip", async () => {
