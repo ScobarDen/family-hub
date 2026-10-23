@@ -15,6 +15,7 @@ export { LoadState } from "./load-state.view.tsx";
 export { Notice } from "./notice.view.tsx";
 export { PersonAvatar, type AvatarMember } from "./person-avatar.view.tsx";
 export { PrimaryButton, primaryActionClass } from "./primary-button.view.tsx";
+export { RoundPicture } from "./round-picture.view.tsx";
 export { ScreenTitle } from "./screen-title.view.tsx";
 export { SectionLayout } from "./section-layout.view.tsx";
 export { SectionItem } from "./section-item.view.tsx";

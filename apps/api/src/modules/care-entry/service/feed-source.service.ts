@@ -49,7 +49,7 @@ async function activityBefore(
 }
 
 async function dueWithin(
-  { entries }: CareFeedDependencies,
+  { entries, links }: CareFeedDependencies,
   { family }: Membership,
   { last }: FeedWindow,
 ): Promise<FeedUpcoming[]> {
@@ -57,6 +57,12 @@ async function dueWithin(
     entries.petsOf(family.id),
     entries.allDueCandidates(family.id),
   ]);
+
+  const pictures = new Map(
+    await Promise.all(
+      pets.map(async ({ id, avatarPhotoId }) => [id, await links.thumbOf(avatarPhotoId)] as const),
+    ),
+  );
 
   return openDueDates({ pets, entries: candidates })
     .filter(({ dueDate }) => dueDate <= last)
@@ -67,6 +73,7 @@ async function dueWithin(
       date: dueDate,
       careKind: kind,
       petId,
+      petPicture: pictures.get(petId) ?? null,
       entryId,
     }));
 }

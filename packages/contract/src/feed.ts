@@ -15,6 +15,9 @@ export const feedUpcomingDays = 14;
 
 const dated = { key: z.string(), title: z.string(), date: z.iso.date() };
 
+// The thumbnail of the Pet Avatar, so a Pet's line shows whose it is at a glance.
+const petPicture = z.string().nullable();
+
 export const feedUpcoming = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("event"),
@@ -34,9 +37,10 @@ export const feedUpcoming = z.discriminatedUnion("kind", [
     ...dated,
     careKind: dueCareKind,
     petId: z.string(),
+    petPicture,
     entryId: z.string(),
   }),
-  z.object({ kind: z.literal("birthday"), ...dated, petId: z.string() }),
+  z.object({ kind: z.literal("birthday"), ...dated, petId: z.string(), petPicture }),
 ]);
 
 export type FeedUpcoming = z.infer<typeof feedUpcoming>;

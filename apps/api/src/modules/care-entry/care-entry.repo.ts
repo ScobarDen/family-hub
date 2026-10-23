@@ -43,6 +43,19 @@ async function petOf(db: Db, familyId: string, petId: string) {
     .get();
 }
 
+async function petsOf(db: Db, familyId: string) {
+  return db
+    .select({
+      id: pets.id,
+      name: pets.name,
+      archivedAt: pets.archivedAt,
+      avatarPhotoId: pets.avatarPhotoId,
+    })
+    .from(pets)
+    .where(eq(pets.familyId, familyId))
+    .all();
+}
+
 async function dueCandidates(db: Db, familyId: string, petId: string) {
   return selectWhere(
     db,
@@ -129,12 +142,7 @@ export function createCareEntryRepo(db: Db) {
       setPhotos,
       activityBefore,
     }),
-    petsOf: async (familyId: string) =>
-      db
-        .select({ id: pets.id, name: pets.name, archivedAt: pets.archivedAt })
-        .from(pets)
-        .where(eq(pets.familyId, familyId))
-        .all(),
+    petsOf: async (familyId: string) => petsOf(db, familyId),
     allDueCandidates: async (familyId: string) =>
       selectWhere(db, and(eq(careEntries.familyId, familyId), isNotNull(careEntries.dueKey))),
     list: async (familyId: string, petId: string) =>

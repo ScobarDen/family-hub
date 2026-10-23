@@ -83,6 +83,7 @@ const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
         icon={row.isOverdue ? TriangleAlert : icons[row.kind]}
         isAlert={row.isOverdue}
         {...(row.author === undefined ? {} : { leading: <PersonAvatar member={row.author} /> })}
+        picture={row.picture}
         {...(check === false ? {} : { control: check })}
         title={row.title}
         subtitle={row.subtitle}

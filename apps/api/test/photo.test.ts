@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type { CareEntry, Pet, Photo } from "@family-hub/contract";
+import type { CareEntry, FeedPage, Pet, Photo, Today } from "@family-hub/contract";
 
 import { type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, startWorker, tokenOf } from "./worker-harness.ts";
@@ -247,6 +247,36 @@ describe("a Pet Avatar uploaded for the Pet alone", () => {
 
     expect(response.status).toBe(200);
     expect(buick.avatar?.medium).toMatch(/^\/photos\/.+\/medium/u);
+  });
+
+  test("shows on the Pet's lines in the Feed and on the Today tile", async () => {
+    const worker = await startWithBuick();
+    const photo = await uploaded(worker, asya);
+
+    await setAvatar(worker, photo.id);
+    await request(worker, denis, {
+      method: "PUT",
+      path: `/api/pets/${worker.buickId}`,
+      body: {
+        name: "Бьюик",
+        species: "dog",
+        breed: null,
+        sex: null,
+        birthDate: "2021-10-06",
+        chipNumber: null,
+        notes: null,
+      },
+    });
+
+    const feed = await request(worker, asya, { path: "/api/feed" });
+    const today = await request(worker, asya, { path: "/api/today" });
+    const { upcoming } = await feed.json<FeedPage>();
+    const { tiles } = await today.json<Today>();
+
+    expect(upcoming).toMatchObject([
+      { kind: "birthday", petPicture: expect.stringMatching(/^\/photos\/.+\/thumb/u) },
+    ]);
+    expect(tiles.pet?.only?.picture).toMatch(/^\/photos\/.+\/thumb/u);
   });
 
   test("is forgotten once replaced or removed, while a Care Entry photo stays", async () => {

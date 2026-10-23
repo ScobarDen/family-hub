@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 
 import { sectionColors, sectionIcons } from "@/common/sections";
-import { cn } from "@/common/ui";
+import { cn, RoundPicture } from "@/common/ui";
 
 import type { TodayModel } from "../vm/today.vm.ts";
 
@@ -10,8 +10,11 @@ import type { TodayModel } from "../vm/today.vm.ts";
 export const Tiles = reatomComponent(
   ({ model }: { model: TodayModel }) => (
     <section aria-label="Разделы" className="grid grid-cols-3 gap-2 px-4 pb-7">
-      {model.tiles().map(({ module, title, value, isAlert }) => {
+      {model.tiles().map(({ module, title, value, isAlert, picture }) => {
         const Icon = sectionIcons[module];
+        const icon = (
+          <Icon className={cn("size-5", sectionColors[module])} strokeWidth={1.75} aria-hidden />
+        );
 
         return (
           <button
@@ -22,7 +25,7 @@ export const Tiles = reatomComponent(
               model.openTile(module);
             }}
           >
-            <Icon className={cn("size-5", sectionColors[module])} strokeWidth={1.75} aria-hidden />
+            {picture === undefined ? icon : <RoundPicture src={picture} fallback={icon} />}
             <span className="w-full text-[0.8125rem] font-medium break-words hyphens-auto">
               {title}
             </span>

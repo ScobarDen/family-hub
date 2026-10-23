@@ -221,7 +221,7 @@ function feedServiceOf(
       plans,
       createEventFeed({ events: reads.events }),
       createReminderFeed({ reminders: createReminderRepo(db), dispatch: createDispatchRepo(db) }),
-      createPetFeed({ pets: createPetRepo(db) }),
+      createPetFeed({ pets: createPetRepo(db), links }),
     ],
     clock,
   });
@@ -237,7 +237,7 @@ function todayServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Cl
     tiles: {
       plans: createPlanTile({ plans: reads.plans }),
       calendar: createEventTile({ events: reads.events }),
-      pet: createPetTile({ entries: reads.entries }),
+      pet: createPetTile({ entries: reads.entries, links }),
       goals: createGoalTile({ goals: createGoalRepo(db) }),
       albums: createAlbumTile({ albums: createAlbumRepo(db) }),
       recipes: createRecipeTile({ recipes: createRecipeRepo(db) }),

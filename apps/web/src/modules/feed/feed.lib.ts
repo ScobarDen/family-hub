@@ -18,6 +18,7 @@ export type FeedRow = {
   photos: Photo[];
   morePhotos: number;
   author: { name: string; profilePicture: string | null } | undefined;
+  picture: string | undefined;
 };
 
 export type FeedBlock = { title: string; rows: FeedRow[] };
@@ -61,6 +62,7 @@ function aheadRow(item: FeedUpcoming, isOverdue: boolean, { today }: Viewer): Fe
     photos: [],
     morePhotos: 0,
     author: undefined,
+    picture: ("petPicture" in item ? item.petPicture : null) ?? undefined,
   };
 }
 
@@ -100,6 +102,7 @@ function activityRow(item: FeedActivity, timeZone: string): FeedRow {
     canRecord: false,
     ...photosOf(item),
     author: { name: item.memberName, profilePicture: item.memberPicture },
+    picture: undefined,
   };
 }
 

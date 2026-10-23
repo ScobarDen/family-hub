@@ -36,6 +36,7 @@ function DueItem({ row, model }: RowProps) {
   ) : (
     <SectionItem
       icon={sectionIcons[row.module]}
+      picture={row.picture}
       isAlert={row.isOverdue}
       title={row.title}
       subtitle={row.when}

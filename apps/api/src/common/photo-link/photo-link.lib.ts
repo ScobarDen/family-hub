@@ -68,6 +68,8 @@ export function createPhotoLinks({ secret, clock }: { secret: string; clock: Clo
 
   return {
     urlsOf,
+    thumbOf: async (photoId: string | null): Promise<string | null> =>
+      photoId === null ? null : pathOf(photoId, "thumb"),
     // The one who uploaded a photo and the Family Owner may delete it.
     photoOf: async (row: PhotoOwnership, viewer: Viewer): Promise<Photo> => ({
       id: row.id,

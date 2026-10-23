@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { IconBadge, type IconTone } from "./icon-badge.view.tsx";
 import { PlainIcon } from "./plain-icon.view.tsx";
+import { RoundPicture } from "./round-picture.view.tsx";
 import { cn } from "./ui.lib.ts";
 
 type SectionItemProps = {
@@ -14,6 +15,8 @@ type SectionItemProps = {
   // A row that destroys something reads red as a whole, not only its icon.
   isDestructive?: boolean;
   leading?: ReactNode;
+  // A photo in place of the icon, such as a Pet Avatar; the icon comes back if it fails to load.
+  picture?: string;
   // A control of its own at the row's start, such as a CheckButton: the rest of the row still opens.
   control?: ReactNode;
   title: string;
@@ -32,15 +35,23 @@ function leadingOf({
   iconVariant = "plain",
   isAlert = false,
   leading,
+  picture,
 }: SectionItemProps): ReactNode {
   if (leading !== undefined || icon === undefined) {
     return leading;
   }
 
-  return iconVariant === "badge" ? (
-    <IconBadge icon={icon} tone={tone} />
+  const iconLeading =
+    iconVariant === "badge" ? (
+      <IconBadge icon={icon} tone={tone} />
+    ) : (
+      <PlainIcon icon={icon} isAlert={isAlert} />
+    );
+
+  return picture === undefined ? (
+    iconLeading
   ) : (
-    <PlainIcon icon={icon} isAlert={isAlert} />
+    <RoundPicture src={picture} fallback={iconLeading} />
   );
 }
 

@@ -12,6 +12,7 @@ export type DueRow = {
   isOverdue: boolean;
   // Events, Reminders and birthdays come and go by themselves, so they only open.
   action: { kind: "complete" | "record"; title: string } | undefined;
+  picture: string | undefined;
 };
 
 export type NextRow = { key: string; title: string; when: string };
@@ -22,6 +23,7 @@ export type Tile = {
   value: string | undefined;
   note: string | undefined;
   isAlert: boolean;
+  picture: string | undefined;
 };
 
 const choreWords: CountWords = {
@@ -70,6 +72,7 @@ export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
     when: item.date < today ? `Просрочено · ${whenOf(item, today)}` : whenOf(item, today),
     isOverdue: item.date < today,
     action: actionOf(item),
+    picture: ("petPicture" in item ? item.petPicture : null) ?? undefined,
   };
 }
 
@@ -84,6 +87,7 @@ function tile(module: SlotModule, fields: Partial<Omit<Tile, "module">> = {}): T
     value: undefined,
     note: undefined,
     isAlert: false,
+    picture: undefined,
     ...fields,
   };
 }
@@ -99,7 +103,7 @@ function petTile(pet: NonNullable<Tiles["pet"]>, today: string): Tile {
       : `${isAlert ? "Просрочено · " : ""}${due.label} · ${formatNearDate(due.date, today)}`;
 
   if (only !== null) {
-    return tile("pet", { title: only.name, note, isAlert });
+    return tile("pet", { title: only.name, note, isAlert, picture: only.picture ?? undefined });
   }
 
   return activeCount === 0

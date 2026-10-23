@@ -35,6 +35,7 @@ const rabies: FeedUpcoming = {
   date: "2026-10-14",
   careKind: "vaccination",
   petId: "pet-1",
+  petPicture: null,
   entryId: "entry-1",
 };
 
@@ -375,13 +376,35 @@ describe("the section tiles", () => {
     ]);
   });
 
+  test("show the only Pet's avatar on its tile and on its Due Date", async () => {
+    const { model } = startToday({
+      due: [{ ...rabies, petPicture: "/photos/avatar/thumb" }],
+      tiles: {
+        ...quiet,
+        pet: {
+          activeCount: 1,
+          only: { petId: "pet-1", name: "Бьюик", picture: "/photos/avatar/thumb" },
+          due: null,
+        },
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(model.tiles()[2]).toMatchObject({
+        title: "Бьюик",
+        picture: "https://api.family-hub.test/photos/avatar/thumb",
+      });
+    });
+    expect(model.rows()[0]?.picture).toBe("https://api.family-hub.test/photos/avatar/thumb");
+  });
+
   test("say in words that the Pets tile's Due Date is Overdue, not by colour alone", async () => {
     const { model } = startToday({
       tiles: {
         ...quiet,
         pet: {
           activeCount: 1,
-          only: { petId: "pet-1", name: "Бьюик" },
+          only: { petId: "pet-1", name: "Бьюик", picture: null },
           due: { label: "Прививка: Бешенство", date: "2026-10-12" },
         },
       },
@@ -398,7 +421,7 @@ describe("the section tiles", () => {
 
   test.each([
     {
-      pet: { activeCount: 1, only: { petId: "pet-1", name: "Бьюик" }, due: null },
+      pet: { activeCount: 1, only: { petId: "pet-1", name: "Бьюик", picture: null }, due: null },
       opened: { kind: "pet", petId: "pet-1" },
     },
     { pet: { activeCount: 0, only: null, due: null }, opened: { kind: "new-pet" } },
