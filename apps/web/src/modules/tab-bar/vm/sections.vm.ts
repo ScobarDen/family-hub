@@ -12,13 +12,12 @@ export type QuickAdd =
   | { kind: "new-care-entry" }
   | { kind: "new-contribution"; goalId: string };
 
-export type SectionRow = { module: AppModule; title: string; status: string | undefined };
+export type SectionRow = { module: AppModule; title: string };
 
 export type QuickAddButton = { title: string; target: QuickAdd };
 
 type SectionsDependencies = {
   modules: Pick<TabBarModules, "modules">;
-  statuses: () => Partial<Record<AppModule, string>>;
   // A Contribution goes to the Savings Goal whose deadline is nearest; none means no button.
   contributionGoalId: () => string | undefined;
   canAddPhoto: () => boolean;
@@ -29,12 +28,8 @@ type SectionsDependencies = {
   onOpenSettings: () => void;
 };
 
-function rowsOf(modules: AppModule[], statuses: Partial<Record<AppModule, string>>) {
-  return modules.map((module): SectionRow => ({
-    module,
-    title: sectionTitles[module],
-    status: statuses[module],
-  }));
+function rowsOf(modules: AppModule[]) {
+  return modules.map((module): SectionRow => ({ module, title: sectionTitles[module] }));
 }
 
 function quickAddsOf(goalId: string | undefined): QuickAddButton[] {
@@ -49,17 +44,14 @@ function quickAddsOf(goalId: string | undefined): QuickAddButton[] {
 }
 
 export function reatomSections(dependencies: SectionsDependencies) {
-  const { modules, statuses } = dependencies;
+  const { modules } = dependencies;
 
   return {
-    slotted: computed(() => rowsOf(modules.modules(), statuses()), "sections.slotted"),
+    slotted: computed(() => rowsOf(modules.modules()), "sections.slotted"),
     rest: computed(() => {
       const slots: AppModule[] = modules.modules();
 
-      return rowsOf(
-        appModule.options.filter((module) => !slots.includes(module)),
-        statuses(),
-      );
+      return rowsOf(appModule.options.filter((module) => !slots.includes(module)));
     }, "sections.rest"),
     quickAdds: computed(() => quickAddsOf(dependencies.contributionGoalId()), "sections.quickAdds"),
     canAddPhoto: computed(() => dependencies.canAddPhoto(), "sections.canAddPhoto"),
