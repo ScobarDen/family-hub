@@ -11,6 +11,7 @@ import {
 
 import type { FeedUpcoming, Plan, SlotModule, Today } from "@family-hub/contract";
 
+import type { LiveVersion } from "@/common/live-updates";
 import { detached, readOnly } from "@/common/state";
 
 import type { PlanOrSubplan, TodayApi } from "../today.api.ts";
@@ -23,7 +24,7 @@ export type TodayTarget =
   | { kind: "pet"; petId: string }
   | { kind: "new-pet" };
 
-export type TodayDependencies = {
+export type TodayDependencies = LiveVersion & {
   api: TodayApi;
   today: () => string;
   onOpen: (target: TodayTarget) => void;
@@ -65,10 +66,11 @@ function petTargetOf(pet: Today["tiles"]["pet"] | undefined): TodayTarget | unde
   return pet.activeCount === 0 ? { kind: "new-pet" } : undefined;
 }
 
-function reatomData(api: TodayApi) {
+function reatomData(api: TodayApi, liveVersion: LiveVersion["liveVersion"]) {
   const version = atom(0, "today.version");
   const data = computed(async () => {
     version();
+    liveVersion?.();
 
     return wrap(api.load());
   }, "today.data").extend(withAsyncData());
@@ -258,7 +260,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
 }
 
 export function reatomToday(dependencies: TodayDependencies) {
-  const { data, reload } = reatomData(dependencies.api);
+  const { data, reload } = reatomData(dependencies.api, dependencies.liveVersion);
   const completion = reatomCompletion(dependencies, reload);
 
   return {

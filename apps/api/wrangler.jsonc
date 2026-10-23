@@ -11,6 +11,10 @@
       "migrations_dir": "migrations",
     },
   ],
+  "durable_objects": {
+    "bindings": [{ "name": "LIVE", "class_name": "FamilyLive" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["FamilyLive"] }],
   "ai": {
     "binding": "AI",
   },

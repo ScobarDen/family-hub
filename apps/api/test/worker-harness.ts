@@ -6,6 +6,7 @@ import { createWorker } from "@/app/worker.ts";
 import { createFakeAi, type FakeAi } from "./fake-ai.ts";
 import { createFakeBotApi } from "./fake-bot-api.ts";
 import { createFakeClock } from "./fake-clock.ts";
+import { createFakeLive, type FakeLive } from "./fake-live.ts";
 import { createFamilyFixtures } from "./family-fixtures.ts";
 import { signInitData, type TelegramUserFixture } from "./init-data.ts";
 import { createMigratedSqliteD1 } from "./sqlite-d1.ts";
@@ -32,7 +33,7 @@ async function withContext<Result>(
   return result;
 }
 
-function createTestEnv(ai: FakeAi): Env {
+function createTestEnv({ ai, live }: { ai: FakeAi; live: FakeLive }): Env {
   return {
     DB: createMigratedSqliteD1(),
     BOT_TOKEN: "test-bot-token",
@@ -42,6 +43,7 @@ function createTestEnv(ai: FakeAi): Env {
     ALLOWED_ORIGINS: "https://scobarden.github.io,http://localhost:5173",
     MINI_APP_URL: "https://scobarden.github.io/family-hub/",
     AI: ai.binding,
+    LIVE: live.binding,
     AI_COMMAND_MODEL: "primary-model",
     AI_COMMAND_MODEL_FALLBACK: "fallback-model",
     AI_SPEECH_MODEL: "speech-model",
@@ -104,7 +106,8 @@ export function startWorker({ now = "2026-10-04T09:00:00Z" }: { now?: string } =
   const clock = createFakeClock(now);
   const bot = createFakeBotApi();
   const ai = createFakeAi();
-  const env = createTestEnv(ai);
+  const live = createFakeLive();
+  const env = createTestEnv({ ai, live });
   const worker = createWorker({ clock, createBotApi: () => bot.api });
 
   async function fetchPath(path: string, init?: RequestInit) {
@@ -118,6 +121,7 @@ export function startWorker({ now = "2026-10-04T09:00:00Z" }: { now?: string } =
     clock,
     bot,
     ai,
+    live,
     request: fetchPath,
     ...createFamilyFixtures(env.DB, clock),
     webhook: (update: Update, { secret = env.WEBHOOK_SECRET }: { secret?: string } = {}) =>

@@ -2,6 +2,7 @@ import { action, atom, computed, withAbort, withAsync, withAsyncData, wrap } fro
 
 import type { FeedActivity } from "@family-hub/contract";
 
+import type { LiveVersion } from "@/common/live-updates";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
@@ -25,7 +26,7 @@ export type FeedTarget =
   | { kind: "album"; albumId: string }
   | { kind: "recipe"; recipeId: string };
 
-export type FeedDependencies = {
+export type FeedDependencies = LiveVersion & {
   api: FeedApi;
   today: () => string;
   timeZone: () => string;
@@ -78,36 +79,44 @@ function targetOf(item: FeedItem): FeedTarget | undefined {
   return item.kind === "joined" ? undefined : petTargetOf(item);
 }
 
-function reatomPages(api: FeedApi) {
+type OlderPages = { live: number | undefined; activity: FeedActivity[]; next: string | null };
+
+function reatomPages(api: FeedApi, liveVersion: LiveVersion["liveVersion"]) {
   const version = atom(0, "feed.version");
   const first = computed(async () => {
     version();
+    liveVersion?.();
 
     return wrap(api.page());
   }, "feed.first").extend(withAsyncData());
-  const older = atom<FeedActivity[]>([], "feed.older");
-  const olderNext = atom<string | null | undefined>(undefined, "feed.olderNext");
+  // Older pages hang off the first one's cursor, so a first page refetched for another Member's
+  // change drops them as well.
+  const loaded = atom<OlderPages | undefined>(undefined, "feed.loaded");
+  const current = computed(() => {
+    const pages = loaded();
+
+    return pages?.live === liveVersion?.() ? pages : undefined;
+  }, "feed.current");
+  const older = computed(() => current()?.activity ?? [], "feed.older");
   // Until an older page comes, the first one says where the next begins; null is the end.
   const next = computed(() => {
-    const loaded = olderNext();
+    const pages = current();
 
-    return loaded === undefined ? (first.data()?.next ?? null) : loaded;
+    return pages === undefined ? (first.data()?.next ?? null) : pages.next;
   }, "feed.next");
   const loadMore = action(async () => {
     const cursor = next();
+    const live = liveVersion?.();
 
     if (cursor !== null) {
       const page = await wrap(api.page(cursor));
 
-      older.set([...older(), ...page.activity]);
-      olderNext.set(page.next);
+      loaded.set({ live, activity: [...older(), ...page.activity], next: page.next });
     }
   }, "feed.loadMore").extend(withAsync(), withAbort());
-  // Older pages hang off the first one's cursor, so a fresh first page drops them.
   const reload = action(() => {
     loadMore.abort();
-    older.set([]);
-    olderNext.set(undefined);
+    loaded.set(undefined);
     version.set(version() + 1);
   }, "feed.reload");
 
@@ -186,7 +195,7 @@ function reatomTaps(dependencies: FeedDependencies, pages: Pages) {
 }
 
 export function reatomFeed(dependencies: FeedDependencies) {
-  const pages = reatomPages(dependencies.api);
+  const pages = reatomPages(dependencies.api, dependencies.liveVersion);
   const filter = atom<FeedFilter>("all", "feed.filter");
   const complete = reatomCompletion(dependencies.api, pages);
 

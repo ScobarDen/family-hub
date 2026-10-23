@@ -3,6 +3,7 @@ import { action, atom, type Atom, computed } from "@reatom/core";
 import { daysAfter } from "@family-hub/recurrence";
 
 import { formatNearDate } from "@/common/format-date";
+import type { LiveVersion } from "@/common/live-updates";
 import { readOnly } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
 
@@ -29,16 +30,17 @@ export type CalendarScreen =
   | { kind: "event-form" }
   | { kind: "reminder-form" };
 
-type CalendarDependencies = CalendarLists & {
-  api: CalendarApi;
-  today: () => string;
-  timeZone: () => string;
-  telegram: Pick<Dialogs, "showPopup">;
-  onOpenPet: (petId: string) => void;
-  onOpenPlan: (planId: string) => void;
-  self: () => string | undefined;
-  onDraftSaved: (draftId: string) => void;
-};
+type CalendarDependencies = CalendarLists &
+  LiveVersion & {
+    api: CalendarApi;
+    today: () => string;
+    timeZone: () => string;
+    telegram: Pick<Dialogs, "showPopup">;
+    onOpenPet: (petId: string) => void;
+    onOpenPlan: (planId: string) => void;
+    self: () => string | undefined;
+    onDraftSaved: (draftId: string) => void;
+  };
 
 const upcomingDays = 30;
 
