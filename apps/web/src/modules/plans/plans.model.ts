@@ -2,6 +2,7 @@ import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
 
 import type { FamilyMember, Pet, Plan } from "@family-hub/contract";
 
+import type { LiveVersion } from "@/common/live-updates";
 import { byDueDate, upserted, withoutId } from "@/common/records";
 
 import type { PlansApi } from "./plans.api.ts";
@@ -11,10 +12,16 @@ export type SharedLists = {
   pets: { data: () => Pet[] | undefined };
 };
 
-export function reatomPlans({ api, members, pets }: { api: PlansApi } & SharedLists) {
+export function reatomPlans({
+  api,
+  members,
+  pets,
+  liveVersion,
+}: { api: PlansApi } & SharedLists & LiveVersion) {
   const version = atom(0, "plans.version");
   const list = computed(async () => {
     version();
+    liveVersion?.();
 
     return wrap(api.list());
   }, "plans.list").extend(withAsyncData());

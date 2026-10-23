@@ -2,14 +2,16 @@ import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
+import type { LiveVersion } from "@/common/live-updates";
 import { upserted, withoutId } from "@/common/records";
 
 import type { PetsApi } from "./pets.api.ts";
 
-export function reatomPets({ api }: { api: PetsApi }) {
+export function reatomPets({ api, liveVersion }: { api: PetsApi } & LiveVersion) {
   const version = atom(0, "pets.version");
   const list = computed(async () => {
     version();
+    liveVersion?.();
 
     return wrap(api.list());
   }, "pets.list").extend(withAsyncData());

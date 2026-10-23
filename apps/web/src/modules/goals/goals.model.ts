@@ -2,6 +2,7 @@ import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
 
 import type { FamilyMember, Goal } from "@family-hub/contract";
 
+import type { LiveVersion } from "@/common/live-updates";
 import { upserted } from "@/common/records";
 
 import type { GoalsApi } from "./goals.api.ts";
@@ -9,13 +10,15 @@ import type { GoalsApi } from "./goals.api.ts";
 export function reatomGoals({
   api,
   members,
+  liveVersion,
 }: {
   api: GoalsApi;
   members: { data: () => FamilyMember[] | undefined };
-}) {
+} & LiveVersion) {
   const version = atom(0, "goals.version");
   const list = computed(async () => {
     version();
+    liveVersion?.();
 
     return wrap(api.list());
   }, "goals.list").extend(withAsyncData());

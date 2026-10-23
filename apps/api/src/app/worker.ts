@@ -9,6 +9,7 @@ import {
 } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import { createDb, type Db } from "@/common/db";
+import { liveRoute, signalWrites } from "@/common/live";
 import { createMiniAppLinks, type MiniAppLinks } from "@/common/mini-app-link";
 import { createPhotoLinks, type PhotoLinks } from "@/common/photo-link";
 import type { BotApi } from "@/common/telegram";
@@ -422,7 +423,9 @@ function createApp(dependencies: WorkerDependencies) {
       expose(context, services);
       await next();
     })
+    .use("/api/*", signalWrites)
     .route("/", healthRoute)
+    .route("/", liveRoute)
     .route("/", webhookRoute)
     .route("/", sessionRoute)
     .route("/", familyRequestRoute)

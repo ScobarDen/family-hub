@@ -9,7 +9,7 @@ One Cloudflare Worker serving `/api/*`, `/bot/webhook` and the per-minute cron. 
   - `*.route.ts` — Hono routes: validate with `@hono/standard-validator` against schemas from `@family-hub/contract`, authorise, call the service, map the result to HTTP.
   - `*.service.ts` — use-cases and policies (Private / Shared visibility, Family Owner rights); receives its repositories as constructor arguments.
   - `*.repo.ts` — the only code that touches the database.
-- Shared infrastructure lives in `src/common/` (`db`, `clock`, `telegram`, then `auth`, `errors`, `visibility`); the per-minute cron is `runScheduled` in `src/app/worker.ts`.
+- Shared infrastructure lives in `src/common/` (`db`, `clock`, `telegram`, then `auth`, `errors`, `visibility`, and `live`: the Family's Durable Object, `GET /api/live` and the middleware that signals every write, [ADR 0010](../../docs/adr/0010-live-updates-through-a-family-durable-object.md)); the per-minute cron is `runScheduled` in `src/app/worker.ts`.
 - Routes are chained (`new Hono().get(…).post(…)`) and mounted with `.route()`. Request and response shapes live in `@family-hub/contract`; `apps/web` parses responses with those schemas instead of importing the app type.
 - Authenticated routes put `requireMember` from `common/auth` in front; it reads the bearer token and the Member's Family membership from D1 and exposes it as `context.var.membership`.
 

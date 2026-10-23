@@ -17,6 +17,22 @@ type AuthServiceDependencies = {
   jwtSecret: string;
 };
 
+async function syncProfile(
+  { memberships, clock }: Pick<AuthServiceDependencies, "memberships" | "clock">,
+  { user, member }: { user: TelegramUser; member: Membership["member"] },
+): Promise<void> {
+  // Telegram omits the flag on some launches, so only a 403 from the bot turns it off.
+  if (user.allows_write_to_pm === true && !member.canMessage) {
+    await memberships.setCanMessage(member.id, true, clock.now());
+  }
+
+  const profilePicture = user.photo_url ?? null;
+
+  if (profilePicture !== member.profilePicture) {
+    await memberships.setProfilePicture(member.id, profilePicture, clock.now());
+  }
+}
+
 export function createAuthService({
   memberships,
   clock,
@@ -31,6 +47,7 @@ export function createAuthService({
 
   return {
     identify,
+    memberOf: memberships.findByTelegramId,
 
     async signIn(initData: string): Promise<SignInResult> {
       const user = await identify(initData);
@@ -45,16 +62,7 @@ export function createAuthService({
         return { status: "stranger", telegramId: user.id };
       }
 
-      // Telegram omits the flag on some launches, so only a 403 from the bot turns it off.
-      if (user.allows_write_to_pm === true && !membership.member.canMessage) {
-        await memberships.setCanMessage(membership.member.id, true, clock.now());
-      }
-
-      const profilePicture = user.photo_url ?? null;
-
-      if (profilePicture !== membership.member.profilePicture) {
-        await memberships.setProfilePicture(membership.member.id, profilePicture, clock.now());
-      }
+      await syncProfile({ memberships, clock }, { user, member: membership.member });
 
       return {
         status: "member",
