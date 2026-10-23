@@ -107,12 +107,14 @@ function reatomScreen({
   navigation,
   opened,
   form,
+  today,
   timeZone,
 }: {
   data: RecipesData;
   navigation: Navigation;
   opened: Opened;
   form: { isCreating: () => boolean };
+  today: () => string;
   timeZone: () => string;
 }) {
   return computed((): RecipesScreen => {
@@ -130,7 +132,7 @@ function reatomScreen({
     if (navigation.openedId() !== undefined && recipe !== undefined) {
       return {
         kind: "recipe",
-        recipe: toRecipeDetails(recipe, timeZone()),
+        recipe: toRecipeDetails(recipe, { today: today(), timeZone: timeZone() }),
         checked: [...navigation.checked()],
       };
     }
@@ -141,10 +143,7 @@ function reatomScreen({
       return data.list.error() === undefined ? { kind: "loading" } : { kind: "failed" };
     }
 
-    return listScreenOf(list, {
-      tags,
-      isFiltered: isFilteredBy(data),
-    });
+    return listScreenOf(list, { tags, isFiltered: isFilteredBy(data) });
   }, "recipes.screen");
 }
 
@@ -284,7 +283,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
       data.reload();
     },
   });
-  const screen = reatomScreen({ data, navigation, opened, form, timeZone: dependencies.timeZone });
+  const screen = reatomScreen({ ...dependencies, data, navigation, opened, form });
 
   return {
     screen,

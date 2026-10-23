@@ -7,7 +7,7 @@ export const CareSummary = reatomComponent(({ model }: { model: CareModel }) => 
   const { weight, vetVisit, monthExpenses } = model.summary();
   const facts = [
     { label: "Вес", value: weight ?? "—" },
-    { label: "Визит к ветеринару", value: vetVisit ?? "—" },
+    { label: "Следующий визит", value: vetVisit ?? "—" },
     { label: "Траты за месяц", value: monthExpenses },
   ];
 

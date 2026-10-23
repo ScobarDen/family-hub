@@ -1,3 +1,5 @@
+import { formatTimeZone } from "@/common/format-date";
+
 type TimeZoneSelectProps = {
   value: string;
   zones: string[];
@@ -8,7 +10,7 @@ export function TimeZoneSelect({ value, zones, onChoose }: TimeZoneSelectProps) 
   return (
     <select
       aria-label="Часовой пояс"
-      className="max-w-44 truncate bg-transparent text-right text-muted-foreground outline-none"
+      className="w-38 shrink-0 truncate bg-transparent text-right text-muted-foreground outline-none"
       value={value}
       onChange={(event) => {
         onChoose(event.target.value);
@@ -16,7 +18,7 @@ export function TimeZoneSelect({ value, zones, onChoose }: TimeZoneSelectProps) 
     >
       {zones.map((name) => (
         <option key={name} value={name}>
-          {name.replaceAll("_", " ")}
+          {formatTimeZone(name)}
         </option>
       ))}
     </select>

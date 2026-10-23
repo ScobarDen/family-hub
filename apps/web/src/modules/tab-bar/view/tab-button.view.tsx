@@ -15,7 +15,7 @@ export function TabButton({ tab, onOpen }: TabButtonProps) {
     <button
       type="button"
       aria-current={tab.isActive ? "page" : undefined}
-      className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-xs leading-tight font-medium text-muted-foreground transition-colors aria-[current=page]:font-semibold aria-[current=page]:text-foreground android:aria-[current=page]:bg-primary/15"
+      className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-[0.6875rem] leading-tight font-medium text-muted-foreground min-[360px]:text-xs transition-colors aria-[current=page]:font-semibold aria-[current=page]:text-foreground android:aria-[current=page]:bg-primary/15"
       onClick={() => {
         onOpen(tab.id);
       }}

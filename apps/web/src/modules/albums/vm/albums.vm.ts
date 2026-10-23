@@ -13,6 +13,7 @@ import {
 import type { AlbumSummary, Photo } from "@family-hub/contract";
 
 import { formatCount } from "@/common/format-count";
+import type { Viewer } from "@/common/format-date";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
@@ -26,10 +27,10 @@ import { reatomBatchUpload } from "./batch-upload.vm.ts";
 
 const albumWords = { one: "альбом", few: "альбома", many: "альбомов", other: "альбома" };
 
-function listScreenOf(list: AlbumSummary[], timeZone: string): AlbumsScreen {
+function listScreenOf(list: AlbumSummary[], viewer: Viewer): AlbumsScreen {
   return {
     kind: "list",
-    albums: list.map((summary) => toItem(summary, timeZone)),
+    albums: list.map((summary) => toItem(summary, viewer)),
     summary: list.length === 0 ? "Пока нет альбомов" : formatCount(list.length, albumWords),
   };
 }
@@ -45,10 +46,13 @@ export type AlbumsScreen =
 type AlbumsDependencies = {
   api: AlbumsApi;
   telegram: Dialogs;
-  timeZone: () => string;
+  viewer: () => Viewer;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   wait: (ms: number) => Promise<void>;
   photoHint: () => string | undefined;
+  // The Family Owner can connect the photo channel, so a closed upload leads them to it.
+  canSetUpPhotos: () => boolean;
+  onSetUpPhotos: () => void;
 };
 
 type Navigation = { openedId: Atom<string | undefined>; isEditing: BooleanAtom };
@@ -64,7 +68,7 @@ const deleteQuestion: PopupParams = {
 };
 
 function reatomScreen(
-  { timeZone }: AlbumsDependencies,
+  { viewer }: AlbumsDependencies,
   {
     data,
     navigation,
@@ -83,7 +87,7 @@ function reatomScreen(
     const opened = data.opened.data();
 
     if (navigation.openedId() !== undefined && opened !== undefined) {
-      return { kind: "album", album: { ...opened, subtitle: subtitleOf(opened, timeZone()) } };
+      return { kind: "album", album: { ...opened, subtitle: subtitleOf(opened, viewer()) } };
     }
 
     const list = data.list.data();
@@ -92,7 +96,7 @@ function reatomScreen(
       return data.list.error() === undefined ? { kind: "loading" } : { kind: "failed" };
     }
 
-    return listScreenOf(list, timeZone());
+    return listScreenOf(list, viewer());
   }, "albums.screen");
 }
 
@@ -190,6 +194,10 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
     screen,
     ...parts,
     photoHint: readOnly(dependencies.photoHint),
+    canSetUpPhotos: readOnly(dependencies.canSetUpPhotos),
+    setUpPhotos: action(() => {
+      dependencies.onSetUpPhotos();
+    }, "albums.setUpPhotos"),
     title: computed(() => titleOf(screen()), "albums.title"),
     retry: data.reload,
     canGoBack: computed(

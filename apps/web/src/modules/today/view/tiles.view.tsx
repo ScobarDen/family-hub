@@ -5,7 +5,8 @@ import { cn } from "@/common/ui";
 
 import type { TodayModel } from "../vm/today.vm.ts";
 
-// The section's colour sits on its icon only, over the neutral card of either theme.
+// The section's colour sits on its icon only, over the neutral card of either theme. A note wraps
+// whole, so an Overdue Due Date is read to its end; a section with nothing to count shows a dash.
 export const Tiles = reatomComponent(
   ({ model }: { model: TodayModel }) => (
     <section aria-label="Разделы" className="grid grid-cols-3 gap-2 px-4 pb-7">
@@ -28,10 +29,15 @@ export const Tiles = reatomComponent(
             {value !== undefined && (
               <span className="text-xl leading-none font-semibold">{value}</span>
             )}
+            {value === undefined && note === undefined && (
+              <span className="text-muted-foreground" aria-hidden>
+                —
+              </span>
+            )}
             {note !== undefined && (
               <span
                 className={cn(
-                  "line-clamp-2 text-[0.8125rem]",
+                  "text-[0.8125rem] break-words",
                   isAlert ? "text-destructive-text" : "text-muted-foreground",
                 )}
               >

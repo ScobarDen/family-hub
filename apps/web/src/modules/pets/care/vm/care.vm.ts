@@ -87,13 +87,15 @@ function reatomWeight({ data, timeZone, today }: Sources, weightRange: Atom<Weig
 }
 
 function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
-  const { data, timeZone } = sources;
+  const { data, timeZone, today } = sources;
 
   return {
     ...reatomWeight(sources, weightRange),
     journal: computed(
       (): JournalItem[] =>
-        (data.entries.data() ?? []).map((entry) => toJournalItem(entry, timeZone())),
+        (data.entries.data() ?? []).map((entry) =>
+          toJournalItem(entry, { timeZone: timeZone(), today: today() }),
+        ),
       "care.journal",
     ),
     // Until the month arrives it reads as nothing spent.
@@ -112,7 +114,7 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
             entries: summary.entries.map(({ id, category, occurredAt, amount }) => ({
               id,
               title: expenseCategoryTitles[category],
-              subtitle: formatDay(occurredAt, timeZone()),
+              subtitle: formatDay(occurredAt, { timeZone: timeZone(), today: today() }),
               amount: formatRubles(amount),
             })),
           };

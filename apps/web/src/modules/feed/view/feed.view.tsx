@@ -4,7 +4,6 @@ import {
   Cake,
   CalendarDays,
   ChevronRight,
-  Circle,
   CircleCheck,
   CookingPot,
   Images,
@@ -19,7 +18,7 @@ import {
 } from "lucide-react";
 
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
-import { Button, Chip, PersonAvatar, Section, SectionItem } from "@/common/ui";
+import { Button, CheckButton, Chip, PersonAvatar, Section, SectionItem } from "@/common/ui";
 
 import type { FeedRow } from "../feed.lib.ts";
 import { feedFilters, type FeedModel } from "../vm/feed.vm.ts";
@@ -40,23 +39,7 @@ const icons: Record<FeedRow["kind"], LucideIcon> = {
 
 type RowProps = { row: FeedRow; model: FeedModel };
 
-function RowActions({ row, model }: RowProps) {
-  if (row.canComplete) {
-    return (
-      <Button
-        size="icon-sm"
-        variant="ghost"
-        aria-label="Выполнено"
-        disabled={model.isChanging()}
-        onClick={() => {
-          model.complete(row.key);
-        }}
-      >
-        <Circle />
-      </Button>
-    );
-  }
-
+function RecordAction({ row, model }: RowProps) {
   return row.canRecord ? (
     <Button
       size="sm"
@@ -70,9 +53,25 @@ function RowActions({ row, model }: RowProps) {
   ) : undefined;
 }
 
-// A row with its own buttons cannot be a button too, so it opens through a chevron instead.
+function checkOf({ row, model }: RowProps) {
+  return (
+    row.canComplete && (
+      <CheckButton
+        label={`Отметить выполненным: ${row.title}`}
+        isAlert={row.isOverdue}
+        disabled={model.isChanging()}
+        onClick={() => {
+          model.complete(row.key);
+        }}
+      />
+    )
+  );
+}
+
+// A Plan closes with the circle at its start and opens from the rest of the row. A Due Date has a
+// button of its own, so its row cannot be a button too and opens through a chevron instead.
 const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
-  const hasActions = row.canComplete || row.canRecord;
+  const check = checkOf({ row, model });
 
   function open() {
     model.open(row.key);
@@ -84,19 +83,20 @@ const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
         icon={row.isOverdue ? TriangleAlert : icons[row.kind]}
         isAlert={row.isOverdue}
         {...(row.author === undefined ? {} : { leading: <PersonAvatar name={row.author} /> })}
+        {...(check === false ? {} : { control: check })}
         title={row.title}
         subtitle={row.subtitle}
         after={
-          hasActions && (
+          row.canRecord && (
             <>
-              <RowActions row={row} model={model} />
+              <RecordAction row={row} model={model} />
               <Button size="icon-sm" variant="ghost" aria-label="Открыть" onClick={open}>
                 <ChevronRight />
               </Button>
             </>
           )
         }
-        onClick={hasActions ? undefined : open}
+        onClick={row.canRecord ? undefined : open}
       />
       <PhotoThumbs
         photos={row.photos}
@@ -116,7 +116,7 @@ export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
 
   return (
     <>
-      <div className="-mt-1 flex gap-2 overflow-x-auto px-4 pb-5 [scrollbar-width:none]">
+      <div className="-mt-1 flex flex-wrap gap-2 px-4 pb-5">
         {feedFilters.map(({ value, title }) => (
           <Chip
             key={value}

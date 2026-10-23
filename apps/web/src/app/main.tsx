@@ -88,6 +88,10 @@ function today(): string {
   return todayIn(zone());
 }
 
+function viewer() {
+  return { today: today(), timeZone: zone() };
+}
+
 async function prepare(file: Blob) {
   return preparePhoto(file, zone());
 }
@@ -120,10 +124,14 @@ const photoStorage = reatomPhotoStorage({
 const albums = reatomAlbumsScreen({
   api: createAlbumsApi(httpClient),
   telegram,
-  timeZone: zone,
+  viewer,
   preparePhoto: prepare,
   wait,
   photoHint: photoStorage.uploadHint,
+  canSetUpPhotos: photoStorage.canSetUp,
+  onSetUpPhotos: () => {
+    navigation.openProfile();
+  },
 });
 const recipes = reatomRecipesScreen({
   api: createRecipesApi(httpClient),
@@ -139,7 +147,7 @@ const plans = reatomPlansScreen({
   pets: petsModel.list,
   telegram,
   self,
-  timeZone: zone,
+  viewer,
   onOpenAlbum: (albumId) => {
     opener.open({ kind: "album", albumId });
   },
@@ -165,7 +173,7 @@ const pet = reatomPetTab({
   },
   careApi: createCareApi(httpClient),
   pets: petsModel,
-  viewer: () => ({ today: today(), timeZone: zone() }),
+  viewer,
   now: () => Temporal.Now.plainDateTimeISO(zone()).toString({ smallestUnit: "minute" }),
   telegram,
   isFamilyOwner: () => session.member()?.isFamilyOwner === true,
@@ -345,7 +353,7 @@ const home = {
   invites: reatomInvites({
     api: createInvitesApi(httpClient),
     telegram,
-    timeZone: zone,
+    viewer,
   }),
   pet,
   plans,

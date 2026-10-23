@@ -84,12 +84,14 @@ function startAlbums({
   const model = reatomAlbumsScreen({
     api: createAlbumsApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: { showPopup: async () => "cancel", showAlert: noop },
-    timeZone: () => "Europe/Moscow",
+    viewer: () => ({ timeZone: "Europe/Moscow", today: "2026-10-16" }),
     preparePhoto: async (file) => ({ file, takenAt: null }),
     wait: async (ms) => {
       waits.push(ms);
     },
     photoHint: noop,
+    canSetUpPhotos: () => false,
+    onSetUpPhotos: noop,
   });
 
   model.screen.subscribe(noop);

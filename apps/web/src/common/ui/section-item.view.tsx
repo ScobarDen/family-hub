@@ -14,6 +14,8 @@ type SectionItemProps = {
   // A row that destroys something reads red as a whole, not only its icon.
   isDestructive?: boolean;
   leading?: ReactNode;
+  // A control of its own at the row's start, such as a CheckButton: the rest of the row still opens.
+  control?: ReactNode;
   title: string;
   subtitle?: string;
   after?: ReactNode;
@@ -42,10 +44,13 @@ function leadingOf({
   );
 }
 
-function bodyOf({ title, subtitle, after, isDestructive = false }: SectionItemProps): ReactNode {
+function bodyOf(
+  { title, subtitle, after, isDestructive = false }: SectionItemProps,
+  isSlot = true,
+): ReactNode {
   return (
     <span
-      data-slot="item-body"
+      data-slot={isSlot ? "item-body" : undefined}
       className="flex min-h-12 flex-1 items-center gap-3 border-border py-2.5 pr-4"
     >
       <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -63,7 +68,29 @@ function bodyOf({ title, subtitle, after, isDestructive = false }: SectionItemPr
   );
 }
 
-export function SectionItem(props: SectionItemProps) {
+function withControl(props: SectionItemProps, control: ReactNode): ReactNode {
+  const { onClick } = props;
+
+  return (
+    <div className={row}>
+      {control}
+      {onClick === undefined ? (
+        bodyOf(props)
+      ) : (
+        <button
+          type="button"
+          data-slot="item-body"
+          className="flex min-w-0 flex-1 self-stretch border-border text-left focus-visible:-outline-offset-2 active:bg-muted"
+          onClick={onClick}
+        >
+          {bodyOf(props, false)}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function plainRowOf(props: SectionItemProps): ReactNode {
   const { onClick, disabled = false, isAlert = false, isDestructive = false } = props;
   const content = (
     <>
@@ -89,4 +116,8 @@ export function SectionItem(props: SectionItemProps) {
       {content}
     </button>
   );
+}
+
+export function SectionItem(props: SectionItemProps) {
+  return props.control === undefined ? plainRowOf(props) : withControl(props, props.control);
 }

@@ -98,7 +98,15 @@ function reatomViews(
     upcoming,
     dayTitle: computed(() => formatNearDate(selected(), today()), "calendar.dayTitle"),
     dayRows: computed(() => agendaRowsOf(dayItems(), false), "calendar.dayRows"),
-    upcomingRows: computed(() => agendaRowsOf(upcoming(), true), "calendar.upcomingRows"),
+    // The chosen day is listed right above, so «Ближайшее» does not repeat it.
+    upcomingRows: computed(
+      () =>
+        agendaRowsOf(
+          upcoming().filter(({ date }) => date !== selected()),
+          true,
+        ),
+      "calendar.upcomingRows",
+    ),
   };
 }
 

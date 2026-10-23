@@ -274,8 +274,11 @@ function markOf(
   item: CalendarItem,
   { isDated, isSameDay }: { isDated: boolean; isSameDay: boolean },
 ): AgendaMark {
+  // A deadline has no hours, so it leaves the time column blank rather than claim «весь день».
   if (!isDated) {
-    return { kind: "time", text: item.time ?? "весь день" };
+    return item.time === undefined && (item.kind === "plan" || item.kind === "due")
+      ? { kind: "same-day" }
+      : { kind: "time", text: item.time ?? "весь день" };
   }
 
   if (isSameDay) {

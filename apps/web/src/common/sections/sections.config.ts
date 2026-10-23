@@ -15,7 +15,7 @@ export const sectionTitles: Record<AppModule, string> = {
   feed: "Лента",
   plans: "Планы",
   calendar: "Календарь",
-  pet: "Питомец",
+  pet: "Питомцы",
   goals: "Цели",
   albums: "Альбомы",
   recipes: "Рецепты",

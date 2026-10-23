@@ -30,12 +30,6 @@ const choreWords: CountWords = {
   other: "дела",
 };
 
-const recordTitles = {
-  vaccination: "Отметить прививку",
-  treatment: "Отметить обработку",
-  vet_visit: "Отметить визит к ветеринару",
-} as const;
-
 export function headerOf(count: number): string {
   return count === 0 ? "День свободен" : formatCount(count, choreWords);
 }
@@ -60,7 +54,7 @@ export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
     isOverdue: item.date < today,
     action:
       item.kind === "due"
-        ? { kind: "record", title: recordTitles[item.careKind] }
+        ? { kind: "record", title: "Записать" }
         : { kind: "complete", title: "Отметить выполненным" },
   };
 }

@@ -1,4 +1,5 @@
 export { Button, buttonVariants } from "./button.view.tsx";
+export { CheckButton } from "./check-button.view.tsx";
 export { ChartContainer, type ChartConfig } from "./chart.view.tsx";
 export { ChoiceField, type Choice } from "./choice-field.view.tsx";
 export { ConfirmDeletionForm } from "./confirm-deletion-form.view.tsx";

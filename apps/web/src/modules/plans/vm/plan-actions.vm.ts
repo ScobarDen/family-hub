@@ -10,7 +10,7 @@ import type { PlansModel } from "../plans.model.ts";
 
 export type PlanActionsDependencies = {
   api: PlansApi;
-  plans: Pick<PlansModel, "keep" | "drop">;
+  plans: Pick<PlansModel, "keep" | "drop" | "list">;
   telegram: Pick<Dialogs, "showPopup">;
   openedPlan: () => Plan | undefined;
   onDeleted: () => void;
@@ -87,9 +87,13 @@ async function kept(
   }
 }
 
+// A change works on the opened Plan, or on one named from the list.
 function reatomPlanChange(dependencies: PlanActionsDependencies) {
-  return action(async (change: (plan: Plan) => Promise<void>) => {
-    const plan = dependencies.openedPlan();
+  return action(async (change: (plan: Plan) => Promise<void>, planId?: string) => {
+    const plan =
+      planId === undefined
+        ? dependencies.openedPlan()
+        : dependencies.plans.list.data()?.find(({ id }) => id === planId);
 
     if (plan === undefined) {
       return;
@@ -112,6 +116,11 @@ export function reatomPlanActions(dependencies: PlanActionsDependencies) {
     togglePlan: action(() => {
       change(async (plan) => kept(dependencies, togglePlan(dependencies, plan))).catch(noop);
     }, "plans.togglePlan"),
+    togglePlanOf: action((planId: string) => {
+      change(async (plan) => kept(dependencies, togglePlan(dependencies, plan)), planId).catch(
+        noop,
+      );
+    }, "plans.togglePlanOf"),
     toggleSubplan: action((subplanId: string) => {
       change(async (plan) =>
         kept(dependencies, toggleSubplan(dependencies, plan, subplanId)),

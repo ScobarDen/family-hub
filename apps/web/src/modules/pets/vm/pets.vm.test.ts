@@ -155,14 +155,14 @@ describe("the pet tab", () => {
             id: "entry-1",
             kind: "due",
             title: "Прививка: Бешенство",
-            subtitle: "просрочено · 1 октября 2026 г.",
+            subtitle: "Просрочено · 1 октября",
             isOverdue: true,
           },
           {
             id: "plan-1",
             kind: "plan",
             title: "Груминг",
-            subtitle: "20 октября 2026 г.",
+            subtitle: "20 октября",
             isOverdue: false,
           },
           {

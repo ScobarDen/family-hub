@@ -52,6 +52,12 @@ export function reatomPhotoStorage({ api, isFamilyOwner }: PhotoStorageDependenc
       return storage === undefined ? undefined : viewOf(storage, isFamilyOwner());
     }, "photoStorage.view"),
 
+    canSetUp: computed((): boolean => {
+      const storage = status.data();
+
+      return storage !== undefined && storage.status !== "connected" && isFamilyOwner();
+    }, "photoStorage.canSetUp"),
+
     // Every photo upload in the app reads this: without a connected channel there is nowhere to put one.
     uploadHint: computed((): string | undefined => {
       const storage = status.data();

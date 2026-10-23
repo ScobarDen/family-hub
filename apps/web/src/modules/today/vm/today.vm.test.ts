@@ -164,7 +164,7 @@ describe("«Сделать сегодня»", () => {
       }),
       expect.objectContaining({
         title: "Прививка: Бешенство — Бьюик",
-        action: { kind: "record", title: "Отметить прививку" },
+        action: { kind: "record", title: "Записать" },
       }),
       expect.objectContaining({
         title: "Дело 2",

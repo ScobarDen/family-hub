@@ -17,11 +17,13 @@ export function deviceTimeZone(): string {
   return Temporal.Now.timeZoneId();
 }
 
-export function formatDay(epochMs: number, timeZone: string): string {
-  return Temporal.Instant.fromEpochMilliseconds(epochMs)
-    .toZonedDateTimeISO(timeZone)
-    .toPlainDate()
-    .toLocaleString("ru-RU", dayAndMonth);
+export type Viewer = { timeZone: string; today: string };
+
+// This year's days drop the year; any other year keeps it, so last year's entry never reads as recent.
+export function formatDay(epochMs: number, { timeZone, today: onDate }: Viewer): string {
+  const day = Temporal.Instant.fromEpochMilliseconds(epochMs).toZonedDateTimeISO(timeZone);
+
+  return formatShortDate(day.toPlainDate().toString(), onDate);
 }
 
 export function formatDate(date: string): string {
@@ -29,6 +31,14 @@ export function formatDate(date: string): string {
     ...dayAndMonth,
     year: "numeric",
   });
+}
+
+export function formatShortDate(date: string, onDate: string): string {
+  const day = Temporal.PlainDate.from(date);
+
+  return day.year === Temporal.PlainDate.from(onDate).year
+    ? day.toLocaleString("ru-RU", dayAndMonth)
+    : formatDate(date);
 }
 
 // Near dates read as words and this year's dates drop the year: «Завтра», «23 октября».
@@ -41,9 +51,23 @@ export function formatNearDate(date: string, onDate: string): string {
     return words[shift];
   }
 
-  return day.year === Temporal.PlainDate.from(onDate).year
-    ? day.toLocaleString("ru-RU", dayAndMonth)
-    : formatDate(date);
+  return formatShortDate(date, onDate);
+}
+
+function zoneNameOf(timeZone: string, style: "shortGeneric" | "shortOffset"): string {
+  return (
+    new Intl.DateTimeFormat("ru-RU", { timeZone, timeZoneName: style })
+      .formatToParts()
+      .find(({ type }) => type === "timeZoneName")?.value ?? timeZone
+  );
+}
+
+// A zone reads as a place with its offset, «Москва (GMT+3)», not as «Europe/Moscow».
+export function formatTimeZone(timeZone: string): string {
+  const place = zoneNameOf(timeZone, "shortGeneric");
+  const offset = zoneNameOf(timeZone, "shortOffset");
+
+  return place === offset ? offset : `${place} (${offset})`;
 }
 
 export function today(timeZone: string): string {

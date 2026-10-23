@@ -4,5 +4,8 @@ export {
   formatDate,
   formatDay,
   formatNearDate,
+  formatShortDate,
+  formatTimeZone,
   today,
+  type Viewer,
 } from "./format-date.lib.ts";

@@ -2,7 +2,7 @@ import { action, computed, withAsync, withAsyncData, wrap } from "@reatom/core";
 
 import type { Invite, InviteCreated } from "@family-hub/contract";
 
-import { formatDay } from "@/common/format-date";
+import { formatDay, type Viewer } from "@/common/format-date";
 import { withoutId } from "@/common/records";
 import { detached, reatomFailure } from "@/common/state";
 
@@ -17,7 +17,7 @@ type InvitesDependencies = {
     shareMessage: (preparedMessageId: string) => Promise<boolean>;
     openTelegramLink: (url: string) => void;
   };
-  timeZone: () => string;
+  viewer: () => Viewer;
 };
 
 const shareText = "Присоединяйтесь к нашей семье в Family Hub";
@@ -30,8 +30,8 @@ function newestFirst(invites: Invite[]): Invite[] {
   return invites.toSorted((left, right) => right.expiresAt - left.expiresAt);
 }
 
-function toItem(invite: Invite, timeZone: string): InviteItem {
-  return { id: invite.id, title: `Приглашение до ${formatDay(invite.expiresAt, timeZone)}` };
+function toItem(invite: Invite, viewer: Viewer): InviteItem {
+  return { id: invite.id, title: `Приглашение до ${formatDay(invite.expiresAt, viewer)}` };
 }
 
 function reatomList(api: InvitesApi) {
@@ -93,7 +93,7 @@ export function reatomInvites(dependencies: InvitesDependencies) {
 
   return {
     invites: computed(
-      () => (list.data() ?? []).map((invite) => toItem(invite, dependencies.timeZone())),
+      () => (list.data() ?? []).map((invite) => toItem(invite, dependencies.viewer())),
       "invites.items",
     ),
     isLoading: computed(

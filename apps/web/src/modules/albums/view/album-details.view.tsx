@@ -7,6 +7,7 @@ import {
   cn,
   FilePick,
   primaryActionClass,
+  PrimaryButton,
   Section,
   SectionItem,
   SectionLayout,
@@ -31,6 +32,23 @@ function summaryOf({ album }: DetailsProps, hint: string | undefined) {
       {hint !== undefined && <span className="text-muted-foreground">{hint}</span>}
     </div>
   );
+}
+
+function actionOf(model: AlbumsScreenModel, hint: string | undefined) {
+  if (hint === undefined) {
+    return (
+      <FilePick className={cn(buttonVariants(), primaryActionClass)} onPick={model.upload}>
+        <ImagePlus aria-hidden />
+        Добавить фото
+      </FilePick>
+    );
+  }
+
+  return model.canSetUpPhotos() ? (
+    <PrimaryButton variant="secondary" onClick={model.setUpPhotos}>
+      Подключить канал для фото
+    </PrimaryButton>
+  ) : undefined;
 }
 
 function photosOf({ album, model }: DetailsProps) {
@@ -72,14 +90,7 @@ export const AlbumDetails = reatomComponent((props: DetailsProps) => {
     <>
       <SectionLayout
         summary={summaryOf(props, hint)}
-        action={
-          hint === undefined ? (
-            <FilePick className={cn(buttonVariants(), primaryActionClass)} onPick={model.upload}>
-              <ImagePlus aria-hidden />
-              Добавить фото
-            </FilePick>
-          ) : undefined
-        }
+        action={actionOf(model, hint)}
         tabs={[{ key: "photos", title: "Фото", content: photosOf(props) }]}
       />
       {managementOf(props)}

@@ -46,21 +46,19 @@ export const PetCard = reatomComponent((props: PetCardProps) => {
     <>
       <PetHeader card={card} onEdit={isEditable ? model.editProfile : undefined} />
       <SectionLayout
-        summary={
-          <>
-            {summary}
-            <PetSoon
-              soon={card.soon}
-              onOpen={model.openSoon}
-              onPlan={
-                isEditable
-                  ? () => {
-                      model.plan(card.id);
-                    }
-                  : undefined
-              }
-            />
-          </>
+        summary={summary}
+        lead={
+          <PetSoon
+            soon={card.soon}
+            onOpen={model.openSoon}
+            onPlan={
+              isEditable
+                ? () => {
+                    model.plan(card.id);
+                  }
+                : undefined
+            }
+          />
         }
         action={
           isEditable ? (
