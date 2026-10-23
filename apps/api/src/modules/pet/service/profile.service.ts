@@ -134,7 +134,7 @@ export async function setAvatar(
     return pet;
   }
 
-  if (photoId !== null && !(await dependencies.pets.hasPhoto({ ...target, photoId }))) {
+  if (photoId !== null && !(await dependencies.pets.canBeAvatar({ ...target, photoId }))) {
     return { status: "photo-not-found" };
   }
 

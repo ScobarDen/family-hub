@@ -1,10 +1,11 @@
 import { Pencil } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button, cn } from "@/common/ui";
 
 import type { PetCard } from "../pets.lib.ts";
 
-type PetHeaderProps = { card: PetCard; onEdit: (() => void) | undefined };
+type PetHeaderProps = { card: PetCard; avatar: ReactNode; onEdit: (() => void) | undefined };
 
 const shortFact = 22;
 // A number with no spaces cannot wrap, so a long one (a chip number) takes the whole row.
@@ -14,13 +15,11 @@ function isWide(value: string): boolean {
   return value.length > shortFact || (!value.includes(" ") && value.length > shortWord);
 }
 
-export function PetHeader({ card, onEdit }: PetHeaderProps) {
+export function PetHeader({ card, avatar, onEdit }: PetHeaderProps) {
   return (
     <section className="px-4 pb-7">
       <div className="overflow-hidden rounded-2xl bg-card">
-        {card.avatar !== undefined && (
-          <img src={card.avatar} alt={card.name} className="aspect-[3/2] w-full object-cover" />
-        )}
+        {avatar}
         <div className="flex items-start gap-3 px-4 pt-4 pb-3">
           {/* The screen's title already names the Pet, so the card opens with what it is. */}
           <p className="min-w-0 flex-1 self-center text-[1.0625rem] font-medium">{card.subtitle}</p>

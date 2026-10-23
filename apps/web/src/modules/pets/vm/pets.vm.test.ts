@@ -1,9 +1,17 @@
 import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { petMemoChange, petProfile, type Pet, type PetList } from "@family-hub/contract";
+import {
+  petAvatar,
+  petMemoChange,
+  petProfile,
+  photoMaxBytes,
+  type Pet,
+  type PetList,
+} from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { PhotoTooLargeError } from "@/common/photo";
 
 import { createPetsApi } from "../pets.api.ts";
 import { reatomPets } from "../pets.model.ts";
@@ -27,7 +35,29 @@ const buick: Pet = {
 
 const kesha: Pet = { ...buick, id: "pet-2", name: "Кеша", species: "bird", breed: null };
 
+const portrait = {
+  id: "photo-9",
+  takenAt: null,
+  urls: {
+    thumb: "/photos/photo-9/thumb",
+    medium: "/photos/photo-9/medium",
+    full: "/photos/photo-9/full",
+  },
+  canDelete: true,
+};
+
 function savedReply(request: string, body: unknown): Response {
+  if (request === "POST /api/photos") {
+    return Response.json(portrait, { status: 201 });
+  }
+
+  if (request.endsWith("/avatar")) {
+    return Response.json({
+      ...buick,
+      avatar: petAvatar.parse(body).photoId === null ? null : portrait.urls,
+    });
+  }
+
   if (request.startsWith("DELETE")) {
     return Response.json({ status: "deleted" });
   }
@@ -79,8 +109,12 @@ const soon = [
   { id: "entry-1", title: "Прививка: Бешенство", dueDate: "2026-10-01", kind: "due" as const },
 ];
 
-function startPets(backend = fakeBackend(), { isFamilyOwner = true } = {}) {
+function startPets(
+  backend = fakeBackend(),
+  { isFamilyOwner = true, photoHint = undefined as string | undefined, choices = ["confirm"] } = {},
+) {
   const opened: unknown[] = [];
+  const alerts: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const api = createPetsApi(client);
   const pets = reatomPets({ api });
@@ -99,6 +133,20 @@ function startPets(backend = fakeBackend(), { isFamilyOwner = true } = {}) {
     },
     viewer: () => ({ today: "2026-10-11", timeZone: "Europe/Moscow" }),
     isFamilyOwner: () => isFamilyOwner,
+    telegram: {
+      showPopup: async () => choices.shift(),
+      showAlert: (message) => {
+        alerts.push(message);
+      },
+    },
+    preparePhoto: async (file) => {
+      if (file.size > photoMaxBytes) {
+        throw new PhotoTooLargeError();
+      }
+
+      return { file, takenAt: null };
+    },
+    photoHint: () => photoHint,
     soon: (petId) => (petId === "pet-1" ? soon : []),
     onOpenSoon: (target) => {
       opened.push(target);
@@ -110,7 +158,7 @@ function startPets(backend = fakeBackend(), { isFamilyOwner = true } = {}) {
 
   model.screen.subscribe(noop);
 
-  return { model, pets, backend, opened, routePetId };
+  return { model, pets, backend, opened, alerts, routePetId };
 }
 
 type Model = ReturnType<typeof startPets>["model"];
@@ -497,5 +545,68 @@ describe("the archive", () => {
     model.open("pet-2");
 
     expect(model.screen()).toMatchObject({ canDelete: false });
+  });
+});
+
+describe("the Pet Avatar", () => {
+  test("is uploaded from the card and shown on it", async () => {
+    const { model, backend } = startPets();
+
+    await loaded(model);
+    model.uploadAvatar([new Blob(["buick"])]);
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({
+        card: { avatar: "https://api.family-hub.test/photos/photo-9/medium" },
+      });
+    });
+    expect(backend.requests.map(({ request }) => request)).toContain("POST /api/photos");
+    expect(backend.requests.at(-1)).toEqual({
+      request: "PUT /api/pets/pet-1/avatar",
+      body: { photoId: "photo-9" },
+    });
+  });
+
+  test("is removed after a confirmation", async () => {
+    const { model, backend } = startPets(fakeBackend([{ ...buick, avatar: portrait.urls }]), {
+      choices: ["cancel", "confirm"],
+    });
+
+    await loaded(model);
+    model.removeAvatar();
+    model.removeAvatar();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ card: { avatar: undefined } });
+    });
+    expect(backend.requests.filter(({ request }) => request.endsWith("/avatar"))).toEqual([
+      { request: "PUT /api/pets/pet-1/avatar", body: { photoId: null } },
+    ]);
+  });
+
+  test("waits for Photo Storage and stays as it is on an archived Pet", async () => {
+    const { model } = startPets(fakeBackend([buick, { ...kesha, archivedAt: 1 }]), {
+      photoHint: "Подключите хранилище фото",
+    });
+
+    await loaded(model);
+
+    expect(model.avatarChange()).toEqual({ canUpload: false, hint: "Подключите хранилище фото" });
+
+    model.open("pet-2");
+
+    expect(model.avatarChange()).toBeUndefined();
+  });
+
+  test("says so when the photo is too large", async () => {
+    const { model, backend, alerts } = startPets();
+
+    await loaded(model);
+    model.uploadAvatar([new Blob([new Uint8Array(photoMaxBytes + 1)])]);
+
+    await vi.waitFor(() => {
+      expect(alerts).toEqual(["Фото больше 10 МБ."]);
+    });
+    expect(backend.requests.map(({ request }) => request)).not.toContain("POST /api/photos");
   });
 });

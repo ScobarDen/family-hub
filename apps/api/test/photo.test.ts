@@ -56,11 +56,37 @@ async function uploaded(worker: Worker, user: TelegramUserFixture, size = 1000) 
   return response.json<Photo>();
 }
 
-async function addEntry(worker: Worker, photoIds: string[]) {
+async function addEntry(worker: Worker, photoIds: string[], petId = worker.buickId) {
   return request(worker, asya, {
     method: "POST",
-    path: `/api/pets/${worker.buickId}/care-entries`,
+    path: `/api/pets/${petId}/care-entries`,
     body: { occurredAt: worker.clock.now(), note: "Гуляли", details: { kind: "note" }, photoIds },
+  });
+}
+
+async function addPet(worker: Worker, name: string) {
+  const response = await request(worker, denis, {
+    method: "POST",
+    path: "/api/pets",
+    body: {
+      name,
+      species: "bird",
+      breed: null,
+      sex: null,
+      birthDate: null,
+      chipNumber: null,
+      notes: null,
+    },
+  });
+
+  return response.json<Pet>();
+}
+
+async function setAvatar(worker: Worker, photoId: string | null) {
+  return request(worker, denis, {
+    method: "PUT",
+    path: `/api/pets/${worker.buickId}/avatar`,
+    body: { photoId },
   });
 }
 
@@ -192,28 +218,54 @@ describe("a Care Entry's photos", () => {
     expect(foreign.status).toBe(400);
   });
 
-  test("give the Pet its avatar", async () => {
+  test("give the Pet its avatar, unless they are another Pet's", async () => {
     const worker = await startWithBuick();
     const photo = await uploaded(worker, asya);
-    const stranger = await uploaded(worker, asya, 7);
+    const kesha = await addPet(worker, "Кеша");
+    const keshas = await uploaded(worker, asya, 7);
 
     await addEntry(worker, [photo.id]);
+    await addEntry(worker, [keshas.id], kesha.id);
 
-    const chosen = await request(worker, denis, {
-      method: "PUT",
-      path: `/api/pets/${worker.buickId}/avatar`,
-      body: { photoId: photo.id },
-    });
-    const refused = await request(worker, denis, {
-      method: "PUT",
-      path: `/api/pets/${worker.buickId}/avatar`,
-      body: { photoId: stranger.id },
-    });
+    const chosen = await setAvatar(worker, photo.id);
+    const refused = await setAvatar(worker, keshas.id);
 
     const withAvatar = await chosen.json<Pet>();
 
     expect(withAvatar.avatar?.thumb).toMatch(/^\/photos\//u);
     expect(refused.status).toBe(400);
+  });
+});
+
+describe("a Pet Avatar uploaded for the Pet alone", () => {
+  test("becomes the avatar", async () => {
+    const worker = await startWithBuick();
+    const photo = await uploaded(worker, asya);
+
+    const response = await setAvatar(worker, photo.id);
+    const buick = await response.json<Pet>();
+
+    expect(response.status).toBe(200);
+    expect(buick.avatar?.medium).toMatch(/^\/photos\/.+\/medium/u);
+  });
+
+  test("is forgotten once replaced or removed, while a Care Entry photo stays", async () => {
+    const worker = await startWithBuick();
+    const first = await uploaded(worker, asya, 1);
+    const second = await uploaded(worker, asya, 2);
+    const walk = await uploaded(worker, asya, 3);
+
+    await addEntry(worker, [walk.id]);
+    await setAvatar(worker, first.id);
+    await setAvatar(worker, second.id);
+    await setAvatar(worker, walk.id);
+    await setAvatar(worker, null);
+
+    const links = await Promise.all(
+      [first, second, walk].map(async ({ urls }) => worker.request(urls.thumb)),
+    );
+
+    expect(links.map(({ status }) => status)).toEqual([410, 410, 200]);
   });
 });
 

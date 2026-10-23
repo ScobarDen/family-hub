@@ -2,6 +2,9 @@ import { computed, type Atom, type BooleanAtom } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
+import type { PreparedPhoto } from "@/common/photo";
+import type { Dialogs } from "@/common/telegram";
+
 import type { PetsApi } from "../pets.api.ts";
 import {
   toCard,
@@ -29,6 +32,9 @@ export type PetsDependencies = {
   pets: PetsModel;
   viewer: () => Viewer;
   isFamilyOwner: () => boolean;
+  telegram: Dialogs;
+  preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
+  photoHint: () => string | undefined;
   soon: (petId: string) => SoonSource[];
   onOpenSoon: (target: SoonTarget) => void;
   onPlan: (petId: string) => void;

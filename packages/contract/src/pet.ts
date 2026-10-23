@@ -49,7 +49,7 @@ export const pet = petProfile.extend({
   avatar: photoUrls.nullable(),
 });
 
-// The avatar is one of the photos of the Pet's own Care Entries; null takes it away.
+// The avatar is a photo of the Pet's own Care Entries or one uploaded for it alone; null takes it away.
 export const petAvatar = z.object({ photoId: z.string().nullable() });
 
 export type Pet = z.infer<typeof pet>;

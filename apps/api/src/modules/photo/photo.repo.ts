@@ -1,6 +1,6 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, notInArray } from "drizzle-orm";
 
-import { photos, type Db } from "@/common/db";
+import { albumPhotos, careEntryPhotos, pets, photos, recipePhotos, type Db } from "@/common/db";
 import { storageChannelOf } from "@/modules/photo-storage";
 
 export type PhotoRow = typeof photos.$inferSelect;
@@ -24,6 +24,38 @@ export async function knownPhotoIds(
     .all();
 
   return rows.map(({ id }) => id);
+}
+
+// A Pet Avatar uploaded for the Pet alone goes once nothing shows it; a shared photo stays.
+export async function forgetUnheldPhoto(db: Db, { familyId, photoId }: PhotoTarget): Promise<void> {
+  const holders = [
+    db
+      .select({ id: careEntryPhotos.photoId })
+      .from(careEntryPhotos)
+      .where(and(eq(careEntryPhotos.familyId, familyId), eq(careEntryPhotos.photoId, photoId))),
+    db
+      .select({ id: albumPhotos.photoId })
+      .from(albumPhotos)
+      .where(and(eq(albumPhotos.familyId, familyId), eq(albumPhotos.photoId, photoId))),
+    db
+      .select({ id: recipePhotos.photoId })
+      .from(recipePhotos)
+      .where(and(eq(recipePhotos.familyId, familyId), eq(recipePhotos.photoId, photoId))),
+    db
+      .select({ id: pets.avatarPhotoId })
+      .from(pets)
+      .where(and(eq(pets.familyId, familyId), eq(pets.avatarPhotoId, photoId))),
+  ];
+
+  await db
+    .delete(photos)
+    .where(
+      and(
+        eq(photos.familyId, familyId),
+        eq(photos.id, photoId),
+        ...holders.map((holder) => notInArray(photos.id, holder)),
+      ),
+    );
 }
 
 export function createPhotoRepo(db: Db) {
