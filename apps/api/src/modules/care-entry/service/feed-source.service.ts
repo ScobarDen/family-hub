@@ -59,11 +59,12 @@ async function dueWithin(
 
   return openDueDates({ pets, entries: candidates })
     .filter(({ dueDate }) => dueDate <= last)
-    .map(({ entryId, petId, title, dueDate }) => ({
+    .map(({ entryId, petId, kind, title, dueDate }) => ({
       kind: "due",
       key: `due-${entryId}`,
       title,
       date: dueDate,
+      careKind: kind,
       petId,
       entryId,
     }));

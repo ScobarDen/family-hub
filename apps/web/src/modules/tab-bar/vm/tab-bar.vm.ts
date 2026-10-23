@@ -1,53 +1,53 @@
 import { action, computed } from "@reatom/core";
 
-import { appModule, type AppModule } from "@family-hub/contract";
+import type { SlotModule } from "@family-hub/contract";
 
-import { moduleTitles } from "../tab-bar.config.ts";
+import { sectionTitles } from "@/common/sections";
+
 import type { TabBarModules } from "../tab-bar.model.ts";
 
-export type Tab = { module: AppModule; title: string; isActive: boolean };
+// Today and «Разделы» never move; the two slots between them are the Member's.
+export type TabId = "today" | "sections" | SlotModule;
 
-export type HiddenModule = { module: AppModule; title: string };
-
-const sides = 2;
+export type Tab = { id: TabId; title: string; isActive: boolean };
 
 type TabBarDependencies = {
   modules: Pick<TabBarModules, "modules">;
-  activeModule: () => AppModule | undefined;
-  onOpen: (module: AppModule) => void;
-  // A module may be renamed by its content, like the pet tab after the Family's only Pet.
-  titles?: () => Partial<Record<AppModule, string>>;
+  activeTab: () => TabId;
+  onOpen: (tab: TabId) => void;
+  // A slot may be renamed by its content, like the pet tab after the Family's only Pet.
+  titles?: () => Partial<Record<SlotModule, string>>;
 };
+
+const fixedTitles = { today: "Сегодня", sections: "Разделы" } as const;
 
 export function reatomTabBar({
   modules,
-  activeModule,
+  activeTab,
   onOpen,
   titles = () => ({}),
 }: TabBarDependencies) {
-  return {
-    // The centre stays free for the microphone; the odd tab goes to its left.
-    tabs: computed(() => {
-      const tabs = modules.modules().map((module) => ({
-        module,
-        title: titles()[module] ?? moduleTitles[module],
-        isActive: module === activeModule(),
-      }));
-      const middle = Math.ceil(tabs.length / sides);
+  function tabOf(id: TabId): Tab {
+    const title =
+      id === "today" || id === "sections" ? fixedTitles[id] : (titles()[id] ?? sectionTitles[id]);
 
-      return { start: tabs.slice(0, middle), end: tabs.slice(middle) };
+    return { id, title, isActive: id === activeTab() };
+  }
+
+  return {
+    // The centre stays free for the microphone.
+    tabs: computed(() => {
+      const [first, second] = modules.modules();
+
+      return {
+        start: ["today" as const, ...(first === undefined ? [] : [first])].map(tabOf),
+        end: [...(second === undefined ? [] : [second]), "sections" as const].map(tabOf),
+      };
     }, "tabBar.tabs"),
 
-    hidden: computed(
-      (): HiddenModule[] =>
-        appModule.options
-          .filter((module) => !modules.modules().includes(module))
-          .map((module) => ({ module, title: moduleTitles[module] })),
-      "tabBar.hidden",
-    ),
-
-    open: action((module: AppModule) => {
-      onOpen(module);
+    // Tapping the active tab again returns to its root.
+    open: action((tab: TabId) => {
+      onOpen(tab);
     }, "tabBar.open"),
   };
 }

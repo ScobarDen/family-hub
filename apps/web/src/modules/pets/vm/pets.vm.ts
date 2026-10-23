@@ -19,19 +19,24 @@ import {
 export type { PetsScreen } from "./pets-screen.vm.ts";
 
 // The only Pet in care opens straight on its card, unless the Member asked for the whole list.
-function reatomOpenedPet({ pets }: PetsDependencies, { openedPetId, isListShown }: Navigation) {
+function reatomOpenedPet({ pets, route }: PetsDependencies, { isListShown }: Navigation) {
   return computed((): Pet | undefined => {
     const active = pets.active();
-    const opened = (pets.list.data() ?? []).find(({ id }) => id === openedPetId());
+    const opened = (pets.list.data() ?? []).find(({ id }) => id === route.petId());
 
     return opened ?? (active.length === 1 && !isListShown() ? active[0] : undefined);
   }, "pets.openedPet");
 }
 
-function reatomForms(dependencies: PetsDependencies, { editing, openedPetId }: Navigation) {
+function reatomForms(dependencies: PetsDependencies, { editing }: Navigation) {
+  const { route } = dependencies;
+
   function onSaved(saved: Pet): void {
     editing.set(undefined);
-    openedPetId.set(saved.id);
+
+    if (route.petId() !== saved.id) {
+      route.open(saved.id);
+    }
   }
 
   return {
@@ -81,20 +86,12 @@ function reatomEditing(
   };
 }
 
-function reatomBrowsing(
-  { pets }: PetsDependencies,
-  { editing, openedPetId, isListShown }: Navigation,
-) {
-  // Leaving the only Pet's card would show the same card again, so there is nothing to go back to.
-  const isOnlyPetOpened = computed(() => {
-    const active = pets.active();
-
-    return active.length === 1 && active[0]?.id === openedPetId();
-  }, "pets.isOnlyPetOpened");
-
+// Stepping back from a Pet's card is the app's: its address is on the tab's stack.
+function reatomBrowsing({ route }: PetsDependencies, { editing, isListShown }: Navigation) {
   return {
     open: action((petId: string) => {
-      openedPetId.set(petId);
+      isListShown.setFalse();
+      route.open(petId);
     }, "pets.open"),
     showAll: action(() => {
       isListShown.setTrue();
@@ -103,22 +100,17 @@ function reatomBrowsing(
     showChoice: action(() => {
       editing.set(undefined);
       isListShown.setFalse();
-      openedPetId.set(undefined);
+
+      if (route.petId() !== undefined) {
+        route.close();
+      }
     }, "pets.showChoice"),
-    canGoBack: computed(
-      () =>
-        editing() !== undefined ||
-        isListShown() ||
-        (openedPetId() !== undefined && !isOnlyPetOpened()),
-      "pets.canGoBack",
-    ),
+    canGoBack: computed(() => editing() !== undefined || isListShown(), "pets.canGoBack"),
     back: action(() => {
-      if (editing() !== undefined) {
-        editing.set(undefined);
-      } else if (openedPetId() === undefined) {
+      if (editing() === undefined) {
         isListShown.setFalse();
       } else {
-        openedPetId.set(undefined);
+        editing.set(undefined);
       }
     }, "pets.back"),
   };
@@ -155,7 +147,6 @@ function reatomAvatar({ api, pets }: PetsDependencies, openedPet: () => Pet | un
 export function reatomPetsScreen(dependencies: PetsDependencies) {
   const navigation: Navigation = {
     editing: atom<Editing | undefined>(undefined, "pets.editing"),
-    openedPetId: atom<string | undefined>(undefined, "pets.openedPetId"),
     isListShown: reatomBoolean(false, "pets.isListShown"),
   };
   const forms = reatomForms(dependencies, navigation);
@@ -165,7 +156,7 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
     openedPet,
     onDeleted: () => {
       navigation.editing.set(undefined);
-      navigation.openedPetId.set(undefined);
+      dependencies.route.close();
     },
   });
   const screen = reatomScreen(dependencies, navigation, {

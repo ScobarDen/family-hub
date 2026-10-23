@@ -40,12 +40,30 @@
   --person-2: color-mix(in oklch, oklch(0.72 0.12 20) 34%, var(--card));
   --person-3: color-mix(in oklch, oklch(0.72 0.12 140) 34%, var(--card));
   --person-4: color-mix(in oklch, oklch(0.72 0.12 75) 34%, var(--card));
+  /* A section's own icon colour on a neutral tile: at least 3:1 on the card in either scheme. */
+  --section-feed: oklch(0.52 0.15 250);
+  --section-plans: oklch(0.52 0.15 150);
+  --section-calendar: oklch(0.52 0.15 25);
+  --section-pet: oklch(0.52 0.15 55);
+  --section-goals: oklch(0.52 0.15 300);
+  --section-albums: oklch(0.52 0.15 200);
+  --section-recipes: oklch(0.52 0.15 85);
   --safe-area-top: calc(
     var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)
   );
   --safe-area-bottom: calc(
     var(--tg-safe-area-inset-bottom, 0px) + var(--tg-content-safe-area-inset-bottom, 0px)
   );
+}
+
+.dark {
+  --section-feed: oklch(0.78 0.13 250);
+  --section-plans: oklch(0.78 0.13 150);
+  --section-calendar: oklch(0.78 0.13 25);
+  --section-pet: oklch(0.78 0.13 55);
+  --section-goals: oklch(0.78 0.13 300);
+  --section-albums: oklch(0.78 0.13 200);
+  --section-recipes: oklch(0.78 0.13 85);
 }
 
 @theme inline {
@@ -76,6 +94,13 @@
   --color-person-2: var(--person-2);
   --color-person-3: var(--person-3);
   --color-person-4: var(--person-4);
+  --color-section-feed: var(--section-feed);
+  --color-section-plans: var(--section-plans);
+  --color-section-calendar: var(--section-calendar);
+  --color-section-pet: var(--section-pet);
+  --color-section-goals: var(--section-goals);
+  --color-section-albums: var(--section-albums);
+  --color-section-recipes: var(--section-recipes);
   --spacing-safe-top: var(--safe-area-top);
   --spacing-safe-bottom: var(--safe-area-bottom);
   --font-sans: -apple-system, system-ui, "Roboto", "Segoe UI", sans-serif;

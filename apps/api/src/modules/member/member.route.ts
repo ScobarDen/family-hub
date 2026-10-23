@@ -35,7 +35,7 @@ export const memberRoute = new Hono<MemberRouteEnv>()
   .put(
     "/api/me/tab-bar",
     requireMember,
-    jsonBody(tabBarSettings, "The tab bar takes 2 to 5 different modules"),
+    jsonBody(tabBarSettings, "The tab bar takes 2 different modules besides the Feed"),
     async (context) =>
       context.json<TabBarSettings>({
         modules: await context.var.members.saveTabBar(

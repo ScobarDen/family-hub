@@ -78,16 +78,17 @@ export {
   familyMemberList,
   defaultDigestTime,
   digestSettings,
+  slotModule,
   tabBar,
-  tabBarMaxModules,
-  tabBarMinModules,
   tabBarSettings,
+  tabBarSlots,
   timeZoneSettings,
   type AppModule,
   type FamilyMember,
   type FamilyMemberList,
   type MemberSettings,
   type DigestSettings,
+  type SlotModule,
   type TabBarSettings,
   type TimeZoneSettings,
 } from "./member.ts";
@@ -259,3 +260,11 @@ export {
   type ReminderDraft,
   type ReminderDraftField,
 } from "./command-draft.ts";
+export {
+  today,
+  todayNextCount,
+  todayWeekDays,
+  todayTiles,
+  type Today,
+  type TodayTiles,
+} from "./today.ts";

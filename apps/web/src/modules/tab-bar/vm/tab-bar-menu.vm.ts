@@ -1,95 +1,56 @@
 import { action, computed, noop } from "@reatom/core";
 
-import {
-  appModule,
-  tabBarMaxModules,
-  tabBarMinModules,
-  type AppModule,
-} from "@family-hub/contract";
+import { slotModule, type SlotModule } from "@family-hub/contract";
 
-import { moduleTitles } from "../tab-bar.config.ts";
+import { sectionTitles } from "@/common/sections";
+
 import type { TabBarModules } from "../tab-bar.model.ts";
 
-export type TabBarMenuItem = {
-  module: AppModule;
-  title: string;
-  isEnabled: boolean;
-  canToggle: boolean;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-};
+export type SlotChoice = { module: SlotModule; title: string };
 
-type Step = -1 | 1;
+export type Slot = { index: number; module: SlotModule; title: string };
 
-function moved(modules: AppModule[], module: AppModule, step: Step): AppModule[] {
-  const from = modules.indexOf(module);
-  const to = from + step;
+// A module already in the other slot swaps places with the one being replaced.
+function chosen(current: SlotModule[], index: number, module: SlotModule): SlotModule[] {
+  const next = [...current];
+  const other = next.indexOf(module);
+  const replaced = next[index];
 
-  if (from === -1 || to < 0 || to >= modules.length) {
-    return modules;
+  if (replaced === undefined || replaced === module) {
+    return current;
   }
 
-  const next = modules.filter((other) => other !== module);
+  if (other !== -1) {
+    next[other] = replaced;
+  }
 
-  next.splice(to, 0, module);
+  next[index] = module;
 
   return next;
 }
 
-function itemsOf(modules: AppModule[]): TabBarMenuItem[] {
-  const hidden = appModule.options.filter((module) => !modules.includes(module));
-  const enabledItems = modules.map((module, index) => ({
-    module,
-    title: moduleTitles[module],
-    isEnabled: true,
-    canToggle: modules.length > tabBarMinModules,
-    canMoveUp: index > 0,
-    canMoveDown: index < modules.length - 1,
-  }));
-  const hiddenItems = hidden.map((module) => ({
-    module,
-    title: moduleTitles[module],
-    isEnabled: false,
-    canToggle: modules.length < tabBarMaxModules,
-    canMoveUp: false,
-    canMoveDown: false,
-  }));
-
-  return [...enabledItems, ...hiddenItems];
-}
-
 export function reatomTabBarMenu({ modules }: { modules: TabBarModules }) {
-  const items = computed(() => itemsOf(modules.modules()), "tabBarMenu.items");
-
-  function change(next: AppModule[]): void {
-    if (next !== modules.modules()) {
-      modules.save(next).catch(noop);
-    }
-  }
-
   return {
-    items,
-    shownItems: computed(() => items().filter(({ isEnabled }) => isEnabled), "tabBarMenu.shown"),
-    hiddenItems: computed(() => items().filter(({ isEnabled }) => !isEnabled), "tabBarMenu.hidden"),
+    slots: computed(
+      (): Slot[] =>
+        modules.modules().map((module, index) => ({ index, module, title: sectionTitles[module] })),
+      "tabBarMenu.slots",
+    ),
+    choices: slotModule.options.map((module): SlotChoice => ({
+      module,
+      title: sectionTitles[module],
+    })),
     isSaving: computed(() => !modules.save.ready(), "tabBarMenu.isSaving"),
     failure: modules.failure,
 
-    toggle: action((module: AppModule) => {
-      const item = items().find((candidate) => candidate.module === module);
+    choose: action((index: number, module: SlotModule) => {
       const current = modules.modules();
+      const next = chosen(current, index, module);
 
-      if (item?.canToggle !== true) {
-        return;
+      if (next !== current) {
+        modules.save(next).catch(noop);
       }
-
-      change(item.isEnabled ? current.filter((other) => other !== module) : [...current, module]);
-    }, "tabBarMenu.toggle"),
-    moveUp: action((module: AppModule) => {
-      change(moved(modules.modules(), module, -1));
-    }, "tabBarMenu.moveUp"),
-    moveDown: action((module: AppModule) => {
-      change(moved(modules.modules(), module, 1));
-    }, "tabBarMenu.moveDown"),
+    }, "tabBarMenu.choose"),
   };
 }
 

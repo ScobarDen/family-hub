@@ -251,6 +251,8 @@ export function reatomGoalsScreen(
       "goals.canGoBack",
     ),
     isChanging: computed(() => !complete.ready() || !removeMovement.ready(), "goals.isChanging"),
+    // A Goal opened by id shows once the list holds it.
+    isGoalOpened: computed(() => openedGoal() !== undefined, "goals.isGoalOpened"),
     complete: detached(complete, "goals.completeGoal"),
     removeMovement: detached(removeMovement, "goals.removeOneMovement"),
     ...forms,

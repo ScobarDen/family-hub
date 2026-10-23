@@ -16,7 +16,7 @@ const denis: CurrentMember = {
   family: { id: "family-1", name: "Гущины" },
   isFamilyOwner: true,
   settings: {
-    tabBar: ["goals", "feed"],
+    tabBar: ["goals", "pet"],
     timeZone: { timeZone: "Europe/Moscow", isAuto: true },
     canMessage: true,
     digest: { isEnabled: true, time: "09:00" },
@@ -119,7 +119,7 @@ describe("signing in", () => {
     expect(session.member()).toBeUndefined();
     await signIn(session);
 
-    expect(session.member()?.settings.tabBar).toEqual(["goals", "feed"]);
+    expect(session.member()?.settings.tabBar).toEqual(["goals", "pet"]);
   });
 
   test("shows the stranger screen to a Telegram user without a Family", async () => {

@@ -12,16 +12,29 @@ import { createDb, type Db } from "@/common/db";
 import { createMiniAppLinks, type MiniAppLinks } from "@/common/mini-app-link";
 import { createPhotoLinks, type PhotoLinks } from "@/common/photo-link";
 import type { BotApi } from "@/common/telegram";
-import { albumRoute, createAlbumFeed, createAlbumRepo, createAlbumService } from "@/modules/album";
+import {
+  albumRoute,
+  createAlbumFeed,
+  createAlbumRepo,
+  createAlbumService,
+  createAlbumTile,
+} from "@/modules/album";
 import {
   careEntryRoute,
   createCareFeed,
   createCareEntryRepo,
   createCareEntryService,
+  createPetTile,
   type CareEntryService,
 } from "@/modules/care-entry";
 import { commandRoute, createCommandRepo, createCommandService } from "@/modules/command";
-import { createEventFeed, createEventRepo, createEventService, eventRoute } from "@/modules/event";
+import {
+  createEventFeed,
+  createEventRepo,
+  createEventService,
+  createEventTile,
+  eventRoute,
+} from "@/modules/event";
 import {
   createFamilyFeed,
   createFamilyRepo,
@@ -35,7 +48,13 @@ import {
   type FamilyRequestService,
 } from "@/modules/family-request";
 import { createFeedService, feedRoute, type FeedService } from "@/modules/feed";
-import { createGoalFeed, createGoalRepo, createGoalService, goalRoute } from "@/modules/goal";
+import {
+  createGoalFeed,
+  createGoalRepo,
+  createGoalService,
+  createGoalTile,
+  goalRoute,
+} from "@/modules/goal";
 import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
 import { createMemberRepo, createMemberService, memberRoute } from "@/modules/member";
 import { createPetFeed, createPetRepo, createPetService, petRoute } from "@/modules/pet";
@@ -54,6 +73,7 @@ import {
   createPlanFeed,
   createPlanRepo,
   createPlanService,
+  createPlanTile,
   planRoute,
   type PlanService,
 } from "@/modules/plan";
@@ -61,6 +81,7 @@ import {
   createRecipeFeed,
   createRecipeRepo,
   createRecipeService,
+  createRecipeTile,
   recipeRoute,
 } from "@/modules/recipe";
 import {
@@ -72,6 +93,7 @@ import {
   reminderRoute,
   type ReminderService,
 } from "@/modules/reminder";
+import { createTodayService, todayRoute } from "@/modules/today";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
 import { healthRoute } from "./health.route.ts";
@@ -157,6 +179,22 @@ function feedServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Clo
   });
 }
 
+// Each section's tile comes from the module that owns it; the hub only merges them.
+function todayServiceOf(db: Db, { feed, clock }: { feed: FeedService; clock: Clock }) {
+  return createTodayService({
+    feed,
+    clock,
+    tiles: {
+      plans: createPlanTile({ plans: createPlanRepo(db) }),
+      calendar: createEventTile({ events: createEventRepo(db) }),
+      pet: createPetTile({ entries: createCareEntryRepo(db) }),
+      goals: createGoalTile({ goals: createGoalRepo(db) }),
+      albums: createAlbumTile({ albums: createAlbumRepo(db) }),
+      recipes: createRecipeTile({ recipes: createRecipeRepo(db) }),
+    },
+  });
+}
+
 // A Plan's Reminder completes the Plan from the bot, and the Plan reschedules its Reminders;
 // the morning digest reads the Member's Feed.
 function reminderServiceOf(
@@ -206,6 +244,7 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders, links }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
     feed,
+    today: todayServiceOf(db, { feed, clock }),
     goals: createGoalService({ goals: createGoalRepo(db), clock }),
     recipes: createRecipeService({ recipes: createRecipeRepo(db), links, clock }),
     photos: createPhotoService({
@@ -343,6 +382,7 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", petRoute)
     .route("/", planRoute)
     .route("/", feedRoute)
+    .route("/", todayRoute)
     .route("/", goalRoute)
     .route("/", photoRoute)
     .route("/", albumRoute)

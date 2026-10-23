@@ -16,8 +16,16 @@ import type { PetsModel } from "../pets.model.ts";
 
 export type Editing = "profile" | "memo" | "delete";
 
+// A Pet's card has its own address, so Back, a deep link and a reload land on the same Pet.
+export type PetRoute = {
+  petId: () => string | undefined;
+  open: (petId: string) => void;
+  close: () => void;
+};
+
 export type PetsDependencies = {
   api: PetsApi;
+  route: PetRoute;
   pets: PetsModel;
   viewer: () => Viewer;
   isFamilyOwner: () => boolean;
@@ -28,7 +36,6 @@ export type PetsDependencies = {
 
 export type Navigation = {
   editing: Atom<Editing | undefined>;
-  openedPetId: Atom<string | undefined>;
   isListShown: BooleanAtom;
 };
 

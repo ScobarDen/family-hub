@@ -20,11 +20,11 @@ export const TabBar = reatomComponent(({ model, center }: TabBarProps) => {
     >
       <div className="mx-auto flex max-w-lg items-center android:rounded-full android:bg-card android:p-1 android:shadow-lg android:ring-1 android:ring-border ios:px-2 ios:pt-1">
         {start.map((tab) => (
-          <TabButton key={tab.module} tab={tab} onOpen={model.open} />
+          <TabButton key={tab.id} tab={tab} onOpen={model.open} />
         ))}
         {center !== undefined && <div className="flex shrink-0 justify-center px-1">{center}</div>}
         {end.map((tab) => (
-          <TabButton key={tab.module} tab={tab} onOpen={model.open} />
+          <TabButton key={tab.id} tab={tab} onOpen={model.open} />
         ))}
       </div>
     </nav>

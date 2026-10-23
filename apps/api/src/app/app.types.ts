@@ -16,6 +16,7 @@ import type { PhotoStorageService } from "@/modules/photo-storage";
 import type { PlanService } from "@/modules/plan";
 import type { RecipeService } from "@/modules/recipe";
 import type { ReminderService } from "@/modules/reminder";
+import type { TodayService } from "@/modules/today";
 
 export type AppServices = {
   db: Db;
@@ -36,6 +37,7 @@ export type AppServices = {
   plans: PlanService;
   recipes: RecipeService;
   reminders: ReminderService;
+  today: TodayService;
 };
 
 export type AppEnv = {

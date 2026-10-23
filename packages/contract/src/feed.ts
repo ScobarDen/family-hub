@@ -13,7 +13,7 @@ export const feedUpcomingDays = 14;
 
 const dated = { key: z.string(), title: z.string(), date: z.iso.date() };
 
-const feedUpcoming = z.discriminatedUnion("kind", [
+export const feedUpcoming = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("event"),
     ...dated,
@@ -27,7 +27,13 @@ const feedUpcoming = z.discriminatedUnion("kind", [
     planId: z.string(),
     subplanId: z.string().nullable(),
   }),
-  z.object({ kind: z.literal("due"), ...dated, petId: z.string(), entryId: z.string() }),
+  z.object({
+    kind: z.literal("due"),
+    ...dated,
+    careKind: z.enum(["vaccination", "treatment", "vet_visit"]),
+    petId: z.string(),
+    entryId: z.string(),
+  }),
   z.object({ kind: z.literal("birthday"), ...dated, petId: z.string() }),
 ]);
 
