@@ -356,6 +356,28 @@ describe("the prompt", () => {
       content: "напомни в пятницу в 19:00 оплатить интернет",
     });
   });
+
+  test("asks for the outcome before any other field", async () => {
+    const { model, calls } = modelAnswering({ response: internet });
+
+    await parseCommand({ model, models }, { text: "напомни", context });
+
+    const schema = z
+      .object({
+        json_schema: z.object({
+          oneOf: z.array(z.object({ properties: z.record(z.string(), z.unknown()) })),
+        }),
+      })
+      .parse(calls[0]?.input.response_format);
+
+    expect(schema.json_schema.oneOf.map(({ properties }) => Object.keys(properties)[0])).toEqual([
+      "outcome",
+      "outcome",
+      "outcome",
+      "outcome",
+      "outcome",
+    ]);
+  });
 });
 
 describe("the models", () => {
