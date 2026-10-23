@@ -14,6 +14,7 @@ export { LoadState } from "./load-state.view.tsx";
 export { Notice } from "./notice.view.tsx";
 export { PersonAvatar } from "./person-avatar.view.tsx";
 export { ScreenTitle } from "./screen-title.view.tsx";
+export { SectionLayout } from "./section-layout.view.tsx";
 export { SectionItem } from "./section-item.view.tsx";
 export { Section } from "./section.view.tsx";
 export { Switch } from "./switch.view.tsx";

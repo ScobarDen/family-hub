@@ -2,7 +2,7 @@ import { action, atom, type Atom, computed, withAbort, withAsync, wrap } from "@
 
 import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hub/contract";
 
-import { formatDay } from "@/common/format-date";
+import { formatDay, formatNearDate } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { PreparedPhoto } from "@/common/photo";
 import { detached, readOnly, reatomFailure } from "@/common/state";
@@ -43,6 +43,13 @@ export type CareDependencies = {
   onMakeAvatar: (photoId: string) => void;
   onOpenPet: (petId: string) => void;
   onDraftSaved: (draftId: string) => void;
+};
+
+// What the pet card's summary leads with; the month reads as nothing spent until it arrives.
+export type CareSummary = {
+  weight: string | undefined;
+  vetVisit: string | undefined;
+  monthExpenses: string;
 };
 
 export type DueSource = { id: string; title: string; dueDate: string; kind: "due" };
@@ -222,6 +229,27 @@ function reatomDueSources(data: CareData) {
   );
 }
 
+function reatomSummary(
+  { data, today }: Pick<Sources, "data" | "today">,
+  views: { weightSummary: () => WeightSummary | undefined; month: () => ExpensesView },
+) {
+  return computed((): CareSummary => {
+    const visit = (data.dueDates.data() ?? []).find(({ kind }) => kind === "vet_visit");
+
+    return {
+      weight: views.weightSummary()?.latest,
+      vetVisit: visit === undefined ? undefined : formatNearDate(visit.dueDate, today()),
+      monthExpenses: views.month().total,
+    };
+  }, "care.summary");
+}
+
+function reatomSummarizedViews(sources: Sources, weightRange: Atom<WeightRange>) {
+  const views = reatomViews(sources, weightRange);
+
+  return { ...views, summary: reatomSummary(sources, views) };
+}
+
 function reatomScreen(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
   return computed((): CareScreen => {
     const kind = screen();
@@ -263,7 +291,7 @@ export function reatomCare(dependencies: CareDependencies) {
     }),
     form,
     ...photos,
-    ...reatomViews(sources, weightRange),
+    ...reatomSummarizedViews(sources, weightRange),
     ...reatomMoves(sources, weightRange),
     ...reatomOpening(sources),
     ...reatomDraftEditing(sources),

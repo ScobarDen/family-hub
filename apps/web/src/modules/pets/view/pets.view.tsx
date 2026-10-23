@@ -13,22 +13,18 @@ import { PetProfileForm } from "./pet-profile-form.view.tsx";
 // The journal, its expenses and photos come from the care submodule through PetTab.
 export type PetsProps = {
   model: PetsScreenModel;
+  summary: ReactNode;
+  onAddEntry: () => void;
   expenses: ReactNode;
   journal: ReactNode;
   photos: ReactNode;
 };
 
-function contentOf({ model, expenses, journal, photos }: PetsProps, screen: PetsScreen): ReactNode {
+function contentOf(props: PetsProps, screen: PetsScreen): ReactNode {
+  const { model } = props;
+
   if (screen.kind === "card") {
-    return (
-      <PetCard
-        screen={screen}
-        model={model}
-        expenses={expenses}
-        journal={journal}
-        photos={photos}
-      />
-    );
+    return <PetCard {...props} screen={screen} />;
   }
 
   if (screen.kind === "profile-form") {

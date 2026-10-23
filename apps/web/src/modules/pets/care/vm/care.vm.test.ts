@@ -230,6 +230,22 @@ describe("«Скоро» on the pet card", () => {
   });
 });
 
+describe("the summary on top of the pet card", () => {
+  test("shows the last weight, the next vet visit and this month's expenses", async () => {
+    const { model } = startCare();
+
+    model.summary.subscribe(noop);
+
+    await vi.waitFor(() => {
+      expect(model.summary()).toEqual({
+        weight: "12,8 кг",
+        vetVisit: "2 ноября",
+        monthExpenses: "6 500 ₽",
+      });
+    });
+  });
+});
+
 describe("«Траты за месяц»", () => {
   test("asks for this month in the viewer's zone and shows it by category", async () => {
     const { model, backend } = startCare();
