@@ -102,10 +102,12 @@ const commandDraft = z.discriminatedUnion("kind", [reminderDraft, eventDraft, ca
 export type CommandDraft = z.infer<typeof commandDraft>;
 
 // What the model answers: a draft, or that the phrase is beyond it, or a refused kind of command.
+// Workers AI decodes properties in schema order, so outcome goes first: when it came last, the
+// model starting with «outcome» could only land on unsupported or unrecognized.
 export const commandAnswer = z.discriminatedUnion("outcome", [
-  reminderDraft.omit({ kind: true }).extend({ outcome: z.literal("reminder") }),
-  eventDraft.omit({ kind: true }).extend({ outcome: z.literal("event") }),
-  careEntryDraft.omit({ kind: true }).extend({ outcome: z.literal("care_entry") }),
+  z.object({ outcome: z.literal("reminder"), ...reminderDraft.omit({ kind: true }).shape }),
+  z.object({ outcome: z.literal("event"), ...eventDraft.omit({ kind: true }).shape }),
+  z.object({ outcome: z.literal("care_entry"), ...careEntryDraft.omit({ kind: true }).shape }),
   z.object({ outcome: z.literal("unsupported") }),
   z.object({ outcome: z.literal("unrecognized") }),
 ]);
