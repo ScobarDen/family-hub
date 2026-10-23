@@ -49,6 +49,7 @@ const firstPage: FeedPage = {
       title: "Прививка: Бешенство — Бьюик",
       date: "2026-10-20",
       petId: "pet-1",
+      petPicture: null,
       entryId: "entry-1",
     },
   ],

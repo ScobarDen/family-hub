@@ -334,7 +334,7 @@ describe("the section tiles", () => {
 
     expect(await tileOf(worker, "pet")).toEqual({
       activeCount: 1,
-      only: { petId: buick.id, name: "Бьюик" },
+      only: { petId: buick.id, name: "Бьюик", picture: null },
       due: { label: "Прививка: Бешенство", date: "2026-11-01" },
     });
   });

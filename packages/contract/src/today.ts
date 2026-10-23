@@ -16,7 +16,9 @@ export const todayTiles = z.object({
   pet: z
     .object({
       activeCount: z.number(),
-      only: z.object({ petId: z.string(), name: z.string() }).nullable(),
+      only: z
+        .object({ petId: z.string(), name: z.string(), picture: z.string().nullable() })
+        .nullable(),
       due: pending.nullable(),
     })
     .nullable(),

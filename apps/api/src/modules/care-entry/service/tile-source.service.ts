@@ -1,3 +1,4 @@
+import type { PhotoLinks } from "@/common/photo-link";
 import type { TileSource } from "@/modules/today";
 
 import type { CareEntryRepo } from "../care-entry.repo.ts";
@@ -5,7 +6,13 @@ import { openDueDates } from "../due-date/index.ts";
 
 // The Pets tile names the only Pet in care, so its Due Date leaves the name out; with several Pets
 // the soonest Due Date of them all says whose it is.
-export function createPetTile({ entries }: { entries: CareEntryRepo }): TileSource<"pet"> {
+export function createPetTile({
+  entries,
+  links,
+}: {
+  entries: CareEntryRepo;
+  links: PhotoLinks;
+}): TileSource<"pet"> {
   return {
     tile: async ({ family }) => {
       const [pets, candidates] = await Promise.all([
@@ -18,7 +25,10 @@ export function createPetTile({ entries }: { entries: CareEntryRepo }): TileSour
 
       return {
         activeCount: active.length,
-        only: only === undefined ? null : { petId: only.id, name: only.name },
+        only:
+          only === undefined
+            ? null
+            : { petId: only.id, name: only.name, picture: await links.thumbOf(only.avatarPhotoId) },
         due:
           soonest === undefined
             ? null

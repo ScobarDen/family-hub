@@ -1,7 +1,7 @@
 import { feedPage, plan, type FeedPage } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
-import { createPhotoCalls, resolvedPhoto } from "@/common/photo";
+import { createPhotoCalls, resolvedPhoto, resolvedUpcoming } from "@/common/photo";
 
 export type PlanStep = { planId: string; subplanId: string | null };
 
@@ -9,6 +9,8 @@ export type PlanStep = { planId: string; subplanId: string | null };
 function resolvedPage(client: HttpClient, page: FeedPage): FeedPage {
   return {
     ...page,
+    overdue: page.overdue.map((item) => resolvedUpcoming(item, client.url)),
+    upcoming: page.upcoming.map((item) => resolvedUpcoming(item, client.url)),
     activity: page.activity.map((item) =>
       item.kind === "care" || item.kind === "upload" || item.kind === "cooked"
         ? { ...item, photos: item.photos.map((each) => resolvedPhoto(each, client.url)) }

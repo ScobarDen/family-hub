@@ -1,4 +1,10 @@
-import { photoMaxBytes, photoMaxSide, type Photo, type PhotoUrls } from "@family-hub/contract";
+import {
+  photoMaxBytes,
+  photoMaxSide,
+  type FeedUpcoming,
+  type Photo,
+  type PhotoUrls,
+} from "@family-hub/contract";
 
 import { readTakenAt } from "./exif.lib.ts";
 
@@ -41,6 +47,16 @@ export async function preparePhoto(file: Blob, timeZone: string): Promise<Prepar
 // The Worker signs paths of its own; the browser loads them from the Worker's origin.
 export function resolvedUrls(urls: PhotoUrls, url: (path: string) => string): PhotoUrls {
   return { thumb: url(urls.thumb), medium: url(urls.medium), full: url(urls.full) };
+}
+
+// A Pet's line in the Feed and on Today carries the Worker's signed path of its avatar thumbnail.
+export function resolvedUpcoming<Item extends FeedUpcoming>(
+  item: Item,
+  url: (path: string) => string,
+): Item {
+  return "petPicture" in item && item.petPicture !== null
+    ? { ...item, petPicture: url(item.petPicture) }
+    : item;
 }
 
 export function resolvedPhoto(photo: Photo, url: (path: string) => string): Photo {
