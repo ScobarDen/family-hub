@@ -10,7 +10,8 @@ export type DueRow = {
   title: string;
   when: string;
   isOverdue: boolean;
-  action: { kind: "complete" | "record"; title: string };
+  // Events, Reminders and birthdays come and go by themselves, so they only open.
+  action: { kind: "complete" | "record"; title: string } | undefined;
 };
 
 export type NextRow = { key: string; title: string; when: string };
@@ -42,28 +43,42 @@ export function feedStatusOf(count: number): string | undefined {
   return count === 0 ? undefined : `${formatCount(count, choreWords)} на сегодня`;
 }
 
+const moduleOfKind: Record<FeedUpcoming["kind"], SlotModule> = {
+  plan: "plans",
+  due: "pet",
+  birthday: "pet",
+  event: "calendar",
+  reminder: "calendar",
+};
+
+function actionOf({ kind }: FeedUpcoming): DueRow["action"] {
+  if (kind === "plan") {
+    return { kind: "complete", title: "Отметить выполненным" };
+  }
+
+  return kind === "due" ? { kind: "record", title: "Записать" } : undefined;
+}
+
+function whenOf(item: FeedUpcoming, today: string): string {
+  const day = formatNearDate(item.date, today);
+  const time = "time" in item ? item.time : null;
+
+  return time === null ? day : `${day}, ${time}`;
+}
+
 export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
   return {
     key: item.key,
-    module: item.kind === "due" ? "pet" : "plans",
+    module: moduleOfKind[item.kind],
     title: item.title,
-    when:
-      item.date < today
-        ? `Просрочено · ${formatNearDate(item.date, today)}`
-        : formatNearDate(item.date, today),
+    when: item.date < today ? `Просрочено · ${whenOf(item, today)}` : whenOf(item, today),
     isOverdue: item.date < today,
-    action:
-      item.kind === "due"
-        ? { kind: "record", title: "Записать" }
-        : { kind: "complete", title: "Отметить выполненным" },
+    action: actionOf(item),
   };
 }
 
 export function nextRowOf(item: FeedUpcoming, today: string): NextRow {
-  const day = formatNearDate(item.date, today);
-  const time = "time" in item ? item.time : null;
-
-  return { key: item.key, title: item.title, when: time === null ? day : `${day}, ${time}` };
+  return { key: item.key, title: item.title, when: whenOf(item, today) };
 }
 
 function tile(module: SlotModule, fields: Partial<Omit<Tile, "module">> = {}): Tile {

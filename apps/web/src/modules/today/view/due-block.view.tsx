@@ -14,9 +14,13 @@ function DueItem({ row, model }: RowProps) {
     model.completeOrRecord(row.key);
   }
 
+  function open() {
+    model.openItem(row.key);
+  }
+
   // A Plan closes with the circle at its start and opens from the rest of the row; a Due Date
-  // opens its Care Entry form from the whole row.
-  return row.action.kind === "complete" ? (
+  // opens its Care Entry form from the whole row, anything else opens itself.
+  return row.action?.kind === "complete" ? (
     <SectionItem
       control={
         <CheckButton
@@ -27,9 +31,7 @@ function DueItem({ row, model }: RowProps) {
       }
       title={row.title}
       subtitle={row.when}
-      onClick={() => {
-        model.openItem(row.key);
-      }}
+      onClick={open}
     />
   ) : (
     <SectionItem
@@ -37,13 +39,15 @@ function DueItem({ row, model }: RowProps) {
       isAlert={row.isOverdue}
       title={row.title}
       subtitle={row.when}
-      after={<span className="text-[0.9375rem] text-link-text">{row.action.title}</span>}
-      onClick={act}
+      {...(row.action === undefined
+        ? {}
+        : { after: <span className="text-[0.9375rem] text-link-text">{row.action.title}</span> })}
+      onClick={row.action === undefined ? open : act}
     />
   );
 }
 
-// The card goes away when nothing is due; the header already says the day is free.
+// The card goes away when nothing is on today; the header already says the day is free.
 export const DueBlock = reatomComponent(({ model }: { model: TodayModel }) => {
   const rows = model.rows();
   const more = model.more();

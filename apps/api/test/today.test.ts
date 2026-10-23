@@ -197,19 +197,33 @@ describe("«Сделать сегодня»", () => {
     expect(due[0]).toMatchObject({ title: "Дело 1", date: "2026-09-11" });
   });
 
-  test("never lists an Event, even one today", async () => {
+  test("lists today's Events and Reminders, not yesterday's", async () => {
     const worker = await startWithFamily();
 
     await addEvent(worker, { title: "Созвон", date: "2026-10-02" });
     await addEvent(worker, { title: "Вчерашний созвон", date: "2026-10-01" });
+    await request(worker, asya, {
+      method: "POST",
+      path: "/api/reminders",
+      body: {
+        text: "Оплатить интернет",
+        start: { date: "2026-10-02", time: "10:00", timeZone: "Europe/Moscow" },
+        recurrence: null,
+        visibility: "shared",
+        recipientIds: null,
+      },
+    });
 
     const { due, next } = await todayOf(worker);
 
-    expect(due).toEqual([]);
-    expect(next.map(({ title }) => title)).toEqual(["Созвон"]);
+    expect(due.map(({ kind, title }) => ({ kind, title }))).toEqual([
+      { kind: "reminder", title: "Оплатить интернет" },
+      { kind: "event", title: "Созвон" },
+    ]);
+    expect(next).toEqual([]);
   });
 
-  test("lists the Plans and Due Dates the morning digest sends", async () => {
+  test("lists what the morning digest sends", async () => {
     const worker = await startWithFamily();
     const buick = await addPet(worker, "Бьюик");
 
@@ -227,11 +241,12 @@ describe("«Сделать сегодня»", () => {
     expect(due.map(({ title }) => title)).toEqual([
       "Отправить документы",
       "Прививка: Бешенство — Бьюик",
+      "Созвон",
     ]);
     expect(
       digestLines.filter((line) => due.some(({ title }) => line.includes(title))),
     ).toHaveLength(due.length);
-    expect(digestLines).toHaveLength(due.length + 1);
+    expect(digestLines).toHaveLength(due.length);
   });
 
   test("shows a Private Plan only to its owner", async () => {
@@ -264,9 +279,9 @@ describe("«Дальше»", () => {
     const { next } = await todayOf(worker);
 
     expect(next.map(({ title, date }) => ({ title, date }))).toEqual([
-      { title: "Созвон", date: "2026-10-02" },
       { title: "Записаться к врачу", date: "2026-10-04" },
       { title: "Театр", date: "2026-10-05" },
+      { title: "Концерт", date: "2026-10-09" },
     ]);
   });
 });

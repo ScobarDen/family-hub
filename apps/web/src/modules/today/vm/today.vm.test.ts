@@ -176,6 +176,31 @@ describe("«Сделать сегодня»", () => {
     expect(model.more()).toBe("Ещё 1 дело");
   });
 
+  test("counts today's Event as a row that only opens", async () => {
+    const { model, opened } = startToday({
+      due: [
+        {
+          kind: "event",
+          key: "event-1-2026-10-16",
+          title: "Созвон",
+          date: "2026-10-16",
+          time: "19:00",
+          eventId: "event-1",
+        },
+      ],
+    });
+
+    await vi.waitFor(() => {
+      expect(model.header()).toBe("1 дело");
+    });
+    expect(model.rows()).toEqual([
+      expect.objectContaining({ title: "Созвон", when: "Сегодня, 19:00", action: undefined }),
+    ]);
+    model.openItem("event-1-2026-10-16");
+
+    expect(opened).toEqual([{ kind: "event", eventId: "event-1" }]);
+  });
+
   test("opens the Feed from «Ещё N»", async () => {
     const { model, opened } = startToday();
 
