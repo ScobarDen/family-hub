@@ -134,6 +134,18 @@ describe("a Plan's deadline Reminder", () => {
     expect(saved?.completed?.by).toBe("Ася");
   });
 
+  test("marks the message with who completed the Plan", async () => {
+    const worker = await startWithFamily();
+
+    await createPlan(worker, { assigneeId: worker.asyaId });
+    await tickAt(worker, "2026-10-19T06:00:00Z");
+    await pressDone(worker, asya);
+
+    expect(worker.bot.editedMessages().map(({ text }) => text)).toEqual([
+      "✅ Сделал(а) Ася: Покрасить потолок · до 20 октября",
+    ]);
+  });
+
   test("is dropped once the Plan is completed in the app", async () => {
     const worker = await startWithFamily();
     const plan = await createPlan(worker, { assigneeId: worker.asyaId });

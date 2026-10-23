@@ -3,12 +3,28 @@ import { occurrenceMoment, occurrencesOnDays, timeInZone } from "@family-hub/rec
 
 import type { UpcomingSource } from "@/modules/feed";
 
+import { sourceIdOf } from "../reminder.lib.ts";
+import type { DispatchRepo } from "../repo/dispatch.repo.ts";
 import type { ReminderRepo } from "../repo/reminder.repo.ts";
 
-export function createReminderFeed({ reminders }: { reminders: ReminderRepo }): UpcomingSource {
+type FeedRepos = { reminders: ReminderRepo; dispatch: DispatchRepo };
+
+// «Готово» in the bot closes an Occurrence on its sent dispatch rows; the next send clears it.
+async function doneOccurrences(dispatch: DispatchRepo, familyId: string) {
+  const rows = await dispatch.ofFamily(familyId);
+
+  return new Set(
+    rows
+      .filter((row) => row.source === "reminder" && row.doneAt !== null)
+      .map((row) => `${row.sourceId}:${row.sentOccurrence}`),
+  );
+}
+
+export function createReminderFeed({ reminders, dispatch }: FeedRepos): UpcomingSource {
   return {
     within: async ({ family, member }, { today, last, timeZone }) => {
       const rows = await reminders.visibleRows(family.id, member.id);
+      const done = await doneOccurrences(dispatch, family.id);
 
       return rows.flatMap((row) =>
         occurrencesOnDays(
@@ -22,14 +38,16 @@ export function createReminderFeed({ reminders }: { reminders: ReminderRepo }): 
             momentOf: (occurrence) =>
               occurrenceMoment(occurrence, { time: row.startTime, timeZone: row.timeZone }),
           },
-        ).map(({ occurrence, date, moment }): FeedUpcoming => ({
-          kind: "reminder",
-          key: `reminder-${row.id}-${occurrence}`,
-          title: row.text,
-          date,
-          time: timeInZone(moment, timeZone),
-          reminderId: row.id,
-        })),
+        )
+          .filter(({ occurrence }) => !done.has(`${sourceIdOf(row.id)}:${occurrence}`))
+          .map(({ occurrence, date, moment }): FeedUpcoming => ({
+            kind: "reminder",
+            key: `reminder-${row.id}-${occurrence}`,
+            title: row.text,
+            date,
+            time: timeInZone(moment, timeZone),
+            reminderId: row.id,
+          })),
       );
     },
   };

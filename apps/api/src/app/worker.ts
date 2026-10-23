@@ -220,7 +220,7 @@ function feedServiceOf(
       care,
       plans,
       createEventFeed({ events: reads.events }),
-      createReminderFeed({ reminders: createReminderRepo(db) }),
+      createReminderFeed({ reminders: createReminderRepo(db), dispatch: createDispatchRepo(db) }),
       createPetFeed({ pets: createPetRepo(db) }),
     ],
     clock,
