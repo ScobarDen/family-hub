@@ -138,6 +138,16 @@ beforeEach(() => {
   context.reset();
 });
 
+describe("the Albums", () => {
+  test("say how many there are, or that there are none yet", async () => {
+    const { model } = startAlbums();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "list", albums: [], summary: "Пока нет альбомов" });
+    });
+  });
+});
+
 describe("a batch of photos", () => {
   test("goes up one by one, each joining the Album as soon as it is up", async () => {
     const started = startAlbums();

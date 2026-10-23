@@ -1,5 +1,6 @@
 import type { FeedUpcoming, SlotModule, TodayTiles } from "@family-hub/contract";
 
+import { formatCount, type CountWords } from "@/common/format-count";
 import { formatNearDate } from "@/common/format-date";
 import { sectionTitles } from "@/common/sections";
 
@@ -22,8 +23,7 @@ export type Tile = {
   isAlert: boolean;
 };
 
-const plural = new Intl.PluralRules("ru-RU");
-const choreWords: Partial<Record<Intl.LDMLPluralRule, string>> & { other: string } = {
+const choreWords: CountWords = {
   one: "дело",
   few: "дела",
   many: "дел",
@@ -37,9 +37,7 @@ const recordTitles = {
 } as const;
 
 export function headerOf(count: number): string {
-  return count === 0
-    ? "Сегодня свободный день"
-    : `Сегодня ${count} ${choreWords[plural.select(count)] ?? choreWords.other}`;
+  return count === 0 ? "Сегодня свободный день" : `Сегодня ${formatCount(count, choreWords)}`;
 }
 
 export function dueRowOf(item: FeedUpcoming, today: string): DueRow {

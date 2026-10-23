@@ -10,8 +10,9 @@ import {
   wrap,
 } from "@reatom/core";
 
-import type { RecipeTag } from "@family-hub/contract";
+import type { Recipe, RecipeTag } from "@family-hub/contract";
 
+import { formatCount } from "@/common/format-count";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
@@ -29,10 +30,21 @@ import { reatomRecipeCooks } from "./recipe-cooks.vm.ts";
 import { reatomRecipeForm } from "./recipe-form.vm.ts";
 import { reatomTagEditing } from "./recipe-tags.vm.ts";
 
+const recipeWords = { one: "рецепт", few: "рецепта", many: "рецептов", other: "рецепта" };
+
+function listScreenOf(list: Recipe[], tags: RecipeTag[]): RecipesScreen {
+  return {
+    kind: "list",
+    recipes: list.map(toRecipeItem),
+    tags,
+    summary: formatCount(list.length, recipeWords),
+  };
+}
+
 export type RecipesScreen =
   | { kind: "loading" }
   | { kind: "failed" }
-  | { kind: "list"; recipes: RecipeItem[]; tags: RecipeTag[] }
+  | { kind: "list"; recipes: RecipeItem[]; tags: RecipeTag[]; summary: string }
   | { kind: "recipe"; recipe: RecipeDetails; checked: number[] }
   | { kind: "form"; isCreating: boolean; tags: RecipeTag[] }
   | { kind: "tags"; tags: RecipeTag[] };
@@ -112,7 +124,7 @@ function reatomScreen({
       return data.list.error() === undefined ? { kind: "loading" } : { kind: "failed" };
     }
 
-    return { kind: "list", recipes: list.map(toRecipeItem), tags };
+    return listScreenOf(list, tags);
   }, "recipes.screen");
 }
 

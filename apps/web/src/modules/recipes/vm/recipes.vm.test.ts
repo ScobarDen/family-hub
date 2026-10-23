@@ -102,6 +102,7 @@ describe("the Recipes", () => {
     await listed(model);
 
     expect(titles(model)).toEqual(["Борщ", "Лазанья"]);
+    expect(model.screen()).toMatchObject({ summary: "2 рецепта" });
 
     model.search("сыр");
     model.chooseTag("tag-1");

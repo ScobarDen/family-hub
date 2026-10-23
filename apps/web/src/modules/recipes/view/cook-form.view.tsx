@@ -7,18 +7,18 @@ import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
 
 export const CookForm = reatomComponent(
   ({ model }: { model: RecipesScreenModel }) => (
-    <div className="flex items-center gap-2 px-4 py-2">
+    <div className="flex items-center gap-2">
       <Input
         type="date"
         aria-label="Когда приготовили"
-        className="w-40"
+        className="h-11 w-40"
         max={model.today()}
         value={model.cookDay()}
         onChange={(event) => {
           model.chooseCookDay(event.target.value);
         }}
       />
-      <Button disabled={!model.canCook()} onClick={model.cook}>
+      <Button className="h-11 flex-1" disabled={!model.canCook()} onClick={model.cook}>
         <CookingPot /> Приготовили
       </Button>
     </div>

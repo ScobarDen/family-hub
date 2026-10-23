@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import { Minus, Pencil, Plus } from "lucide-react";
+import { Minus, Pencil } from "lucide-react";
 
 import { Section, SectionItem } from "@/common/ui";
 
@@ -8,13 +8,6 @@ import type { GoalsScreenModel } from "../vm/goals.vm.ts";
 export const GoalActions = reatomComponent(
   ({ model }: { model: GoalsScreenModel }) => (
     <Section>
-      <SectionItem
-        icon={Plus}
-        title="Пополнить"
-        onClick={() => {
-          model.addMovement("contribution");
-        }}
-      />
       <SectionItem
         icon={Minus}
         title="Снять"

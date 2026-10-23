@@ -13,7 +13,14 @@ export type RecipesProps = { model: RecipesScreenModel };
 
 function contentOf({ model }: RecipesProps, screen: RecipesScreen): ReactNode {
   if (screen.kind === "list") {
-    return <RecipeList model={model} recipes={screen.recipes} tags={screen.tags} />;
+    return (
+      <RecipeList
+        model={model}
+        recipes={screen.recipes}
+        tags={screen.tags}
+        summary={screen.summary}
+      />
+    );
   }
 
   if (screen.kind === "recipe") {

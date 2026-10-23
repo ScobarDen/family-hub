@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { SectionLayout } from "@/common/ui";
+import { PrimaryButton, SectionLayout } from "@/common/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 import { PetArchiveSection } from "./pet-archive-section.view.tsx";
@@ -62,7 +62,11 @@ export const PetCard = reatomComponent((props: PetCardProps) => {
             />
           </>
         }
-        action={isEditable ? { title: "Добавить запись", onClick: onAddEntry } : undefined}
+        action={
+          isEditable ? (
+            <PrimaryButton onClick={onAddEntry}>Добавить запись</PrimaryButton>
+          ) : undefined
+        }
         tabs={tabsOf(props)}
       />
       <PetArchiveSection screen={screen} model={model} />

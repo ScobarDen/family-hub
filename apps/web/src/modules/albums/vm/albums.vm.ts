@@ -10,8 +10,9 @@ import {
   wrap,
 } from "@reatom/core";
 
-import type { Photo } from "@family-hub/contract";
+import type { AlbumSummary, Photo } from "@family-hub/contract";
 
+import { formatCount } from "@/common/format-count";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
@@ -23,10 +24,20 @@ import { reatomAlbumsData, type AlbumsData } from "../albums.model.ts";
 import { reatomAlbumForm } from "./album-form.vm.ts";
 import { reatomBatchUpload } from "./batch-upload.vm.ts";
 
+const albumWords = { one: "альбом", few: "альбома", many: "альбомов", other: "альбома" };
+
+function listScreenOf(list: AlbumSummary[], timeZone: string): AlbumsScreen {
+  return {
+    kind: "list",
+    albums: list.map((summary) => toItem(summary, timeZone)),
+    summary: list.length === 0 ? "Пока нет альбомов" : formatCount(list.length, albumWords),
+  };
+}
+
 export type AlbumsScreen =
   | { kind: "loading" }
   | { kind: "failed" }
-  | { kind: "list"; albums: AlbumItem[] }
+  | { kind: "list"; albums: AlbumItem[]; summary: string }
   | { kind: "album"; album: AlbumView }
   | { kind: "all"; photos: Photo[] }
   | { kind: "form"; isCreating: boolean };
@@ -81,7 +92,7 @@ function reatomScreen(
       return data.list.error() === undefined ? { kind: "loading" } : { kind: "failed" };
     }
 
-    return { kind: "list", albums: list.map((summary) => toItem(summary, timeZone())) };
+    return listScreenOf(list, timeZone());
   }, "albums.screen");
 }
 
