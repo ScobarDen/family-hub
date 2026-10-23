@@ -2,7 +2,7 @@ import { action, atom, computed, noop, withAsync, withAsyncData, wrap } from "@r
 
 import type { AppModule, FeedUpcoming, SlotModule, Today } from "@family-hub/contract";
 
-import type { PlanStep, TodayApi } from "../today.api.ts";
+import type { PlanOrSubplan, TodayApi } from "../today.api.ts";
 import { dueRowOf, headerOf, nextRowOf, statusOf, tilesOf, type Tile } from "../today.lib.ts";
 
 export type TodayTarget =
@@ -26,7 +26,7 @@ export type TodayDependencies = {
 const shownDue = 3;
 const undoMs = 4000;
 
-type Completing = { key: string; title: string; step: PlanStep; done: Promise<unknown> };
+type Completing = { key: string; title: string; plan: PlanOrSubplan };
 
 type Loaded = { data: () => Today | undefined };
 
@@ -67,49 +67,69 @@ function reatomData(api: TodayApi) {
   };
 }
 
-// Completing is optimistic: the row leaves at once and the undo reopens it through the Plan API.
-function reatomCompletion(api: TodayApi, wait: TodayDependencies["wait"]) {
+function completingOf({ key, title, planId, subplanId }: Extract<FeedUpcoming, { kind: "plan" }>) {
+  return { key, title, plan: { planId, subplanId } };
+}
+
+function reatomHidden() {
   const hidden = atom<string[]>([], "today.hidden");
+
+  return {
+    hidden,
+    hide: (key: string) => {
+      hidden.set([...hidden(), key]);
+    },
+    show: (key: string) => {
+      hidden.set(hidden().filter((other) => other !== key));
+    },
+  };
+}
+
+// The row leaves at once, but the Plan API hears of it only once the undo window passes: completing
+// a Plan closes its open Subplans too, and reopening it would not bring them back.
+function reatomCompletion(
+  { api, wait }: Pick<TodayDependencies, "api" | "wait">,
+  onCompleted: () => void,
+) {
+  const { hidden, hide, show } = reatomHidden();
   const pending = atom<Completing | undefined>(undefined, "today.pending");
 
-  function show(key: string): void {
-    hidden.set(hidden().filter((other) => other !== key));
+  async function send({ key, plan }: Completing): Promise<void> {
+    try {
+      await api.complete(plan);
+      onCompleted();
+    } catch {
+      show(key);
+    }
   }
 
+  // A second tap sends the first completion at once, so the undo always names the last one.
   const complete = action(async (item: Extract<FeedUpcoming, { kind: "plan" }>) => {
-    const step = { planId: item.planId, subplanId: item.subplanId };
-    const completing = { key: item.key, title: item.title, step, done: api.complete(step) };
+    const previous = pending();
+    const completing = completingOf(item);
 
-    hidden.set([...hidden(), item.key]);
-    pending.set(completing);
-
-    try {
-      await wrap(completing.done);
-    } catch {
-      show(item.key);
-      pending.set(undefined);
-
-      return;
+    if (previous !== undefined) {
+      send(previous).catch(noop);
     }
 
+    hide(item.key);
+    pending.set(completing);
     await wrap(wait(undoMs));
 
     if (pending() === completing) {
       pending.set(undefined);
+      await wrap(send(completing));
     }
   }, "today.complete").extend(withAsync());
 
-  // The reopen waits for the completion it undoes, so the two reach the server in order.
-  const revert = action(async () => {
+  const revert = action(() => {
     const completing = pending();
 
     if (completing !== undefined) {
       pending.set(undefined);
       show(completing.key);
-      await wrap(completing.done);
-      await wrap(api.reopen(completing.step));
     }
-  }, "today.revertCompletion").extend(withAsync());
+  }, "today.revertCompletion");
 
   return { hidden, pending, complete, revert };
 }
@@ -188,9 +208,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
         dependencies.onRecord({ petId: item.petId, entryId: item.entryId });
       }
     }, "today.act"),
-    revert: action(() => {
-      completion.revert().catch(noop);
-    }, "today.revert"),
+    revert: completion.revert,
     openItem: action((key: string) => {
       const item = find(key);
 
@@ -216,7 +234,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
 
 export function reatomToday(dependencies: TodayDependencies) {
   const { data, reload } = reatomData(dependencies.api);
-  const completion = reatomCompletion(dependencies.api, dependencies.wait);
+  const completion = reatomCompletion(dependencies, reload);
 
   return {
     isLoading: computed(() => data.data() === undefined && !data.ready(), "today.isLoading"),

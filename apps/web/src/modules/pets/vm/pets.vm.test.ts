@@ -205,6 +205,16 @@ describe("the pet tab", () => {
     expect(model.screen().kind).toBe("list");
   });
 
+  test("keeps the only Pet's card where it is when something opens that Pet again", async () => {
+    const { model, routePetId } = startPets();
+
+    await loaded(model);
+    model.open("pet-1");
+
+    expect(routePetId()).toBeUndefined();
+    expect(model.screen()).toMatchObject({ kind: "card", card: { id: "pet-1" } });
+  });
+
   test("asks for a Pet again from an open card, unless the Family has only one", async () => {
     const several = startPets(fakeBackend([buick, kesha]));
     const single = startPets();

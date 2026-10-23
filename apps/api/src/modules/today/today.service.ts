@@ -26,14 +26,13 @@ export function createTodayService({ feed, tiles, clock }: TodayDependencies) {
   return {
     async of(viewer: Membership): Promise<Today> {
       const timeZone = viewer.member.timeZone ?? fallbackTimeZone;
-      const now = clock.now();
-      const window = { today: dateInZone(now, timeZone), timeZone, now };
-      const [agenda, tileList] = await Promise.all([
+      const window = { today: dateInZone(clock.now(), timeZone), timeZone };
+      const [agenda, sectionTiles] = await Promise.all([
         feed.todayOf(viewer),
         tilesOf(tiles, viewer, window),
       ]);
 
-      return { ...agenda, tiles: tileList };
+      return { ...agenda, tiles: sectionTiles };
     },
   };
 }

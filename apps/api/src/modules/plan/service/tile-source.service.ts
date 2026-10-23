@@ -2,7 +2,7 @@ import type { TileSource } from "@/modules/today";
 
 import type { PlanRepo } from "../plan.repo.ts";
 
-// A Plan is Overdue while any of its open steps is past its due date.
+// A Plan counts as Overdue while it or any of its open Subplans is past its due date.
 export function createPlanTile({ plans }: { plans: PlanRepo }): TileSource<"plans"> {
   return {
     tile: async ({ family, member }, { today }) => {
@@ -10,7 +10,7 @@ export function createPlanTile({ plans }: { plans: PlanRepo }): TileSource<"plan
       const open = trees.filter(({ root }) => root.completedAt === null);
       const overdue = open.filter(({ root, subplans }) =>
         [root, ...subplans].some(
-          (step) => step.completedAt === null && step.dueDate !== null && step.dueDate < today,
+          (plan) => plan.completedAt === null && plan.dueDate !== null && plan.dueDate < today,
         ),
       );
 

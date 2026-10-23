@@ -2,7 +2,6 @@ import { reatomComponent } from "@reatom/react";
 
 import type { TodayModel } from "../vm/today.vm.ts";
 
-// Floats above the tab bar while the one-tap Completed can still be taken back.
 export const UndoBar = reatomComponent(({ model }: { model: TodayModel }) => {
   const undo = model.undo();
 

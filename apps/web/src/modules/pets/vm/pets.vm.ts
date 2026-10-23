@@ -28,13 +28,17 @@ function reatomOpenedPet({ pets, route }: PetsDependencies, { isListShown }: Nav
   }, "pets.openedPet");
 }
 
-function reatomForms(dependencies: PetsDependencies, { editing }: Navigation) {
+function reatomForms(
+  dependencies: PetsDependencies,
+  { editing }: Navigation,
+  openedPet: () => Pet | undefined,
+) {
   const { route } = dependencies;
 
   function onSaved(saved: Pet): void {
     editing.set(undefined);
 
-    if (route.petId() !== saved.id) {
+    if (openedPet()?.id !== saved.id) {
       route.open(saved.id);
     }
   }
@@ -86,12 +90,20 @@ function reatomEditing(
   };
 }
 
-// Stepping back from a Pet's card is the app's: its address is on the tab's stack.
-function reatomBrowsing({ route }: PetsDependencies, { editing, isListShown }: Navigation) {
+// Stepping back from a Pet's card is the app's: its address is on the tab's stack. The card
+// already shown, like the only Pet's, gets no second place on it.
+function reatomBrowsing(
+  { route }: PetsDependencies,
+  { editing, isListShown }: Navigation,
+  openedPet: () => Pet | undefined,
+) {
   return {
     open: action((petId: string) => {
       isListShown.setFalse();
-      route.open(petId);
+
+      if (openedPet()?.id !== petId) {
+        route.open(petId);
+      }
     }, "pets.open"),
     showAll: action(() => {
       isListShown.setTrue();
@@ -149,8 +161,8 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
     editing: atom<Editing | undefined>(undefined, "pets.editing"),
     isListShown: reatomBoolean(false, "pets.isListShown"),
   };
-  const forms = reatomForms(dependencies, navigation);
   const openedPet = reatomOpenedPet(dependencies, navigation);
+  const forms = reatomForms(dependencies, navigation, openedPet);
   const archive = reatomPetArchive({
     ...dependencies,
     openedPet,
@@ -176,7 +188,7 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
     ...archive,
     ...reatomLinks(dependencies),
     ...reatomAvatar(dependencies, openedPet),
-    ...reatomBrowsing(dependencies, navigation),
+    ...reatomBrowsing(dependencies, navigation, openedPet),
     ...reatomEditing(navigation, { ...forms, openedPet, archive }),
   };
 }

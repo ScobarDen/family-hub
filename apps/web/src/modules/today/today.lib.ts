@@ -23,7 +23,7 @@ export type Tile = {
 };
 
 const plural = new Intl.PluralRules("ru-RU");
-const chores: Partial<Record<Intl.LDMLPluralRule, string>> & { other: string } = {
+const choreWords: Partial<Record<Intl.LDMLPluralRule, string>> & { other: string } = {
   one: "дело",
   few: "дела",
   many: "дел",
@@ -39,7 +39,7 @@ const recordTitles = {
 export function headerOf(count: number): string {
   return count === 0
     ? "Сегодня свободный день"
-    : `Сегодня ${count} ${chores[plural.select(count)] ?? chores.other}`;
+    : `Сегодня ${count} ${choreWords[plural.select(count)] ?? choreWords.other}`;
 }
 
 export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
@@ -118,7 +118,6 @@ export function tilesOf(tiles: TodayTiles, today: string): Tile[] {
   ];
 }
 
-// «Разделы» shows one line per section from the same tiles.
 export function statusOf({ value, note }: Tile): string | undefined {
   const parts = [value, note].filter((part) => part !== undefined);
 

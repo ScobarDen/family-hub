@@ -1,4 +1,4 @@
-import { context, noop } from "@reatom/core";
+import { context, noop, sleep } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { FeedUpcoming, Plan, Today } from "@family-hub/contract";
@@ -89,6 +89,9 @@ function startToday(answer: Partial<Today> = {}) {
     },
   });
 
+  // What the View subscribes to, so a reload refetches as it does on screen.
+  model.rows.subscribe(noop);
+
   return { model, calls, opened, releaseUndo };
 }
 
@@ -145,7 +148,7 @@ describe("«Сделать сегодня»", () => {
     expect(opened).toEqual(["feed"]);
   });
 
-  test("completes a Plan with one tap and keeps the undo for a few seconds", async () => {
+  test("completes a Plan with one tap once the undo window has passed, then refreshes", async () => {
     const { model, calls, releaseUndo } = startToday({ due: [planDue(1, "2026-10-12")] });
 
     await vi.waitFor(() => {
@@ -156,35 +159,52 @@ describe("«Сделать сегодня»", () => {
     expect(model.rows()).toEqual([]);
     expect(model.header()).toBe("Сегодня свободный день");
     expect(model.undo()).toEqual({ title: "Дело 1" });
-    await vi.waitFor(() => {
-      expect(calls).toContain("POST /api/plans/plan-1/complete");
-    });
+    expect(calls).toEqual(["GET /api/today"]);
 
     releaseUndo();
 
     await vi.waitFor(() => {
-      expect(model.undo()).toBeUndefined();
+      expect(calls).toEqual([
+        "GET /api/today",
+        "POST /api/plans/plan-1/complete",
+        "GET /api/today",
+      ]);
     });
-    expect(model.rows()).toEqual([]);
+    expect(model.undo()).toBeUndefined();
   });
 
-  test("puts the Plan back when the undo is tapped", async () => {
-    const { model, calls } = startToday({ due: [planDue(1, "2026-10-12")] });
+  test("puts the Plan back untouched when the undo is tapped", async () => {
+    const { model, calls, releaseUndo } = startToday({ due: [planDue(1, "2026-10-12")] });
 
     await vi.waitFor(() => {
       expect(model.rows()).toHaveLength(1);
     });
     model.act("plan-plan-1");
     model.revert();
+    releaseUndo();
+    await sleep(0);
 
-    await vi.waitFor(() => {
-      expect(calls).toContain("POST /api/plans/plan-1/reopen");
-    });
-    expect(calls.indexOf("POST /api/plans/plan-1/complete")).toBeLessThan(
-      calls.indexOf("POST /api/plans/plan-1/reopen"),
-    );
     expect(model.rows()).toHaveLength(1);
     expect(model.undo()).toBeUndefined();
+    expect(calls).toEqual(["GET /api/today"]);
+  });
+
+  test("sends a pending completion at once when the next Plan is completed", async () => {
+    const { model, calls } = startToday({
+      due: [planDue(1, "2026-10-12"), planDue(2, "2026-10-13")],
+    });
+
+    await vi.waitFor(() => {
+      expect(model.rows()).toHaveLength(2);
+    });
+    model.act("plan-plan-1");
+    model.act("plan-plan-2");
+
+    expect(model.undo()).toEqual({ title: "Дело 2" });
+    await vi.waitFor(() => {
+      expect(calls).toContain("POST /api/plans/plan-1/complete");
+    });
+    expect(calls).not.toContain("POST /api/plans/plan-2/complete");
   });
 
   test("opens a Due Date's Care Entry form for its Pet", async () => {

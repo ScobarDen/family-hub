@@ -12,7 +12,6 @@ type SectionLayoutProps = {
   action?: { title: string; onClick: () => void } | undefined;
 };
 
-// The shared layout of a section with a summary: the summary, one primary button, then tabs.
 export function SectionLayout({ summary, tabs, action }: SectionLayoutProps) {
   const [chosenKey, setChosenKey] = useState(tabs[0]?.key);
   const shown = tabs.find(({ key }) => key === chosenKey) ?? tabs[0];
