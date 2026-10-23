@@ -3,7 +3,8 @@ import type { TileSource } from "@/modules/today";
 import type { CareEntryRepo } from "../care-entry.repo.ts";
 import { openDueDates } from "../due-date/index.ts";
 
-// The Pets tile names the only Pet in care and carries the most urgent Due Date of all of them.
+// The Pets tile names the only Pet in care, so its Due Date leaves the name out; with several Pets
+// the soonest Due Date of them all says whose it is.
 export function createPetTile({ entries }: { entries: CareEntryRepo }): TileSource<"pet"> {
   return {
     tile: async ({ family }) => {
@@ -12,13 +13,16 @@ export function createPetTile({ entries }: { entries: CareEntryRepo }): TileSour
         entries.allDueCandidates(family.id),
       ]);
       const active = pets.filter(({ archivedAt }) => archivedAt === null);
-      const [only, ...others] = active;
-      const [urgent] = openDueDates({ pets, entries: candidates });
+      const only = active.length === 1 ? active[0] : undefined;
+      const [soonest] = openDueDates({ pets, entries: candidates });
 
       return {
-        active: active.length,
-        only: only === undefined || others.length > 0 ? null : { petId: only.id, name: only.name },
-        due: urgent === undefined ? null : { label: urgent.title, date: urgent.dueDate },
+        activeCount: active.length,
+        only: only === undefined ? null : { petId: only.id, name: only.name },
+        due:
+          soonest === undefined
+            ? null
+            : { label: only === undefined ? soonest.title : soonest.label, date: soonest.dueDate },
       };
     },
   };

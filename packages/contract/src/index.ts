@@ -4,6 +4,7 @@ export {
   careEntryList,
   careKind,
   careKindTitles,
+  dueCareKind,
   dueDateList,
   expenseCategory,
   expenseCategoryTitles,
@@ -263,7 +264,7 @@ export {
 export {
   today,
   todayNextCount,
-  todayWeekDays,
+  tileWindowDays,
   todayTiles,
   type Today,
   type TodayTiles,

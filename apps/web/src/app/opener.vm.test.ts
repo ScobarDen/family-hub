@@ -17,7 +17,7 @@ function startOpener({
   const openedPetId = atom<string | undefined>(undefined, "test.openedPetId");
   const opened: string[] = [];
   const places: string[] = [];
-  const isGoalOpened = atom(false, "test.isGoalOpened");
+  const goalState = atom<"loading" | "opened" | "missing">("loading", "test.goalState");
 
   function go(how: string) {
     return (place: Place | undefined) => {
@@ -82,9 +82,9 @@ function startOpener({
     goals: {
       open: (goalId) => {
         record("goals.open")(goalId);
-        isGoalOpened.set(true);
+        goalState.set(goalId === "goal-gone" ? "missing" : "opened");
       },
-      isGoalOpened: () => isGoalOpened(),
+      openedGoalState: () => goalState(),
       addMovement: record("goals.addMovement"),
     },
     albums: {
@@ -330,7 +330,11 @@ describe("«Быстро добавить»", () => {
       target: { kind: "new-contribution", goalId: "goal-1" },
       opened: ["goals.open goal-1", "goals.addMovement contribution"],
     },
-    { target: { kind: "add-pet" }, opened: ["pets.add"] },
+    {
+      target: { kind: "new-contribution", goalId: "goal-gone" },
+      opened: ["goals.open goal-gone"],
+    },
+    { target: { kind: "new-pet" }, opened: ["pets.add"] },
   ] as const)("$target.kind opens the module's own form", async ({ target, opened }) => {
     const started = startOpener();
 

@@ -4,6 +4,7 @@ import { z } from "zod";
 import { appModule, type AppModule, type SlotModule } from "@family-hub/contract";
 
 import type { Telegram } from "@/common/telegram";
+import type { TabId } from "@/modules/tab-bar";
 
 export type Place = { module: AppModule; petId?: string };
 
@@ -14,9 +15,6 @@ export type Screen =
   | { kind: "profile" }
   | { kind: "module"; module: AppModule; petId?: string };
 
-// Today and «Разделы» never move; the two slots between them are the Member's.
-export type Tab = "today" | "sections" | SlotModule;
-
 type NestedBack = { canGoBack: () => boolean; back: () => void };
 
 type NavigationDependencies = {
@@ -26,7 +24,6 @@ type NavigationDependencies = {
   telegram: Pick<Telegram, "backButton" | "settingsButton">;
   // Screens inside a module (a form, a Plan's card) step back before the app does.
   nestedBack?: Partial<Record<AppModule, NestedBack>>;
-  // The hub refreshes each time it comes back into view.
   onTodayShown?: () => void;
 };
 
@@ -80,7 +77,7 @@ function reatomScreen(routes: Routes) {
   );
 }
 
-function reatomGoTo(routes: Routes, onTodayShown: () => void) {
+function goToNotifying(routes: Routes, onTodayShown: () => void) {
   return (screen: Screen): void => {
     goTo(routes, screen);
 
@@ -111,7 +108,7 @@ function goTo(routes: Routes, screen: Screen): void {
   route.go(undefined, true);
 }
 
-function rootOf(tab: Tab): Screen {
+function rootOf(tab: TabId): Screen {
   return tab === "today" || tab === "sections" ? { kind: tab } : { kind: "module", module: tab };
 }
 
@@ -120,11 +117,15 @@ function placeScreen({ module, petId }: Place): Screen {
 }
 
 function isSameScreen(left: Screen, right: Screen): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  if (left.kind === "module" && right.kind === "module") {
+    return left.module === right.module && left.petId === right.petId;
+  }
+
+  return left.kind === right.kind;
 }
 
 // A reload lands on the tab whose root it is, or on top of the hub.
-function initialTabOf(screen: Screen, slots: SlotModule[]): Tab {
+function initialTabOf(screen: Screen, slots: SlotModule[]): TabId {
   if (screen.kind === "sections" || screen.kind === "tab-bar-menu") {
     return "sections";
   }
@@ -142,7 +143,7 @@ function reatomStack(
   go: (screen: Screen) => void,
   { screen, slots }: { screen: () => Screen; slots: () => SlotModule[] },
 ) {
-  const tab = atom<Tab | undefined>(undefined, "navigation.tab");
+  const tab = atom<TabId | undefined>(undefined, "navigation.tab");
   const trail = atom<Screen[]>([], "navigation.trail");
   const activeTab = computed(
     () => tab() ?? initialTabOf(screen(), slots()),
@@ -161,7 +162,7 @@ function reatomStack(
         go(next);
       }
     }, "navigation.push"),
-    openTab: action((next: Tab) => {
+    openTab: action((next: TabId) => {
       tab.set(next);
       trail.set([]);
       go(rootOf(next));
@@ -229,7 +230,7 @@ function nestedBackOf(
   return nested?.canGoBack() === true ? nested : undefined;
 }
 
-function isTabRoot(screen: Screen, tab: Tab): boolean {
+function isTabRoot(screen: Screen, tab: TabId): boolean {
   return isSameScreen(screen, rootOf(tab));
 }
 
@@ -266,7 +267,7 @@ export function reatomNavigation({
 }: NavigationDependencies) {
   const routes = reatomRoutes(base);
   const screen = reatomScreen(routes);
-  const stack = reatomStack(reatomGoTo(routes, onTodayShown), { screen, slots });
+  const stack = reatomStack(goToNotifying(routes, onTodayShown), { screen, slots });
   const back = reatomBack({ screen, nestedBack }, stack);
   const opening = reatomOpening(stack, screen);
 

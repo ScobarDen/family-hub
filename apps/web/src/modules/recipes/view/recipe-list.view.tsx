@@ -53,7 +53,7 @@ export const RecipeList = reatomComponent(
   (props: RecipeListProps) => (
     <SectionLayout
       summary={<p className="px-5 pb-4 text-[0.9375rem] text-muted-foreground">{props.summary}</p>}
-      action={<PrimaryButton onClick={props.model.add}>Новый рецепт</PrimaryButton>}
+      action={<PrimaryButton onClick={props.model.add}>Добавить рецепт</PrimaryButton>}
       tabs={[
         { key: "recipes", title: "Рецепты", content: recipesOf(props) },
         { key: "tags", title: "Теги", content: tagsOf(props) },

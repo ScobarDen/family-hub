@@ -44,7 +44,7 @@ export const GoalList = reatomComponent(
           </span>
         </div>
       }
-      action={<PrimaryButton onClick={model.add}>Новая цель</PrimaryButton>}
+      action={<PrimaryButton onClick={model.add}>Создать цель</PrimaryButton>}
       tabs={[
         { key: "active", title: "Копим", content: rowsOf(screen.active, model) },
         { key: "achieved", title: "Достигнуты", content: rowsOf(screen.achieved, model) },

@@ -1,21 +1,39 @@
-import { action, atom, computed, noop, withAsync, withAsyncData, wrap } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  noop,
+  withAsync,
+  withAsyncData,
+  wrap,
+  type Atom,
+} from "@reatom/core";
 
-import type { AppModule, FeedUpcoming, SlotModule, Today } from "@family-hub/contract";
+import type { AppModule, FeedUpcoming, Plan, SlotModule, Today } from "@family-hub/contract";
+
+import { detached, readOnly } from "@/common/state";
 
 import type { PlanOrSubplan, TodayApi } from "../today.api.ts";
-import { dueRowOf, headerOf, nextRowOf, statusOf, tilesOf, type Tile } from "../today.lib.ts";
+import {
+  dueRowOf,
+  feedStatusOf,
+  headerOf,
+  nextRowOf,
+  statusOf,
+  tilesOf,
+  type Tile,
+} from "../today.lib.ts";
 
 export type TodayTarget =
   | { kind: "plan"; planId: string }
   | { kind: "event"; eventId: string }
   | { kind: "calendar" }
   | { kind: "pet"; petId: string }
-  | { kind: "add-pet" };
+  | { kind: "new-pet" };
 
 export type TodayDependencies = {
   api: TodayApi;
   today: () => string;
-  // The undo window after a one-tap Completed.
   wait: (ms: number) => Promise<void>;
   onOpen: (target: TodayTarget) => void;
   onOpenSection: (module: SlotModule) => void;
@@ -26,7 +44,9 @@ export type TodayDependencies = {
 const shownDue = 3;
 const undoMs = 4000;
 
-type Completing = { key: string; title: string; plan: PlanOrSubplan };
+type PlanItem = Extract<FeedUpcoming, { kind: "plan" }>;
+
+type Completing = { key: string; title: string; target: PlanOrSubplan; done: Promise<Plan> };
 
 type Loaded = { data: () => Today | undefined };
 
@@ -42,13 +62,17 @@ function targetOf(item: FeedUpcoming): TodayTarget {
   return item.kind === "reminder" ? { kind: "calendar" } : { kind: "pet", petId: item.petId };
 }
 
-// One Pet opens its card, none offers adding one, several open the list.
-function petTargetOf({ active, only }: Today["tiles"]["pet"]): TodayTarget | undefined {
-  if (only !== null) {
-    return { kind: "pet", petId: only.petId };
+// One Pet opens its card, none offers adding one, several (or an unread tile) open the list.
+function petTargetOf(pet: Today["tiles"]["pet"] | undefined): TodayTarget | undefined {
+  if (pet === null || pet === undefined) {
+    return undefined;
   }
 
-  return active === 0 ? { kind: "add-pet" } : undefined;
+  if (pet.only !== null) {
+    return { kind: "pet", petId: pet.only.petId };
+  }
+
+  return pet.activeCount === 0 ? { kind: "new-pet" } : undefined;
 }
 
 function reatomData(api: TodayApi) {
@@ -67,71 +91,103 @@ function reatomData(api: TodayApi) {
   };
 }
 
-function completingOf({ key, title, planId, subplanId }: Extract<FeedUpcoming, { kind: "plan" }>) {
-  return { key, title, plan: { planId, subplanId } };
-}
-
 function reatomHidden() {
   const hidden = atom<string[]>([], "today.hidden");
 
   return {
     hidden,
-    hide: (key: string) => {
+    hide: action((key: string) => {
       hidden.set([...hidden(), key]);
-    },
-    show: (key: string) => {
+    }, "today.hide"),
+    show: action((key: string) => {
       hidden.set(hidden().filter((other) => other !== key));
-    },
+    }, "today.show"),
   };
 }
 
-// The row leaves at once, but the Plan API hears of it only once the undo window passes: completing
-// a Plan closes its open Subplans too, and reopening it would not bring them back.
-function reatomCompletion(
-  { api, wait }: Pick<TodayDependencies, "api" | "wait">,
-  onCompleted: () => void,
-) {
-  const { hidden, hide, show } = reatomHidden();
-  const pending = atom<Completing | undefined>(undefined, "today.pending");
+type CompletionState = ReturnType<typeof reatomHidden> & {
+  pending: Atom<Completing | undefined>;
+  failure: Atom<string | undefined>;
+};
 
-  async function send({ key, plan }: Completing): Promise<void> {
+// The Plan API hears of the tap at once, so closing the app inside the undo window loses nothing.
+function reatomComplete(
+  { api, wait }: Pick<TodayDependencies, "api" | "wait">,
+  { state, onSettled }: { state: CompletionState; onSettled: () => void },
+) {
+  const { pending, failure, hide, show } = state;
+
+  return action(async ({ key, title, planId, subplanId }: PlanItem) => {
+    const target = { planId, subplanId };
+    const completing = { key, title, target, done: api.complete(target) };
+
+    failure.set(undefined);
+    hide(key);
+    pending.set(completing);
+
     try {
-      await api.complete(plan);
-      onCompleted();
+      await wrap(completing.done);
     } catch {
       show(key);
-    }
-  }
+      pending.set(pending() === completing ? undefined : pending());
+      failure.set(`Не получилось отметить «${title}». Попробуйте ещё раз.`);
 
-  // A second tap sends the first completion at once, so the undo always names the last one.
-  const complete = action(async (item: Extract<FeedUpcoming, { kind: "plan" }>) => {
-    const previous = pending();
-    const completing = completingOf(item);
-
-    if (previous !== undefined) {
-      send(previous).catch(noop);
+      return;
     }
 
-    hide(item.key);
-    pending.set(completing);
     await wrap(wait(undoMs));
 
     if (pending() === completing) {
       pending.set(undefined);
-      await wrap(send(completing));
+      onSettled();
     }
   }, "today.complete").extend(withAsync());
+}
 
-  const revert = action(() => {
+// The undo reopens the Plan and the Subplans its completion closed, once that completion is in.
+function reatomRevert(
+  { api }: Pick<TodayDependencies, "api">,
+  { state, onSettled }: { state: CompletionState; onSettled: () => void },
+) {
+  const { pending, failure, show } = state;
+
+  return action(async () => {
     const completing = pending();
 
-    if (completing !== undefined) {
-      pending.set(undefined);
-      show(completing.key);
+    if (completing === undefined) {
+      return;
     }
-  }, "today.revertCompletion");
 
-  return { hidden, pending, complete, revert };
+    pending.set(undefined);
+    show(completing.key);
+
+    try {
+      await wrap(api.reopen(completing.target, await wrap(completing.done)));
+    } catch {
+      failure.set(`Не получилось вернуть «${completing.title}». Попробуйте ещё раз.`);
+    }
+
+    onSettled();
+  }, "today.revertCompletion").extend(withAsync());
+}
+
+function reatomCompletion(
+  dependencies: Pick<TodayDependencies, "api" | "wait">,
+  onSettled: () => void,
+) {
+  const state: CompletionState = {
+    ...reatomHidden(),
+    pending: atom<Completing | undefined>(undefined, "today.pending"),
+    failure: atom<string | undefined>(undefined, "today.completionFailure"),
+  };
+
+  return {
+    hidden: state.hidden,
+    pending: state.pending,
+    failure: state.failure,
+    complete: reatomComplete(dependencies, { state, onSettled }),
+    revert: reatomRevert(dependencies, { state, onSettled }),
+  };
 }
 
 type Completion = ReturnType<typeof reatomCompletion>;
@@ -147,10 +203,10 @@ function reatomForSections(
 
       return {
         ...Object.fromEntries(tiles().map((tile) => [tile.module, statusOf(tile)])),
-        feed: data.data() === undefined || count === 0 ? undefined : headerOf(count),
+        feed: data.data() === undefined ? undefined : feedStatusOf(count),
       };
     }, "today.statuses"),
-    nearestGoalId: computed(() => data.data()?.tiles.goals.nearest?.goalId, "today.nearestGoal"),
+    nearestGoalId: computed(() => data.data()?.tiles.goals?.nearest?.goalId, "today.nearestGoal"),
   };
 }
 
@@ -199,7 +255,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
   }
 
   return {
-    act: action((key: string) => {
+    completeOrRecord: action((key: string) => {
       const item = find(key);
 
       if (item?.kind === "plan") {
@@ -207,8 +263,8 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
       } else if (item?.kind === "due") {
         dependencies.onRecord({ petId: item.petId, entryId: item.entryId });
       }
-    }, "today.act"),
-    revert: completion.revert,
+    }, "today.completeOrRecord"),
+    revert: detached(completion.revert, "today.revert"),
     openItem: action((key: string) => {
       const item = find(key);
 
@@ -217,8 +273,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
       }
     }, "today.openItem"),
     openTile: action((module: SlotModule) => {
-      const pet = data.data()?.tiles.pet;
-      const target = module === "pet" && pet !== undefined ? petTargetOf(pet) : undefined;
+      const target = module === "pet" ? petTargetOf(data.data()?.tiles.pet) : undefined;
 
       if (target === undefined) {
         dependencies.onOpenSection(module);
@@ -238,10 +293,15 @@ export function reatomToday(dependencies: TodayDependencies) {
 
   return {
     isLoading: computed(() => data.data() === undefined && !data.ready(), "today.isLoading"),
-    failure: computed(
-      () => (data.error() === undefined ? undefined : "Не получилось загрузить «Сегодня»."),
-      "today.failure",
+    // A failed refresh keeps what was already shown.
+    loadFailure: computed(
+      () =>
+        data.error() === undefined || data.data() !== undefined
+          ? undefined
+          : "Не получилось загрузить «Сегодня».",
+      "today.loadFailure",
     ),
+    completionFailure: readOnly(completion.failure),
     undo: computed(() => {
       const completing = completion.pending();
 

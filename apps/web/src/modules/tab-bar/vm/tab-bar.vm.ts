@@ -9,7 +9,7 @@ import type { TabBarModules } from "../tab-bar.model.ts";
 // Today and «Разделы» never move; the two slots between them are the Member's.
 export type TabId = "today" | "sections" | SlotModule;
 
-export type Tab = { id: TabId; title: string; isActive: boolean };
+export type TabItem = { id: TabId; title: string; isActive: boolean };
 
 type TabBarDependencies = {
   modules: Pick<TabBarModules, "modules">;
@@ -27,7 +27,7 @@ export function reatomTabBar({
   onOpen,
   titles = () => ({}),
 }: TabBarDependencies) {
-  function tabOf(id: TabId): Tab {
+  function tabOf(id: TabId): TabItem {
     const title =
       id === "today" || id === "sections" ? fixedTitles[id] : (titles()[id] ?? sectionTitles[id]);
 

@@ -25,6 +25,7 @@ import {
   createCareEntryRepo,
   createCareEntryService,
   createPetTile,
+  type CareEntryRepo,
   type CareEntryService,
 } from "@/modules/care-entry";
 import { commandRoute, createCommandRepo, createCommandService } from "@/modules/command";
@@ -34,6 +35,7 @@ import {
   createEventService,
   createEventTile,
   eventRoute,
+  type EventRepo,
 } from "@/modules/event";
 import {
   createFamilyFeed,
@@ -75,6 +77,7 @@ import {
   createPlanService,
   createPlanTile,
   planRoute,
+  type PlanRepo,
   type PlanService,
 } from "@/modules/plan";
 import {
@@ -155,9 +158,54 @@ function albumServiceOf(
   });
 }
 
-function feedServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Clock }) {
-  const care = createCareFeed({ entries: createCareEntryRepo(db), links });
-  const plans = createPlanFeed({ plans: createPlanRepo(db) });
+type FeedReads = {
+  plans: PlanRepo;
+  events: EventRepo;
+  entries: CareEntryRepo;
+};
+
+function readsOf(db: Db): FeedReads {
+  return {
+    plans: createPlanRepo(db),
+    events: createEventRepo(db),
+    entries: createCareEntryRepo(db),
+  };
+}
+
+function readOnce<Rows>(read: (...keys: string[]) => Promise<Rows>) {
+  const reads = new Map<string, Promise<Rows>>();
+
+  return async (...keys: string[]): Promise<Rows> => {
+    const key = keys.join(":");
+    const held = reads.get(key) ?? read(...keys);
+
+    reads.set(key, held);
+
+    return held;
+  };
+}
+
+// The hub reads the same Plans, Events and Due Dates for its lists and for its tiles, once each.
+function sharedReadsOf(db: Db): FeedReads {
+  const { plans, events, entries } = readsOf(db);
+
+  return {
+    plans: { ...plans, listVisible: readOnce(plans.listVisible) },
+    events: { ...events, listVisible: readOnce(events.listVisible) },
+    entries: {
+      ...entries,
+      petsOf: readOnce(entries.petsOf),
+      allDueCandidates: readOnce(entries.allDueCandidates),
+    },
+  };
+}
+
+function feedServiceOf(
+  db: Db,
+  { links, clock, reads = readsOf(db) }: { links: PhotoLinks; clock: Clock; reads?: FeedReads },
+) {
+  const care = createCareFeed({ entries: reads.entries, links });
+  const plans = createPlanFeed({ plans: reads.plans });
 
   return createFeedService({
     activity: [
@@ -171,7 +219,7 @@ function feedServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Clo
     upcoming: [
       care,
       plans,
-      createEventFeed({ events: createEventRepo(db) }),
+      createEventFeed({ events: reads.events }),
       createReminderFeed({ reminders: createReminderRepo(db) }),
       createPetFeed({ pets: createPetRepo(db) }),
     ],
@@ -180,14 +228,16 @@ function feedServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Clo
 }
 
 // Each section's tile comes from the module that owns it; the hub only merges them.
-function todayServiceOf(db: Db, { feed, clock }: { feed: FeedService; clock: Clock }) {
+function todayServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Clock }) {
+  const reads = sharedReadsOf(db);
+
   return createTodayService({
-    feed,
+    feed: feedServiceOf(db, { links, clock, reads }),
     clock,
     tiles: {
-      plans: createPlanTile({ plans: createPlanRepo(db) }),
-      calendar: createEventTile({ events: createEventRepo(db) }),
-      pet: createPetTile({ entries: createCareEntryRepo(db) }),
+      plans: createPlanTile({ plans: reads.plans }),
+      calendar: createEventTile({ events: reads.events }),
+      pet: createPetTile({ entries: reads.entries }),
       goals: createGoalTile({ goals: createGoalRepo(db) }),
       albums: createAlbumTile({ albums: createAlbumRepo(db) }),
       recipes: createRecipeTile({ recipes: createRecipeRepo(db) }),
@@ -244,7 +294,7 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders, links }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
     feed,
-    today: todayServiceOf(db, { feed, clock }),
+    today: todayServiceOf(db, { links, clock }),
     goals: createGoalService({ goals: createGoalRepo(db), clock }),
     recipes: createRecipeService({ recipes: createRecipeRepo(db), links, clock }),
     photos: createPhotoService({

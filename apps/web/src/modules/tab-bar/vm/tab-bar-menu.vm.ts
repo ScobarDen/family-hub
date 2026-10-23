@@ -11,7 +11,7 @@ export type SlotChoice = { module: SlotModule; title: string };
 export type Slot = { index: number; module: SlotModule; title: string };
 
 // A module already in the other slot swaps places with the one being replaced.
-function chosen(current: SlotModule[], index: number, module: SlotModule): SlotModule[] {
+function withSlotChosen(current: SlotModule[], index: number, module: SlotModule): SlotModule[] {
   const next = [...current];
   const other = next.indexOf(module);
   const replaced = next[index];
@@ -45,7 +45,7 @@ export function reatomTabBarMenu({ modules }: { modules: TabBarModules }) {
 
     choose: action((index: number, module: SlotModule) => {
       const current = modules.modules();
-      const next = chosen(current, index, module);
+      const next = withSlotChosen(current, index, module);
 
       if (next !== current) {
         modules.save(next).catch(noop);

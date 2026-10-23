@@ -1,4 +1,4 @@
-import { todayWeekDays } from "@family-hub/contract";
+import { tileWindowDays } from "@family-hub/contract";
 import { daysAfter } from "@family-hub/recurrence";
 
 import type { TileSource } from "@/modules/today";
@@ -13,7 +13,7 @@ export function createEventTile({ events }: { events: EventRepo }): TileSource<"
     tile: async (viewer, { today, timeZone }) => {
       const week = await feed.within(viewer, {
         today,
-        last: daysAfter(today, todayWeekDays - 1),
+        last: daysAfter(today, tileWindowDays - 1),
         timeZone,
       });
 

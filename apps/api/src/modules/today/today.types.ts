@@ -5,7 +5,7 @@ import type { Membership } from "@/common/auth";
 export type TileWindow = { today: string; timeZone: string };
 
 export type TileSource<Section extends keyof TodayTiles> = {
-  tile(viewer: Membership, window: TileWindow): Promise<TodayTiles[Section]>;
+  tile(viewer: Membership, window: TileWindow): Promise<NonNullable<TodayTiles[Section]>>;
 };
 
 export type TileSources = { [Section in keyof TodayTiles]: TileSource<Section> };

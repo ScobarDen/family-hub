@@ -18,7 +18,6 @@ export type QuickAddButton = { title: string; target: QuickAdd };
 
 type SectionsDependencies = {
   modules: Pick<TabBarModules, "modules">;
-  // One line per section, from the same payload as the hub's tiles.
   statuses: () => Partial<Record<AppModule, string>>;
   // A Contribution goes to the Savings Goal whose deadline is nearest; none means no button.
   contributionGoalId: () => string | undefined;

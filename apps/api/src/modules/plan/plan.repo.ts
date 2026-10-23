@@ -56,18 +56,11 @@ function inFamily(familyId: string, condition: SQL | undefined) {
   return and(eq(plans.familyId, familyId), condition);
 }
 
-// A Private Plan exists only for its owner, its Subplans included.
+// A Private Plan exists only for its owner, its Subplans included. The Subplans are picked by a
+// subquery, not by the roots' ids: D1 binds at most 100 parameters to a query.
 async function listVisible(db: Db, familyId: string, memberId: string): Promise<PlanTree[]> {
-  const roots = await selectWhere(
-    db,
-    inFamily(
-      familyId,
-      and(
-        isNull(plans.parentId),
-        or(eq(plans.visibility, "shared"), eq(plans.ownerMemberId, memberId)),
-      ),
-    ),
-  );
+  const isVisible = or(eq(plans.visibility, "shared"), eq(plans.ownerMemberId, memberId));
+  const roots = await selectWhere(db, inFamily(familyId, and(isNull(plans.parentId), isVisible)));
   const subplans =
     roots.length === 0
       ? []
@@ -77,7 +70,16 @@ async function listVisible(db: Db, familyId: string, memberId: string): Promise<
             familyId,
             inArray(
               plans.parentId,
-              roots.map(({ id }) => id),
+              db
+                .select({ id: rootPlans.id })
+                .from(rootPlans)
+                .where(
+                  and(
+                    eq(rootPlans.familyId, familyId),
+                    isNull(rootPlans.parentId),
+                    or(eq(rootPlans.visibility, "shared"), eq(rootPlans.ownerMemberId, memberId)),
+                  ),
+                ),
             ),
           ),
         );

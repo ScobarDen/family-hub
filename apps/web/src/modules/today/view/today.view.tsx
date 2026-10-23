@@ -9,7 +9,7 @@ import { Tiles } from "./tiles.view.tsx";
 import { UndoBar } from "./undo-bar.view.tsx";
 
 export const Today = reatomComponent(({ model }: { model: TodayModel }) => {
-  const failure = model.failure();
+  const failure = model.loadFailure();
 
   if (model.isLoading() || failure !== undefined) {
     return <LoadState {...(failure === undefined ? {} : { failure })} />;

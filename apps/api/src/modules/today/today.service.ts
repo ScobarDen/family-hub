@@ -1,22 +1,39 @@
-import type { Today } from "@family-hub/contract";
+import type { Today, TodayTiles } from "@family-hub/contract";
 import { dateInZone } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 import { fallbackTimeZone, type Clock } from "@/common/clock";
 import type { FeedService } from "@/modules/feed";
 
-import type { TileSources, TileWindow } from "./today.types.ts";
+import type { TileSource, TileSources, TileWindow } from "./today.types.ts";
 
 type TodayDependencies = { feed: Pick<FeedService, "todayOf">; tiles: TileSources; clock: Clock };
 
-async function tilesOf(tiles: TileSources, viewer: Membership, window: TileWindow) {
+type Section = keyof TodayTiles;
+
+// The hub is the first screen, so one section that cannot be read shows as a bare tile.
+async function tileOf<Name extends Section>(
+  section: Name,
+  source: TileSource<Name>,
+  { viewer, window }: { viewer: Membership; window: TileWindow },
+): Promise<TodayTiles[Name] | null> {
+  try {
+    return await source.tile(viewer, window);
+  } catch (error) {
+    console.error("Today tile not read", { section, error });
+
+    return null;
+  }
+}
+
+async function tilesOf(tiles: TileSources, reading: { viewer: Membership; window: TileWindow }) {
   const [plans, calendar, pet, goals, albums, recipes] = await Promise.all([
-    tiles.plans.tile(viewer, window),
-    tiles.calendar.tile(viewer, window),
-    tiles.pet.tile(viewer, window),
-    tiles.goals.tile(viewer, window),
-    tiles.albums.tile(viewer, window),
-    tiles.recipes.tile(viewer, window),
+    tileOf("plans", tiles.plans, reading),
+    tileOf("calendar", tiles.calendar, reading),
+    tileOf("pet", tiles.pet, reading),
+    tileOf("goals", tiles.goals, reading),
+    tileOf("albums", tiles.albums, reading),
+    tileOf("recipes", tiles.recipes, reading),
   ]);
 
   return { plans, calendar, pet, goals, albums, recipes };
@@ -27,12 +44,12 @@ export function createTodayService({ feed, tiles, clock }: TodayDependencies) {
     async of(viewer: Membership): Promise<Today> {
       const timeZone = viewer.member.timeZone ?? fallbackTimeZone;
       const window = { today: dateInZone(clock.now(), timeZone), timeZone };
-      const [agenda, sectionTiles] = await Promise.all([
+      const [dueAndNext, sectionTiles] = await Promise.all([
         feed.todayOf(viewer),
-        tilesOf(tiles, viewer, window),
+        tilesOf(tiles, { viewer, window }),
       ]);
 
-      return { ...agenda, tiles: sectionTiles };
+      return { ...dueAndNext, tiles: sectionTiles };
     },
   };
 }

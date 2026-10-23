@@ -104,4 +104,13 @@ describe("the slot setup", () => {
 
     await expect.poll(() => saves).toEqual([{ modules: ["calendar", "plans"] }]);
   });
+
+  test("keeps the slots as they are when the module is already in that slot", async () => {
+    const { menu, saves } = startTabBar(["plans", "calendar"]);
+
+    menu.choose(1, "calendar");
+    await Promise.resolve();
+
+    expect(saves).toEqual([]);
+  });
 });

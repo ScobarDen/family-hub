@@ -251,8 +251,14 @@ export function reatomGoalsScreen(
       "goals.canGoBack",
     ),
     isChanging: computed(() => !complete.ready() || !removeMovement.ready(), "goals.isChanging"),
-    // A Goal opened by id shows once the list holds it.
-    isGoalOpened: computed(() => openedGoal() !== undefined, "goals.isGoalOpened"),
+    // A Goal opened by id shows once the list holds it; a loaded list without it means it is gone.
+    openedGoalState: computed((): "loading" | "opened" | "missing" => {
+      if (openedGoal() !== undefined) {
+        return "opened";
+      }
+
+      return dependencies.goals.list.data() === undefined ? "loading" : "missing";
+    }, "goals.openedGoalState"),
     complete: detached(complete, "goals.completeGoal"),
     removeMovement: detached(removeMovement, "goals.removeOneMovement"),
     ...forms,

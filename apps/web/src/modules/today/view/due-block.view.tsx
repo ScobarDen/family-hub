@@ -23,13 +23,13 @@ export const DueBlock = reatomComponent(({ model }: { model: TodayModel }) => {
           icon={sectionIcons[row.module]}
           isAlert={row.isOverdue}
           title={row.title}
-          subtitle={row.isOverdue ? `Просрочено · ${row.when}` : row.when}
+          subtitle={row.when}
           after={
             <Button
               size="sm"
               variant="secondary"
               onClick={() => {
-                model.act(row.key);
+                model.completeOrRecord(row.key);
               }}
             >
               {row.action.title}

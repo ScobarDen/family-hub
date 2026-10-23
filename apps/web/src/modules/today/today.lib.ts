@@ -1,4 +1,4 @@
-import type { FeedUpcoming, SlotModule, TodayTiles } from "@family-hub/contract";
+import { type FeedUpcoming, type SlotModule, type TodayTiles } from "@family-hub/contract";
 
 import { formatCount, type CountWords } from "@/common/format-count";
 import { formatNearDate } from "@/common/format-date";
@@ -37,7 +37,11 @@ const recordTitles = {
 } as const;
 
 export function headerOf(count: number): string {
-  return count === 0 ? "Сегодня свободный день" : `Сегодня ${formatCount(count, choreWords)}`;
+  return count === 0 ? "День свободен" : formatCount(count, choreWords);
+}
+
+export function feedStatusOf(count: number): string | undefined {
+  return count === 0 ? undefined : `${formatCount(count, choreWords)} на сегодня`;
 }
 
 export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
@@ -45,7 +49,10 @@ export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
     key: item.key,
     module: item.kind === "due" ? "pet" : "plans",
     title: item.title,
-    when: formatNearDate(item.date, today),
+    when:
+      item.date < today
+        ? `Просрочено · ${formatNearDate(item.date, today)}`
+        : formatNearDate(item.date, today),
     isOverdue: item.date < today,
     action:
       item.kind === "due"
@@ -72,7 +79,10 @@ function tile(module: SlotModule, fields: Partial<Omit<Tile, "module">> = {}): T
   };
 }
 
-function petTile({ active, only, due }: TodayTiles["pet"], today: string): Tile {
+type Tiles = TodayTiles;
+
+function petTile(pet: NonNullable<Tiles["pet"]>, today: string): Tile {
+  const { activeCount, only, due } = pet;
   const note = due === null ? undefined : `${due.label} · ${formatNearDate(due.date, today)}`;
   const isAlert = due !== null && due.date < today;
 
@@ -80,9 +90,9 @@ function petTile({ active, only, due }: TodayTiles["pet"], today: string): Tile 
     return tile("pet", { title: only.name, note, isAlert });
   }
 
-  return active === 0
+  return activeCount === 0
     ? tile("pet", { title: "Питомцы", note: "Добавить питомца" })
-    : tile("pet", { title: `Питомцы · ${active}`, note, isAlert });
+    : tile("pet", { title: `Питомцы · ${activeCount}`, note, isAlert });
 }
 
 // A count of zero says nothing, so such a tile shows only its caption.
@@ -90,29 +100,48 @@ function counted(count: number): string | undefined {
   return count === 0 ? undefined : String(count);
 }
 
-export function tilesOf(tiles: TodayTiles, today: string): Tile[] {
-  const { plans, calendar, goals, albums, recipes } = tiles;
-
-  return [
+// A section the server could not read keeps its place with only its caption.
+const tileOf: {
+  [Section in SlotModule]: (read: NonNullable<Tiles[Section]>, today: string) => Tile;
+} = {
+  plans: ({ open, overdue }) =>
     tile("plans", {
-      value: counted(plans.open),
-      note: plans.overdue === 0 ? undefined : `${plans.overdue} просрочено`,
-      isAlert: plans.overdue > 0,
+      value: counted(open),
+      note: overdue === 0 ? undefined : `${overdue} просрочено`,
+      isAlert: overdue > 0,
     }),
-    tile("calendar", {
-      value: counted(calendar.events),
-      note: calendar.events === 0 ? undefined : "на неделе",
-    }),
-    petTile(tiles.pet, today),
+  calendar: ({ events }) =>
+    tile("calendar", { value: counted(events), note: events === 0 ? undefined : "на неделе" }),
+  pet: petTile,
+  goals: ({ nearest }) =>
     tile("goals", {
-      value: goals.nearest === null ? undefined : `${goals.nearest.percent}%`,
-      note: goals.nearest?.title,
+      value: nearest === null ? undefined : `${nearest.percent}%`,
+      note: nearest?.title,
     }),
+  albums: ({ photos }) =>
     tile("albums", {
-      value: counted(albums.photos),
-      note: albums.photos === 0 ? undefined : "фото за неделю",
+      value: counted(photos),
+      note: photos === 0 ? undefined : "фото за неделю",
     }),
-    tile("recipes", { note: recipes.lastCooked?.title }),
+  recipes: ({ lastCooked }) => tile("recipes", { note: lastCooked?.title }),
+};
+
+function readOrBare<Read>(
+  section: SlotModule,
+  read: Read | null,
+  make: (read: Read) => Tile,
+): Tile {
+  return read === null ? tile(section) : make(read);
+}
+
+export function tilesOf(tiles: Tiles, today: string): Tile[] {
+  return [
+    readOrBare("plans", tiles.plans, (read) => tileOf.plans(read, today)),
+    readOrBare("calendar", tiles.calendar, (read) => tileOf.calendar(read, today)),
+    readOrBare("pet", tiles.pet, (read) => tileOf.pet(read, today)),
+    readOrBare("goals", tiles.goals, (read) => tileOf.goals(read, today)),
+    readOrBare("albums", tiles.albums, (read) => tileOf.albums(read, today)),
+    readOrBare("recipes", tiles.recipes, (read) => tileOf.recipes(read, today)),
   ];
 }
 

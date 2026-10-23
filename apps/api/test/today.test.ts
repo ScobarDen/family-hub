@@ -280,7 +280,7 @@ describe("the section tiles", () => {
     expect(tiles).toEqual({
       plans: { open: 0, overdue: 0 },
       calendar: { events: 0 },
-      pet: { active: 0, only: null, due: null },
+      pet: { activeCount: 0, only: null, due: null },
       goals: { nearest: null },
       albums: { photos: 0 },
       recipes: { lastCooked: null },
@@ -318,13 +318,13 @@ describe("the section tiles", () => {
     await request(worker, denis, { method: "POST", path: `/api/pets/${old.id}/archive` });
 
     expect(await tileOf(worker, "pet")).toEqual({
-      active: 1,
+      activeCount: 1,
       only: { petId: buick.id, name: "Бьюик" },
-      due: { label: "Прививка: Бешенство — Бьюик", date: "2026-11-01" },
+      due: { label: "Прививка: Бешенство", date: "2026-11-01" },
     });
   });
 
-  test("count several Pets with the most urgent Due Date of them all", async () => {
+  test("count several Pets with the soonest Due Date of them all, naming its Pet", async () => {
     const worker = await startWithFamily();
     const buick = await addPet(worker, "Бьюик");
     const murka = await addPet(worker, "Мурка");
@@ -333,7 +333,7 @@ describe("the section tiles", () => {
     await vaccinate(worker, murka, { vaccine: "Нобивак", dueDate: "2026-10-20" });
 
     expect(await tileOf(worker, "pet")).toEqual({
-      active: 2,
+      activeCount: 2,
       only: null,
       due: { label: "Прививка: Нобивак — Мурка", date: "2026-10-20" },
     });

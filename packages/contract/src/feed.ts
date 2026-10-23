@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { dueCareKind } from "./care-entry.ts";
 import { photo } from "./photo.ts";
 
 export const feedPageSize = 30;
@@ -30,7 +31,7 @@ export const feedUpcoming = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("due"),
     ...dated,
-    careKind: z.enum(["vaccination", "treatment", "vet_visit"]),
+    careKind: dueCareKind,
     petId: z.string(),
     entryId: z.string(),
   }),

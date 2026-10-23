@@ -2,9 +2,9 @@ import { House, LayoutGrid, type LucideIcon } from "lucide-react";
 
 import { sectionIcons } from "@/common/sections";
 
-import type { Tab, TabId } from "../vm/tab-bar.vm.ts";
+import type { TabId, TabItem } from "../vm/tab-bar.vm.ts";
 
-type TabButtonProps = { tab: Tab; onOpen: (tab: TabId) => void };
+type TabButtonProps = { tab: TabItem; onOpen: (tab: TabId) => void };
 
 const tabIcons: Record<TabId, LucideIcon> = { ...sectionIcons, today: House, sections: LayoutGrid };
 

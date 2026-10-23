@@ -22,7 +22,7 @@ type TargetFields = {
   event: { eventId: string };
   calendar: object;
   pet: { petId: string };
-  "add-pet": object;
+  "new-pet": object;
   "care-entry": { entryId: string; petId?: string };
   "due-date": { entryId: string; petId?: string };
   goal: { goalId: string };
@@ -72,7 +72,7 @@ type OpenerDependencies = {
   };
   goals: {
     open: Open;
-    isGoalOpened: () => boolean;
+    openedGoalState: () => "loading" | "opened" | "missing";
     addMovement: (kind: MovementKind) => void;
   };
   albums: { open: Open; upload: (files: Blob[]) => void };
@@ -89,7 +89,7 @@ const modules: Partial<Record<TargetKind, AppModule>> = {
   calendar: "calendar",
   "new-event": "calendar",
   pet: "pet",
-  "add-pet": "pet",
+  "new-pet": "pet",
   "care-entry": "pet",
   "due-date": "pet",
   "new-care-entry": "pet",
@@ -132,6 +132,14 @@ async function untilTrue(isDone: () => boolean): Promise<void> {
   if (!isDone()) {
     await wrap(take(isDone, (is) => is || throwAbort()));
   }
+}
+
+async function untilKnown<State extends string>(state: () => State | "loading"): Promise<State> {
+  const current = state();
+
+  return current === "loading"
+    ? wrap(take(state, (next) => (next === "loading" ? throwAbort() : next)))
+    : current;
 }
 
 type PetChoice = "picking" | "picked" | "left";
@@ -205,7 +213,7 @@ function openersOf(dependencies: OpenerDependencies): Openers {
   const { plans, pets, care, calendar, goals, albums, recipes, commandSheet } = dependencies;
 
   async function signedInThen(open: () => void): Promise<void> {
-    await untilTrue(dependencies.isSignedIn);
+    await wrap(untilTrue(dependencies.isSignedIn));
     open();
   }
 
@@ -217,15 +225,17 @@ function openersOf(dependencies: OpenerDependencies): Openers {
     calendar: noop,
     "new-event": () => calendar.add(),
     pet: noop,
-    "add-pet": () => pets.add(),
+    "new-pet": () => pets.add(),
     "care-entry": async ({ entryId }) => signedInThen(() => care.openEntry(entryId)),
     "due-date": async ({ entryId }) => signedInThen(() => care.followUp(entryId)),
     "new-care-entry": async () => openForPet(dependencies, { petId: null, onPicked: care.add }),
     goal: ({ goalId }) => goals.open(goalId),
     "new-contribution": async ({ goalId }) => {
       goals.open(goalId);
-      await untilTrue(goals.isGoalOpened);
-      goals.addMovement("contribution");
+
+      if ((await wrap(untilKnown(goals.openedGoalState))) === "opened") {
+        goals.addMovement("contribution");
+      }
     },
     album: ({ albumId }) => albums.open(albumId),
     recipe: ({ recipeId }) => recipes.open(recipeId),

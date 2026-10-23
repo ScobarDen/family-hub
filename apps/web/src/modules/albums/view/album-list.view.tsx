@@ -44,7 +44,7 @@ export function AlbumList(props: AlbumListProps) {
   return (
     <SectionLayout
       summary={<p className="px-5 pb-4 text-[0.9375rem] text-muted-foreground">{props.summary}</p>}
-      action={<PrimaryButton onClick={props.model.add}>Новый альбом</PrimaryButton>}
+      action={<PrimaryButton onClick={props.model.add}>Создать альбом</PrimaryButton>}
       tabs={[{ key: "albums", title: "Альбомы", content: albumsOf(props) }]}
     />
   );

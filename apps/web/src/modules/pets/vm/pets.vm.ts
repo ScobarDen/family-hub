@@ -168,7 +168,10 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
     openedPet,
     onDeleted: () => {
       navigation.editing.set(undefined);
-      dependencies.route.close();
+
+      if (dependencies.route.petId() !== undefined) {
+        dependencies.route.close();
+      }
     },
   });
   const screen = reatomScreen(dependencies, navigation, {

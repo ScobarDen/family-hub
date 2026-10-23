@@ -4,26 +4,31 @@ import { feedUpcoming } from "./feed.ts";
 
 export const todayNextCount = 3;
 
-export const todayWeekDays = 7;
+export const tileWindowDays = 7;
 
 const pending = z.object({ label: z.string(), date: z.iso.date() });
 
 // One live number per section; Archived Pets and other Members' Private records count for no one.
+// A tile that could not be read is null, so one failing section leaves the hub standing.
 export const todayTiles = z.object({
-  plans: z.object({ open: z.number(), overdue: z.number() }),
-  calendar: z.object({ events: z.number() }),
-  pet: z.object({
-    active: z.number(),
-    only: z.object({ petId: z.string(), name: z.string() }).nullable(),
-    due: pending.nullable(),
-  }),
-  goals: z.object({
-    nearest: z.object({ goalId: z.string(), title: z.string(), percent: z.number() }).nullable(),
-  }),
-  albums: z.object({ photos: z.number() }),
-  recipes: z.object({
-    lastCooked: z.object({ recipeId: z.string(), title: z.string() }).nullable(),
-  }),
+  plans: z.object({ open: z.number(), overdue: z.number() }).nullable(),
+  calendar: z.object({ events: z.number() }).nullable(),
+  pet: z
+    .object({
+      activeCount: z.number(),
+      only: z.object({ petId: z.string(), name: z.string() }).nullable(),
+      due: pending.nullable(),
+    })
+    .nullable(),
+  goals: z
+    .object({
+      nearest: z.object({ goalId: z.string(), title: z.string(), percent: z.number() }).nullable(),
+    })
+    .nullable(),
+  albums: z.object({ photos: z.number() }).nullable(),
+  recipes: z
+    .object({ lastCooked: z.object({ recipeId: z.string(), title: z.string() }).nullable() })
+    .nullable(),
 });
 
 export type TodayTiles = z.infer<typeof todayTiles>;
