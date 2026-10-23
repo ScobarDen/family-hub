@@ -50,7 +50,9 @@ async function planSource(
     buttons: planButtons,
     closesForEveryone: true,
     complete: async (presser) => {
-      await dependencies.plans.completeById(presser, id);
+      const { status } = await dependencies.plans.completeById(presser, id);
+
+      return status === "ok";
     },
     snoozeMs: daySnoozeMs,
     isSkippedWhenLate: false,

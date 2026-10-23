@@ -3,7 +3,13 @@ import type { CallbackQuery } from "@grammyjs/types";
 import type { Membership } from "@/common/auth";
 import { ignoringBotErrors } from "@/common/telegram";
 
-import { doneText, notYoursText, parseCallback, snoozedText } from "../reminder.lib.ts";
+import {
+  doneText,
+  notDoneText,
+  notYoursText,
+  parseCallback,
+  snoozedText,
+} from "../reminder.lib.ts";
 import type { ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
 import { fireAfter, zoneOf } from "./schedule.service.ts";
@@ -59,7 +65,10 @@ async function moveOn(closing: Closing, other: DispatchRow) {
 
 // «Готово» closes the Occurrence for every Recipient: sent messages turn into «Сделал(а) …» and
 // rows still waiting for it move on.
-async function markDone(dependencies: ReminderDependencies, press: Press) {
+async function markDone(
+  dependencies: ReminderDependencies,
+  { press, rows }: { press: Press; rows: DispatchRow[] },
+) {
   const { row } = press;
   const closing: Closing = {
     ...dependencies,
@@ -67,7 +76,6 @@ async function markDone(dependencies: ReminderDependencies, press: Press) {
     occurrence: row.sentOccurrence ?? row.occurrence,
     now: dependencies.clock.now(),
   };
-  const rows = await dependencies.dispatch.ofSource(row);
 
   for (const other of rows) {
     if (other.sentOccurrence === closing.occurrence) {
@@ -144,9 +152,23 @@ export async function handleReminderCallback(
     return;
   }
 
+  // The source closes first, so a message never says «Сделал(а)» about what the app still shows open;
+  // its rows are read before, as closing a Plan drops them.
   if (parsed.action === "done" && press.source.closesForEveryone) {
-    await markDone(dependencies, press);
-    await press.source.complete?.(press.presser);
+    const rows = await dependencies.dispatch.ofSource(press.row);
+
+    if ((await press.source.complete?.(press.presser)) === false) {
+      await ignoringBotErrors(
+        dependencies.bot.call("answerCallbackQuery", {
+          callback_query_id: query.id,
+          text: notDoneText,
+        }),
+      );
+
+      return;
+    }
+
+    await markDone(dependencies, { press, rows });
   } else {
     await snooze(dependencies, press);
   }

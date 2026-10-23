@@ -82,6 +82,8 @@ export function snoozedText({
 
 export const notYoursText = "Это не ваше напоминание";
 
+export const notDoneText = "Не получилось отметить, откройте приложение";
+
 export function planButtons(dispatchId: string): InlineKeyboardMarkup {
   return {
     inline_keyboard: [

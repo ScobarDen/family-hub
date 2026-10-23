@@ -14,7 +14,7 @@ import type { FamilyHolderKind, SourceRepo } from "./repo/source.repo.ts";
 
 // «✅ Выполнено» on a Plan's Reminder completes it in the plan module, which the app wires in.
 type PlanCompletion = {
-  completeById(membership: Membership, planId: string): Promise<unknown>;
+  completeById(membership: Membership, planId: string): Promise<{ status: string }>;
 };
 
 // The digest reads the Feed of its Member; the app wires the feed module in.
@@ -65,7 +65,8 @@ export type Source = {
   title: (occurrence: string, timeZone: string) => string;
   buttons: (dispatchId: string) => InlineKeyboardMarkup;
   closesForEveryone: boolean;
-  complete?: (presser: Membership) => Promise<void>;
+  // False when the source refused, so the messages are left as they were.
+  complete?: (presser: Membership) => Promise<boolean>;
   // A message built when it is due; nothing to say means nothing is sent.
   compose?: (occurrence: string, timeZone: string) => Promise<string | undefined>;
   snoozeMs: number;

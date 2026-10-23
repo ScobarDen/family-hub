@@ -1,7 +1,7 @@
 import type { InlineKeyboardMarkup, Update } from "@grammyjs/types";
 import { describe, expect, test } from "vite-plus/test";
 
-import type { Reminder, ReminderChange } from "@family-hub/contract";
+import type { Reminder, ReminderChange, Today } from "@family-hub/contract";
 
 import { type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, startWorker } from "./worker-harness.ts";
@@ -234,6 +234,22 @@ describe("the Reminder buttons", () => {
       [asya.id, "✅ Сделал(а) Ася: Оплатить интернет"],
     ]);
     expect(worker.bot.answeredCallbacks()).toEqual([{ callback_query_id: `callback-${asya.id}` }]);
+  });
+
+  test("«Готово» takes the Occurrence off the app and leaves the next one", async () => {
+    const worker = await startWithFamily();
+
+    await createReminder(worker);
+    worker.clock.set(firesAt);
+    await worker.tick();
+    await press(worker, asya, lastCallbackOf(worker, asya, "done"));
+
+    const response = await request(worker, denis, { path: "/api/today" });
+    const { next } = await response.json<Today>();
+
+    expect(next.map(({ title, date }) => ({ title, date }))).toEqual([
+      { title: "Оплатить интернет", date: "2026-10-11" },
+    ]);
   });
 
   test("«Отложить» brings back only the presser's own Reminder an hour later", async () => {
