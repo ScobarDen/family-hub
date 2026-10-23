@@ -11,14 +11,14 @@ export const CookForm = reatomComponent(
       <Input
         type="date"
         aria-label="Когда приготовили"
-        className="h-11 w-40"
+        className="h-11 min-w-0 flex-1"
         max={model.today()}
         value={model.cookDay()}
         onChange={(event) => {
           model.chooseCookDay(event.target.value);
         }}
       />
-      <Button className="h-11 flex-1" disabled={!model.canCook()} onClick={model.cook}>
+      <Button className="h-11 shrink-0" disabled={!model.canCook()} onClick={model.cook}>
         <CookingPot /> Приготовили
       </Button>
     </div>

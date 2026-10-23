@@ -10,7 +10,7 @@ export const GoalActions = reatomComponent(
     <Section>
       <SectionItem
         icon={Minus}
-        title="Снять"
+        title="Снять с цели"
         onClick={() => {
           model.addMovement("withdrawal");
         }}
@@ -25,14 +25,14 @@ export const GoalClosing = reatomComponent(
   ({ model }: { model: GoalsScreenModel }) => (
     <Section title="Закрыть цель">
       <SectionItem
-        title="Цель исполнена"
+        title="Закрыть как исполненную"
         disabled={model.isChanging()}
         onClick={() => {
           model.complete("fulfilled");
         }}
       />
       <SectionItem
-        title="Отменить цель"
+        title="Закрыть без исполнения"
         disabled={model.isChanging()}
         onClick={() => {
           model.complete("cancelled");

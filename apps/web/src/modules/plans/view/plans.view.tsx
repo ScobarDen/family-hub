@@ -28,7 +28,10 @@ function contentOf(model: PlansScreenModel, screen: PlansScreen): ReactNode {
   }
 
   return (
-    <LoadState failure={screen.kind === "failed" ? "Не получилось загрузить планы." : undefined} />
+    <LoadState
+      failure={screen.kind === "failed" ? "Не получилось загрузить планы." : undefined}
+      onRetry={model.retry}
+    />
   );
 }
 

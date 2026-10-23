@@ -11,6 +11,8 @@ type SectionItemProps = {
   iconVariant?: "plain" | "badge";
   tone?: IconTone;
   isAlert?: boolean;
+  // A row that destroys something reads red as a whole, not only its icon.
+  isDestructive?: boolean;
   leading?: ReactNode;
   title: string;
   subtitle?: string;
@@ -40,25 +42,33 @@ function leadingOf({
   );
 }
 
+function bodyOf({ title, subtitle, after, isDestructive = false }: SectionItemProps): ReactNode {
+  return (
+    <span
+      data-slot="item-body"
+      className="flex min-h-12 flex-1 items-center gap-3 border-border py-2.5 pr-4"
+    >
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className={cn("leading-snug break-words", isDestructive && "text-destructive-text")}>
+          {title}
+        </span>
+        {subtitle !== undefined && (
+          <span className="text-[0.8125rem] leading-snug whitespace-pre-line text-muted-foreground">
+            {subtitle}
+          </span>
+        )}
+      </span>
+      {after}
+    </span>
+  );
+}
+
 export function SectionItem(props: SectionItemProps) {
-  const { title, subtitle, after, onClick, disabled = false } = props;
+  const { onClick, disabled = false, isAlert = false, isDestructive = false } = props;
   const content = (
     <>
-      {leadingOf(props)}
-      <span
-        data-slot="item-body"
-        className="flex min-h-12 flex-1 items-center gap-3 border-border py-2.5 pr-4"
-      >
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="leading-snug">{title}</span>
-          {subtitle !== undefined && (
-            <span className="text-[0.8125rem] leading-snug whitespace-pre-line text-muted-foreground">
-              {subtitle}
-            </span>
-          )}
-        </span>
-        {after}
-      </span>
+      {leadingOf({ ...props, isAlert: isAlert || isDestructive })}
+      {bodyOf(props)}
     </>
   );
 
@@ -69,9 +79,12 @@ export function SectionItem(props: SectionItemProps) {
   return (
     <button
       type="button"
-      className={cn(row, "active:bg-muted disabled:opacity-50")}
-      disabled={disabled}
-      onClick={onClick}
+      className={cn(
+        row,
+        "focus-visible:-outline-offset-2 active:bg-muted aria-disabled:opacity-50",
+      )}
+      aria-disabled={disabled || undefined}
+      onClick={disabled ? undefined : onClick}
     >
       {content}
     </button>

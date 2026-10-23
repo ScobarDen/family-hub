@@ -28,7 +28,10 @@ function contentOf(model: GoalsScreenModel, screen: GoalsScreen): ReactNode {
   }
 
   return (
-    <LoadState failure={screen.kind === "failed" ? "Не получилось загрузить цели." : undefined} />
+    <LoadState
+      failure={screen.kind === "failed" ? "Не получилось загрузить цели." : undefined}
+      onRetry={model.retry}
+    />
   );
 }
 

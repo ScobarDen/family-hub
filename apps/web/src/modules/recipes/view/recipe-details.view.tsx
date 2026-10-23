@@ -64,12 +64,12 @@ export const RecipeDetails = reatomComponent((props: DetailsProps) => {
       <Section>
         <SectionItem
           icon={Star}
-          title={recipe.isFavorite ? "Убрать из избранного" : "В избранное"}
+          title={recipe.isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
           onClick={model.toggleFavorite}
         />
         <SectionItem icon={Pencil} title="Изменить рецепт" onClick={model.edit} />
         {recipe.canDelete && (
-          <SectionItem icon={Trash2} isAlert title="Удалить рецепт" onClick={model.remove} />
+          <SectionItem icon={Trash2} isDestructive title="Удалить рецепт" onClick={model.remove} />
         )}
       </Section>
       <PhotoViewer model={model.viewer} />

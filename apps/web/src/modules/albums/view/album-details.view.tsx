@@ -2,7 +2,15 @@ import { reatomComponent } from "@reatom/react";
 import { ImagePlus, ImageUp, Pencil, Trash2 } from "lucide-react";
 
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
-import { FilePick, Section, SectionItem, SectionLayout } from "@/common/ui";
+import {
+  buttonVariants,
+  cn,
+  FilePick,
+  primaryActionClass,
+  Section,
+  SectionItem,
+  SectionLayout,
+} from "@/common/ui";
 
 import type { AlbumView } from "../albums.lib.ts";
 import type { AlbumsScreenModel } from "../vm/albums.vm.ts";
@@ -49,7 +57,7 @@ function managementOf({ album, model }: DetailsProps) {
           <SectionItem icon={Pencil} title="Изменить альбом" onClick={model.edit} />
         )}
         {album.canDelete && (
-          <SectionItem icon={Trash2} isAlert title="Удалить альбом" onClick={model.remove} />
+          <SectionItem icon={Trash2} isDestructive title="Удалить альбом" onClick={model.remove} />
         )}
       </Section>
     )
@@ -66,11 +74,8 @@ export const AlbumDetails = reatomComponent((props: DetailsProps) => {
         summary={summaryOf(props, hint)}
         action={
           hint === undefined ? (
-            <FilePick
-              className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary font-medium text-primary-foreground"
-              onPick={model.upload}
-            >
-              <ImagePlus className="size-5" aria-hidden />
+            <FilePick className={cn(buttonVariants(), primaryActionClass)} onPick={model.upload}>
+              <ImagePlus aria-hidden />
               Добавить фото
             </FilePick>
           ) : undefined

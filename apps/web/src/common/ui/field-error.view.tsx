@@ -11,7 +11,7 @@ function FieldError({ className, children, ...props }: React.ComponentProps<"div
     <div
       role="alert"
       data-slot="field-error"
-      className={cn("text-sm font-normal text-destructive", className)}
+      className={cn("text-sm font-normal text-destructive-text", className)}
       {...props}
     >
       {children}

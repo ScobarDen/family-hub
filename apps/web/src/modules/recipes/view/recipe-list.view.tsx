@@ -14,14 +14,21 @@ type RecipeListProps = {
   recipes: RecipeItem[];
   tags: RecipeTag[];
   summary: string;
+  empty: string | undefined;
 };
 
-function recipesOf({ model, recipes, tags }: RecipeListProps) {
+function recipesOf({ model, recipes, tags, empty }: RecipeListProps) {
   return (
     <>
       <RecipeFilters model={model} tags={tags} />
       <Section>
-        {recipes.length === 0 && <SectionItem title="Ничего не нашлось" />}
+        {empty !== undefined && (
+          <SectionItem
+            title={empty}
+            after={<span className="text-link-text">Сбросить фильтры</span>}
+            onClick={model.resetFilters}
+          />
+        )}
         {recipes.map((recipe) => (
           <SectionItem
             key={recipe.id}

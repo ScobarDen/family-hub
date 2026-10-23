@@ -57,8 +57,8 @@ const deleteQuestion: PopupParams = {
   title: "Удалить альбом?",
   message: "Фото, которые есть в других альбомах или записях питомца, останутся в любом случае.",
   buttons: [
-    { id: "album-only", type: "default", text: "Только альбом" },
-    { id: "with-photos", type: "destructive", text: "Альбом и фото" },
+    { id: "album-only", type: "default", text: "Удалить только альбом" },
+    { id: "with-photos", type: "destructive", text: "Удалить альбом и фото" },
     { id: "cancel", type: "cancel" },
   ],
 };
@@ -191,6 +191,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
     ...parts,
     photoHint: readOnly(dependencies.photoHint),
     title: computed(() => titleOf(screen()), "albums.title"),
+    retry: data.reload,
     canGoBack: computed(
       () => navigation.isEditing() || data.isAllShown() || navigation.openedId() !== undefined,
       "albums.canGoBack",

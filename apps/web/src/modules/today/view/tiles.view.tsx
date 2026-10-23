@@ -22,15 +22,17 @@ export const Tiles = reatomComponent(
             }}
           >
             <Icon className={cn("size-5", sectionColors[module])} strokeWidth={1.75} aria-hidden />
-            <span className="w-full truncate text-[0.8125rem] font-medium">{title}</span>
+            <span className="w-full text-[0.8125rem] font-medium break-words hyphens-auto">
+              {title}
+            </span>
             {value !== undefined && (
               <span className="text-xl leading-none font-semibold">{value}</span>
             )}
             {note !== undefined && (
               <span
                 className={cn(
-                  "line-clamp-2 text-xs",
-                  isAlert ? "text-destructive" : "text-muted-foreground",
+                  "line-clamp-2 text-[0.8125rem]",
+                  isAlert ? "text-destructive-text" : "text-muted-foreground",
                 )}
               >
                 {note}

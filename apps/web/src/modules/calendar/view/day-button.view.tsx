@@ -19,7 +19,7 @@ export function DayButton({ cell, isSelected, onSelect }: DayButtonProps) {
         className={cn(
           "flex size-9 items-center justify-center rounded-full text-[0.9375rem] transition-colors",
           !cell.isInMonth && "text-muted-foreground/60",
-          cell.isToday && "font-semibold text-primary ring-1 ring-primary ring-inset",
+          cell.isToday && "font-semibold text-primary-text ring-1 ring-primary ring-inset",
           isSelected ? "bg-primary text-primary-foreground ring-0" : "group-active:bg-muted",
         )}
       >

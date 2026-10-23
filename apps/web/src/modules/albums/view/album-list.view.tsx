@@ -26,7 +26,11 @@ function albumsOf({ model, albums }: AlbumListProps) {
                     <Images className="size-5 text-muted-foreground" />
                   </span>
                 ) : (
-                  <img src={album.cover} alt="" className="size-12 rounded-lg object-cover" />
+                  <img
+                    src={album.cover}
+                    alt=""
+                    className="size-12 rounded-lg object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
+                  />
                 )
               }
               onClick={() => {

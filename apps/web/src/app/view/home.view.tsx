@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import type { AppModule } from "@family-hub/contract";
 
@@ -38,7 +38,7 @@ import { Today, type TodayModel } from "@/modules/today";
 import { ModulePage } from "@/pages/module";
 import { ProfilePage } from "@/pages/profile";
 
-import type { NavigationModel } from "../app.route.ts";
+import type { NavigationModel, Screen } from "../app.route.ts";
 
 export type HomeProps = {
   navigation: NavigationModel;
@@ -140,11 +140,21 @@ function screenOf(props: HomeProps): ReactNode {
   );
 }
 
-export const Home = reatomComponent(
-  (props: HomeProps) => (
-    <main className="min-h-svh bg-secondary pt-safe-top pb-safe-bottom has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)]">
+function screenKeyOf(screen: Screen): string {
+  return screen.kind === "module" ? `${screen.module}:${screen.petId ?? ""}` : screen.kind;
+}
+
+// A new screen takes focus to its heading, so a screen reader announces where the Member is.
+export const Home = reatomComponent((props: HomeProps) => {
+  const screenKey = screenKeyOf(props.navigation.screen());
+
+  useEffect(() => {
+    document.querySelector<HTMLElement>("main h1")?.focus({ preventScroll: true });
+  }, [screenKey]);
+
+  return (
+    <main className="min-h-svh bg-secondary pt-safe-top pb-safe-bottom has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]">
       {screenOf(props)}
     </main>
-  ),
-  "Home",
-);
+  );
+}, "Home");

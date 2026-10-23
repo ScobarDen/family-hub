@@ -15,7 +15,7 @@ function SlotPicker({ model, slot }: { model: TabBarMenuModel; slot: Slot }) {
             key={module}
             role="radio"
             isSelected={module === slot.module}
-            disabled={model.isSaving()}
+            aria-disabled={model.isSaving() || undefined}
             onClick={() => {
               model.choose(slot.index, module);
             }}

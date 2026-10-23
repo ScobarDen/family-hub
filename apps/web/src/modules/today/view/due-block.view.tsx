@@ -38,7 +38,11 @@ export const DueBlock = reatomComponent(({ model }: { model: TodayModel }) => {
         />
       ))}
       {more !== undefined && (
-        <SectionItem title={`Ещё ${more}`} after={<ChevronRight />} onClick={model.openFeed} />
+        <SectionItem
+          title={more}
+          after={<ChevronRight className="size-4 text-muted-foreground" />}
+          onClick={model.openFeed}
+        />
       )}
     </Section>
   );

@@ -39,7 +39,12 @@ export const FamilyExit = reatomComponent(({ model }: FamilyExitProps) => {
         onClick={model.leave}
       />
       {model.canDeleteFamily() && (
-        <SectionItem icon={Trash2} isAlert title="Удалить семью" onClick={model.openDeletion} />
+        <SectionItem
+          icon={Trash2}
+          isDestructive
+          title="Удалить семью"
+          onClick={model.openDeletion}
+        />
       )}
     </Section>
   );

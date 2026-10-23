@@ -36,18 +36,22 @@
   --input: var(--border);
   --ring: var(--primary);
   --link: var(--tg-theme-link-color, var(--primary));
+  /* Telegram's accent colours reach 3:1 for icons but not 4.5:1 for small text; pulled toward the text they do. */
+  --destructive-text: color-mix(in oklch, var(--destructive) 80%, var(--foreground));
+  --link-text: color-mix(in oklch, var(--link) 80%, var(--foreground));
+  --primary-text: color-mix(in oklch, var(--primary) 80%, var(--foreground));
   --person-1: color-mix(in oklch, oklch(0.72 0.12 250) 34%, var(--card));
   --person-2: color-mix(in oklch, oklch(0.72 0.12 20) 34%, var(--card));
   --person-3: color-mix(in oklch, oklch(0.72 0.12 140) 34%, var(--card));
   --person-4: color-mix(in oklch, oklch(0.72 0.12 75) 34%, var(--card));
   /* A section's own icon colour on a neutral tile: at least 3:1 on the card in either scheme. */
-  --section-feed: oklch(0.52 0.15 250);
-  --section-plans: oklch(0.52 0.15 150);
-  --section-calendar: oklch(0.52 0.15 25);
-  --section-pet: oklch(0.52 0.15 55);
+  --section-feed: oklch(0.52 0.13 250);
+  --section-plans: oklch(0.52 0.13 150);
+  --section-calendar: oklch(0.52 0.15 345);
+  --section-pet: oklch(0.52 0.12 55);
   --section-goals: oklch(0.52 0.15 300);
-  --section-albums: oklch(0.52 0.15 200);
-  --section-recipes: oklch(0.52 0.15 85);
+  --section-albums: oklch(0.52 0.085 200);
+  --section-recipes: oklch(0.52 0.1 85);
   --safe-area-top: calc(
     var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)
   );
@@ -57,9 +61,9 @@
 }
 
 .dark {
-  --section-feed: oklch(0.78 0.13 250);
+  --section-feed: oklch(0.78 0.11 250);
   --section-plans: oklch(0.78 0.13 150);
-  --section-calendar: oklch(0.78 0.13 25);
+  --section-calendar: oklch(0.78 0.13 345);
   --section-pet: oklch(0.78 0.13 55);
   --section-goals: oklch(0.78 0.13 300);
   --section-albums: oklch(0.78 0.13 200);
@@ -90,6 +94,9 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-link: var(--link);
+  --color-destructive-text: var(--destructive-text);
+  --color-link-text: var(--link-text);
+  --color-primary-text: var(--primary-text);
   --color-person-1: var(--person-1);
   --color-person-2: var(--person-2);
   --color-person-3: var(--person-3);
@@ -108,7 +115,7 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
 
   body {

@@ -1,4 +1,4 @@
-import { action, computed, withAsyncData, wrap } from "@reatom/core";
+import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
@@ -7,7 +7,12 @@ import { upserted, withoutId } from "@/common/records";
 import type { PetsApi } from "./pets.api.ts";
 
 export function reatomPets({ api }: { api: PetsApi }) {
-  const list = computed(async () => wrap(api.list()), "pets.list").extend(withAsyncData());
+  const version = atom(0, "pets.version");
+  const list = computed(async () => {
+    version();
+
+    return wrap(api.list());
+  }, "pets.list").extend(withAsyncData());
   const active = computed(
     () => (list.data() ?? []).filter((pet) => pet.archivedAt === null),
     "pets.active",
@@ -15,6 +20,9 @@ export function reatomPets({ api }: { api: PetsApi }) {
 
   return {
     list,
+    reload: action(() => {
+      version.set(version() + 1);
+    }, "pets.reload"),
     active,
     archived: computed(
       () => (list.data() ?? []).filter((pet) => pet.archivedAt !== null),

@@ -29,7 +29,12 @@ export const PetArchiveSection = reatomComponent(({ screen, model }: PetArchiveS
         onClick={model.toggleArchive}
       />
       {screen.canDelete && (
-        <SectionItem icon={Trash2} isAlert title="Удалить навсегда" onClick={model.startDeleting} />
+        <SectionItem
+          icon={Trash2}
+          isDestructive
+          title="Удалить навсегда"
+          onClick={model.startDeleting}
+        />
       )}
     </Section>
   );

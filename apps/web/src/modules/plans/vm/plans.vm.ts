@@ -189,6 +189,7 @@ export function reatomPlansScreen(input: Omit<PlansDependencies, "plans"> & Shar
   return {
     screen,
     title: computed(() => titleOf(screen()), "plans.title"),
+    retry: dependencies.plans.reload,
     openPlansOf: openPlansOf(dependencies.plans),
     canGoBack: computed(
       () => navigation.editing() !== undefined || openedPlan() !== undefined,

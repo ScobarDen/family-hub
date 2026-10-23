@@ -12,7 +12,7 @@ export const Today = reatomComponent(({ model }: { model: TodayModel }) => {
   const failure = model.loadFailure();
 
   if (model.isLoading() || failure !== undefined) {
-    return <LoadState {...(failure === undefined ? {} : { failure })} />;
+    return <LoadState {...(failure === undefined ? {} : { failure })} onRetry={model.reload} />;
   }
 
   return (

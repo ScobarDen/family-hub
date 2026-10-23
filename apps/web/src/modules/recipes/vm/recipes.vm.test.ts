@@ -1,4 +1,4 @@
-import { context, noop } from "@reatom/core";
+import { context, noop, sleep } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { recipeChange, type Recipe } from "@family-hub/contract";
@@ -41,7 +41,10 @@ function replyOf(url: URL, method: string, body: unknown): unknown {
   return url.searchParams.has("q") ? [lasagna] : [borscht, lasagna];
 }
 
-function startRecipes({ failing = "" }: { failing?: string } = {}) {
+function startRecipes({
+  failing = "",
+  popup = "confirm",
+}: { failing?: string; popup?: string } = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
   const alerts: string[] = [];
 
@@ -61,7 +64,7 @@ function startRecipes({ failing = "" }: { failing?: string } = {}) {
   const model = reatomRecipesScreen({
     api: createRecipesApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: {
-      showPopup: async () => "confirm",
+      showPopup: async () => popup,
       showAlert(message: string) {
         alerts.push(message);
       },
@@ -102,7 +105,7 @@ describe("the Recipes", () => {
     await listed(model);
 
     expect(titles(model)).toEqual(["Борщ", "Лазанья"]);
-    expect(model.screen()).toMatchObject({ summary: "2 рецепта" });
+    expect(model.screen()).toMatchObject({ summary: "2 рецепта", empty: undefined });
 
     model.search("сыр");
     model.chooseTag("tag-1");
@@ -244,4 +247,27 @@ describe("cooking a Recipe", () => {
       requests.filter(({ request }) => request.endsWith("/cooked")).map(({ body }) => body),
     ).toEqual([{ cookedAt: null }, { cookedAt: Date.parse("2026-10-18T09:00:00Z") }]);
   });
+
+  test.each([
+    { popup: "confirm", isDeleted: true },
+    { popup: "cancel", isDeleted: false },
+  ])(
+    "takes a «Приготовили» mark away only once confirmed: $popup",
+    async ({ popup, isDeleted }) => {
+      const { model, requests } = startRecipes({ popup });
+
+      await listed(model);
+      model.open("recipe-1");
+      await vi.waitFor(() => {
+        expect(model.screen().kind).toBe("recipe");
+      });
+      model.uncook("cook-1");
+      await sleep(0);
+      await vi.waitFor(() => {
+        expect(model.isCooking()).toBe(false);
+      });
+
+      expect(requests.some(({ request }) => request.startsWith("DELETE"))).toBe(isDeleted);
+    },
+  );
 });

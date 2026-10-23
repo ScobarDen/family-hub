@@ -18,6 +18,7 @@ import {
   dueRowOf,
   feedStatusOf,
   headerOf,
+  moreOf,
   nextRowOf,
   statusOf,
   tilesOf,
@@ -34,7 +35,6 @@ export type TodayTarget =
 export type TodayDependencies = {
   api: TodayApi;
   today: () => string;
-  wait: (ms: number) => Promise<void>;
   onOpen: (target: TodayTarget) => void;
   onOpenSection: (module: SlotModule) => void;
   onRecord: (due: { petId: string; entryId: string }) => void;
@@ -42,7 +42,6 @@ export type TodayDependencies = {
 };
 
 const shownDue = 3;
-const undoMs = 4000;
 
 type PlanItem = Extract<FeedUpcoming, { kind: "plan" }>;
 
@@ -110,9 +109,10 @@ type CompletionState = ReturnType<typeof reatomHidden> & {
   failure: Atom<string | undefined>;
 };
 
-// The Plan API hears of the tap at once, so closing the app inside the undo window loses nothing.
+// The Plan API hears of the tap at once, so closing the app loses nothing; the undo stays offered
+// with no timer, until it is dismissed or the next Plan is completed.
 function reatomComplete(
-  { api, wait }: Pick<TodayDependencies, "api" | "wait">,
+  { api }: Pick<TodayDependencies, "api">,
   { state, onSettled }: { state: CompletionState; onSettled: () => void },
 ) {
   const { pending, failure, hide, show } = state;
@@ -135,12 +135,7 @@ function reatomComplete(
       return;
     }
 
-    await wrap(wait(undoMs));
-
-    if (pending() === completing) {
-      pending.set(undefined);
-      onSettled();
-    }
+    onSettled();
   }, "today.complete").extend(withAsync());
 }
 
@@ -171,10 +166,7 @@ function reatomRevert(
   }, "today.revertCompletion").extend(withAsync());
 }
 
-function reatomCompletion(
-  dependencies: Pick<TodayDependencies, "api" | "wait">,
-  onSettled: () => void,
-) {
+function reatomCompletion(dependencies: Pick<TodayDependencies, "api">, onSettled: () => void) {
   const state: CompletionState = {
     ...reatomHidden(),
     pending: atom<Completing | undefined>(undefined, "today.pending"),
@@ -186,6 +178,12 @@ function reatomCompletion(
     pending: state.pending,
     failure: state.failure,
     complete: reatomComplete(dependencies, { state, onSettled }),
+    dismiss: action(() => {
+      state.pending.set(undefined);
+    }, "today.dismissUndo"),
+    dismissFailure: action(() => {
+      state.failure.set(undefined);
+    }, "today.dismissFailure"),
     revert: reatomRevert(dependencies, { state, onSettled }),
   };
 }
@@ -233,11 +231,7 @@ function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion:
           .map((item) => dueRowOf(item, dependencies.today())),
       "today.rows",
     ),
-    more: computed(() => {
-      const rest = due().length - shownDue;
-
-      return rest > 0 ? rest : undefined;
-    }, "today.more"),
+    more: computed(() => moreOf(due().length - shownDue), "today.more"),
     next: computed(
       () => (data.data()?.next ?? []).map((item) => nextRowOf(item, dependencies.today())),
       "today.next",
@@ -265,6 +259,8 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
       }
     }, "today.completeOrRecord"),
     revert: detached(completion.revert, "today.revert"),
+    dismissUndo: completion.dismiss,
+    dismissFailure: completion.dismissFailure,
     openItem: action((key: string) => {
       const item = find(key);
 

@@ -248,7 +248,6 @@ const feed = reatomFeed({
 const todayHub = reatomToday({
   api: createTodayApi(httpClient),
   today,
-  wait,
   onOpen: (target) => {
     opener.open(target);
   },

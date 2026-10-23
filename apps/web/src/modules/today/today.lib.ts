@@ -33,11 +33,15 @@ const choreWords: CountWords = {
 const recordTitles = {
   vaccination: "Отметить прививку",
   treatment: "Отметить обработку",
-  vet_visit: "Отметить визит",
+  vet_visit: "Отметить визит к ветеринару",
 } as const;
 
 export function headerOf(count: number): string {
   return count === 0 ? "День свободен" : formatCount(count, choreWords);
+}
+
+export function moreOf(rest: number): string | undefined {
+  return rest > 0 ? `Ещё ${formatCount(rest, choreWords)}` : undefined;
 }
 
 export function feedStatusOf(count: number): string | undefined {
@@ -57,7 +61,7 @@ export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
     action:
       item.kind === "due"
         ? { kind: "record", title: recordTitles[item.careKind] }
-        : { kind: "complete", title: "Готово" },
+        : { kind: "complete", title: "Отметить выполненным" },
   };
 }
 
@@ -83,8 +87,11 @@ type Tiles = TodayTiles;
 
 function petTile(pet: NonNullable<Tiles["pet"]>, today: string): Tile {
   const { activeCount, only, due } = pet;
-  const note = due === null ? undefined : `${due.label} · ${formatNearDate(due.date, today)}`;
   const isAlert = due !== null && due.date < today;
+  const note =
+    due === null
+      ? undefined
+      : `${isAlert ? "Просрочено · " : ""}${due.label} · ${formatNearDate(due.date, today)}`;
 
   if (only !== null) {
     return tile("pet", { title: only.name, note, isAlert });
@@ -92,7 +99,7 @@ function petTile(pet: NonNullable<Tiles["pet"]>, today: string): Tile {
 
   return activeCount === 0
     ? tile("pet", { title: "Питомцы", note: "Добавить питомца" })
-    : tile("pet", { title: `Питомцы · ${activeCount}`, note, isAlert });
+    : tile("pet", { title: "Питомцы", value: String(activeCount), note, isAlert });
 }
 
 // A count of zero says nothing, so such a tile shows only its caption.

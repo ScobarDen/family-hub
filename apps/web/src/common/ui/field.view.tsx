@@ -9,7 +9,7 @@ function Field({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="field"
       data-orientation="vertical"
       className={cn(
-        "group/field flex w-full flex-col gap-2 data-[invalid=true]:text-destructive *:w-full [&>.sr-only]:w-auto",
+        "group/field flex w-full flex-col gap-2 data-[invalid=true]:text-destructive-text *:w-full [&>.sr-only]:w-auto",
         className,
       )}
       {...props}

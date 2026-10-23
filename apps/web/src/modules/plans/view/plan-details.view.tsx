@@ -82,7 +82,12 @@ export function PlanDetails({ plan, model }: PlanDetailsProps) {
       {plan.album !== null && <PlanAlbum album={plan.album} onOpen={model.openAlbum} />}
       {plan.canDelete && (
         <Section>
-          <SectionItem icon={Trash2} isAlert title="Удалить план" onClick={model.removePlan} />
+          <SectionItem
+            icon={Trash2}
+            isDestructive
+            title="Удалить план"
+            onClick={model.removePlan}
+          />
         </Section>
       )}
     </>

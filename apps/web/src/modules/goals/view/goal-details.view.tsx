@@ -43,7 +43,10 @@ export const GoalDetails = reatomComponent((props: DetailsProps) => {
   return (
     <>
       {isCelebrating && (
-        <p className="animate-bounce px-4 py-2 text-center text-2xl" role="status">
+        <p
+          className="px-4 py-2 text-center text-2xl leading-tight font-semibold tracking-tight"
+          role="status"
+        >
           Цель достигнута!
         </p>
       )}
@@ -65,7 +68,7 @@ export const GoalDetails = reatomComponent((props: DetailsProps) => {
           )
         }
         tabs={[
-          { key: "movements", title: "Движения", content: movementsOf(props) },
+          { key: "movements", title: "Взносы и снятия", content: movementsOf(props) },
           { key: "shares", title: "Участники", content: sharesOf(props) },
         ]}
       />

@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { Plus, Settings } from "lucide-react";
 
 import { sectionColors, sectionIcons } from "@/common/sections";
-import { Chip, FilePick, ScreenTitle, Section, SectionItem, cn } from "@/common/ui";
+import { Chip, chipClass, FilePick, ScreenTitle, Section, SectionItem, cn } from "@/common/ui";
 
 import type { SectionRow, SectionsModel } from "../vm/sections.vm.ts";
 
@@ -45,10 +45,7 @@ const QuickAdds = reatomComponent(
           </Chip>
         ))}
         {model.canAddPhoto() && (
-          <FilePick
-            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-[color-mix(in_oklch,var(--foreground)_7%,transparent)] px-3.5 text-sm font-medium"
-            onPick={model.addPhotos}
-          >
+          <FilePick className={chipClass(false)} onPick={model.addPhotos}>
             <Plus className="size-4" aria-hidden />
             Фото
           </FilePick>
@@ -67,8 +64,8 @@ export const Sections = reatomComponent(
       <Section
         title="На панели"
         aside={
-          <button type="button" className="text-link" onClick={model.configure}>
-            Настроить
+          <button type="button" className="text-link-text" onClick={model.configure}>
+            Настроить панель
           </button>
         }
       >

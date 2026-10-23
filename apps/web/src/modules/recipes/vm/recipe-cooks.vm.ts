@@ -3,8 +3,8 @@ import { Temporal } from "temporal-polyfill";
 
 import type { Recipe } from "@family-hub/contract";
 
-import { readOnly } from "@/common/state";
-import { type Dialogs, didSucceedOrAlert } from "@/common/telegram";
+import { detached, readOnly } from "@/common/state";
+import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import type { RecipesData } from "../recipes.model.ts";
@@ -13,10 +13,16 @@ type CookDependencies = {
   api: RecipesApi;
   today: () => string;
   timeZone: () => string;
-  telegram: Pick<Dialogs, "showAlert">;
+  telegram: Pick<Dialogs, "showAlert" | "showPopup">;
 };
 
 const middayTime = "12:00";
+
+const uncookQuestion: Confirmation = {
+  title: "Удалить отметку «Приготовили»?",
+  message: "Эта готовка пропадёт из истории рецепта.",
+  button: "Удалить отметку",
+};
 
 // Today is «now»; a day gone by is marked at its midday on the Member's clock.
 function cookedAtOf({ today, timeZone }: CookDependencies, date: string): number | null {
@@ -37,6 +43,17 @@ function reatomCookDay({ today }: CookDependencies) {
       chosenDay.set(day);
     }, "recipes.chooseCookDay"),
   };
+}
+
+type Change = (doing: (recipe: Recipe) => Promise<unknown>) => Promise<unknown>;
+
+// A cooked mark is gone for the whole Family once taken away, so it is confirmed first.
+function reatomUncook(dependencies: CookDependencies, change: Change) {
+  return action(async (cookId: string) => {
+    if (await wrap(isConfirmed(dependencies.telegram, uncookQuestion))) {
+      await wrap(change(async (recipe) => dependencies.api.uncook(recipe.id, cookId)));
+    }
+  }, "recipes.uncook").extend(withAsync());
 }
 
 export function reatomRecipeCooks(
@@ -60,6 +77,7 @@ export function reatomRecipeCooks(
     }
   }, "recipes.cooks.change").extend(withAsync());
 
+  const uncook = reatomUncook(dependencies, change);
   const { cookDay, ...dayChoice } = reatomCookDay(dependencies);
   const isCooking = computed(() => !change.ready(), "recipes.cooks.isCooking");
 
@@ -76,9 +94,7 @@ export function reatomRecipeCooks(
         dependencies.api.cook(recipe.id, cookedAtOf(dependencies, day)),
       ).catch(noop);
     }, "recipes.cook"),
-    uncook: action((cookId: string) => {
-      change(async (recipe) => dependencies.api.uncook(recipe.id, cookId)).catch(noop);
-    }, "recipes.uncook"),
+    uncook: detached(uncook, "recipes.uncookMark"),
     toggleForgotten: action(() => {
       data.ordering.set(data.ordering() === "forgotten" ? "title" : "forgotten");
     }, "recipes.toggleForgotten"),

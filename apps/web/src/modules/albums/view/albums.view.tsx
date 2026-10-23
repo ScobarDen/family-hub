@@ -43,6 +43,7 @@ function contentOf(model: AlbumsScreenModel, screen: AlbumsScreen): ReactNode {
   return (
     <LoadState
       failure={screen.kind === "failed" ? "Не получилось загрузить альбомы." : undefined}
+      onRetry={model.retry}
     />
   );
 }

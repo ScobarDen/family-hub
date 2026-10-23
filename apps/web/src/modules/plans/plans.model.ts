@@ -1,4 +1,4 @@
-import { action, computed, withAsyncData, wrap } from "@reatom/core";
+import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
 
 import type { FamilyMember, Pet, Plan } from "@family-hub/contract";
 
@@ -12,10 +12,18 @@ export type SharedLists = {
 };
 
 export function reatomPlans({ api, members, pets }: { api: PlansApi } & SharedLists) {
-  const list = computed(async () => wrap(api.list()), "plans.list").extend(withAsyncData());
+  const version = atom(0, "plans.version");
+  const list = computed(async () => {
+    version();
+
+    return wrap(api.list());
+  }, "plans.list").extend(withAsyncData());
 
   return {
     list,
+    reload: action(() => {
+      version.set(version() + 1);
+    }, "plans.reload"),
     members,
     pets,
     albums: computed(async () => wrap(api.albums()), "plans.albums").extend(withAsyncData()),

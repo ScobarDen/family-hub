@@ -9,9 +9,9 @@ export const NextBlock = reatomComponent(({ model }: { model: TodayModel }) => {
 
   return (
     <Section
-      title="Дальше"
+      title="Впереди"
       aside={
-        <button type="button" className="text-link" onClick={model.openFeed}>
+        <button type="button" className="text-link-text" onClick={model.openFeed}>
           Вся лента
         </button>
       }

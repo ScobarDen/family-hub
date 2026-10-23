@@ -93,10 +93,6 @@ function answerOf(
 function startToday(answer: Partial<Today> = {}, { failing }: { failing?: string } = {}) {
   const calls: string[] = [];
   const payload: Today = { due: [], next: [], tiles: quiet, ...answer };
-  let releaseUndo: () => void = noop;
-  const undoOver = new Promise<void>((resolve) => {
-    releaseUndo = resolve;
-  });
   const client = createHttpClient({
     baseUrl: "https://api.family-hub.test",
     fetch: async (input, init) => {
@@ -111,7 +107,6 @@ function startToday(answer: Partial<Today> = {}, { failing }: { failing?: string
   const model = reatomToday({
     api: createTodayApi(client),
     today: () => "2026-10-16",
-    wait: async () => undoOver,
     onOpen: (target) => {
       opened.push(target);
     },
@@ -129,7 +124,7 @@ function startToday(answer: Partial<Today> = {}, { failing }: { failing?: string
   // What the View subscribes to, so a reload refetches as it does on screen.
   model.rows.subscribe(noop);
 
-  return { model, calls, opened, releaseUndo };
+  return { model, calls, opened };
 }
 
 beforeEach(() => {
@@ -175,10 +170,10 @@ describe("«Сделать сегодня»", () => {
         title: "Дело 2",
         when: "Сегодня",
         isOverdue: false,
-        action: { kind: "complete", title: "Готово" },
+        action: { kind: "complete", title: "Отметить выполненным" },
       }),
     ]);
-    expect(model.more()).toBe(1);
+    expect(model.more()).toBe("Ещё 1 дело");
   });
 
   test("opens the Feed from «Ещё N»", async () => {
@@ -189,8 +184,8 @@ describe("«Сделать сегодня»", () => {
     expect(opened).toEqual(["feed"]);
   });
 
-  test("completes a Plan with one tap and keeps the undo for a few seconds", async () => {
-    const { model, calls, releaseUndo } = startToday({ due: [planDue(1, "2026-10-12")] });
+  test("completes a Plan with one tap and keeps the undo until it is dismissed", async () => {
+    const { model, calls } = startToday({ due: [planDue(1, "2026-10-12")] });
 
     await vi.waitFor(() => {
       expect(model.rows()).toHaveLength(1);
@@ -204,12 +199,15 @@ describe("«Сделать сегодня»", () => {
       expect(calls).toContain("POST /api/plans/plan-1/complete");
     });
 
-    releaseUndo();
-
     await vi.waitFor(() => {
-      expect(model.undo()).toBeUndefined();
+      expect(calls.filter((call) => call === "GET /api/today")).toHaveLength(2);
     });
-    expect(calls.filter((call) => call === "GET /api/today")).toHaveLength(2);
+    expect(model.undo()).toEqual({ title: "Дело 1" });
+
+    model.dismissUndo();
+
+    expect(model.undo()).toBeUndefined();
+    expect(model.rows()).toEqual([]);
   });
 
   test("puts back the Plan and the Subplans its completion closed when the undo is tapped", async () => {
@@ -266,7 +264,7 @@ describe("«Сделать сегодня»", () => {
   });
 });
 
-describe("«Дальше»", () => {
+describe("«Впереди»", () => {
   test("shows the day and the time of each Upcoming", async () => {
     const { model, opened } = startToday({
       next: [
@@ -341,8 +339,8 @@ describe("the section tiles", () => {
       { module: "calendar", title: "Календарь", value: "3", note: "на неделе", isAlert: false },
       {
         module: "pet",
-        title: "Питомцы · 2",
-        value: undefined,
+        title: "Питомцы",
+        value: "2",
         note: "Прививка: Нобивак — Мурка · 20 октября",
         isAlert: false,
       },
@@ -350,6 +348,27 @@ describe("the section tiles", () => {
       { module: "albums", title: "Альбомы", value: "4", note: "фото за неделю", isAlert: false },
       { module: "recipes", title: "Рецепты", value: undefined, note: "Борщ", isAlert: false },
     ]);
+  });
+
+  test("say in words that the Pets tile's Due Date is Overdue, not by colour alone", async () => {
+    const { model } = startToday({
+      tiles: {
+        ...quiet,
+        pet: {
+          activeCount: 1,
+          only: { petId: "pet-1", name: "Бьюик" },
+          due: { label: "Прививка: Бешенство", date: "2026-10-12" },
+        },
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(model.tiles()[2]).toMatchObject({
+        title: "Бьюик",
+        note: "Просрочено · Прививка: Бешенство · 12 октября",
+        isAlert: true,
+      });
+    });
   });
 
   test.each([

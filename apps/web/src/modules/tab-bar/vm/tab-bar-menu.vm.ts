@@ -44,6 +44,10 @@ export function reatomTabBarMenu({ modules }: { modules: TabBarModules }) {
     failure: modules.failure,
 
     choose: action((index: number, module: SlotModule) => {
+      if (!modules.save.ready()) {
+        return;
+      }
+
       const current = modules.modules();
       const next = withSlotChosen(current, index, module);
 

@@ -8,7 +8,8 @@ type SectionLayoutProps = {
   summary: ReactNode;
   // One primary action, a verb with its object: «Добавить запись», «Внести взнос».
   action?: ReactNode;
-  // A single tab needs no switch: its content shows on its own.
+  // A single tab needs no switch: its content shows on its own. The switch is a row of toggle
+  // chips that wraps, so no tab hides past the screen's edge.
   tabs: LayoutTab[];
 };
 
@@ -21,12 +22,10 @@ export function SectionLayout({ summary, action, tabs }: SectionLayoutProps) {
       {summary}
       {action !== undefined && <div className="px-4 pb-5">{action}</div>}
       {tabs.length > 1 && (
-        <div role="tablist" className="flex gap-1.5 overflow-x-auto px-4 pb-4">
+        <div className="flex flex-wrap gap-1.5 px-4 pb-4">
           {tabs.map(({ key, title }) => (
             <Chip
               key={key}
-              role="tab"
-              aria-selected={key === shown?.key}
               isSelected={key === shown?.key}
               onClick={() => {
                 setChosenKey(key);
@@ -37,7 +36,7 @@ export function SectionLayout({ summary, action, tabs }: SectionLayoutProps) {
           ))}
         </div>
       )}
-      <div role={tabs.length > 1 ? "tabpanel" : undefined}>{shown?.content}</div>
+      {shown?.content}
     </>
   );
 }

@@ -46,6 +46,7 @@ function contentOf(props: PetsProps, screen: PetsScreen): ReactNode {
   return (
     <LoadState
       failure={screen.kind === "failed" ? "Не получилось загрузить питомцев." : undefined}
+      onRetry={model.retry}
     />
   );
 }

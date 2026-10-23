@@ -10,10 +10,13 @@ type ListScreen = Extract<GoalsScreen, { kind: "list" }>;
 
 type GoalListProps = { model: GoalsScreenModel; screen: ListScreen };
 
-function rowsOf(goals: GoalListItem[], model: GoalsScreenModel) {
+function rowsOf(
+  goals: GoalListItem[],
+  { model, empty }: { model: GoalsScreenModel; empty: string },
+) {
   return (
     <Section>
-      {goals.length === 0 && <SectionItem title="Пока пусто" />}
+      {goals.length === 0 && <SectionItem title={empty} />}
       {goals.map((goal) => (
         <SectionItem
           key={goal.id}
@@ -36,19 +39,29 @@ export const GoalList = reatomComponent(
     <SectionLayout
       summary={
         <div className="flex flex-col gap-0.5 px-5 pb-4">
-          <span className="text-[1.75rem] leading-none font-semibold tracking-tight">
-            {screen.total}
-          </span>
-          <span className="text-[0.8125rem] text-muted-foreground">
+          <span className="text-xl leading-tight font-semibold">{screen.total}</span>
+          <span className="text-[0.9375rem] text-muted-foreground">
             Накоплено в общих целях и ваших личных, без закрытых
           </span>
         </div>
       }
       action={<PrimaryButton onClick={model.add}>Создать цель</PrimaryButton>}
       tabs={[
-        { key: "active", title: "Копим", content: rowsOf(screen.active, model) },
-        { key: "achieved", title: "Достигнуты", content: rowsOf(screen.achieved, model) },
-        { key: "archive", title: "Архив", content: rowsOf(screen.archive, model) },
+        {
+          key: "active",
+          title: "Копим",
+          content: rowsOf(screen.active, { model, empty: "Пока нет целей" }),
+        },
+        {
+          key: "achieved",
+          title: "Достигнуты",
+          content: rowsOf(screen.achieved, { model, empty: "Пока нет достигнутых целей" }),
+        },
+        {
+          key: "archive",
+          title: "Закрытые",
+          content: rowsOf(screen.archive, { model, empty: "Пока нет закрытых целей" }),
+        },
       ]}
     />
   ),

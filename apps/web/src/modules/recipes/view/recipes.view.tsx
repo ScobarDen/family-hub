@@ -19,6 +19,7 @@ function contentOf({ model }: RecipesProps, screen: RecipesScreen): ReactNode {
         recipes={screen.recipes}
         tags={screen.tags}
         summary={screen.summary}
+        empty={screen.empty}
       />
     );
   }
@@ -45,6 +46,7 @@ function contentOf({ model }: RecipesProps, screen: RecipesScreen): ReactNode {
   return (
     <LoadState
       failure={screen.kind === "failed" ? "Не получилось загрузить рецепты." : undefined}
+      onRetry={model.retry}
     />
   );
 }

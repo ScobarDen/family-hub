@@ -182,6 +182,7 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "pets.title"),
+    retry: dependencies.pets.reload,
     openedPetId: computed(() => openedPet()?.id, "pets.openedPetId"),
     isOpenedPetArchived: computed(
       () => (openedPet()?.archivedAt ?? null) !== null,
