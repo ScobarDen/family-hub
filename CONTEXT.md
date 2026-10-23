@@ -14,10 +14,6 @@ _Avoid_: Household, group, tenant, team
 A person who belongs to the Family and acts in the app through their Telegram account.
 _Avoid_: User, account, participant
 
-**Profile Picture**:
-The picture a Member shows in their Telegram profile; the app shows it but never keeps it, and it is not a Photo.
-_Avoid_: Avatar, userpic, member photo
-
 **Family Owner**:
 The one Member of a Family who may delete it, remove Members and hand the role to another Member.
 _Avoid_: Admin, creator, head
@@ -53,10 +49,6 @@ _Avoid_: Bucket, gallery, media library
 **Pet**:
 An animal the Family cares for; a subject of records, never an actor in the app.
 _Avoid_: Animal, dog (as a type name)
-
-**Pet Avatar**:
-The one Photo that stands for a Pet: at the top of its card, on its lines in the Feed and on Today. Either a photo of one of its Care Entries or one uploaded for it alone.
-_Avoid_: Pet photo, portrait, cover
 
 **Archived Pet**:
 A Pet the Family no longer actively cares for; its history stays viewable and it triggers no Reminders.
