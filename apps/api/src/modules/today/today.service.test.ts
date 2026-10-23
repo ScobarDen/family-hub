@@ -9,6 +9,7 @@ const viewer: Membership = {
   member: {
     id: "member-1",
     name: "Денис",
+    profilePicture: null,
     telegramId: 111,
     canMessage: true,
     timeZone: "Europe/Moscow",

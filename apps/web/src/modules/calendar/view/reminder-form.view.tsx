@@ -7,6 +7,7 @@ import {
   type Choice,
   ChoiceField,
   FormShell,
+  PersonAvatar,
   TextField,
 } from "@/common/ui";
 
@@ -35,6 +36,7 @@ const Recipients = reatomComponent(
             model.toggleRecipient(recipient.id);
           }}
         >
+          <PersonAvatar member={recipient} className="-ml-2.5 size-6" />
           {recipient.name}
         </Chip>
       ))}

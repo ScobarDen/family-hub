@@ -50,6 +50,12 @@ export function createAuthService({
         await memberships.setCanMessage(membership.member.id, true, clock.now());
       }
 
+      const profilePicture = user.photo_url ?? null;
+
+      if (profilePicture !== membership.member.profilePicture) {
+        await memberships.setProfilePicture(membership.member.id, profilePicture, clock.now());
+      }
+
       return {
         status: "member",
         token: await sessionTokens.sign(membership.member.id, clock.now()),

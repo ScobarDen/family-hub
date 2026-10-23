@@ -5,6 +5,7 @@ import {
   planNoteMaxLength,
   planTitleMaxLength,
   visibility,
+  type FamilyMember,
   type Plan,
   type PlanChange,
 } from "@family-hub/contract";
@@ -80,14 +81,18 @@ function changeOf(values: PlanValues): PlanChange {
 }
 
 export function assigneeChoices(
-  members: Array<{ id: string; name: string }>,
+  members: FamilyMember[],
   { isPrivate, ownerId }: { isPrivate: boolean; ownerId: string | undefined },
 ): Choice[] {
   const allowed = isPrivate ? members.filter(({ id }) => id === ownerId) : members;
 
   return [
     { value: "", title: "Никто" },
-    ...allowed.map(({ id, name }) => ({ value: id, title: name })),
+    ...allowed.map(({ id, name, profilePicture }) => ({
+      value: id,
+      title: name,
+      member: { name, profilePicture },
+    })),
   ];
 }
 

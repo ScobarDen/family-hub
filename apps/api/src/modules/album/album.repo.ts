@@ -214,6 +214,7 @@ async function batchesBefore(db: Db, familyId: string, { keyset, limit }: Keyset
       albumId: albumUploadBatches.albumId,
       albumTitle: albums.title,
       memberName: members.name,
+      memberPicture: members.profilePicture,
       lastAddedAt: albumUploadBatches.lastAddedAt,
     })
     .from(albumUploadBatches)

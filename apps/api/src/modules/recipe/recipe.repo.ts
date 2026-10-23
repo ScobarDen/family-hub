@@ -148,6 +148,7 @@ async function cooksBefore(db: Db, familyId: string, { keyset, limit }: KeysetPa
       cookedAt: recipeCooks.cookedAt,
       title: recipes.title,
       memberName: members.name,
+      memberPicture: members.profilePicture,
     })
     .from(recipeCooks)
     .innerJoin(recipes, eq(recipes.id, recipeCooks.recipeId))

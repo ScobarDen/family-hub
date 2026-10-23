@@ -78,6 +78,7 @@ async function activityBefore(db: Db, familyId: string, { keyset, limit }: Keyse
       details: careEntries.details,
       createdAt: careEntries.createdAt,
       memberName: members.name,
+      memberPicture: members.profilePicture,
       petName: pets.name,
     })
     .from(careEntries)

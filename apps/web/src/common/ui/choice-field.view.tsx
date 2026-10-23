@@ -3,8 +3,9 @@ import { reatomComponent } from "@reatom/react";
 
 import { ChipGroup } from "./chip-group.view.tsx";
 import { Chip } from "./chip.view.tsx";
+import { PersonAvatar, type AvatarMember } from "./person-avatar.view.tsx";
 
-export type Choice = { value: string; title: string };
+export type Choice = { value: string; title: string; member?: AvatarMember };
 
 type ChoiceFieldProps = {
   field: FieldAtom<string, string>;
@@ -19,7 +20,7 @@ export const ChoiceField = reatomComponent(
 
     return (
       <ChipGroup label={label} role="radiogroup">
-        {choices.map(({ value, title }) => (
+        {choices.map(({ value, title, member }) => (
           <Chip
             key={value}
             role="radio"
@@ -32,6 +33,7 @@ export const ChoiceField = reatomComponent(
               }
             }}
           >
+            {member !== undefined && <PersonAvatar member={member} className="-ml-2.5 size-6" />}
             {title}
           </Chip>
         ))}

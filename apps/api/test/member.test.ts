@@ -239,8 +239,8 @@ describe("the Family's Members", () => {
     });
 
     expect(await response.json()).toEqual([
-      { id: ownerId, name: "Денис", isFamilyOwner: true },
-      { id: asyaId, name: "Ася", isFamilyOwner: false },
+      { id: ownerId, name: "Денис", isFamilyOwner: true, profilePicture: null },
+      { id: asyaId, name: "Ася", isFamilyOwner: false, profilePicture: null },
     ]);
   });
 
@@ -254,5 +254,34 @@ describe("the Family's Members", () => {
     });
 
     expect(await response.json()).toHaveLength(1);
+  });
+
+  test("shows each Member's Profile Picture as of their last login", async () => {
+    const { worker, familyId } = await startWithFamily();
+
+    await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
+    await sessionOf(worker, { ...asya, photo_url: "https://t.me/i/userpic/320/asya.jpg" });
+    await sessionOf(worker, { ...asya, photo_url: "https://t.me/i/userpic/320/asya-2.svg" });
+
+    const response = await worker.request("/api/family/members", {
+      headers: { authorization: `Bearer ${await sessionOf(worker, denis)}` },
+    });
+
+    expect(await response.json()).toMatchObject([
+      { name: "Денис", profilePicture: null },
+      { name: "Ася", profilePicture: "https://t.me/i/userpic/320/asya-2.svg" },
+    ]);
+  });
+
+  test("forgets the Profile Picture once the Member hides it", async () => {
+    const { worker } = await startWithFamily();
+
+    await sessionOf(worker, { ...denis, photo_url: "https://t.me/i/userpic/320/denis.jpg" });
+
+    const response = await worker.request("/api/family/members", {
+      headers: { authorization: `Bearer ${await sessionOf(worker, denis)}` },
+    });
+
+    expect(await response.json()).toMatchObject([{ name: "Денис", profilePicture: null }]);
   });
 });

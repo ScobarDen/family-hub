@@ -139,7 +139,7 @@ describe("the Family Owner leaving", () => {
 
     expect(await response.json()).toEqual({ status: "left" });
     expect(await membersSeenBy(worker, asya)).toEqual([
-      { id: asyaId, name: "Ася", isFamilyOwner: true },
+      { id: asyaId, name: "Ася", isFamilyOwner: true, profilePicture: null },
     ]);
   });
 
@@ -226,8 +226,8 @@ describe("handing over the Owner role", () => {
 
     expect(await response.json()).toEqual({ status: "handed-over" });
     expect(await membersSeenBy(worker, denis)).toEqual([
-      { id: asyaId, name: "Ася", isFamilyOwner: true },
-      { id: denisId, name: "Денис", isFamilyOwner: false },
+      { id: asyaId, name: "Ася", isFamilyOwner: true, profilePicture: null },
+      { id: denisId, name: "Денис", isFamilyOwner: false, profilePicture: null },
     ]);
     expect(worker.bot.sentMessages()).toEqual([
       {

@@ -12,6 +12,7 @@ export function createFamilyFeed({ families }: { families: FamilyRepo }): Activi
         key: row.key,
         at: row.createdAt,
         memberName: row.memberName,
+        memberPicture: row.memberPicture,
       }));
     },
   };

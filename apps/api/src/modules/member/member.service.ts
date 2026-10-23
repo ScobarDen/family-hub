@@ -85,10 +85,11 @@ export function createMemberService({ members, clock, schedule }: MemberServiceD
     async familyMembers({ family }: Membership): Promise<FamilyMemberList> {
       const rows = await members.listFamily(family.id);
 
-      return rows.map(({ id, name, ownerMemberId }) => ({
+      return rows.map(({ id, name, profilePicture, ownerMemberId }) => ({
         id,
         name,
         isFamilyOwner: id === ownerMemberId,
+        profilePicture,
       }));
     },
   };

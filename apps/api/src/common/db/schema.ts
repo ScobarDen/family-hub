@@ -32,6 +32,8 @@ export const members = sqliteTable("members", {
   id: text("id").primaryKey(),
   telegramId: integer("telegram_id").notNull().unique(),
   name: text("name").notNull(),
+  // NULL while the Member hides it in Telegram; refreshed at every login.
+  profilePicture: text("profile_picture"),
   // NULL until the Member customises it, so a changed default reaches everyone who never did.
   tabBar: text("tab_bar", { mode: "json" }).$type<AppModule[]>(),
   timeZone: text("time_zone"),

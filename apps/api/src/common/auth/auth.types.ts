@@ -2,6 +2,7 @@ export type Membership = {
   member: {
     id: string;
     name: string;
+    profilePicture: string | null;
     telegramId: number;
     canMessage: boolean;
     timeZone: string | null;

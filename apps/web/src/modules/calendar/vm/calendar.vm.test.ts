@@ -113,8 +113,8 @@ function fakeBackend(plans: Plan[]) {
     "GET /api/reminders": () => [internet],
     "GET /api/plans": () => plans,
     "GET /api/family/members": () => [
-      { id: "member-1", name: "Денис", isFamilyOwner: true },
-      { id: "member-2", name: "Ася", isFamilyOwner: false },
+      { id: "member-1", name: "Денис", isFamilyOwner: true, profilePicture: null },
+      { id: "member-2", name: "Ася", isFamilyOwner: false, profilePicture: null },
     ],
     "POST /api/reminders": (body) => ({
       ...internet,

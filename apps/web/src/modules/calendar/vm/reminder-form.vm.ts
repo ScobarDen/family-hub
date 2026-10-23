@@ -28,7 +28,12 @@ type ReminderFormDependencies = {
 
 export type ReminderDraftOpening = DraftOpening<ReminderDraft>;
 
-export type RecipientChoice = { id: string; name: string; isChosen: boolean };
+export type RecipientChoice = {
+  id: string;
+  name: string;
+  profilePicture: string | null;
+  isChosen: boolean;
+};
 
 const emptyReminder = {
   text: "",
@@ -101,9 +106,10 @@ function reatomRecipients(dependencies: ReminderFormDependencies, chosen: Atom<s
   return {
     recipients: computed(
       (): RecipientChoice[] =>
-        (dependencies.data.members.data() ?? []).map(({ id, name }) => ({
+        (dependencies.data.members.data() ?? []).map(({ id, name, profilePicture }) => ({
           id,
           name,
+          profilePicture,
           isChosen: chosen().includes(id),
         })),
       "calendar.reminderForm.recipients",

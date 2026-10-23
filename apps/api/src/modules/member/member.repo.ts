@@ -21,13 +21,33 @@ async function allowMessages(db: Db, telegramId: number, now: number): Promise<v
     .where(eq(members.telegramId, telegramId));
 }
 
+async function listFamily(db: Db, familyId: string) {
+  return db
+    .select({
+      id: members.id,
+      name: members.name,
+      profilePicture: members.profilePicture,
+      ownerMemberId: families.ownerMemberId,
+    })
+    .from(familyMembers)
+    .innerJoin(members, eq(members.id, familyMembers.memberId))
+    .innerJoin(families, eq(families.id, familyMembers.familyId))
+    .where(eq(familyMembers.familyId, familyId))
+    .orderBy(
+      sql`${members.id} = ${families.ownerMemberId} desc`,
+      asc(familyMembers.createdAt),
+      asc(members.name),
+    )
+    .all();
+}
+
 export function createMemberRepo(db: Db) {
   async function update(memberId: string, values: Partial<typeof members.$inferInsert>) {
     await db.update(members).set(values).where(eq(members.id, memberId));
   }
 
   return {
-    ...bindFirst(db, { allowMessages }),
+    ...bindFirst(db, { allowMessages, listFamily }),
     settingsOf: async (memberId: string): Promise<MemberSettingsRow | undefined> =>
       db
         .select({
@@ -50,20 +70,6 @@ export function createMemberRepo(db: Db) {
 
     saveDigest: async (memberId: string, { isEnabled, time }: DigestSettings, now: number) =>
       update(memberId, { isDigestEnabled: isEnabled, digestTime: time, updatedAt: now }),
-
-    listFamily: async (familyId: string) =>
-      db
-        .select({ id: members.id, name: members.name, ownerMemberId: families.ownerMemberId })
-        .from(familyMembers)
-        .innerJoin(members, eq(members.id, familyMembers.memberId))
-        .innerJoin(families, eq(families.id, familyMembers.familyId))
-        .where(eq(familyMembers.familyId, familyId))
-        .orderBy(
-          sql`${members.id} = ${families.ownerMemberId} desc`,
-          asc(familyMembers.createdAt),
-          asc(members.name),
-        )
-        .all(),
   };
 }
 

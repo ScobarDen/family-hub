@@ -10,6 +10,7 @@ import type { FamilyDependencies, FamilySources } from "./family-sources.vm.ts";
 export type FamilyMemberItem = {
   id: string;
   name: string;
+  profilePicture: string | null;
   isFamilyOwner: boolean;
   role: string | undefined;
   isManageable: boolean;
@@ -33,9 +34,10 @@ function reatomSources(dependencies: FamilyDependencies): FamilySources {
 function reatomMembers({ list, isOwner, self }: FamilySources) {
   return computed(
     (): FamilyMemberItem[] =>
-      (list.data() ?? []).map(({ id, name, isFamilyOwner }) => ({
+      (list.data() ?? []).map(({ id, name, profilePicture, isFamilyOwner }) => ({
         id,
         name,
+        profilePicture,
         isFamilyOwner,
         role: isFamilyOwner ? "Владелец" : undefined,
         isManageable: isOwner() && id !== self()?.memberId,

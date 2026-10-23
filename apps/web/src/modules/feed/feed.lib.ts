@@ -17,7 +17,7 @@ export type FeedRow = {
   canRecord: boolean;
   photos: Photo[];
   morePhotos: number;
-  author: string | undefined;
+  author: { name: string; profilePicture: string | null } | undefined;
 };
 
 export type FeedBlock = { title: string; rows: FeedRow[] };
@@ -99,7 +99,7 @@ function activityRow(item: FeedActivity, timeZone: string): FeedRow {
     canComplete: false,
     canRecord: false,
     ...photosOf(item),
-    author: item.memberName,
+    author: { name: item.memberName, profilePicture: item.memberPicture },
   };
 }
 

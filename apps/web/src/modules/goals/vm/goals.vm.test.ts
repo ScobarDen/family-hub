@@ -59,7 +59,9 @@ function startGoals({ choices = [] as string[] } = {}) {
     }
 
     if (request === "GET /api/family/members") {
-      return Response.json([{ id: "member-1", name: "Денис", isFamilyOwner: true }]);
+      return Response.json([
+        { id: "member-1", name: "Денис", isFamilyOwner: true, profilePicture: null },
+      ]);
     }
 
     if (request === "POST /api/goals/goal-1/movements") {

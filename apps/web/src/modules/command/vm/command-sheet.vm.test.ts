@@ -38,9 +38,9 @@ const internet: ReminderDraft = {
 };
 
 const members: FamilyMember[] = [
-  { id: "member-1", name: "Денис", isFamilyOwner: true },
-  { id: "member-2", name: "Ася", isFamilyOwner: false },
-  { id: "member-3", name: "Ася", isFamilyOwner: false },
+  { id: "member-1", name: "Денис", isFamilyOwner: true, profilePicture: null },
+  { id: "member-2", name: "Ася", isFamilyOwner: false, profilePicture: null },
+  { id: "member-3", name: "Ася", isFamilyOwner: false, profilePicture: null },
 ];
 
 const heard = "напомни в пятницу в 19:00 оплатить интернет";
