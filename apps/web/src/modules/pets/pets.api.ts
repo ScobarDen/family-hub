@@ -9,6 +9,7 @@ import {
 } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
+import { createPhotoCalls } from "@/common/photo";
 
 // The avatar is a signed path of the Worker; the browser loads it from there.
 function resolvedOf(client: HttpClient, saved: Pet): Pet {
@@ -34,6 +35,8 @@ export function createPetsApi(client: HttpClient) {
   }
 
   return {
+    ...createPhotoCalls(client),
+
     async list() {
       const pets = await client.request("/api/pets", { schema: petList });
 

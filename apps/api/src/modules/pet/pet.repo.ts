@@ -3,7 +3,8 @@ import { and, asc, eq, type SQL } from "drizzle-orm";
 import type { PetMemoChange, PetProfile } from "@family-hub/contract";
 
 import { bindFirst } from "@/common/bind";
-import { careEntries, careEntryPhotos, members, pets, type Db } from "@/common/db";
+import { careEntries, careEntryPhotos, members, pets, photos, type Db } from "@/common/db";
+import { forgetUnheldPhoto } from "@/modules/photo";
 
 export type PetRow = typeof pets.$inferSelect & { memoUpdatedByName: string | null };
 
@@ -46,33 +47,37 @@ async function update(
 type Avatar = PetTarget & { photoId: string | null; now: number };
 
 async function setAvatar(db: Db, { photoId, now, ...target }: Avatar) {
-  return update(db, target, { avatarPhotoId: photoId, updatedAt: now });
+  const previous = await find(db, target);
+  const saved = await update(db, target, { avatarPhotoId: photoId, updatedAt: now });
+
+  const replaced = previous?.avatarPhotoId ?? null;
+
+  if (replaced !== null && replaced !== photoId) {
+    await forgetUnheldPhoto(db, { familyId: target.familyId, photoId: replaced });
+  }
+
+  return saved;
 }
 
-// A Pet's avatar comes from the photos of its own Care Entries.
-async function hasPhoto(
+// Its own Care Entry photo or one in no Care Entry: an identical upload may already sit in an Album.
+async function canBeAvatar(
   db: Db,
   { familyId, petId, photoId }: PetTarget & { photoId: string },
 ): Promise<boolean> {
-  const row = await db
-    .select({ photoId: careEntryPhotos.photoId })
-    .from(careEntryPhotos)
-    .innerJoin(careEntries, eq(careEntries.id, careEntryPhotos.careEntryId))
-    .where(
-      and(
-        eq(careEntryPhotos.familyId, familyId),
-        eq(careEntries.petId, petId),
-        eq(careEntryPhotos.photoId, photoId),
-      ),
-    )
-    .get();
+  const rows = await db
+    .select({ petId: careEntries.petId })
+    .from(photos)
+    .leftJoin(careEntryPhotos, eq(careEntryPhotos.photoId, photos.id))
+    .leftJoin(careEntries, eq(careEntries.id, careEntryPhotos.careEntryId))
+    .where(and(eq(photos.familyId, familyId), eq(photos.id, photoId)))
+    .all();
 
-  return row !== undefined;
+  return rows.some((row) => row.petId === null || row.petId === petId);
 }
 
 export function createPetRepo(db: Db) {
   return {
-    ...bindFirst(db, { setAvatar, hasPhoto }),
+    ...bindFirst(db, { setAvatar, canBeAvatar }),
     list: async (familyId: string) => selectWhere(db, eq(pets.familyId, familyId)),
     find: async (familyId: string, petId: string) => find(db, { familyId, petId }),
 

@@ -43,7 +43,7 @@ const refuse = refusalsOf<PetRefusal>({
   },
   "photo-not-found": {
     code: "PHOTO_NOT_FOUND",
-    message: "The avatar is one of the photos of the Pet's own Care Entries",
+    message: "The avatar is a photo of the Pet's own Care Entries or one uploaded for it alone",
     status: httpStatus.badRequest,
   },
 });

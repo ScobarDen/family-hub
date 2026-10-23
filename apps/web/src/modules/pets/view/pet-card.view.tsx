@@ -5,6 +5,7 @@ import { PrimaryButton, SectionLayout } from "@/common/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 import { PetArchiveSection } from "./pet-archive-section.view.tsx";
+import { PetAvatar } from "./pet-avatar.view.tsx";
 import { PetHeader } from "./pet-header.view.tsx";
 import { PetMemoSection } from "./pet-memo-section.view.tsx";
 import { PetSoon } from "./pet-soon.view.tsx";
@@ -44,7 +45,11 @@ export const PetCard = reatomComponent((props: PetCardProps) => {
 
   return (
     <>
-      <PetHeader card={card} onEdit={isEditable ? model.editProfile : undefined} />
+      <PetHeader
+        card={card}
+        avatar={<PetAvatar card={card} model={model} />}
+        onEdit={isEditable ? model.editProfile : undefined}
+      />
       <SectionLayout
         summary={summary}
         lead={

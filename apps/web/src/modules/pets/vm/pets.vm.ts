@@ -1,11 +1,10 @@
-import { action, atom, computed, reatomBoolean, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, reatomBoolean } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
-import { detached } from "@/common/state";
-
 import type { SoonKind } from "../pets.lib.ts";
 import { reatomPetArchive } from "./pet-archive.vm.ts";
+import { reatomPetAvatar } from "./pet-avatar.vm.ts";
 import { reatomPetMemoForm } from "./pet-memo-form.vm.ts";
 import { reatomPetProfileForm } from "./pet-profile-form.vm.ts";
 import {
@@ -141,21 +140,6 @@ function reatomLinks(dependencies: PetsDependencies) {
   };
 }
 
-// The avatar is picked in the care module's photo viewer; the Pet's card only shows it.
-function reatomAvatar({ api, pets }: PetsDependencies, openedPet: () => Pet | undefined) {
-  const save = action(async (photoId: string) => {
-    const pet = openedPet();
-
-    if (pet !== undefined) {
-      pets.keep(await wrap(api.setAvatar(pet.id, photoId)));
-    }
-  }, "pets.saveAvatar").extend(withAsync());
-
-  return {
-    makeAvatar: detached(save, "pets.makeAvatar"),
-  };
-}
-
 export function reatomPetsScreen(dependencies: PetsDependencies) {
   const navigation: Navigation = {
     editing: atom<Editing | undefined>(undefined, "pets.editing"),
@@ -191,7 +175,7 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
     ...forms,
     ...archive,
     ...reatomLinks(dependencies),
-    ...reatomAvatar(dependencies, openedPet),
+    ...reatomPetAvatar({ ...dependencies, openedPet }),
     ...reatomBrowsing(dependencies, navigation, openedPet),
     ...reatomEditing(navigation, { ...forms, openedPet, archive }),
   };
