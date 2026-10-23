@@ -3,7 +3,6 @@ import {
   feedUpcomingDays,
   todayNextCount,
   type FeedPage,
-  type FeedUpcoming,
 } from "@family-hub/contract";
 import { dateInZone, daysAfter } from "@family-hub/recurrence";
 
@@ -53,11 +52,6 @@ async function digestOf(dependencies: FeedDependencies, membership: Membership) 
   return { overdue, today: upcoming.filter(({ date }) => date === window.today), upcoming };
 }
 
-// Events, Reminders and birthdays come and go by themselves; Plans and Due Dates wait to be closed.
-function isClosable({ kind }: FeedUpcoming): boolean {
-  return kind === "plan" || kind === "due";
-}
-
 export function createFeedService(dependencies: FeedDependencies) {
   return {
     async digestOf(membership: Membership) {
@@ -65,10 +59,10 @@ export function createFeedService(dependencies: FeedDependencies) {
 
       return { overdue, today };
     },
-    // The hub's «Сделать сегодня» is the digest's closable part, so the bot and the app agree.
+    // The hub's «Сделать сегодня» is what the digest sends, so the bot and the app agree.
     async todayOf(membership: Membership) {
       const { overdue, today, upcoming } = await digestOf(dependencies, membership);
-      const due = [...overdue, ...today].filter(isClosable);
+      const due = [...overdue, ...today];
       const dueKeys = new Set(due.map(({ key }) => key));
 
       return {
