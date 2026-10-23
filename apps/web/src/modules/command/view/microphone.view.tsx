@@ -1,11 +1,34 @@
 import { reatomComponent } from "@reatom/react";
 import { Mic } from "lucide-react";
+import type { KeyboardEvent } from "react";
 
 import { cn } from "@/common/ui";
 
 import type { MicrophoneModel } from "../vm/microphone.vm.ts";
 
 export type MicrophoneProps = { model: MicrophoneModel };
+
+// Holding Space or Enter talks the way holding the button does.
+function isTalkKey(key: string): boolean {
+  return key === " " || key === "Enter";
+}
+
+function talkKeysOf(model: MicrophoneModel) {
+  return {
+    onKeyDown: (event: KeyboardEvent) => {
+      if (isTalkKey(event.key) && !event.repeat) {
+        event.preventDefault();
+        model.press();
+      }
+    },
+    onKeyUp: (event: KeyboardEvent) => {
+      if (isTalkKey(event.key)) {
+        event.preventDefault();
+        model.release();
+      }
+    },
+  };
+}
 
 export const Microphone = reatomComponent(({ model }: MicrophoneProps) => {
   const isRecording = model.state() === "recording";
@@ -16,7 +39,7 @@ export const Microphone = reatomComponent(({ model }: MicrophoneProps) => {
       {(isRecording || hint !== undefined) && (
         <span
           role="status"
-          className="absolute bottom-full mb-2 rounded-full bg-foreground px-3 py-1 text-xs font-medium whitespace-nowrap text-background"
+          className="absolute bottom-full mb-2 rounded-full bg-foreground px-3 py-1 w-max max-w-[calc(100vw-2rem)] text-center text-xs font-medium text-background"
         >
           {isRecording ? `● ${model.timer()}` : hint}
         </span>
@@ -26,13 +49,14 @@ export const Microphone = reatomComponent(({ model }: MicrophoneProps) => {
         aria-label="Удерживайте и говорите"
         aria-pressed={isRecording}
         className={cn(
-          "flex size-12 touch-none items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform select-none",
-          isRecording && "scale-125 bg-destructive",
+          "flex size-12 touch-none items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md select-none motion-safe:transition-transform",
+          isRecording && "bg-destructive motion-safe:scale-125",
         )}
         onPointerDown={model.press}
         onPointerUp={model.release}
         onPointerLeave={model.leave}
         onPointerCancel={model.leave}
+        {...talkKeysOf(model)}
         onContextMenu={(event) => {
           event.preventDefault();
         }}

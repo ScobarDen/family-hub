@@ -13,7 +13,7 @@ export type AlbumsProps = { model: AlbumsScreenModel };
 
 function contentOf(model: AlbumsScreenModel, screen: AlbumsScreen): ReactNode {
   if (screen.kind === "list") {
-    return <AlbumList model={model} albums={screen.albums} />;
+    return <AlbumList model={model} albums={screen.albums} summary={screen.summary} />;
   }
 
   if (screen.kind === "album") {
@@ -43,6 +43,7 @@ function contentOf(model: AlbumsScreenModel, screen: AlbumsScreen): ReactNode {
   return (
     <LoadState
       failure={screen.kind === "failed" ? "Не получилось загрузить альбомы." : undefined}
+      onRetry={model.retry}
     />
   );
 }

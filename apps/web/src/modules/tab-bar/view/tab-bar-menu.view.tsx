@@ -1,31 +1,44 @@
 import { reatomComponent } from "@reatom/react";
 
-import { FieldError, ScreenTitle, Section } from "@/common/ui";
+import { Chip, ChipGroup, FieldError, ScreenTitle } from "@/common/ui";
 
-import type { TabBarMenuModel } from "../vm/tab-bar-menu.vm.ts";
-import { TabBarMenuItem } from "./tab-bar-menu-item.view.tsx";
+import type { Slot, TabBarMenuModel } from "../vm/tab-bar-menu.vm.ts";
 
-export type TabBarMenuProps = { model: TabBarMenuModel };
+const slotNames = ["Слева от микрофона", "Справа от микрофона"];
 
-export const TabBarMenu = reatomComponent(({ model }: TabBarMenuProps) => {
-  const hidden = model.hiddenItems();
-  const handlers = { onToggle: model.toggle, onMoveUp: model.moveUp, onMoveDown: model.moveDown };
-
+function SlotPicker({ model, slot }: { model: TabBarMenuModel; slot: Slot }) {
   return (
-    <>
-      <ScreenTitle title="Нижнее меню" subtitle="От 2 до 5 разделов, остальные — в Профиле" />
-      <Section title="В меню" footer={<FieldError>{model.failure()}</FieldError>}>
-        {model.shownItems().map((item) => (
-          <TabBarMenuItem key={item.module} item={item} {...handlers} />
+    <div className="px-5 pb-6">
+      <ChipGroup label={slotNames[slot.index] ?? ""} role="radiogroup">
+        {model.choices.map(({ module, title }) => (
+          <Chip
+            key={module}
+            role="radio"
+            isSelected={module === slot.module}
+            aria-disabled={model.isSaving() || undefined}
+            onClick={() => {
+              model.choose(slot.index, module);
+            }}
+          >
+            {title}
+          </Chip>
         ))}
-      </Section>
-      {hidden.length > 0 && (
-        <Section title="Скрыты">
-          {hidden.map((item) => (
-            <TabBarMenuItem key={item.module} item={item} {...handlers} />
-          ))}
-        </Section>
-      )}
-    </>
+      </ChipGroup>
+    </div>
   );
-}, "TabBarMenu");
+}
+
+export const TabBarMenu = reatomComponent(
+  ({ model }: { model: TabBarMenuModel }) => (
+    <>
+      <ScreenTitle title="Панель снизу" subtitle="Два раздела рядом с микрофоном" />
+      {model.slots().map((slot) => (
+        <SlotPicker key={slot.index} model={model} slot={slot} />
+      ))}
+      <div className="px-5">
+        <FieldError>{model.failure()}</FieldError>
+      </div>
+    </>
+  ),
+  "TabBarMenu",
+);

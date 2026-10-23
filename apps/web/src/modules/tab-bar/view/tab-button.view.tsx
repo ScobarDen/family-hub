@@ -1,24 +1,27 @@
-import type { AppModule } from "@family-hub/contract";
+import { House, LayoutGrid, type LucideIcon } from "lucide-react";
 
-import { moduleIcons } from "../tab-bar.config.ts";
-import type { Tab } from "../vm/tab-bar.vm.ts";
+import { sectionIcons } from "@/common/sections";
 
-type TabButtonProps = { tab: Tab; onOpen: (module: AppModule) => void };
+import type { TabId, TabItem } from "../vm/tab-bar.vm.ts";
+
+type TabButtonProps = { tab: TabItem; onOpen: (tab: TabId) => void };
+
+const tabIcons: Record<TabId, LucideIcon> = { ...sectionIcons, today: House, sections: LayoutGrid };
 
 export function TabButton({ tab, onOpen }: TabButtonProps) {
-  const Icon = moduleIcons[tab.module];
+  const Icon = tabIcons[tab.id];
 
   return (
     <button
       type="button"
       aria-current={tab.isActive ? "page" : undefined}
-      className="flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-[0.6875rem] font-medium text-muted-foreground transition-colors aria-[current=page]:text-primary android:aria-[current=page]:bg-primary/15"
+      className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-full py-1.5 text-[0.6875rem] leading-tight font-medium text-muted-foreground min-[360px]:text-xs transition-colors aria-[current=page]:font-semibold aria-[current=page]:text-foreground android:aria-[current=page]:bg-primary/15"
       onClick={() => {
-        onOpen(tab.module);
+        onOpen(tab.id);
       }}
     >
-      <Icon className="size-6" />
-      <span className="max-w-full truncate">{tab.title}</span>
+      <Icon className="size-6 group-aria-[current=page]:text-primary" strokeWidth={1.75} />
+      <span className="max-w-full text-center hyphens-auto">{tab.title}</span>
     </button>
   );
 }

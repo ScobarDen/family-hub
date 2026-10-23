@@ -2,7 +2,7 @@ import { action, atom, type Atom, computed, withAbort, withAsync, wrap } from "@
 
 import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hub/contract";
 
-import { formatDay } from "@/common/format-date";
+import { formatDay, formatNearDate } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { PreparedPhoto } from "@/common/photo";
 import { detached, readOnly, reatomFailure } from "@/common/state";
@@ -45,6 +45,13 @@ export type CareDependencies = {
   onDraftSaved: (draftId: string) => void;
 };
 
+// What the pet card's summary leads with; the month reads as nothing spent until it arrives.
+export type CareSummary = {
+  weight: string | undefined;
+  vetVisit: string | undefined;
+  monthExpenses: string;
+};
+
 export type DueSource = { id: string; title: string; dueDate: string; kind: "due" };
 
 export type YearExpenses = ExpensesView & {
@@ -80,13 +87,15 @@ function reatomWeight({ data, timeZone, today }: Sources, weightRange: Atom<Weig
 }
 
 function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
-  const { data, timeZone } = sources;
+  const { data, timeZone, today } = sources;
 
   return {
     ...reatomWeight(sources, weightRange),
     journal: computed(
       (): JournalItem[] =>
-        (data.entries.data() ?? []).map((entry) => toJournalItem(entry, timeZone())),
+        (data.entries.data() ?? []).map((entry) =>
+          toJournalItem(entry, { timeZone: timeZone(), today: today() }),
+        ),
       "care.journal",
     ),
     // Until the month arrives it reads as nothing spent.
@@ -105,7 +114,7 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
             entries: summary.entries.map(({ id, category, occurredAt, amount }) => ({
               id,
               title: expenseCategoryTitles[category],
-              subtitle: formatDay(occurredAt, timeZone()),
+              subtitle: formatDay(occurredAt, { timeZone: timeZone(), today: today() }),
               amount: formatRubles(amount),
             })),
           };
@@ -222,6 +231,27 @@ function reatomDueSources(data: CareData) {
   );
 }
 
+function reatomSummary(
+  { data, today }: Pick<Sources, "data" | "today">,
+  views: { weightSummary: () => WeightSummary | undefined; month: () => ExpensesView },
+) {
+  return computed((): CareSummary => {
+    const visit = (data.dueDates.data() ?? []).find(({ kind }) => kind === "vet_visit");
+
+    return {
+      weight: views.weightSummary()?.latest,
+      vetVisit: visit === undefined ? undefined : formatNearDate(visit.dueDate, today()),
+      monthExpenses: views.month().total,
+    };
+  }, "care.summary");
+}
+
+function reatomSummarizedViews(sources: Sources, weightRange: Atom<WeightRange>) {
+  const views = reatomViews(sources, weightRange);
+
+  return { ...views, summary: reatomSummary(sources, views) };
+}
+
 function reatomScreen(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
   return computed((): CareScreen => {
     const kind = screen();
@@ -263,7 +293,7 @@ export function reatomCare(dependencies: CareDependencies) {
     }),
     form,
     ...photos,
-    ...reatomViews(sources, weightRange),
+    ...reatomSummarizedViews(sources, weightRange),
     ...reatomMoves(sources, weightRange),
     ...reatomOpening(sources),
     ...reatomDraftEditing(sources),

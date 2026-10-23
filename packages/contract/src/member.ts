@@ -6,15 +6,18 @@ export const appModule = z.enum(["feed", "plans", "calendar", "pet", "goals", "a
 
 export type AppModule = z.infer<typeof appModule>;
 
-export const tabBarMinModules = 2;
-export const tabBarMaxModules = 5;
+// The Feed is a section of its own and never takes a slot.
+export const slotModule = appModule.exclude(["feed"]);
 
-export const defaultTabBar: AppModule[] = ["feed", "plans", "calendar", "pet"];
+export type SlotModule = z.infer<typeof slotModule>;
+
+export const tabBarSlots = 2;
+
+export const defaultTabBar: SlotModule[] = ["plans", "calendar"];
 
 export const tabBar = z
-  .array(appModule)
-  .min(tabBarMinModules)
-  .max(tabBarMaxModules)
+  .array(slotModule)
+  .length(tabBarSlots)
   .refine((modules) => new Set(modules).size === modules.length, "Modules repeat");
 
 export const tabBarSettings = z.object({ modules: tabBar });

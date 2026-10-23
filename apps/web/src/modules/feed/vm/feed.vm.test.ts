@@ -44,6 +44,7 @@ const firstPage: FeedPage = {
     },
     {
       kind: "due",
+      careKind: "vaccination",
       key: "due-entry-1",
       title: "Прививка: Бешенство — Бьюик",
       date: "2026-10-20",

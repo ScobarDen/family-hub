@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Circle, CircleCheck, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 
-import { Button, FieldError, Section, SectionItem } from "@/common/ui";
+import { Button, CheckButton, FieldError, Section, SectionItem } from "@/common/ui";
 
 import type { PlanDetails as PlanDetailsData, SubplanItem } from "../plans.lib.ts";
 import type { PlansScreenModel } from "../vm/plans.vm.ts";
@@ -38,17 +38,23 @@ type SubplanRowProps = { subplan: SubplanItem; model: PlansScreenModel };
 
 const SubplanRow = reatomComponent(({ subplan, model }: SubplanRowProps) => {
   const buttons = [
-    {
-      label: subplan.isCompleted ? "Вернуть в работу" : "Выполнено",
-      icon: subplan.isCompleted ? <CircleCheck className="text-green-500" /> : <Circle />,
-      onClick: model.toggleSubplan,
-    },
     { label: "Изменить шаг", icon: <Pencil />, onClick: model.editSubplan },
     { label: "Удалить шаг", icon: <Trash2 />, onClick: model.removeSubplan },
   ];
 
   return (
     <SectionItem
+      control={
+        <CheckButton
+          label={`${subplan.isCompleted ? "Вернуть в работу" : "Отметить выполненным"}: ${subplan.title}`}
+          isChecked={subplan.isCompleted}
+          isAlert={subplan.isOverdue}
+          disabled={model.isChanging()}
+          onClick={() => {
+            model.toggleSubplan(subplan.id);
+          }}
+        />
+      }
       title={subplan.title}
       subtitle={subplan.subtitle}
       after={buttons.map(({ label, icon, onClick }) => (
@@ -82,7 +88,12 @@ export function PlanDetails({ plan, model }: PlanDetailsProps) {
       {plan.album !== null && <PlanAlbum album={plan.album} onOpen={model.openAlbum} />}
       {plan.canDelete && (
         <Section>
-          <SectionItem icon={Trash2} isAlert title="Удалить план" onClick={model.removePlan} />
+          <SectionItem
+            icon={Trash2}
+            isDestructive
+            title="Удалить план"
+            onClick={model.removePlan}
+          />
         </Section>
       )}
     </>

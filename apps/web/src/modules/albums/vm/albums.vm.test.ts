@@ -84,12 +84,14 @@ function startAlbums({
   const model = reatomAlbumsScreen({
     api: createAlbumsApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: { showPopup: async () => "cancel", showAlert: noop },
-    timeZone: () => "Europe/Moscow",
+    viewer: () => ({ timeZone: "Europe/Moscow", today: "2026-10-16" }),
     preparePhoto: async (file) => ({ file, takenAt: null }),
     wait: async (ms) => {
       waits.push(ms);
     },
     photoHint: noop,
+    canSetUpPhotos: () => false,
+    onSetUpPhotos: noop,
   });
 
   model.screen.subscribe(noop);
@@ -136,6 +138,16 @@ function additions({ requests }: Started): string[] {
 
 beforeEach(() => {
   context.reset();
+});
+
+describe("the Albums", () => {
+  test("say how many there are, or that there are none yet", async () => {
+    const { model } = startAlbums();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "list", albums: [], summary: "Пока нет альбомов" });
+    });
+  });
 });
 
 describe("a batch of photos", () => {

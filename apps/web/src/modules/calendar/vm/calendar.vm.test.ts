@@ -177,7 +177,7 @@ function startCalendar({
   });
 
   model.grid.subscribe(noop);
-  model.upcoming.subscribe(noop);
+  model.upcomingRows.subscribe(noop);
   model.dayItems.subscribe(noop);
   model.reminderForm.recipients.subscribe(noop);
 
@@ -262,6 +262,15 @@ describe("«Ближайшее»", () => {
     await loaded(model);
 
     expect(model.upcoming()[0]).toMatchObject({ date: "2026-10-16", time: "02:00" });
+  });
+
+  test("leaves out the chosen day, listed right above it", async () => {
+    const { model } = startCalendar();
+
+    model.select("2026-10-15");
+    await loaded(model);
+
+    expect(model.upcomingRows().map(({ item }) => item.date)).not.toContain("2026-10-15");
   });
 
   test("opens the Pet's card from a birthday or a Due Date", async () => {

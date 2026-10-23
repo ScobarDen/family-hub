@@ -10,8 +10,9 @@ import {
   wrap,
 } from "@reatom/core";
 
-import type { RecipeTag } from "@family-hub/contract";
+import type { Recipe, RecipeTag } from "@family-hub/contract";
 
+import { formatCount } from "@/common/format-count";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
@@ -29,10 +30,38 @@ import { reatomRecipeCooks } from "./recipe-cooks.vm.ts";
 import { reatomRecipeForm } from "./recipe-form.vm.ts";
 import { reatomTagEditing } from "./recipe-tags.vm.ts";
 
+const recipeWords = { one: "рецепт", few: "рецепта", many: "рецептов", other: "рецепта" };
+
+function isFilteredBy({ text, tagId, isFavorite }: RecipesData): boolean {
+  return text() !== "" || tagId() !== undefined || isFavorite();
+}
+
+// An empty list says whether the book is empty or the search found nothing in it.
+function listScreenOf(
+  list: Recipe[],
+  { tags, isFiltered }: { tags: RecipeTag[]; isFiltered: boolean },
+): RecipesScreen {
+  const isBookEmpty = list.length === 0 && !isFiltered;
+
+  return {
+    kind: "list",
+    recipes: list.map(toRecipeItem),
+    tags,
+    summary: isBookEmpty ? "Пока нет рецептов" : formatCount(list.length, recipeWords),
+    empty: list.length === 0 && isFiltered ? "Ничего не нашлось" : undefined,
+  };
+}
+
 export type RecipesScreen =
   | { kind: "loading" }
   | { kind: "failed" }
-  | { kind: "list"; recipes: RecipeItem[]; tags: RecipeTag[] }
+  | {
+      kind: "list";
+      recipes: RecipeItem[];
+      tags: RecipeTag[];
+      summary: string;
+      empty: string | undefined;
+    }
   | { kind: "recipe"; recipe: RecipeDetails; checked: number[] }
   | { kind: "form"; isCreating: boolean; tags: RecipeTag[] }
   | { kind: "tags"; tags: RecipeTag[] };
@@ -56,7 +85,7 @@ type Navigation = {
 const deleteQuestion: Confirmation = {
   title: "Удалить рецепт?",
   message: "Рецепт пропадёт у всей семьи вместе со своими фото.",
-  button: "Удалить",
+  button: "Удалить рецепт",
 };
 
 function reatomOpened(
@@ -78,12 +107,14 @@ function reatomScreen({
   navigation,
   opened,
   form,
+  today,
   timeZone,
 }: {
   data: RecipesData;
   navigation: Navigation;
   opened: Opened;
   form: { isCreating: () => boolean };
+  today: () => string;
   timeZone: () => string;
 }) {
   return computed((): RecipesScreen => {
@@ -101,7 +132,7 @@ function reatomScreen({
     if (navigation.openedId() !== undefined && recipe !== undefined) {
       return {
         kind: "recipe",
-        recipe: toRecipeDetails(recipe, timeZone()),
+        recipe: toRecipeDetails(recipe, { today: today(), timeZone: timeZone() }),
         checked: [...navigation.checked()],
       };
     }
@@ -112,7 +143,7 @@ function reatomScreen({
       return data.list.error() === undefined ? { kind: "loading" } : { kind: "failed" };
     }
 
-    return { kind: "list", recipes: list.map(toRecipeItem), tags };
+    return listScreenOf(list, { tags, isFiltered: isFilteredBy(data) });
   }, "recipes.screen");
 }
 
@@ -189,6 +220,11 @@ function reatomFilters(data: RecipesData) {
     toggleFavorites: action(() => {
       data.isFavorite.set(!data.isFavorite());
     }, "recipes.toggleFavorites"),
+    resetFilters: action(() => {
+      data.text.set("");
+      data.tagId.set(undefined);
+      data.isFavorite.set(false);
+    }, "recipes.resetFilters"),
   };
 }
 
@@ -247,13 +283,14 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
       data.reload();
     },
   });
-  const screen = reatomScreen({ data, navigation, opened, form, timeZone: dependencies.timeZone });
+  const screen = reatomScreen({ ...dependencies, data, navigation, opened, form });
 
   return {
     screen,
     form,
     photoHint: readOnly(dependencies.photoHint),
     title: computed(() => titleOf(screen()), "recipes.title"),
+    retry: data.reload,
     canGoBack: computed(
       () => navigation.editing() !== undefined || navigation.openedId() !== undefined,
       "recipes.canGoBack",

@@ -2,6 +2,7 @@ import { action, atom, type Atom, type BooleanAtom, computed, reatomBoolean } fr
 
 import type { Plan } from "@family-hub/contract";
 
+import type { Viewer } from "@/common/format-date";
 import type { Dialogs } from "@/common/telegram";
 
 import type { PlansApi } from "../plans.api.ts";
@@ -24,7 +25,7 @@ type PlansDependencies = {
   plans: PlansModel;
   telegram: Pick<Dialogs, "showPopup">;
   self: () => string | undefined;
-  timeZone: () => string;
+  viewer: () => Viewer;
   onOpenAlbum: (albumId: string) => void;
 };
 
@@ -48,11 +49,18 @@ function reatomForms(dependencies: PlansDependencies, { editing, openedPlanId }:
   };
 }
 
-function listScreen(plans: Plan[], isDoneShown: boolean): PlansScreen {
+function listScreen(
+  plans: Plan[],
+  { isDoneShown, today }: { isDoneShown: boolean; today: string },
+): PlansScreen {
   return {
     kind: "list",
-    open: plans.filter(({ completed }) => completed === null).map(toListItem),
-    done: plans.filter(({ completed }) => completed !== null).map(toListItem),
+    open: plans
+      .filter(({ completed }) => completed === null)
+      .map((plan) => toListItem(plan, today)),
+    done: plans
+      .filter(({ completed }) => completed !== null)
+      .map((plan) => toListItem(plan, today)),
     isDoneShown,
   };
 }
@@ -85,8 +93,8 @@ function reatomScreen(
     }
 
     return plan === undefined
-      ? listScreen(plans, isDoneShown())
-      : { kind: "plan", plan: toDetails(plan, dependencies.timeZone()) };
+      ? listScreen(plans, { isDoneShown: isDoneShown(), today: dependencies.viewer().today })
+      : { kind: "plan", plan: toDetails(plan, dependencies.viewer()) };
   }, "plans.screen");
 }
 
@@ -189,6 +197,7 @@ export function reatomPlansScreen(input: Omit<PlansDependencies, "plans"> & Shar
   return {
     screen,
     title: computed(() => titleOf(screen()), "plans.title"),
+    retry: dependencies.plans.reload,
     openPlansOf: openPlansOf(dependencies.plans),
     canGoBack: computed(
       () => navigation.editing() !== undefined || openedPlan() !== undefined,

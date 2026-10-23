@@ -1,4 +1,10 @@
-import { feedPageSize, feedUpcomingDays, type FeedPage } from "@family-hub/contract";
+import {
+  feedPageSize,
+  feedUpcomingDays,
+  todayNextCount,
+  type FeedPage,
+  type FeedUpcoming,
+} from "@family-hub/contract";
 import { dateInZone, daysAfter } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
@@ -39,14 +45,36 @@ async function activityPage(
   return pageOf(items.flat(), feedPageSize);
 }
 
+// What the morning digest says: what is overdue and what falls on the Member's today.
+async function digestOf(dependencies: FeedDependencies, membership: Membership) {
+  const window = windowOf(dependencies, membership);
+  const { overdue, upcoming } = await ahead(dependencies, membership, window);
+
+  return { overdue, today: upcoming.filter(({ date }) => date === window.today), upcoming };
+}
+
+// Events, Reminders and birthdays come and go by themselves; Plans and Due Dates wait to be closed.
+function isClosable({ kind }: FeedUpcoming): boolean {
+  return kind === "plan" || kind === "due";
+}
+
 export function createFeedService(dependencies: FeedDependencies) {
   return {
-    // What the morning digest says: what is overdue and what falls on the Member's today.
     async digestOf(membership: Membership) {
-      const window = windowOf(dependencies, membership);
-      const { overdue, upcoming } = await ahead(dependencies, membership, window);
+      const { overdue, today } = await digestOf(dependencies, membership);
 
-      return { overdue, today: upcoming.filter(({ date }) => date === window.today) };
+      return { overdue, today };
+    },
+    // The hub's «Сделать сегодня» is the digest's closable part, so the bot and the app agree.
+    async todayOf(membership: Membership) {
+      const { overdue, today, upcoming } = await digestOf(dependencies, membership);
+      const due = [...overdue, ...today].filter(isClosable);
+      const dueKeys = new Set(due.map(({ key }) => key));
+
+      return {
+        due,
+        next: upcoming.filter(({ key }) => !dueKeys.has(key)).slice(0, todayNextCount),
+      };
     },
     page: async (membership: Membership, before: string | undefined): Promise<FeedPage> => {
       const page = await activityPage(dependencies, membership, before);

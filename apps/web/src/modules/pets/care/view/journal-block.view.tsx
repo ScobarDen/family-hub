@@ -1,5 +1,4 @@
 import { reatomComponent } from "@reatom/react";
-import { Plus } from "lucide-react";
 import { Fragment } from "react";
 
 import { PhotoThumbs } from "@/common/photo-viewer";
@@ -48,15 +47,6 @@ export const JournalBlock = reatomComponent(
     <>
       <WeightBlock model={model} />
       <Section title="Журнал">
-        {!model.isReadOnly() && (
-          <SectionItem
-            icon={Plus}
-            title="Добавить запись"
-            onClick={() => {
-              model.add("vaccination");
-            }}
-          />
-        )}
         {model.journal().map((item) => (
           <Fragment key={item.id}>
             <SectionItem

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 
 import { bindFirst } from "@/common/bind";
 import {
@@ -127,6 +127,17 @@ async function cooksOf(db: Db, familyId: string): Promise<CookRow[]> {
   return rows.map(({ cook, memberName }) => ({ ...cook, memberName }));
 }
 
+async function lastCookedOf(db: Db, familyId: string) {
+  return db
+    .select({ recipeId: recipes.id, title: recipes.title })
+    .from(recipeCooks)
+    .innerJoin(recipes, eq(recipes.id, recipeCooks.recipeId))
+    .where(eq(recipeCooks.familyId, familyId))
+    .orderBy(desc(recipeCooks.cookedAt))
+    .limit(1)
+    .get();
+}
+
 const cookKeyed = { at: recipeCooks.cookedAt, key: keyOf("cooked", recipeCooks.id) };
 
 async function cooksBefore(db: Db, familyId: string, { keyset, limit }: KeysetPage) {
@@ -182,7 +193,7 @@ function cookCalls(db: Db) {
 
 export function createRecipeRepo(db: Db) {
   return {
-    ...bindFirst(db, { linksOf, favoritesOf, knownTagIds, setLinks, setFavorite }),
+    ...bindFirst(db, { linksOf, favoritesOf, knownTagIds, setLinks, setFavorite, lastCookedOf }),
     recipesOf: async (familyId: string) =>
       db.select().from(recipes).where(eq(recipes.familyId, familyId)).all(),
     ...cookCalls(db),

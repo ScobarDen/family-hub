@@ -1,6 +1,6 @@
-import { ChevronDown, ChevronUp, CircleCheck } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { CheckButton, Section, SectionItem } from "@/common/ui";
 
 import type { PlansScreen, PlansScreenModel } from "../vm/plans.vm.ts";
 
@@ -18,7 +18,16 @@ export function DonePlans({ model, screen }: ListProps) {
         screen.done.map((plan) => (
           <SectionItem
             key={plan.id}
-            icon={CircleCheck}
+            control={
+              <CheckButton
+                label={`Вернуть в работу: ${plan.title}`}
+                isChecked
+                disabled={model.isChanging()}
+                onClick={() => {
+                  model.togglePlanOf(plan.id);
+                }}
+              />
+            }
             title={plan.title}
             subtitle={plan.subtitle}
             onClick={() => {

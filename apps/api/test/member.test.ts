@@ -58,36 +58,53 @@ async function startWithFamily() {
 }
 
 describe("the tab bar", () => {
-  test("starts as Лента · Планы · Календарь · Питомец", async () => {
+  test("starts with Планы and Календарь in its two slots", async () => {
     const { worker } = await startWithFamily();
 
     const { settings } = await me(worker, denis);
 
-    expect(settings.tabBar).toEqual(["feed", "plans", "calendar", "pet"]);
+    expect(settings.tabBar).toEqual(["plans", "calendar"]);
   });
 
-  test("keeps the modules and order a Member saved for their next session", async () => {
+  test("keeps the two modules a Member saved for their next session", async () => {
     const { worker } = await startWithFamily();
 
     const response = await put(worker, denis, {
       path: "/api/me/tab-bar",
-      body: {
-        modules: ["goals", "feed", "albums"],
-      },
+      body: { modules: ["recipes", "goals"] },
     });
     const { settings } = await me(worker, denis);
 
-    expect(await response.json()).toEqual({ modules: ["goals", "feed", "albums"] });
-    expect(settings.tabBar).toEqual(["goals", "feed", "albums"]);
+    expect(await response.json()).toEqual({ modules: ["recipes", "goals"] });
+    expect(settings.tabBar).toEqual(["recipes", "goals"]);
+  });
+
+  test.each([
+    [
+      "its first two modules besides the Feed",
+      ["feed", "pet", "goals", "albums"],
+      ["pet", "goals"],
+    ],
+    ["its one module topped up with Календарь", ["feed", "plans"], ["plans", "calendar"]],
+    ["its one module topped up with Планы", ["feed", "calendar"], ["calendar", "plans"]],
+  ] as const)("reads a tab bar saved before the slots as %s", async (_case, stored, slots) => {
+    const { worker, ownerId } = await startWithFamily();
+
+    await worker.setTabBar(ownerId, [...stored]);
+
+    const { settings } = await me(worker, denis);
+
+    expect(settings.tabBar).toEqual(slots);
   });
 });
 
 describe("saving the tab bar", () => {
   test.each([
-    ["a single module", ["feed"]],
-    ["six modules", ["feed", "plans", "calendar", "pet", "goals", "albums"]],
-    ["a repeated module", ["feed", "feed", "plans"]],
-    ["an unknown module", ["feed", "shopping"]],
+    ["a single module", ["plans"]],
+    ["three modules", ["plans", "calendar", "pet"]],
+    ["a repeated module", ["plans", "plans"]],
+    ["the Feed", ["feed", "plans"]],
+    ["an unknown module", ["plans", "shopping"]],
   ])("refuses %s", async (_case, modules) => {
     const { worker } = await startWithFamily();
 
@@ -95,18 +112,18 @@ describe("saving the tab bar", () => {
     const { settings } = await me(worker, denis);
 
     expect(response.status).toBe(400);
-    expect(settings.tabBar).toEqual(["feed", "plans", "calendar", "pet"]);
+    expect(settings.tabBar).toEqual(["plans", "calendar"]);
   });
 
   test("leaves the other Members' tab bars alone", async () => {
     const { worker, familyId } = await startWithFamily();
 
     await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
-    await put(worker, denis, { path: "/api/me/tab-bar", body: { modules: ["goals", "feed"] } });
+    await put(worker, denis, { path: "/api/me/tab-bar", body: { modules: ["goals", "pet"] } });
 
     const { settings } = await me(worker, asya);
 
-    expect(settings.tabBar).toEqual(["feed", "plans", "calendar", "pet"]);
+    expect(settings.tabBar).toEqual(["plans", "calendar"]);
   });
 
   test("needs a session", async () => {
@@ -115,7 +132,7 @@ describe("saving the tab bar", () => {
     const response = await worker.request("/api/me/tab-bar", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ modules: ["goals", "feed"] }),
+      body: JSON.stringify({ modules: ["goals", "pet"] }),
     });
 
     expect(response.status).toBe(401);

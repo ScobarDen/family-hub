@@ -1,17 +1,26 @@
-import { Circle, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { CheckButton, FieldError, Section, SectionItem } from "@/common/ui";
 
 import { DonePlans, type ListProps } from "./done-plans.view.tsx";
 
 export function PlanList({ model, screen }: ListProps) {
   return (
     <>
-      <Section>
+      <Section footer={<FieldError>{model.failure()}</FieldError>}>
         {screen.open.map((plan) => (
           <SectionItem
             key={plan.id}
-            icon={Circle}
+            control={
+              <CheckButton
+                label={`Отметить выполненным: ${plan.title}`}
+                isAlert={plan.isOverdue}
+                disabled={model.isChanging()}
+                onClick={() => {
+                  model.togglePlanOf(plan.id);
+                }}
+              />
+            }
             title={plan.title}
             subtitle={plan.subtitle}
             onClick={() => {

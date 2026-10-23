@@ -17,7 +17,7 @@ function Tile({ item, onRemove }: { item: Attachment; onRemove: () => void }) {
         <LoaderCircle className="absolute inset-0 m-auto animate-spin text-muted-foreground" />
       )}
       {item.status === "failed" && (
-        <span className="absolute inset-0 flex items-center p-1 text-center text-xs text-destructive">
+        <span className="absolute inset-0 flex items-center p-1 text-center text-xs text-destructive-text">
           {item.reason}
         </span>
       )}

@@ -12,7 +12,7 @@ export const RecipeFilters = reatomComponent(
     <div className="flex flex-col gap-2 px-4 pb-2">
       <Input
         type="search"
-        placeholder="Поиск по названию, ингредиентам и тексту"
+        placeholder="Искать в рецептах"
         aria-label="Поиск рецептов"
         value={model.text()}
         onChange={(event) => {

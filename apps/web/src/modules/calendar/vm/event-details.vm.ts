@@ -3,7 +3,7 @@ import { action, type Atom, computed, noop, withAsync, wrap } from "@reatom/core
 import type { CalendarEvent } from "@family-hub/contract";
 import { occurrenceMoment, timeInZone } from "@family-hub/recurrence";
 
-import { formatDate, formatDay } from "@/common/format-date";
+import { formatDate, formatDay, type Viewer } from "@/common/format-date";
 import { reatomFailure } from "@/common/state";
 import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
@@ -27,6 +27,7 @@ type EventDetailsDependencies = {
   api: CalendarApi;
   data: Pick<CalendarData, "events" | "keep" | "drop">;
   timeZone: () => string;
+  today: () => string;
   telegram: Pick<Dialogs, "showPopup">;
   opened: Atom<OpenedOccurrence | undefined>;
   onClosed: () => void;
@@ -45,7 +46,7 @@ const confirmations: Record<"skip" | "delete", Confirmation> = {
   },
 };
 
-function whenOf(event: CalendarEvent, occurrence: string, viewerZone: string): string {
+function whenOf(event: CalendarEvent, occurrence: string, viewer: Viewer): string {
   const { start } = event;
 
   if (start.time === null || start.timeZone === null) {
@@ -56,7 +57,7 @@ function whenOf(event: CalendarEvent, occurrence: string, viewerZone: string): s
 
   const moment = occurrenceMoment(occurrence, { time: start.time, timeZone: start.timeZone });
 
-  return `${formatDay(moment, viewerZone)}, ${timeInZone(moment, viewerZone)}`;
+  return `${formatDay(moment, viewer)}, ${timeInZone(moment, viewer.timeZone)}`;
 }
 
 function repeatsOf({ recurrence }: CalendarEvent): string | undefined {
@@ -69,10 +70,10 @@ function repeatsOf({ recurrence }: CalendarEvent): string | undefined {
   return `${repeatTitles[recurrence.frequency]}${until}`;
 }
 
-function detailsOf(event: CalendarEvent, occurrence: string, viewerZone: string): EventDetails {
+function detailsOf(event: CalendarEvent, occurrence: string, viewer: Viewer): EventDetails {
   return {
     title: event.title,
-    when: whenOf(event, occurrence, viewerZone),
+    when: whenOf(event, occurrence, viewer),
     repeats: repeatsOf(event),
     note: event.note ?? undefined,
     isPrivate: event.visibility === "private",
@@ -132,7 +133,10 @@ export function reatomEventDetails(dependencies: EventDetailsDependencies) {
 
       return current === undefined || target === undefined
         ? undefined
-        : detailsOf(current, target.occurrence ?? current.start.date, dependencies.timeZone());
+        : detailsOf(current, target.occurrence ?? current.start.date, {
+            timeZone: dependencies.timeZone(),
+            today: dependencies.today(),
+          });
     }, "calendar.details"),
     failure: reatomFailure(change, {
       message: "Не получилось. Попробуйте ещё раз.",

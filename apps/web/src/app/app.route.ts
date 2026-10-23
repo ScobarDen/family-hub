@@ -1,74 +1,240 @@
-import { action, atom, computed, reatomRoute } from "@reatom/core";
+import { action, atom, computed, noop, reatomRoute } from "@reatom/core";
 import { z } from "zod";
 
-import { appModule, type AppModule } from "@family-hub/contract";
+import { appModule, type AppModule, type SlotModule } from "@family-hub/contract";
 
 import type { Telegram } from "@/common/telegram";
+import type { TabId } from "@/modules/tab-bar";
+
+export type Place = { module: AppModule; petId?: string };
 
 export type Screen =
-  | { kind: "module"; module: AppModule; isOnTabBar: boolean }
+  | { kind: "today" }
+  | { kind: "sections" }
+  | { kind: "tab-bar-menu" }
   | { kind: "profile" }
-  | { kind: "tab-bar-menu" };
+  | { kind: "module"; module: AppModule; petId?: string };
 
 type NestedBack = { canGoBack: () => boolean; back: () => void };
 
 type NavigationDependencies = {
   base: string;
-  tabBar: () => AppModule[];
+  slots: () => SlotModule[];
   isSignedIn: () => boolean;
   telegram: Pick<Telegram, "backButton" | "settingsButton">;
-  // Screens inside a module (a Pet's card among several, a form) step back before the app does.
+  // Screens inside a module (a form, a Plan's card) step back before the app does.
   nestedBack?: Partial<Record<AppModule, NestedBack>>;
+  onTodayShown?: () => void;
 };
 
 const moduleParams = z.object({ module: appModule });
+const petParams = z.object({ petId: z.string() });
 
 function reatomRoutes(base: string) {
   const root = reatomRoute(base.replaceAll("/", ""));
-  const profile = root.reatomRoute("profile");
+  const sections = root.reatomRoute("sections");
 
   return {
     root,
-    tab: root.reatomRoute({ path: ":module", params: moduleParams }),
-    profile,
-    tabBarMenu: profile.reatomRoute("tab-bar"),
-    hiddenModule: profile.reatomRoute({ path: "modules/:module", params: moduleParams }),
+    sections,
+    tabBarMenu: sections.reatomRoute("tab-bar"),
+    profile: root.reatomRoute("profile"),
+    pet: root.reatomRoute({ path: "pets/:petId", params: petParams }),
+    module: root.reatomRoute({ path: ":module", params: moduleParams }),
   };
 }
 
 type Routes = ReturnType<typeof reatomRoutes>;
 
-function exactModule(route: Routes["tab"]): AppModule | undefined {
-  return route.exact() ? route()?.module : undefined;
+function fixedScreenOf(routes: Routes): Screen | undefined {
+  const fixed = (
+    [
+      ["tab-bar-menu", routes.tabBarMenu],
+      ["sections", routes.sections],
+      ["profile", routes.profile],
+    ] as const
+  ).find(([, route]) => route.exact());
+
+  return fixed === undefined ? undefined : { kind: fixed[0] };
 }
 
-// The bare base and any unknown path open the first tab.
-function reatomScreen(routes: Routes, tabBar: () => AppModule[]) {
-  return computed((): Screen => {
-    const hiddenModule = exactModule(routes.hiddenModule);
+// The bare base and any unknown path open the Today hub.
+function moduleScreenOf(routes: Routes): Screen {
+  const pet = routes.pet.exact() ? routes.pet() : null;
+  const module = routes.module.exact() ? routes.module()?.module : undefined;
 
-    if (routes.tabBarMenu.exact()) {
-      return { kind: "tab-bar-menu" };
-    }
+  if (pet !== null && pet !== undefined) {
+    return { kind: "module", module: "pet", petId: pet.petId };
+  }
 
-    if (hiddenModule !== undefined) {
-      return { kind: "module", module: hiddenModule, isOnTabBar: false };
-    }
-
-    if (routes.profile.exact()) {
-      return { kind: "profile" };
-    }
-
-    const [firstModule = "feed"] = tabBar();
-    const module = exactModule(routes.tab) ?? firstModule;
-
-    // A deep link may open a module the Member hid; their tab bar may also arrive after it.
-    return { kind: "module", module, isOnTabBar: tabBar().includes(module) };
-  }, "navigation.screen");
+  return module === undefined ? { kind: "today" } : { kind: "module", module };
 }
 
-function isOffTabBar(screen: Screen): boolean {
-  return screen.kind !== "module" || !screen.isOnTabBar;
+function reatomScreen(routes: Routes) {
+  return computed(
+    (): Screen => fixedScreenOf(routes) ?? moduleScreenOf(routes),
+    "navigation.screen",
+  );
+}
+
+function goToNotifying(routes: Routes, onTodayShown: () => void) {
+  return (screen: Screen): void => {
+    goTo(routes, screen);
+
+    if (screen.kind === "today") {
+      onTodayShown();
+    }
+  };
+}
+
+function goTo(routes: Routes, screen: Screen): void {
+  if (screen.kind === "module") {
+    if (screen.petId === undefined) {
+      routes.module.go({ module: screen.module }, true);
+    } else {
+      routes.pet.go({ petId: screen.petId }, true);
+    }
+
+    return;
+  }
+
+  const route = {
+    today: routes.root,
+    sections: routes.sections,
+    "tab-bar-menu": routes.tabBarMenu,
+    profile: routes.profile,
+  }[screen.kind];
+
+  route.go(undefined, true);
+}
+
+function rootOf(tab: TabId): Screen {
+  return tab === "today" || tab === "sections" ? { kind: tab } : { kind: "module", module: tab };
+}
+
+function placeScreen({ module, petId }: Place): Screen {
+  return petId === undefined ? { kind: "module", module } : { kind: "module", module, petId };
+}
+
+function isSameScreen(left: Screen, right: Screen): boolean {
+  if (left.kind === "module" && right.kind === "module") {
+    return left.module === right.module && left.petId === right.petId;
+  }
+
+  return left.kind === right.kind;
+}
+
+// A reload lands on the tab whose root it is, or on top of the hub.
+function initialTabOf(screen: Screen, slots: SlotModule[]): TabId {
+  if (screen.kind === "sections" || screen.kind === "tab-bar-menu") {
+    return "sections";
+  }
+
+  const slot = slots.find((module) => screen.kind === "module" && module === screen.module);
+
+  return slot !== undefined && screen.kind === "module" && screen.petId === undefined
+    ? slot
+    : "today";
+}
+
+// Each tab is a stack: a section opens on top of the current tab (a slot's opens its tab), Back
+// pops it, a tab tap goes to that tab's root. The stack lives in memory; the URL names only its
+// top screen.
+function reatomStack(
+  go: (screen: Screen) => void,
+  { screen, slots }: { screen: () => Screen; slots: () => SlotModule[] },
+) {
+  const tab = atom<TabId | undefined>(undefined, "navigation.tab");
+  const trail = atom<Screen[]>([], "navigation.trail");
+  const activeTab = computed(
+    () => tab() ?? initialTabOf(screen(), slots()),
+    "navigation.activeTab",
+  );
+
+  return {
+    activeTab,
+    trail,
+    push: action((next: Screen) => {
+      const current = screen();
+
+      if (!isSameScreen(current, next)) {
+        tab.set(activeTab());
+        trail.set([...trail(), current]);
+        go(next);
+      }
+    }, "navigation.push"),
+    openTab: action((next: TabId) => {
+      tab.set(next);
+      trail.set([]);
+      go(rootOf(next));
+    }, "navigation.openTab"),
+    // A launch link opens on top of the hub, whatever the slots are.
+    launch: action((place: Place | undefined) => {
+      tab.set("today");
+      trail.set(place === undefined ? [] : [{ kind: "today" }]);
+      go(place === undefined ? { kind: "today" } : placeScreen(place));
+    }, "navigation.launch"),
+    pop: action(() => {
+      const previous = trail().at(-1);
+
+      trail.set(trail().slice(0, -1));
+      go(previous ?? rootOf(activeTab()));
+    }, "navigation.pop"),
+  };
+}
+
+type Stack = ReturnType<typeof reatomStack>;
+
+// A section in a slot opens its own tab, so the highlighted tab is always the one on screen and
+// the section's one state lives in one stack; any other section goes on top of the current tab.
+function reatomOpening(
+  stack: Stack,
+  { screen, slots }: { screen: () => Screen; slots: () => SlotModule[] },
+) {
+  function place(next: Place) {
+    const slot = slots().find((module) => module === next.module);
+
+    if (slot !== undefined && next.petId === undefined) {
+      stack.openTab(slot);
+    } else {
+      stack.push(placeScreen(next));
+    }
+  }
+
+  return {
+    open: action((next: Place) => {
+      place(next);
+    }, "navigation.open"),
+    openModule: action((module: AppModule) => {
+      place({ module });
+    }, "navigation.openModule"),
+    openPet: action((petId: string) => {
+      stack.push({ kind: "module", module: "pet", petId });
+    }, "navigation.openPet"),
+    openTabBarMenu: action(() => {
+      stack.push({ kind: "tab-bar-menu" });
+    }, "navigation.openTabBarMenu"),
+    openProfile: action(() => {
+      if (screen().kind !== "profile") {
+        stack.push({ kind: "profile" });
+      }
+    }, "navigation.openProfile"),
+  };
+}
+
+function reatomShown(screen: () => Screen) {
+  return {
+    shownModule: computed(() => {
+      const current = screen();
+
+      return current.kind === "module" ? current.module : undefined;
+    }, "navigation.shownModule"),
+    openedPetId: computed(() => {
+      const current = screen();
+
+      return current.kind === "module" ? current.petId : undefined;
+    }, "navigation.openedPetId"),
+  };
 }
 
 function nestedBackOf(
@@ -80,103 +246,62 @@ function nestedBackOf(
   return nested?.canGoBack() === true ? nested : undefined;
 }
 
-function reatomMoves(routes: Routes, tabBar: () => AppModule[]) {
-  const lastTab = atom<AppModule | undefined>(undefined, "navigation.lastTab");
-
-  return {
-    openModule: action((module: AppModule) => {
-      if (tabBar().includes(module)) {
-        lastTab.set(module);
-        routes.tab.go({ module });
-      } else {
-        routes.hiddenModule.go({ module });
-      }
-    }, "navigation.openModule"),
-    openProfile: action(() => {
-      if (!routes.profile.match()) {
-        routes.profile.go();
-      }
-    }, "navigation.openProfile"),
-    openTabBarMenu: action(() => {
-      routes.tabBarMenu.go();
-    }, "navigation.openTabBarMenu"),
-    // The Member's tab bar may arrive after the launch, so a launch link always takes the tab's path.
-    openLaunchModule: action((module: AppModule) => {
-      lastTab.set(module);
-      routes.tab.go({ module }, true);
-    }, "navigation.openLaunchModule"),
-    leaveProfile: action(() => {
-      const module = lastTab();
-
-      if (module === undefined || !tabBar().includes(module)) {
-        routes.root.go();
-      } else {
-        routes.tab.go({ module });
-      }
-    }, "navigation.leaveProfile"),
-  };
+function isTabRoot(screen: Screen, tab: TabId): boolean {
+  return isSameScreen(screen, rootOf(tab));
 }
 
-type BackSources = {
-  screen: () => Screen;
-  nestedBack: NavigationDependencies["nestedBack"];
-  leaveProfile: () => void;
-  goToProfile: () => void;
-};
-
-function reatomBack({ screen, nestedBack, leaveProfile, goToProfile }: BackSources) {
+function reatomBack(
+  {
+    screen,
+    nestedBack,
+  }: { screen: () => Screen; nestedBack: NavigationDependencies["nestedBack"] },
+  stack: Stack,
+) {
   return action(() => {
     const nested = nestedBackOf(screen(), nestedBack);
 
-    if (nested !== undefined) {
-      nested.back();
-    } else if (screen().kind === "profile") {
-      leaveProfile();
+    if (nested === undefined) {
+      stack.pop();
     } else {
-      goToProfile();
+      nested.back();
     }
   }, "navigation.back").extend(() => ({
-    isVisible: () => isOffTabBar(screen()) || nestedBackOf(screen(), nestedBack) !== undefined,
+    isVisible: () =>
+      nestedBackOf(screen(), nestedBack) !== undefined ||
+      stack.trail().length > 0 ||
+      !isTabRoot(screen(), stack.activeTab()),
   }));
 }
 
 export function reatomNavigation({
   base,
-  tabBar,
+  slots,
   isSignedIn,
   telegram,
   nestedBack,
+  onTodayShown = noop,
 }: NavigationDependencies) {
   const routes = reatomRoutes(base);
-  const screen = reatomScreen(routes, tabBar);
-  const { leaveProfile, ...moves } = reatomMoves(routes, tabBar);
-  const back = reatomBack({
-    screen,
-    nestedBack,
-    leaveProfile,
-    goToProfile: () => {
-      routes.profile.go();
-    },
-  });
+  const screen = reatomScreen(routes);
+  const stack = reatomStack(goToNotifying(routes, onTodayShown), { screen, slots });
+  const back = reatomBack({ screen, nestedBack }, stack);
+  const opening = reatomOpening(stack, { screen, slots });
 
   return {
     screen,
-    activeModule: computed(() => {
-      const current = screen();
-
-      return current.kind === "module" && current.isOnTabBar ? current.module : undefined;
-    }, "navigation.activeModule"),
+    activeTab: stack.activeTab,
     hasProfileButton: !telegram.settingsButton.isAvailable,
-    shownModule: computed(() => {
-      const current = screen();
-
-      return current.kind === "module" ? current.module : undefined;
-    }, "navigation.shownModule"),
-    ...moves,
+    ...reatomShown(screen),
+    canGoBack: computed(() => back.isVisible(), "navigation.canGoBack"),
+    back,
+    openTab: stack.openTab,
+    leave: stack.pop,
+    launch: stack.launch,
+    ...opening,
 
     start(): () => void {
       const stopBack = telegram.backButton.follow(() => isSignedIn() && back.isVisible(), back);
-      const stopSettings = telegram.settingsButton.follow(isSignedIn, moves.openProfile);
+      const stopSettings = telegram.settingsButton.follow(isSignedIn, opening.openProfile);
 
       return () => {
         stopBack();

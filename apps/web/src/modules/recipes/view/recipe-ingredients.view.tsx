@@ -9,7 +9,7 @@ type IngredientsProps = { model: RecipesScreenModel; ingredients: string[]; chec
 
 export const RecipeIngredients = reatomComponent(
   ({ model, ingredients, checked }: IngredientsProps) => (
-    <Section title="Ингредиенты" footer="Отмечайте, что уже положили">
+    <Section footer="Отмечайте, что уже положили">
       {ingredients.length === 0 && <SectionItem title="Ингредиенты не записаны" />}
       {ingredients.map((ingredient, index) => (
         <SectionItem

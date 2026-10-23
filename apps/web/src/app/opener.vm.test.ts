@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { AppModule, CareEntryDraft, CommandDraft } from "@family-hub/contract";
 
+import type { Place } from "./app.route.ts";
 import { reatomOpener } from "./opener.vm.ts";
 
 const phrase = { saidAt: Date.parse("2026-10-11T06:00:00Z"), timeZone: "Europe/Moscow" };
@@ -15,6 +16,19 @@ function startOpener({
   const signedIn = atom(isSignedIn, "test.signedIn");
   const openedPetId = atom<string | undefined>(undefined, "test.openedPetId");
   const opened: string[] = [];
+  const places: string[] = [];
+  const goalState = atom<"loading" | "opened" | "missing">("loading", "test.goalState");
+
+  function go(how: string) {
+    return (place: Place | undefined) => {
+      places.push(`${how} ${JSON.stringify(place)}`);
+      shownModule.set(place?.module);
+
+      if (place?.petId !== undefined) {
+        openedPetId.set(place.petId);
+      }
+    };
+  }
 
   function record(name: string) {
     return (value: unknown) => {
@@ -24,20 +38,11 @@ function startOpener({
 
   const opener = reatomOpener({
     telegram: { startParam: startParameter },
-    navigation: {
-      openModule: (module) => {
-        shownModule.set(module);
-      },
-      openLaunchModule: (module) => {
-        shownModule.set(module);
-      },
-      shownModule: () => shownModule(),
-    },
+    navigation: { open: go("open"), launch: go("launch"), shownModule: () => shownModule() },
     isSignedIn: () => signedIn(),
     pets: {
-      open: (petId) => {
-        openedPetId.set(petId);
-        record("pets.open")(petId);
+      add: () => {
+        opened.push("pets.add");
       },
       showChoice: () => {
         openedPetId.set(undefined);
@@ -45,16 +50,28 @@ function startOpener({
       },
       openedPetId: () => openedPetId(),
     },
-    plans: { open: record("plans.open"), addForPet: record("plans.addForPet") },
+    plans: {
+      open: record("plans.open"),
+      add: () => {
+        opened.push("plans.add");
+      },
+      addForPet: record("plans.addForPet"),
+    },
     care: {
       openEntry: record("care.openEntry"),
       followUp: record("care.followUp"),
+      add: () => {
+        opened.push(`care.add for ${openedPetId() ?? "nobody"}`);
+      },
       editDraft: ({ draftId }) => {
         opened.push(`care.editDraft ${draftId} for ${openedPetId() ?? "nobody"}`);
       },
     },
     calendar: {
       openEvent: record("calendar.openEvent"),
+      add: () => {
+        opened.push("calendar.add");
+      },
       openEventDraft: ({ draftId }) => {
         opened.push(`calendar.openEventDraft ${draftId}`);
       },
@@ -62,13 +79,25 @@ function startOpener({
         opened.push(`calendar.openReminderDraft ${draftId}`);
       },
     },
-    goals: { open: record("goals.open") },
-    albums: { open: record("albums.open") },
+    goals: {
+      open: (goalId) => {
+        record("goals.open")(goalId);
+        goalState.set(goalId === "goal-gone" ? "missing" : "opened");
+      },
+      openedGoalState: () => goalState(),
+      addMovement: record("goals.addMovement"),
+    },
+    albums: {
+      open: record("albums.open"),
+      upload: (files) => {
+        opened.push(`albums.upload ${files.length}`);
+      },
+    },
     recipes: { open: record("recipes.open") },
     commandSheet: { openForEdit: record("commandSheet.openForEdit") },
   });
 
-  return { opener, opened, shownModule, signedIn, openedPetId };
+  return { opener, opened, places, shownModule, signedIn, openedPetId };
 }
 
 const careDraft: CareEntryDraft = {
@@ -115,24 +144,40 @@ beforeEach(() => {
 
 describe("a deep link the Mini App was launched with", () => {
   test.each([
-    { startParam: "pet_pet-1", module: "pet", opened: ["pets.open pet-1"] },
-    { startParam: "entry_entry-7", module: "pet", opened: ["care.openEntry entry-7"] },
-    { startParam: "event_event-1", module: "calendar", opened: ["calendar.openEvent event-1"] },
-    { startParam: "goal_goal-1", module: "goals", opened: ["goals.open goal-1"] },
-    { startParam: "plan_plan-1", module: "plans", opened: ["plans.open plan-1"] },
-    { startParam: "cmd_draft-1", module: undefined, opened: ["commandSheet.openForEdit draft-1"] },
-    { startParam: "inv_token-1", module: undefined, opened: [] },
-    { startParam: "nonsense", module: undefined, opened: [] },
-    { startParam: undefined, module: undefined, opened: [] },
-  ])("$startParam opens $module with $opened", async ({ startParam, module, opened }) => {
+    { startParam: "pet_pet-1", places: ['launch {"module":"pet","petId":"pet-1"}'], opened: [] },
+    {
+      startParam: "entry_entry-7",
+      places: ['launch {"module":"pet"}'],
+      opened: ["care.openEntry entry-7"],
+    },
+    {
+      startParam: "event_event-1",
+      places: ['launch {"module":"calendar"}'],
+      opened: ["calendar.openEvent event-1"],
+    },
+    {
+      startParam: "goal_goal-1",
+      places: ['launch {"module":"goals"}'],
+      opened: ["goals.open goal-1"],
+    },
+    {
+      startParam: "plan_plan-1",
+      places: ['launch {"module":"plans"}'],
+      opened: ["plans.open plan-1"],
+    },
+    { startParam: "cmd_draft-1", places: [], opened: ["commandSheet.openForEdit draft-1"] },
+    { startParam: "inv_token-1", places: [], opened: [] },
+    { startParam: "nonsense", places: [], opened: [] },
+    { startParam: undefined, places: [], opened: [] },
+  ])("$startParam lands on top of the hub at $places", async ({ startParam, places, opened }) => {
     const started = startOpener({ startParam });
 
     started.opener.launch();
 
     await vi.waitFor(() => {
+      expect(started.places).toEqual(places);
       expect(started.opened).toEqual(opened);
     });
-    expect(started.shownModule()).toBe(module);
   });
 
   test("names a draft or a Care Entry fetched with the session's token, so it waits for the sign-in", async () => {
@@ -169,12 +214,12 @@ describe("a record opened from another module", () => {
     {
       target: { kind: "care-entry", petId: "pet-2", entryId: "entry-7" },
       module: "pet",
-      opened: ["pets.open pet-2", "care.openEntry entry-7"],
+      opened: ["care.openEntry entry-7"],
     },
     {
       target: { kind: "due-date", petId: "pet-2", entryId: "entry-7" },
       module: "pet",
-      opened: ["pets.open pet-2", "care.followUp entry-7"],
+      opened: ["care.followUp entry-7"],
     },
     {
       target: { kind: "due-date", entryId: "entry-7" },
@@ -227,8 +272,9 @@ describe("a Command Draft handed over by «Изменить»", () => {
     });
 
     await vi.waitFor(() => {
-      expect(started.opened).toEqual(["pets.open pet-1", "care.editDraft draft-3 for pet-1"]);
+      expect(started.opened).toEqual(["care.editDraft draft-3 for pet-1"]);
     });
+    expect(started.places).toEqual(['open {"module":"pet","petId":"pet-1"}']);
     expect(started.shownModule()).toBe("pet");
   });
 
@@ -274,4 +320,52 @@ describe("a Command Draft handed over by «Изменить»", () => {
 
     expect(started.opened).toEqual(["pets.showChoice", "goals.open goal-1"]);
   });
+});
+
+describe("«Быстро добавить»", () => {
+  test.each([
+    { target: { kind: "new-plan" }, opened: ["plans.add"] },
+    { target: { kind: "new-event" }, opened: ["calendar.add"] },
+    {
+      target: { kind: "new-contribution", goalId: "goal-1" },
+      opened: ["goals.open goal-1", "goals.addMovement contribution"],
+    },
+    {
+      target: { kind: "new-contribution", goalId: "goal-gone" },
+      opened: ["goals.open goal-gone"],
+    },
+    { target: { kind: "new-pet" }, opened: ["pets.add"] },
+  ] as const)("$target.kind opens the module's own form", async ({ target, opened }) => {
+    const started = startOpener();
+
+    started.opener.open(target);
+
+    await vi.waitFor(() => {
+      expect(started.opened).toEqual(opened);
+    });
+  });
+
+  test("asks which Pet a Care Entry is for, then opens the form", async () => {
+    const started = startOpener();
+
+    started.opener.open({ kind: "new-care-entry" });
+    await sleep(0);
+
+    expect(started.opened).toEqual(["pets.showChoice"]);
+
+    started.openedPetId.set("pet-2");
+
+    await vi.waitFor(() => {
+      expect(started.opened).toEqual(["pets.showChoice", "care.add for pet-2"]);
+    });
+  });
+});
+
+test("«+ Фото» uploads to the Family's photos in the albums module", () => {
+  const started = startOpener();
+
+  started.opener.uploadPhotos([new Blob(["a"]), new Blob(["b"])]);
+
+  expect(started.places).toEqual(['open {"module":"albums"}']);
+  expect(started.opened).toEqual(["albums.upload 2"]);
 });

@@ -90,6 +90,10 @@ _Avoid_: Event, action, log entry
 A dated thing ahead of the Family shown in the Feed: an Event Occurrence, a Plan due date, a Pet's Due Date or a Reminder.
 _Avoid_: Agenda, schedule
 
+**Overdue**:
+A Plan due date or a Pet's Due Date that has passed while the Plan is not Completed or no later Care Entry has recorded it.
+_Avoid_: Late, urgent, missed
+
 ### Plans
 
 **Plan**:

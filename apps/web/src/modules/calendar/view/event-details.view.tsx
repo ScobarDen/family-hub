@@ -49,7 +49,7 @@ export const EventDetails = reatomComponent(({ model }: EventDetailsProps) => {
         <Section>
           <SectionItem
             icon={Trash2}
-            isAlert
+            isDestructive
             title="Удалить событие"
             onClick={model.details.removeEvent}
           />

@@ -47,14 +47,14 @@ type Navigation = {
 const outcomeQuestions: Record<GoalOutcome, Confirmation> = {
   fulfilled: {
     title: "Цель исполнена?",
-    message: "Цель уйдёт в архив и больше не будет меняться.",
-    button: "Исполнена",
+    message: "Цель закроется и больше не будет меняться.",
+    button: "Закрыть как исполненную",
     isDestructive: false,
   },
   cancelled: {
-    title: "Отменить цель?",
-    message: "Цель уйдёт в архив с тем, что на ней накоплено, и больше не будет меняться.",
-    button: "Отменить цель",
+    title: "Закрыть цель без исполнения?",
+    message: "Цель закроется с тем, что на ней накоплено, и больше не будет меняться.",
+    button: "Закрыть без исполнения",
   },
 };
 
@@ -246,11 +246,20 @@ export function reatomGoalsScreen(
   return {
     screen,
     title: computed(() => titleOf(screen()), "goals.title"),
+    retry: dependencies.goals.reload,
     canGoBack: computed(
       () => navigation.editing() !== undefined || openedGoal() !== undefined,
       "goals.canGoBack",
     ),
     isChanging: computed(() => !complete.ready() || !removeMovement.ready(), "goals.isChanging"),
+    // A Goal opened by id shows once the list holds it; a loaded list without it means it is gone.
+    openedGoalState: computed((): "loading" | "opened" | "missing" => {
+      if (openedGoal() !== undefined) {
+        return "opened";
+      }
+
+      return dependencies.goals.list.data() === undefined ? "loading" : "missing";
+    }, "goals.openedGoalState"),
     complete: detached(complete, "goals.completeGoal"),
     removeMovement: detached(removeMovement, "goals.removeOneMovement"),
     ...forms,

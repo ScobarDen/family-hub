@@ -30,10 +30,12 @@ import { createRecipesApi, reatomRecipesScreen } from "@/modules/recipes";
 import { createSessionApi, reatomSession } from "@/modules/session";
 import {
   createTabBarApi,
+  reatomSections,
   reatomTabBar,
   reatomTabBarMenu,
   reatomTabBarModules,
 } from "@/modules/tab-bar";
+import { createTodayApi, reatomToday } from "@/modules/today";
 
 import { reatomNavigation } from "./app.route.ts";
 import { reatomOpener } from "./opener.vm.ts";
@@ -86,6 +88,10 @@ function today(): string {
   return todayIn(zone());
 }
 
+function viewer() {
+  return { today: today(), timeZone: zone() };
+}
+
 async function prepare(file: Blob) {
   return preparePhoto(file, zone());
 }
@@ -118,10 +124,14 @@ const photoStorage = reatomPhotoStorage({
 const albums = reatomAlbumsScreen({
   api: createAlbumsApi(httpClient),
   telegram,
-  timeZone: zone,
+  viewer,
   preparePhoto: prepare,
   wait,
   photoHint: photoStorage.uploadHint,
+  canSetUpPhotos: photoStorage.canSetUp,
+  onSetUpPhotos: () => {
+    navigation.openProfile();
+  },
 });
 const recipes = reatomRecipesScreen({
   api: createRecipesApi(httpClient),
@@ -137,7 +147,7 @@ const plans = reatomPlansScreen({
   pets: petsModel.list,
   telegram,
   self,
-  timeZone: zone,
+  viewer,
   onOpenAlbum: (albumId) => {
     opener.open({ kind: "album", albumId });
   },
@@ -152,9 +162,18 @@ const goals = reatomGoalsScreen({
 });
 const pet = reatomPetTab({
   api: petsApi,
+  route: {
+    petId: () => navigation.openedPetId(),
+    open: (petId) => {
+      navigation.openPet(petId);
+    },
+    close: () => {
+      navigation.leave();
+    },
+  },
   careApi: createCareApi(httpClient),
   pets: petsModel,
-  viewer: () => ({ today: today(), timeZone: zone() }),
+  viewer,
   now: () => Temporal.Now.plainDateTimeISO(zone()).toString({ smallestUnit: "minute" }),
   telegram,
   isFamilyOwner: () => session.member()?.isFamilyOwner === true,
@@ -207,6 +226,7 @@ const commandSheet = reatomCommandSheet({
     calendar.reload();
     pet.care.reload();
     feed.reload();
+    todayHub.reload();
   },
 });
 const microphone = reatomMicrophone({
@@ -233,9 +253,28 @@ const feed = reatomFeed({
     opener.open({ kind: "due-date", ...due });
   },
 });
+const todayHub = reatomToday({
+  api: createTodayApi(httpClient),
+  today,
+  onOpen: (target) => {
+    opener.open(target);
+  },
+  onOpenSection: (module) => {
+    navigation.openModule(module);
+  },
+  onRecord: (due) => {
+    opener.open({ kind: "due-date", ...due });
+  },
+  onOpenFeed: () => {
+    navigation.openModule("feed");
+  },
+});
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,
-  tabBar: tabBarModules.modules,
+  slots: tabBarModules.modules,
+  onTodayShown: () => {
+    todayHub.reload();
+  },
   isSignedIn: () => session.member() !== undefined,
   telegram,
   nestedBack: {
@@ -253,7 +292,12 @@ const opener = reatomOpener({
   isSignedIn: () => session.member() !== undefined,
   pets: pet.pets,
   plans,
-  care: pet.care,
+  care: {
+    ...pet.care,
+    add: () => {
+      pet.care.add("note");
+    },
+  },
   calendar,
   goals,
   albums,
@@ -265,8 +309,8 @@ const home = {
   navigation,
   tabBar: reatomTabBar({
     modules: tabBarModules,
-    activeModule: navigation.activeModule,
-    onOpen: navigation.openModule,
+    activeTab: navigation.activeTab,
+    onOpen: navigation.openTab,
     titles: () => {
       const petTitle = petsModel.tabTitle();
 
@@ -274,6 +318,18 @@ const home = {
     },
   }),
   tabBarMenu: reatomTabBarMenu({ modules: tabBarModules }),
+  today: todayHub,
+  sections: reatomSections({
+    modules: tabBarModules,
+    statuses: todayHub.statuses,
+    contributionGoalId: todayHub.nearestGoalId,
+    canAddPhoto: () => photoStorage.view()?.isConnected === true,
+    onOpen: navigation.openModule,
+    onQuickAdd: opener.open,
+    onAddPhotos: opener.uploadPhotos,
+    onConfigure: navigation.openTabBarMenu,
+    onOpenSettings: navigation.openProfile,
+  }),
   notifications: reatomNotifications({
     canMessage: () => session.member()?.settings.canMessage,
     telegram,
@@ -297,7 +353,7 @@ const home = {
   invites: reatomInvites({
     api: createInvitesApi(httpClient),
     telegram,
-    timeZone: zone,
+    viewer,
   }),
   pet,
   plans,

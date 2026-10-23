@@ -89,7 +89,7 @@ export const CareForm = reatomComponent(({ photos, ...props }: CareFormProps) =>
   }
 
   return (
-    <form className="flex flex-col gap-4 px-4 pb-6" onSubmit={submit}>
+    <form className="flex flex-col gap-4 px-5 pb-6" onSubmit={submit}>
       <fieldset className="flex min-w-0 flex-col gap-4" disabled={isReadOnly}>
         <ChoiceField field={fields.kind} label="Что записать" choices={kindChoices} />
         <TextField field={fields.occurredAt} id="care-time" label="Когда" type="datetime-local" />

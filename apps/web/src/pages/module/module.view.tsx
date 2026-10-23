@@ -16,7 +16,9 @@ export function ModulePage({ title, subtitle, children, banner, onOpenProfile }:
   return (
     <>
       <div className="flex items-start justify-between">
-        <ScreenTitle title={title} {...(subtitle === undefined ? {} : { subtitle })} />
+        <div className="min-w-0 flex-1">
+          <ScreenTitle title={title} {...(subtitle === undefined ? {} : { subtitle })} />
+        </div>
         {onOpenProfile !== undefined && (
           <Button
             className="mt-5 mr-3"

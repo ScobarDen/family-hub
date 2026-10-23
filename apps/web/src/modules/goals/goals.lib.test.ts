@@ -25,7 +25,6 @@ describe("the monthly hint", () => {
   test.each([
     ["three whole months", { deadline: "2027-01-14" }, "~30 000 ₽ / мес"],
     ["a month started counts whole", { deadline: "2027-01-20" }, "~22 500 ₽ / мес"],
-    ["less than a month left", { deadline: "2026-10-20" }, "~90 000 ₽ / мес"],
     ["a ruble rounds up", { target: 100_000, deadline: "2027-01-14" }, "~33 334 ₽ / мес"],
     ["the deadline passed", { deadline: "2026-10-01" }, "Срок прошёл"],
   ])("handles %s", (_case, change, hint) => {
@@ -33,6 +32,7 @@ describe("the monthly hint", () => {
   });
 
   test.each([
+    ["less than a month left", { deadline: "2026-10-20" }],
     ["no deadline", { deadline: null }],
     ["the target reached", { balance: 90_000, isAchieved: true }],
     ["a Completed Goal", { completed: { at: 0, by: "Ася", outcome: "cancelled" as const } }],

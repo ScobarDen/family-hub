@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import type { AppModule } from "@family-hub/contract";
 
@@ -26,17 +26,27 @@ import type { PhotoStorageModel } from "@/modules/photo-storage";
 import { Plans, type PlansScreenModel } from "@/modules/plans";
 import { Recipes, type RecipesScreenModel } from "@/modules/recipes";
 import type { SessionModel } from "@/modules/session";
-import { TabBar, TabBarMenu, type TabBarMenuModel, type TabBarModel } from "@/modules/tab-bar";
+import {
+  Sections,
+  TabBar,
+  TabBarMenu,
+  type SectionsModel,
+  type TabBarMenuModel,
+  type TabBarModel,
+} from "@/modules/tab-bar";
+import { Today, type TodayModel } from "@/modules/today";
 import { ModulePage } from "@/pages/module";
 import { ProfilePage } from "@/pages/profile";
 
-import type { NavigationModel } from "../app.route.ts";
+import type { NavigationModel, Screen } from "../app.route.ts";
 
 export type HomeProps = {
   navigation: NavigationModel;
   session: SessionModel;
   tabBar: TabBarModel;
   tabBarMenu: TabBarMenuModel;
+  today: TodayModel;
+  sections: SectionsModel;
   notifications: NotificationsModel;
   timeZone: TimeZoneModel;
   digest: DigestModel;
@@ -60,7 +70,6 @@ function profileOf(props: HomeProps): ReactNode {
       {...props}
       memberName={props.session.memberName()}
       familyName={props.session.familyName()}
-      onOpenTabBarMenu={props.navigation.openTabBarMenu}
     />
   );
 }
@@ -81,43 +90,71 @@ const contents: Record<AppModule, (props: HomeProps) => ModuleContent> = {
   recipes: ({ recipes }) => ({ title: recipes.title(), content: <Recipes model={recipes} /> }),
 };
 
-function screenOf(props: HomeProps): ReactNode {
-  const { navigation, tabBar, tabBarMenu, notifications } = props;
-  const screen = navigation.screen();
-
-  if (screen.kind === "tab-bar-menu") {
-    return <TabBarMenu model={tabBarMenu} />;
-  }
-
-  if (screen.kind === "profile") {
-    return profileOf(props);
-  }
-
-  const { title, subtitle, content } = contents[screen.module](props);
+function pageOf(props: HomeProps, { title, subtitle, content }: ModuleContent): ReactNode {
+  const { navigation, notifications } = props;
 
   return (
+    <ModulePage
+      title={title}
+      subtitle={subtitle}
+      banner={<NotificationsBanner model={notifications} />}
+      onOpenProfile={navigation.hasProfileButton ? navigation.openProfile : undefined}
+    >
+      {content}
+    </ModulePage>
+  );
+}
+
+function contentOf(props: HomeProps): ReactNode {
+  const screen = props.navigation.screen();
+
+  if (screen.kind === "today") {
+    return pageOf(props, {
+      title: "Сегодня",
+      subtitle: props.today.header(),
+      content: <Today model={props.today} />,
+    });
+  }
+
+  if (screen.kind === "sections") {
+    return <Sections model={props.sections} />;
+  }
+
+  if (screen.kind === "tab-bar-menu") {
+    return <TabBarMenu model={props.tabBarMenu} />;
+  }
+
+  return screen.kind === "profile"
+    ? profileOf(props)
+    : pageOf(props, contents[screen.module](props));
+}
+
+// Every screen keeps the tab bar and the microphone: there are no hidden modules any more.
+function screenOf(props: HomeProps): ReactNode {
+  return (
     <>
-      <ModulePage
-        title={title}
-        subtitle={subtitle}
-        banner={<NotificationsBanner model={notifications} />}
-        onOpenProfile={navigation.hasProfileButton ? navigation.openProfile : undefined}
-      >
-        {content}
-      </ModulePage>
-      {screen.isOnTabBar && (
-        <TabBar model={tabBar} center={<Microphone model={props.microphone} />} />
-      )}
+      {contentOf(props)}
+      <TabBar model={props.tabBar} center={<Microphone model={props.microphone} />} />
       <CommandSheet model={props.commandSheet} />
     </>
   );
 }
 
-export const Home = reatomComponent(
-  (props: HomeProps) => (
-    <main className="min-h-svh bg-secondary pt-safe-top pb-safe-bottom has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)]">
+function screenKeyOf(screen: Screen): string {
+  return screen.kind === "module" ? `${screen.module}:${screen.petId ?? ""}` : screen.kind;
+}
+
+// A new screen takes focus to its heading, so a screen reader announces where the Member is.
+export const Home = reatomComponent((props: HomeProps) => {
+  const screenKey = screenKeyOf(props.navigation.screen());
+
+  useEffect(() => {
+    document.querySelector<HTMLElement>("main h1")?.focus({ preventScroll: true });
+  }, [screenKey]);
+
+  return (
+    <main className="min-h-svh bg-secondary pt-safe-top pb-safe-bottom has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]">
       {screenOf(props)}
     </main>
-  ),
-  "Home",
-);
+  );
+}, "Home");

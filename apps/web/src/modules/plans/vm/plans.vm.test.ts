@@ -156,7 +156,7 @@ function startPlans(backend = fakeBackend(), telegram = fakeTelegram()) {
     pets: reatomPets({ api: createPetsApi(client) }).list,
     telegram,
     self: () => "member-1",
-    timeZone: () => "Europe/Moscow",
+    viewer: () => ({ timeZone: "Europe/Moscow", today: "2026-10-16" }),
     onOpenAlbum: (albumId) => {
       openedAlbums.push(albumId);
     },
@@ -198,7 +198,7 @@ describe("the list of Plans", () => {
         {
           id: "plan-1",
           title: "Ремонт в спальне",
-          subtitle: "до 30 ноября 2026 г. · Ася · 1 из 2",
+          subtitle: "до 30 ноября · Ася · 1 из 2",
           isCompleted: false,
         },
         { id: "plan-2", title: "Отпуск", subtitle: undefined, isCompleted: false },
@@ -210,6 +210,46 @@ describe("the list of Plans", () => {
     model.toggleDone();
 
     expect(model.screen()).toMatchObject({ isDoneShown: true });
+  });
+
+  test("completes a Plan from its circle without opening it", async () => {
+    const { model, backend } = startPlans(
+      fakeBackend(undefined, {
+        "POST /api/plans/plan-2/complete": () => ({
+          ...vacation,
+          completed: { at: doneAt, by: "Денис" },
+        }),
+      }),
+    );
+
+    await loaded(model);
+    model.togglePlanOf("plan-2");
+    await settled(model);
+
+    expect(backend.requests).toContain("POST /api/plans/plan-2/complete");
+    expect(model.screen()).toMatchObject({
+      kind: "list",
+      open: [{ id: "plan-1" }],
+      done: [{ id: "plan-2" }, { id: "plan-3" }],
+    });
+  });
+
+  test("says in words that an open Plan is past its due date", async () => {
+    const { model } = startPlans(
+      fakeBackend([
+        { ...bedroom, dueDate: "2026-10-12", assignee: null, subplans: [] },
+        { ...vacation, dueDate: "2026-10-17" },
+      ]),
+    );
+
+    await loaded(model);
+
+    expect(model.screen()).toMatchObject({
+      open: [
+        { title: "Ремонт в спальне", subtitle: "Просрочено · 12 октября" },
+        { title: "Отпуск", subtitle: "Завтра" },
+      ],
+    });
   });
 });
 
@@ -224,7 +264,7 @@ describe("a Plan", () => {
     expect(model.screen()).toMatchObject({
       kind: "plan",
       plan: {
-        facts: "до 30 ноября 2026 г. · Ася",
+        facts: "до 30 ноября · Ася",
         progress: "1 из 2",
         completed: undefined,
         subplans: [

@@ -1,10 +1,13 @@
 import {
   defaultDigestTime,
   defaultTabBar,
-  type DigestSettings,
+  slotModule,
+  tabBarSlots,
   type AppModule,
+  type DigestSettings,
   type FamilyMemberList,
   type MemberSettings,
+  type SlotModule,
   type TimeZoneSettings,
 } from "@family-hub/contract";
 
@@ -27,9 +30,20 @@ function digestFrom(row: MemberSettingsRow | undefined): DigestSettings {
     : { isEnabled: row.isDigestEnabled, time: row.digestTime };
 }
 
+// A tab bar saved before the two slots keeps its first two modules besides the Feed.
+function slotsOf(stored: AppModule[] | null | undefined): SlotModule[] {
+  const kept = (stored ?? []).flatMap((module) => {
+    const slot = slotModule.safeParse(module);
+
+    return slot.success ? [slot.data] : [];
+  });
+
+  return [...new Set([...kept, ...defaultTabBar])].slice(0, tabBarSlots);
+}
+
 function settingsFrom(row: MemberSettingsRow | undefined): MemberSettings {
   return {
-    tabBar: row?.tabBar ?? defaultTabBar,
+    tabBar: slotsOf(row?.tabBar),
     timeZone:
       row?.timeZone === null || row === undefined
         ? null
@@ -45,7 +59,7 @@ export function createMemberService({ members, clock, schedule }: MemberServiceD
 
     allowMessages: async (telegramId: number) => members.allowMessages(telegramId, clock.now()),
 
-    async saveTabBar({ member }: Membership, tabBar: AppModule[]): Promise<AppModule[]> {
+    async saveTabBar({ member }: Membership, tabBar: SlotModule[]): Promise<SlotModule[]> {
       await members.saveTabBar(member.id, tabBar, clock.now());
 
       return tabBar;

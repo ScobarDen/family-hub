@@ -2,7 +2,7 @@ import { Temporal } from "temporal-polyfill";
 
 import type { Goal, GoalColor, GoalIcon } from "@family-hub/contract";
 
-import { formatDate, formatDay } from "@/common/format-date";
+import { formatDay, formatShortDate, type Viewer } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 
 import { outcomeTitles } from "./goals.config.ts";
@@ -56,6 +56,13 @@ export function monthlyHint(goal: Goal, today: string): string | undefined {
     return "Срок прошёл";
   }
 
+  // Under a month left, «Осталось … до …» already says it all.
+  const left = Temporal.PlainDate.from(today).until(goal.deadline, { largestUnit: "months" });
+
+  if (left.years === 0 && left.months === 0) {
+    return undefined;
+  }
+
   return `~${formatRubles(Math.ceil(remaining / monthsUntil(today, goal.deadline)))} / мес`;
 }
 
@@ -74,17 +81,17 @@ export function toListItem(goal: Goal): GoalListItem {
   };
 }
 
-function statusOf(goal: Goal, timeZone: string): string | undefined {
+function statusOf(goal: Goal, viewer: Viewer): string | undefined {
   if (goal.completed !== null) {
     const { outcome, by, at } = goal.completed;
 
-    return `${outcomeTitles[outcome]} · ${by}, ${formatDay(at, timeZone)}`;
+    return `${outcomeTitles[outcome]} · ${by}, ${formatDay(at, viewer)}`;
   }
 
-  return goal.isAchieved ? "Цель достигнута 🎉" : undefined;
+  return goal.isAchieved ? "Цель достигнута" : undefined;
 }
 
-function movementOf(movement: Goal["movements"][number]): MovementItem {
+function movementOf(movement: Goal["movements"][number], today: string): MovementItem {
   const sign = movement.kind === "contribution" ? "+" : "−";
   const recorder =
     movement.recordedBy.id === movement.member.id
@@ -94,17 +101,15 @@ function movementOf(movement: Goal["movements"][number]): MovementItem {
   return {
     id: movement.id,
     title: `${sign}${formatRubles(movement.amount)} · ${movement.member.name}`,
-    subtitle: [formatDate(movement.date) + recorder, movement.comment]
+    subtitle: [formatShortDate(movement.date, today) + recorder, movement.comment]
       .filter((part) => part !== null)
       .join(" · "),
     isOwn: movement.isOwn,
   };
 }
 
-export function toDetails(
-  goal: Goal,
-  { today, timeZone }: { today: string; timeZone: string },
-): GoalDetails {
+export function toDetails(goal: Goal, viewer: Viewer): GoalDetails {
+  const { today } = viewer;
   const remaining = goal.target - goal.balance;
 
   return {
@@ -112,16 +117,16 @@ export function toDetails(
     note: goal.note ?? undefined,
     remaining:
       remaining > 0
-        ? `Осталось ${formatRubles(remaining)}${goal.deadline === null ? "" : ` до ${formatDate(goal.deadline)}`}`
+        ? `Осталось ${formatRubles(remaining)}${goal.deadline === null ? "" : ` до ${formatShortDate(goal.deadline, today)}`}`
         : undefined,
     hint: monthlyHint(goal, today),
-    status: statusOf(goal, timeZone),
+    status: statusOf(goal, viewer),
     shares: goal.shares.map(({ id, name, contributed, withdrawn }) => ({
       id,
       name,
       subtitle: `внесено ${formatRubles(contributed)} / снято ${formatRubles(withdrawn)}`,
     })),
-    movements: goal.movements.map(movementOf),
+    movements: goal.movements.map((movement) => movementOf(movement, today)),
     isReadOnly: goal.completed !== null,
   };
 }

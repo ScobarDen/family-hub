@@ -1,31 +1,40 @@
 import { atom, context } from "@reatom/core";
 import { beforeEach, describe, expect, test } from "vite-plus/test";
 
-import type { AppModule } from "@family-hub/contract";
+import type { SlotModule } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 
 import { createTabBarApi } from "../tab-bar.api.ts";
 import { reatomTabBarModules } from "../tab-bar.model.ts";
-import { reatomTabBar } from "./tab-bar.vm.ts";
+import { reatomTabBarMenu } from "./tab-bar-menu.vm.ts";
+import { reatomTabBar, type TabId } from "./tab-bar.vm.ts";
 
-function startTabBar(saved?: AppModule[], renamed?: () => Partial<Record<AppModule, string>>) {
+function startTabBar(saved?: SlotModule[], renamed?: () => Partial<Record<SlotModule, string>>) {
+  const saves: unknown[] = [];
   const client = createHttpClient({
     baseUrl: "https://api.family-hub.test",
-    fetch: async () => Response.json({}),
+    fetch: async (_input, init) => {
+      const body: unknown = JSON.parse(typeof init?.body === "string" ? init.body : "null");
+
+      saves.push(body);
+
+      return Response.json(body);
+    },
   });
-  const activeModule = atom<AppModule | undefined>(undefined, "test.activeModule");
-  const opened: AppModule[] = [];
+  const activeTab = atom<TabId>("today", "test.activeTab");
+  const opened: TabId[] = [];
+  const modules = reatomTabBarModules({ api: createTabBarApi(client), saved: () => saved });
   const model = reatomTabBar({
-    modules: reatomTabBarModules({ api: createTabBarApi(client), saved: () => saved }),
-    activeModule,
-    onOpen: (module) => {
-      opened.push(module);
+    modules,
+    activeTab,
+    onOpen: (tab) => {
+      opened.push(tab);
     },
     titles: renamed,
   });
 
-  return { model, activeModule, opened };
+  return { model, menu: reatomTabBarMenu({ modules }), activeTab, opened, saves };
 }
 
 function titles(tabs: Array<{ title: string }>): string[] {
@@ -37,66 +46,71 @@ beforeEach(() => {
 });
 
 describe("the tab bar", () => {
-  test("shows Лента · Планы · Календарь · Питомец until the Member's settings arrive", () => {
+  test("puts Планы and Календарь between Сегодня and Разделы until the Member's settings arrive", () => {
     const { model } = startTabBar();
 
-    expect(titles([...model.tabs().start, ...model.tabs().end])).toEqual([
-      "Лента",
-      "Планы",
-      "Календарь",
-      "Питомец",
+    expect(titles(model.tabs().start)).toEqual(["Сегодня", "Планы"]);
+    expect(titles(model.tabs().end)).toEqual(["Календарь", "Разделы"]);
+  });
+
+  test("puts the Member's two slots on either side of the microphone", () => {
+    const { model } = startTabBar(["recipes", "goals"]);
+
+    expect(titles(model.tabs().start)).toEqual(["Сегодня", "Рецепты"]);
+    expect(titles(model.tabs().end)).toEqual(["Цели", "Разделы"]);
+  });
+
+  test("marks the tab the open screen belongs to", () => {
+    const { model, activeTab } = startTabBar(["plans", "calendar"]);
+
+    activeTab.set("sections");
+
+    expect(model.tabs().end).toEqual([
+      { id: "calendar", title: "Календарь", isActive: false },
+      { id: "sections", title: "Разделы", isActive: true },
     ]);
   });
 
-  test("shows the Member's modules in their order, split evenly around the centre", () => {
-    const { model } = startTabBar(["goals", "feed", "albums", "plans"]);
+  test("names a slot the way its module asks, like the pet tab after the only Pet", () => {
+    const { model } = startTabBar(["pet", "plans"], () => ({ pet: "Бьюик" }));
 
-    expect(titles(model.tabs().start)).toEqual(["Цели", "Лента"]);
-    expect(titles(model.tabs().end)).toEqual(["Альбомы", "Планы"]);
+    expect(titles(model.tabs().start)).toEqual(["Сегодня", "Бьюик"]);
   });
 
-  test("puts the odd tab on the left of the centre", () => {
-    const { model } = startTabBar(["feed", "plans", "calendar"]);
+  test("opens a tab, the active one included", () => {
+    const { model, opened } = startTabBar();
 
-    expect(titles(model.tabs().start)).toEqual(["Лента", "Планы"]);
-    expect(titles(model.tabs().end)).toEqual(["Календарь"]);
-  });
+    model.open("today");
+    model.open("calendar");
 
-  test("marks the open module's tab", () => {
-    const { model, activeModule } = startTabBar(["feed", "plans"]);
-
-    activeModule.set("plans");
-
-    expect(model.tabs()).toEqual({
-      start: [{ module: "feed", title: "Лента", isActive: false }],
-      end: [{ module: "plans", title: "Планы", isActive: true }],
-    });
-  });
-
-  test("names a tab the way its module asks, like the pet tab after the only Pet", () => {
-    const { model } = startTabBar(["feed", "pet"], () => ({ pet: "Бьюик" }));
-
-    expect(titles(model.tabs().end)).toEqual(["Бьюик"]);
-  });
-
-  test("opens a module from its tab", () => {
-    const { model, opened } = startTabBar(["feed", "plans"]);
-
-    model.open("plans");
-
-    expect(opened).toEqual(["plans"]);
+    expect(opened).toEqual(["today", "calendar"]);
   });
 });
 
-describe("the modules hidden from the tab bar", () => {
-  test("are offered in the Profile in the catalogue order", () => {
-    const { model } = startTabBar(["albums", "feed", "plans"]);
+describe("the slot setup", () => {
+  test("puts the picked module in the slot and saves the pair", async () => {
+    const { model, menu, saves } = startTabBar(["plans", "calendar"]);
 
-    expect(model.hidden()).toEqual([
-      { module: "calendar", title: "Календарь" },
-      { module: "pet", title: "Питомец" },
-      { module: "goals", title: "Цели" },
-      { module: "recipes", title: "Рецепты" },
-    ]);
+    menu.choose(1, "recipes");
+
+    expect(titles(model.tabs().end)).toEqual(["Рецепты", "Разделы"]);
+    await expect.poll(() => saves).toEqual([{ modules: ["plans", "recipes"] }]);
+  });
+
+  test("swaps the slots when the module is already in the other one", async () => {
+    const { menu, saves } = startTabBar(["plans", "calendar"]);
+
+    menu.choose(0, "calendar");
+
+    await expect.poll(() => saves).toEqual([{ modules: ["calendar", "plans"] }]);
+  });
+
+  test("keeps the slots as they are when the module is already in that slot", async () => {
+    const { menu, saves } = startTabBar(["plans", "calendar"]);
+
+    menu.choose(1, "calendar");
+    await Promise.resolve();
+
+    expect(saves).toEqual([]);
   });
 });

@@ -5,14 +5,13 @@ import { Button, Section, SectionItem } from "@/common/ui";
 
 import type { RecipeDetails } from "../recipes.lib.ts";
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
-import { CookForm } from "./cook-form.view.tsx";
 
 type CookedProps = { model: RecipesScreenModel; recipe: RecipeDetails };
 
 export const RecipeCooked = reatomComponent(
   ({ model, recipe }: CookedProps) => (
-    <Section title="Приготовили" footer={recipe.cookedSummary}>
-      <CookForm model={model} />
+    <Section>
+      {recipe.cooks.length === 0 && <SectionItem title="Ещё не готовили" />}
       {recipe.cooks.map((cooked) => (
         <SectionItem
           key={cooked.id}
@@ -23,7 +22,7 @@ export const RecipeCooked = reatomComponent(
               <Button
                 size="icon-sm"
                 variant="ghost"
-                aria-label="Убрать отметку"
+                aria-label="Удалить отметку «Приготовили»"
                 onClick={() => {
                   model.uncook(cooked.id);
                 }}

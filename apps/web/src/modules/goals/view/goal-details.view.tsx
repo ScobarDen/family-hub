@@ -1,4 +1,6 @@
-import { Section, SectionItem } from "@/common/ui";
+import { reatomComponent } from "@reatom/react";
+
+import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/common/ui";
 
 import type { GoalDetails as Details } from "../goals.lib.ts";
 import type { GoalsScreenModel } from "../vm/goals.vm.ts";
@@ -8,37 +10,70 @@ import { MovementRow } from "./movement-row.view.tsx";
 
 type DetailsProps = { goal: Details; isCelebrating: boolean; model: GoalsScreenModel };
 
-export function GoalDetails({ goal, isCelebrating, model }: DetailsProps) {
+function movementsOf({ goal, model }: DetailsProps) {
+  return (
+    <Section>
+      {goal.movements.length === 0 && <SectionItem title="Пока ничего не внесено" />}
+      {goal.movements.map((movement) => (
+        <MovementRow
+          key={movement.id}
+          movement={movement}
+          model={model}
+          isReadOnly={goal.isReadOnly}
+        />
+      ))}
+    </Section>
+  );
+}
+
+function sharesOf({ goal }: DetailsProps) {
+  return (
+    <Section>
+      {goal.shares.length === 0 && <SectionItem title="Пока никто не вносил" />}
+      {goal.shares.map((share) => (
+        <SectionItem key={share.id} title={share.name} subtitle={share.subtitle} />
+      ))}
+    </Section>
+  );
+}
+
+export const GoalDetails = reatomComponent((props: DetailsProps) => {
+  const { goal, isCelebrating, model } = props;
+
   return (
     <>
       {isCelebrating && (
-        <p className="animate-bounce px-4 py-2 text-center text-2xl" role="status">
+        <p
+          className="px-4 py-2 text-center text-2xl leading-tight font-semibold tracking-tight"
+          role="status"
+        >
           Цель достигнута!
         </p>
       )}
-      <Section>
-        <GoalProgress goal={goal} />
-      </Section>
+      <SectionLayout
+        summary={
+          <Section>
+            <GoalProgress goal={goal} />
+          </Section>
+        }
+        action={
+          goal.isReadOnly ? undefined : (
+            <PrimaryButton
+              onClick={() => {
+                model.addMovement("contribution");
+              }}
+            >
+              Внести взнос
+            </PrimaryButton>
+          )
+        }
+        tabs={[
+          { key: "movements", title: "Взносы и снятия", content: movementsOf(props) },
+          { key: "shares", title: "Участники", content: sharesOf(props) },
+        ]}
+      />
       {!goal.isReadOnly && <GoalActions model={model} />}
-      {goal.shares.length > 0 && (
-        <Section title="По участникам">
-          {goal.shares.map((share) => (
-            <SectionItem key={share.id} title={share.name} subtitle={share.subtitle} />
-          ))}
-        </Section>
-      )}
-      <Section title="Движения">
-        {goal.movements.length === 0 && <SectionItem title="Пока ничего не внесено" />}
-        {goal.movements.map((movement) => (
-          <MovementRow
-            key={movement.id}
-            movement={movement}
-            model={model}
-            isReadOnly={goal.isReadOnly}
-          />
-        ))}
-      </Section>
       {!goal.isReadOnly && <GoalClosing model={model} />}
     </>
   );
-}
+}, "GoalDetails");

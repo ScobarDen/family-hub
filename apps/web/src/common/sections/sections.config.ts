@@ -11,17 +11,17 @@ import {
 
 import type { AppModule } from "@family-hub/contract";
 
-export const moduleTitles: Record<AppModule, string> = {
+export const sectionTitles: Record<AppModule, string> = {
   feed: "Лента",
   plans: "Планы",
   calendar: "Календарь",
-  pet: "Питомец",
+  pet: "Питомцы",
   goals: "Цели",
   albums: "Альбомы",
   recipes: "Рецепты",
 };
 
-export const moduleIcons: Record<AppModule, LucideIcon> = {
+export const sectionIcons: Record<AppModule, LucideIcon> = {
   feed: Newspaper,
   plans: ListChecks,
   calendar: CalendarDays,
@@ -29,4 +29,15 @@ export const moduleIcons: Record<AppModule, LucideIcon> = {
   goals: PiggyBank,
   albums: Images,
   recipes: CookingPot,
+};
+
+// Whole class names, so Tailwind finds them in the source.
+export const sectionColors: Record<AppModule, string> = {
+  feed: "text-section-feed",
+  plans: "text-section-plans",
+  calendar: "text-section-calendar",
+  pet: "text-section-pet",
+  goals: "text-section-goals",
+  albums: "text-section-albums",
+  recipes: "text-section-recipes",
 };

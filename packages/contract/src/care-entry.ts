@@ -130,9 +130,11 @@ export const expenseSummary = z.object({
 
 export type ExpenseSummary = z.infer<typeof expenseSummary>;
 
+export const dueCareKind = z.enum(["vaccination", "treatment", "vet_visit"]);
+
 const dueDateItem = z.object({
   entryId: z.string(),
-  kind: z.enum(["vaccination", "treatment", "vet_visit"]),
+  kind: dueCareKind,
   label: z.string(),
   title: z.string(),
   dueDate: z.iso.date(),

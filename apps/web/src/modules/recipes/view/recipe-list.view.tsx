@@ -1,22 +1,34 @@
 import { reatomComponent } from "@reatom/react";
-import { CookingPot, Plus, Star, Tags } from "lucide-react";
+import { CookingPot, Star, Tags } from "lucide-react";
 
 import type { RecipeTag } from "@family-hub/contract";
 
-import { Section, SectionItem } from "@/common/ui";
+import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/common/ui";
 
 import type { RecipeItem } from "../recipes.lib.ts";
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { RecipeFilters } from "./recipe-filters.view.tsx";
 
-type RecipeListProps = { model: RecipesScreenModel; recipes: RecipeItem[]; tags: RecipeTag[] };
+type RecipeListProps = {
+  model: RecipesScreenModel;
+  recipes: RecipeItem[];
+  tags: RecipeTag[];
+  summary: string;
+  empty: string | undefined;
+};
 
-export const RecipeList = reatomComponent(
-  ({ model, recipes, tags }: RecipeListProps) => (
+function recipesOf({ model, recipes, tags, empty }: RecipeListProps) {
+  return (
     <>
       <RecipeFilters model={model} tags={tags} />
       <Section>
-        {recipes.length === 0 && <SectionItem title="Ничего не нашлось" />}
+        {empty !== undefined && (
+          <SectionItem
+            title={empty}
+            after={<span className="text-link-text">Сбросить фильтры</span>}
+            onClick={model.resetFilters}
+          />
+        )}
         {recipes.map((recipe) => (
           <SectionItem
             key={recipe.id}
@@ -28,10 +40,32 @@ export const RecipeList = reatomComponent(
             }}
           />
         ))}
-        <SectionItem icon={Plus} title="Новый рецепт" onClick={model.add} />
-        <SectionItem icon={Tags} title="Теги" onClick={model.openTags} />
       </Section>
     </>
+  );
+}
+
+function tagsOf({ model, tags }: RecipeListProps) {
+  return (
+    <Section>
+      {tags.map((tag) => (
+        <SectionItem key={tag.id} title={tag.name} />
+      ))}
+      <SectionItem icon={Tags} title="Изменить теги" onClick={model.openTags} />
+    </Section>
+  );
+}
+
+export const RecipeList = reatomComponent(
+  (props: RecipeListProps) => (
+    <SectionLayout
+      summary={<p className="px-5 pb-4 text-[0.9375rem] text-muted-foreground">{props.summary}</p>}
+      action={<PrimaryButton onClick={props.model.add}>Добавить рецепт</PrimaryButton>}
+      tabs={[
+        { key: "recipes", title: "Рецепты", content: recipesOf(props) },
+        { key: "tags", title: "Теги", content: tagsOf(props) },
+      ]}
+    />
   ),
   "RecipeList",
 );

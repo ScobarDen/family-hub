@@ -17,7 +17,7 @@ export function AgendaMark({ mark, isOverdue }: { mark: Mark; isOverdue: boolean
     <span
       className={cn(
         "flex w-10 shrink-0 flex-col items-center leading-none",
-        isOverdue && "text-destructive",
+        isOverdue && "text-destructive-text",
       )}
     >
       <span className="text-lg font-semibold">{mark.day}</span>

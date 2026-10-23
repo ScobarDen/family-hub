@@ -31,7 +31,10 @@ export const MonthGrid = reatomComponent(({ model }: { model: CalendarModel }) =
           {weekdays.map(({ title, isWeekend }) => (
             <span
               key={title}
-              className={cn("pb-1 text-xs text-muted-foreground", isWeekend && "text-destructive")}
+              className={cn(
+                "pb-1 text-xs text-muted-foreground",
+                isWeekend && "font-semibold text-foreground",
+              )}
             >
               {title}
             </span>

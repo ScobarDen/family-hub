@@ -1,4 +1,4 @@
-import { context, noop } from "@reatom/core";
+import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { petMemoChange, petProfile, type Pet, type PetList } from "@family-hub/contract";
@@ -84,9 +84,19 @@ function startPets(backend = fakeBackend(), { isFamilyOwner = true } = {}) {
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const api = createPetsApi(client);
   const pets = reatomPets({ api });
+  const routePetId = atom<string | undefined>(undefined, "test.petRoute");
   const model = reatomPetsScreen({
     api,
     pets,
+    route: {
+      petId: () => routePetId(),
+      open: (petId) => {
+        routePetId.set(petId);
+      },
+      close: () => {
+        routePetId.set(undefined);
+      },
+    },
     viewer: () => ({ today: "2026-10-11", timeZone: "Europe/Moscow" }),
     isFamilyOwner: () => isFamilyOwner,
     soon: (petId) => (petId === "pet-1" ? soon : []),
@@ -100,7 +110,7 @@ function startPets(backend = fakeBackend(), { isFamilyOwner = true } = {}) {
 
   model.screen.subscribe(noop);
 
-  return { model, pets, backend, opened };
+  return { model, pets, backend, opened, routePetId };
 }
 
 type Model = ReturnType<typeof startPets>["model"];
@@ -145,14 +155,14 @@ describe("the pet tab", () => {
             id: "entry-1",
             kind: "due",
             title: "Прививка: Бешенство",
-            subtitle: "просрочено · 1 октября 2026 г.",
+            subtitle: "Просрочено · 1 октября",
             isOverdue: true,
           },
           {
             id: "plan-1",
             kind: "plan",
             title: "Груминг",
-            subtitle: "20 октября 2026 г.",
+            subtitle: "20 октября",
             isOverdue: false,
           },
           {
@@ -170,8 +180,8 @@ describe("the pet tab", () => {
     expect(model.canGoBack()).toBe(false);
   });
 
-  test("lists several Pets and opens the chosen one with a way back", async () => {
-    const { model } = startPets(fakeBackend([buick, kesha]));
+  test("lists several Pets and opens the chosen one at its own address", async () => {
+    const { model, routePetId } = startPets(fakeBackend([buick, kesha]));
 
     await loaded(model);
 
@@ -188,11 +198,21 @@ describe("the pet tab", () => {
     model.open("pet-2");
 
     expect(model.screen()).toMatchObject({ kind: "card", card: { name: "Кеша" } });
-    expect(model.canGoBack()).toBe(true);
+    expect(routePetId()).toBe("pet-2");
 
-    model.back();
+    routePetId.set(undefined);
 
     expect(model.screen().kind).toBe("list");
+  });
+
+  test("keeps the only Pet's card where it is when something opens that Pet again", async () => {
+    const { model, routePetId } = startPets();
+
+    await loaded(model);
+    model.open("pet-1");
+
+    expect(routePetId()).toBeUndefined();
+    expect(model.screen()).toMatchObject({ kind: "card", card: { id: "pet-1" } });
   });
 
   test("asks for a Pet again from an open card, unless the Family has only one", async () => {

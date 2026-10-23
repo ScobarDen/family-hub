@@ -1,6 +1,6 @@
 import type { Pet, PetMemo } from "@family-hub/contract";
 
-import { formatAge, formatDate, formatDay } from "@/common/format-date";
+import { formatAge, formatDate, formatDay, formatNearDate } from "@/common/format-date";
 import { byDueDate } from "@/common/records";
 
 import { sexTitles, speciesTitles } from "./pets.config.ts";
@@ -52,7 +52,9 @@ export function toSoon(sources: SoonSource[], today: string): SoonItem[] {
       kind,
       title,
       subtitle:
-        dueDate === null ? undefined : `${isOverdue ? "просрочено · " : ""}${formatDate(dueDate)}`,
+        dueDate === null
+          ? undefined
+          : `${isOverdue ? "Просрочено · " : ""}${formatNearDate(dueDate, today)}`,
       isOverdue,
     };
   });
@@ -77,11 +79,11 @@ function factsOf(pet: Pet): PetFact[] {
   return facts.flatMap(([label, value]) => (value === undefined ? [] : [{ label, value }]));
 }
 
-function memoOf(memo: PetMemo, timeZone: string): PetMemoView {
+function memoOf(memo: PetMemo, viewer: Viewer): PetMemoView {
   const updated =
     memo.updatedAt === null
       ? undefined
-      : [formatDay(memo.updatedAt, timeZone), memo.updatedBy].filter(Boolean).join(" · ");
+      : [formatDay(memo.updatedAt, viewer), memo.updatedBy].filter(Boolean).join(" · ");
 
   return {
     food: memo.food ?? undefined,
@@ -95,13 +97,15 @@ export function toListItem(pet: Pet, { today }: Viewer): PetListItem {
   return { id: pet.id, name: pet.name, subtitle: subtitleOf(pet, today) };
 }
 
-export function toCard(pet: Pet, { today, timeZone }: Viewer, soonSources: SoonSource[]): PetCard {
+export function toCard(pet: Pet, viewer: Viewer, soonSources: SoonSource[]): PetCard {
+  const { today } = viewer;
+
   return {
     id: pet.id,
     name: pet.name,
     subtitle: subtitleOf(pet, today),
     facts: factsOf(pet),
-    memo: memoOf(pet.memo, timeZone),
+    memo: memoOf(pet.memo, viewer),
     soon: toSoon(soonSources, today),
     isArchived: pet.archivedAt !== null,
     avatar: pet.avatar?.medium,

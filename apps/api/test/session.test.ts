@@ -54,7 +54,7 @@ describe("signing in with initData", () => {
       family: { id: familyId, name: "Гущины" },
       isFamilyOwner: true,
       settings: {
-        tabBar: ["feed", "plans", "calendar", "pet"],
+        tabBar: ["plans", "calendar"],
         timeZone: null,
         canMessage: true,
         digest: { isEnabled: true, time: "09:00" },

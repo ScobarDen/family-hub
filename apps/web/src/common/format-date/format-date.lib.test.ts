@@ -1,16 +1,34 @@
 import { expect, test } from "vite-plus/test";
 
-import { formatAge, formatDate, formatDay, formatNearDate } from "./format-date.lib.ts";
+import {
+  formatAge,
+  formatDate,
+  formatDay,
+  formatNearDate,
+  formatTimeZone,
+} from "./format-date.lib.ts";
 
 const lateEveningInUtc = Date.parse("2026-10-11T22:30:00Z");
 
+const moscow = { timeZone: "Europe/Moscow", today: "2026-10-23" };
+
 test("names the day and month in Russian", () => {
-  expect(formatDay(Date.parse("2026-10-11T09:00:00Z"), "Europe/Moscow")).toBe("11 октября");
+  expect(formatDay(Date.parse("2026-10-11T09:00:00Z"), moscow)).toBe("11 октября");
 });
 
 test("takes the day from the viewer's zone, not from UTC", () => {
-  expect(formatDay(lateEveningInUtc, "Europe/Moscow")).toBe("12 октября");
-  expect(formatDay(lateEveningInUtc, "America/New_York")).toBe("11 октября");
+  expect(formatDay(lateEveningInUtc, moscow)).toBe("12 октября");
+  expect(formatDay(lateEveningInUtc, { ...moscow, timeZone: "America/New_York" })).toBe(
+    "11 октября",
+  );
+});
+
+test("keeps the year of a day from another year", () => {
+  expect(formatDay(Date.parse("2025-10-20T09:00:00Z"), moscow)).toBe("20 октября 2025 г.");
+});
+
+test("names a zone by its place and offset", () => {
+  expect(formatTimeZone("Europe/Moscow")).toBe("Москва (GMT+3)");
 });
 
 test.each([

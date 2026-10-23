@@ -13,7 +13,15 @@ export type RecipesProps = { model: RecipesScreenModel };
 
 function contentOf({ model }: RecipesProps, screen: RecipesScreen): ReactNode {
   if (screen.kind === "list") {
-    return <RecipeList model={model} recipes={screen.recipes} tags={screen.tags} />;
+    return (
+      <RecipeList
+        model={model}
+        recipes={screen.recipes}
+        tags={screen.tags}
+        summary={screen.summary}
+        empty={screen.empty}
+      />
+    );
   }
 
   if (screen.kind === "recipe") {
@@ -38,6 +46,7 @@ function contentOf({ model }: RecipesProps, screen: RecipesScreen): ReactNode {
   return (
     <LoadState
       failure={screen.kind === "failed" ? "Не получилось загрузить рецепты." : undefined}
+      onRetry={model.retry}
     />
   );
 }

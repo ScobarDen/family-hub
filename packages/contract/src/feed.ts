@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { dueCareKind } from "./care-entry.ts";
 import { photo } from "./photo.ts";
 
 export const feedPageSize = 30;
@@ -13,7 +14,7 @@ export const feedUpcomingDays = 14;
 
 const dated = { key: z.string(), title: z.string(), date: z.iso.date() };
 
-const feedUpcoming = z.discriminatedUnion("kind", [
+export const feedUpcoming = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("event"),
     ...dated,
@@ -27,7 +28,13 @@ const feedUpcoming = z.discriminatedUnion("kind", [
     planId: z.string(),
     subplanId: z.string().nullable(),
   }),
-  z.object({ kind: z.literal("due"), ...dated, petId: z.string(), entryId: z.string() }),
+  z.object({
+    kind: z.literal("due"),
+    ...dated,
+    careKind: dueCareKind,
+    petId: z.string(),
+    entryId: z.string(),
+  }),
   z.object({ kind: z.literal("birthday"), ...dated, petId: z.string() }),
 ]);
 

@@ -1,6 +1,6 @@
 import type { Photo, Recipe } from "@family-hub/contract";
 
-import { formatDay } from "@/common/format-date";
+import { formatDay, type Viewer } from "@/common/format-date";
 
 export type RecipeItem = {
   id: string;
@@ -32,13 +32,13 @@ export function toRecipeItem({ id, title, isFavorite, tags }: Recipe): RecipeIte
   };
 }
 
-function cookedSummaryOf({ cookedCount, lastCookedAt }: Recipe, timeZone: string): string {
+function cookedSummaryOf({ cookedCount, lastCookedAt }: Recipe, viewer: Viewer): string {
   return lastCookedAt === null
     ? "Ещё не готовили"
-    : `Готовили ${cookedCount} раз · последний раз ${formatDay(lastCookedAt, timeZone)}`;
+    : `Готовили ${cookedCount} раз · последний раз ${formatDay(lastCookedAt, viewer)}`;
 }
 
-export function toRecipeDetails(recipe: Recipe, timeZone: string): RecipeDetails {
+export function toRecipeDetails(recipe: Recipe, viewer: Viewer): RecipeDetails {
   return {
     id: recipe.id,
     title: recipe.title,
@@ -47,11 +47,11 @@ export function toRecipeDetails(recipe: Recipe, timeZone: string): RecipeDetails
     method: recipe.method,
     isFavorite: recipe.isFavorite,
     canDelete: recipe.canDelete,
-    cookedSummary: cookedSummaryOf(recipe, timeZone),
+    cookedSummary: cookedSummaryOf(recipe, viewer),
     cooks: recipe.cooks.map(({ id, memberName, at, isOwn }) => ({
       id,
       memberName,
-      day: formatDay(at, timeZone),
+      day: formatDay(at, viewer),
       isOwn,
     })),
   };

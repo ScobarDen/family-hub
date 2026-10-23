@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, exists, inArray, isNull, ne, not, notInArray } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gte, inArray, isNull, ne, not, notInArray } from "drizzle-orm";
 
 import { bindFirst } from "@/common/bind";
 import {
@@ -256,23 +256,25 @@ async function deleteAlbum(db: Db, target: AlbumTarget, scope: AlbumDeletion): P
 }
 
 // A Recipe's photos belong to the Recipe and stay out of «Все фото».
+function isAlbumPhoto(db: Db, familyId: string) {
+  return and(
+    eq(photos.familyId, familyId),
+    notInArray(
+      photos.id,
+      db
+        .select({ photoId: recipePhotos.photoId })
+        .from(recipePhotos)
+        .where(eq(recipePhotos.familyId, familyId)),
+    ),
+  );
+}
+
 async function allPhotosOf(db: Db, familyId: string): Promise<PhotoRow[]> {
-  return db
-    .select()
-    .from(photos)
-    .where(
-      and(
-        eq(photos.familyId, familyId),
-        notInArray(
-          photos.id,
-          db
-            .select({ photoId: recipePhotos.photoId })
-            .from(recipePhotos)
-            .where(eq(recipePhotos.familyId, familyId)),
-        ),
-      ),
-    )
-    .all();
+  return db.select().from(photos).where(isAlbumPhoto(db, familyId)).all();
+}
+
+async function countPhotosSince(db: Db, familyId: string, since: number): Promise<number> {
+  return db.$count(photos, and(isAlbumPhoto(db, familyId), gte(photos.createdAt, since)));
 }
 
 export function createAlbumRepo(db: Db) {
@@ -281,6 +283,7 @@ export function createAlbumRepo(db: Db) {
       albumPhotosOf,
       petPhotosOf,
       allPhotos: allPhotosOf,
+      countPhotosSince,
       knownPhotoIds,
       delete: deleteAlbum,
       addPhotos,

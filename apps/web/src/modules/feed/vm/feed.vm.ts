@@ -38,7 +38,7 @@ export const feedFilters: Array<{ value: FeedFilter; title: string }> = [
   { value: "all", title: "Всё" },
   { value: "plans", title: "Планы" },
   { value: "calendar", title: "Календарь" },
-  { value: "pet", title: "Питомец" },
+  { value: "pet", title: "Питомцы" },
   { value: "goals", title: "Цели" },
   { value: "albums", title: "Альбомы" },
   { value: "recipes", title: "Рецепты" },

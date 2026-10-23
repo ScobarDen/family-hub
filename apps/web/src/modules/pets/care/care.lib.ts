@@ -9,7 +9,7 @@ import {
   type Photo,
 } from "@family-hub/contract";
 
-import { formatDay } from "@/common/format-date";
+import { formatDay, type Viewer } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 
 import type { Range } from "./care.api.ts";
@@ -82,8 +82,8 @@ export function titleOf(details: CareDetails): string {
   return details.kind === "expense" ? expenseCategoryTitles[details.category] : careKindTitles.note;
 }
 
-export function toJournalItem(entry: CareEntry, timeZone: string): JournalItem {
-  const parts = [formatDay(entry.occurredAt, timeZone), entry.author, costOf(entry.details)];
+export function toJournalItem(entry: CareEntry, viewer: Viewer): JournalItem {
+  const parts = [formatDay(entry.occurredAt, viewer), entry.author, costOf(entry.details)];
 
   return {
     id: entry.id,
@@ -165,7 +165,13 @@ export function weightPoints(
   return entries
     .flatMap(({ occurredAt, details }) =>
       details.kind === "weight" && occurredAt >= since
-        ? [{ at: occurredAt, kg: details.weightKg, label: formatDay(occurredAt, timeZone) }]
+        ? [
+            {
+              at: occurredAt,
+              kg: details.weightKg,
+              label: formatDay(occurredAt, { today, timeZone }),
+            },
+          ]
         : [],
     )
     .toSorted((left, right) => left.at - right.at);
