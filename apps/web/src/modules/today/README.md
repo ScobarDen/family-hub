@@ -12,4 +12,4 @@ The first tab: the Today hub. It answers «what needs doing now and what's comin
 - `today` — the Member's date, for «Сегодня» / «Завтра» and Overdue.
 - `onOpen`, `onRecord`, `onOpenSection`, `onOpenFeed` — the app's opener and navigation: a record, a Due Date's follow-up, a section and the Feed open on top of the Today tab.
 
-`statuses` and `nearestGoalId` hand «Разделы» its status lines and the Goal for «+ Взнос» from the same payload. `reload` refetches; the app calls it whenever the hub is shown again and after a Command Draft is saved.
+`nearestGoalId` hands «Разделы» the Goal for «+ Взнос» from the same payload. `reload` refetches; the app calls it whenever the hub is shown again and after a Command Draft is saved.

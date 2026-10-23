@@ -321,7 +321,6 @@ const home = {
   today: todayHub,
   sections: reatomSections({
     modules: tabBarModules,
-    statuses: todayHub.statuses,
     contributionGoalId: todayHub.nearestGoalId,
     canAddPhoto: () => photoStorage.view()?.isConnected === true,
     onOpen: navigation.openModule,

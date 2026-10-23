@@ -7,7 +7,7 @@ import { Chip, chipClass, FilePick, ScreenTitle, Section, SectionItem, cn } from
 import type { SectionRow, SectionsModel } from "../vm/sections.vm.ts";
 
 function SectionRows({ model, rows }: { model: SectionsModel; rows: SectionRow[] }) {
-  return rows.map(({ module, title, status }) => {
+  return rows.map(({ module, title }) => {
     const Icon = sectionIcons[module];
 
     return (
@@ -19,7 +19,6 @@ function SectionRows({ model, rows }: { model: SectionsModel; rows: SectionRow[]
           </span>
         }
         title={title}
-        {...(status === undefined ? {} : { subtitle: status })}
         onClick={() => {
           model.open(module);
         }}

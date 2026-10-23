@@ -9,21 +9,12 @@ import {
   type Atom,
 } from "@reatom/core";
 
-import type { AppModule, FeedUpcoming, Plan, SlotModule, Today } from "@family-hub/contract";
+import type { FeedUpcoming, Plan, SlotModule, Today } from "@family-hub/contract";
 
 import { detached, readOnly } from "@/common/state";
 
 import type { PlanOrSubplan, TodayApi } from "../today.api.ts";
-import {
-  dueRowOf,
-  feedStatusOf,
-  headerOf,
-  moreOf,
-  nextRowOf,
-  statusOf,
-  tilesOf,
-  type Tile,
-} from "../today.lib.ts";
+import { dueRowOf, headerOf, moreOf, nextRowOf, tilesOf, type Tile } from "../today.lib.ts";
 
 export type TodayTarget =
   | { kind: "plan"; planId: string }
@@ -190,24 +181,6 @@ function reatomCompletion(dependencies: Pick<TodayDependencies, "api">, onSettle
 
 type Completion = ReturnType<typeof reatomCompletion>;
 
-// «Разделы» reads its status lines and the Goal for «+ Взнос» from the same payload.
-function reatomForSections(
-  data: Loaded,
-  { due, tiles }: { due: () => FeedUpcoming[]; tiles: () => Tile[] },
-) {
-  return {
-    statuses: computed((): Partial<Record<AppModule, string>> => {
-      const count = due().length;
-
-      return {
-        ...Object.fromEntries(tiles().map((tile) => [tile.module, statusOf(tile)])),
-        feed: data.data() === undefined ? undefined : feedStatusOf(count),
-      };
-    }, "today.statuses"),
-    nearestGoalId: computed(() => data.data()?.tiles.goals?.nearest?.goalId, "today.nearestGoal"),
-  };
-}
-
 function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion: Completion) {
   const due = computed(
     () => (data.data()?.due ?? []).filter(({ key }) => !completion.hidden().includes(key)),
@@ -237,7 +210,8 @@ function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion:
       "today.next",
     ),
     tiles,
-    ...reatomForSections(data, { due, tiles }),
+    // «Разделы» sends «+ Взнос» to this Goal.
+    nearestGoalId: computed(() => data.data()?.tiles.goals?.nearest?.goalId, "today.nearestGoal"),
   };
 }
 

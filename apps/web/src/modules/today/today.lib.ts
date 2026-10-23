@@ -39,10 +39,6 @@ export function moreOf(rest: number): string | undefined {
   return rest > 0 ? `Ещё ${formatCount(rest, choreWords)}` : undefined;
 }
 
-export function feedStatusOf(count: number): string | undefined {
-  return count === 0 ? undefined : `${formatCount(count, choreWords)} на сегодня`;
-}
-
 const moduleOfKind: Record<FeedUpcoming["kind"], SlotModule> = {
   plan: "plans",
   due: "pet",
@@ -159,10 +155,4 @@ export function tilesOf(tiles: Tiles, today: string): Tile[] {
     readOrBare("albums", tiles.albums, (read) => tileOf.albums(read, today)),
     readOrBare("recipes", tiles.recipes, (read) => tileOf.recipes(read, today)),
   ];
-}
-
-export function statusOf({ value, note }: Tile): string | undefined {
-  const parts = [value, note].filter((part) => part !== undefined);
-
-  return parts.length === 0 ? undefined : parts.join(" · ");
 }
