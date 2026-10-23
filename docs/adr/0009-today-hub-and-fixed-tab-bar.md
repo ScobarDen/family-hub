@@ -4,7 +4,8 @@ A Member used to pick 2–5 of the seven modules for the tab bar (`members.tab_b
 
 ## Decisions
 
-- **No hidden modules.** A module screen is pushed onto the current tab's stack and always keeps the tab bar and the microphone; a slot is only a shortcut. `/profile/modules/:module` goes away.
+- **No hidden modules.** A module screen is pushed onto the current tab's stack and always keeps the tab bar and the microphone. `/profile/modules/:module` goes away.
+- **A slot's module opens its own tab.** Opened from a hub tile, «Разделы» or a record link, a module that sits in a slot switches to that tab instead of being pushed: the highlighted tab is always the one on screen, and a module's single in-memory state (an opened Plan) is never reachable from two stacks at once. Back from it goes to the tab's root, not to the hub.
 - **Deep links land on the Today stack**: the hub, then the target, so Back returns to the hub whichever slots the Member chose. A Pet card gets its own `/pets/:id` route instead of an in-memory id.
 - **One request for the hub.** `GET /api/today` returns the hub's blocks and every tile; each module provides its tile summary next to its Feed source, and the Overdue/today block reuses the digest's rule so the hub and the bot never disagree.
 - **Migration keeps the column.** Each Member's slots become the first two non-`feed` modules of their saved `tab_bar` (else the defaults); `tab_bar` is not dropped, so the change can be rolled back.

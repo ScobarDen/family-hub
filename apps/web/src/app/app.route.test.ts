@@ -35,15 +35,31 @@ describe("the tab stacks", () => {
   test("open a section on top of the hub and keep the Today tab highlighted", () => {
     const navigation = startNavigation();
 
-    navigation.openModule("plans");
+    navigation.openModule("goals");
 
-    expect(navigation.screen()).toEqual({ kind: "module", module: "plans" });
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
     expect(navigation.activeTab()).toBe("today");
     expect(navigation.canGoBack()).toBe(true);
 
     navigation.back();
 
     expect(navigation.screen()).toEqual({ kind: "today" });
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("switch to a slot's own tab when its section is opened from elsewhere", () => {
+    const navigation = startNavigation();
+
+    navigation.openModule("plans");
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "plans" });
+    expect(navigation.activeTab()).toBe("plans");
+    expect(navigation.canGoBack()).toBe(false);
+
+    navigation.openTab("sections");
+    navigation.open({ module: "calendar" });
+
+    expect(navigation.activeTab()).toBe("calendar");
     expect(navigation.canGoBack()).toBe(false);
   });
 
@@ -101,7 +117,7 @@ describe("the tab stacks", () => {
       isSignedIn: () => true,
       telegram: { backButton: button, settingsButton: button },
       nestedBack: {
-        plans: {
+        goals: {
           canGoBack: () => isFormOpen,
           back: () => {
             isFormOpen = false;
@@ -110,10 +126,10 @@ describe("the tab stacks", () => {
       },
     });
 
-    navigation.openModule("plans");
+    navigation.openModule("goals");
     navigation.back();
 
-    expect(navigation.screen()).toEqual({ kind: "module", module: "plans" });
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
 
     navigation.back();
 

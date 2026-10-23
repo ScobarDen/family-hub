@@ -137,8 +137,9 @@ function initialTabOf(screen: Screen, slots: SlotModule[]): TabId {
     : "today";
 }
 
-// Each tab is a stack: a section opens on top of the current tab, Back pops it, a tab tap goes
-// to that tab's root. The stack lives in memory; the URL names only its top screen.
+// Each tab is a stack: a section opens on top of the current tab (a slot's opens its tab), Back
+// pops it, a tab tap goes to that tab's root. The stack lives in memory; the URL names only its
+// top screen.
 function reatomStack(
   go: (screen: Screen) => void,
   { screen, slots }: { screen: () => Screen; slots: () => SlotModule[] },
@@ -184,13 +185,28 @@ function reatomStack(
 
 type Stack = ReturnType<typeof reatomStack>;
 
-function reatomOpening(stack: Stack, screen: () => Screen) {
+// A section in a slot opens its own tab, so the highlighted tab is always the one on screen and
+// the section's one state lives in one stack; any other section goes on top of the current tab.
+function reatomOpening(
+  stack: Stack,
+  { screen, slots }: { screen: () => Screen; slots: () => SlotModule[] },
+) {
+  function place(next: Place) {
+    const slot = slots().find((module) => module === next.module);
+
+    if (slot !== undefined && next.petId === undefined) {
+      stack.openTab(slot);
+    } else {
+      stack.push(placeScreen(next));
+    }
+  }
+
   return {
-    open: action((place: Place) => {
-      stack.push(placeScreen(place));
+    open: action((next: Place) => {
+      place(next);
     }, "navigation.open"),
     openModule: action((module: AppModule) => {
-      stack.push({ kind: "module", module });
+      place({ module });
     }, "navigation.openModule"),
     openPet: action((petId: string) => {
       stack.push({ kind: "module", module: "pet", petId });
@@ -269,7 +285,7 @@ export function reatomNavigation({
   const screen = reatomScreen(routes);
   const stack = reatomStack(goToNotifying(routes, onTodayShown), { screen, slots });
   const back = reatomBack({ screen, nestedBack }, stack);
-  const opening = reatomOpening(stack, screen);
+  const opening = reatomOpening(stack, { screen, slots });
 
   return {
     screen,
