@@ -12,6 +12,7 @@ import {
 import type { FamilyMember, Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
 
 import { formatRubles } from "@/common/format-money";
+import type { LiveVersion } from "@/common/live-updates";
 import { detached } from "@/common/state";
 import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
@@ -225,9 +226,10 @@ function titleOf(screen: GoalsScreen): string {
   return "Цели";
 }
 
-export function reatomGoalsScreen(
-  input: Omit<GoalsDependencies, "goals"> & { members: { data: () => FamilyMember[] | undefined } },
-) {
+type GoalsInput = Omit<GoalsDependencies, "goals"> &
+  LiveVersion & { members: { data: () => FamilyMember[] | undefined } };
+
+export function reatomGoalsScreen(input: GoalsInput) {
   const dependencies: GoalsDependencies = { ...input, goals: reatomGoals(input) };
   const navigation: Navigation = {
     editing: atom<"goal" | "movement" | undefined>(undefined, "goals.editing"),

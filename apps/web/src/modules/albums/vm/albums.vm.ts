@@ -14,6 +14,7 @@ import type { AlbumSummary, Photo } from "@family-hub/contract";
 
 import { formatCount } from "@/common/format-count";
 import type { Viewer } from "@/common/format-date";
+import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
@@ -43,7 +44,7 @@ export type AlbumsScreen =
   | { kind: "all"; photos: Photo[] }
   | { kind: "form"; isCreating: boolean };
 
-type AlbumsDependencies = {
+type AlbumsDependencies = LiveVersion & {
   api: AlbumsApi;
   telegram: Dialogs;
   viewer: () => Viewer;
@@ -185,7 +186,11 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
     openedId: atom<string | undefined>(undefined, "albums.openedId"),
     isEditing: reatomBoolean(false, "albums.isEditing"),
   };
-  const data = reatomAlbumsData({ api: dependencies.api, openedId: navigation.openedId });
+  const data = reatomAlbumsData({
+    api: dependencies.api,
+    openedId: navigation.openedId,
+    liveVersion: dependencies.liveVersion,
+  });
   const parts = reatomParts(dependencies, { data, navigation });
   const screen = reatomScreen(dependencies, { data, navigation, form: parts.form });
   const remove = reatomRemoval(dependencies, { data, navigation });

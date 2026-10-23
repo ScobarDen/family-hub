@@ -4,6 +4,7 @@ import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hu
 
 import { formatDay, formatNearDate } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
+import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
 import { detached, readOnly, reatomFailure } from "@/common/state";
 import { type Dialogs, isConfirmed } from "@/common/telegram";
@@ -29,7 +30,7 @@ export type CareScreen =
   | { kind: "form"; isCreating: boolean }
   | { kind: "expenses" };
 
-export type CareDependencies = {
+export type CareDependencies = LiveVersion & {
   api: CareApi;
   petId: () => string | undefined;
   today: () => string;

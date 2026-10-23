@@ -8,12 +8,13 @@ import {
   wrap,
 } from "@reatom/core";
 
+import type { LiveVersion } from "@/common/live-updates";
 import { readOnly } from "@/common/state";
 
 import type { RecipesApi } from "./recipes.api.ts";
 
 // The list follows the search text, the tag chip and «⭐»; every change reloads it from the server.
-export function reatomRecipesData({ api }: { api: RecipesApi }) {
+export function reatomRecipesData({ api, liveVersion }: { api: RecipesApi } & LiveVersion) {
   const version = atom(0, "recipes.version");
   const text = atom("", "recipes.text");
   const tagId = atom<string | undefined>(undefined, "recipes.tagId");
@@ -28,6 +29,7 @@ export function reatomRecipesData({ api }: { api: RecipesApi }) {
     ordering,
     list: computed(async () => {
       version();
+      liveVersion?.();
 
       return wrap(
         api.list({ text: text(), tagId: tagId(), isFavorite: isFavorite(), sort: ordering() }),
@@ -35,6 +37,7 @@ export function reatomRecipesData({ api }: { api: RecipesApi }) {
     }, "recipes.list").extend(withAsyncData()),
     tags: computed(async () => {
       version();
+      liveVersion?.();
 
       return wrap(api.tags());
     }, "recipes.tags").extend(withAsyncData()),

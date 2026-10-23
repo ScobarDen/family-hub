@@ -1,7 +1,10 @@
 import type { CallbackQuery, Message, Update, Voice } from "@grammyjs/types";
 import { Hono } from "hono";
 
+import type { AppModule } from "@family-hub/contract";
+
 import { httpStatus } from "@/common/errors";
+import { commandCallbackModules, reminderCallbackModules, signalFamily } from "@/common/live";
 import { commandCallbackPrefix } from "@/modules/command";
 import { reminderCallbackPrefix } from "@/modules/reminder";
 
@@ -16,16 +19,45 @@ async function readUpdate(request: Request): Promise<Update | undefined> {
   }
 }
 
-async function handleCallback(services: AppServices, query: CallbackQuery): Promise<void> {
+type Background = { waitUntil: (work: Promise<unknown>) => void; live: Env["LIVE"] };
+
+// A press may change what the presser's Family sees, so their open apps refetch.
+async function signalPresser(
+  services: AppServices,
+  {
+    query,
+    modules,
+    background,
+  }: { query: CallbackQuery; modules: AppModule[]; background: Background },
+): Promise<void> {
+  const membership = await services.auth.memberOf(query.from.id);
+
+  if (membership) {
+    background.waitUntil(
+      signalFamily(background.live, { familyId: membership.family.id, modules }),
+    );
+  }
+}
+
+async function handleCallback(
+  services: AppServices,
+  { query, background }: { query: CallbackQuery; background: Background },
+): Promise<void> {
   if (query.data?.startsWith(`${commandCallbackPrefix}:`) === true) {
     await services.commands.handleCallback(query);
+    await signalPresser(services, { query, modules: commandCallbackModules, background });
 
     return;
   }
 
-  await (query.data?.startsWith(`${reminderCallbackPrefix}:`) === true
-    ? services.reminders.handleCallback(query)
-    : services.familyRequests.handleCallback(query));
+  if (query.data?.startsWith(`${reminderCallbackPrefix}:`) === true) {
+    await services.reminders.handleCallback(query);
+    await signalPresser(services, { query, modules: reminderCallbackModules, background });
+
+    return;
+  }
+
+  await services.familyRequests.handleCallback(query);
 }
 
 // Any plain message in a private chat is a command; the AI work outlasts Telegram's patience.
@@ -41,8 +73,10 @@ function isVoiceCommand(message: Message | undefined): message is Message & { vo
 
 async function handleUpdate(
   services: AppServices,
-  { update, waitUntil }: { update: Update; waitUntil: (work: Promise<unknown>) => void },
+  { update, background }: { update: Update; background: Background },
 ): Promise<void> {
+  const { waitUntil } = background;
+
   if (isCommand(update.message)) {
     waitUntil(services.commands.handleText(update.message));
   }
@@ -52,7 +86,7 @@ async function handleUpdate(
   }
 
   if (update.callback_query) {
-    await handleCallback(services, update.callback_query);
+    await handleCallback(services, { query: update.callback_query, background });
   }
 
   // Writing to the bot again is how a Member who had blocked it turns Reminders back on.
@@ -77,8 +111,11 @@ export const webhookRoute = new Hono<AppEnv>().post("/bot/webhook", async (conte
   if (update !== undefined) {
     await handleUpdate(context.var, {
       update,
-      waitUntil: (work) => {
-        context.executionCtx.waitUntil(work);
+      background: {
+        waitUntil: (work) => {
+          context.executionCtx.waitUntil(work);
+        },
+        live: context.env.LIVE,
       },
     });
   }

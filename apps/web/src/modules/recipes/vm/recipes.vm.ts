@@ -13,6 +13,7 @@ import {
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
 import { formatCount } from "@/common/format-count";
+import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
@@ -66,7 +67,7 @@ export type RecipesScreen =
   | { kind: "form"; isCreating: boolean; tags: RecipeTag[] }
   | { kind: "tags"; tags: RecipeTag[] };
 
-type RecipesDependencies = {
+type RecipesDependencies = LiveVersion & {
   api: RecipesApi;
   telegram: Dialogs;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;

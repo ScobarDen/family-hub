@@ -1,4 +1,4 @@
-import { context, noop } from "@reatom/core";
+import { atom, context, effect, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { planChange, type FamilyMemberList, type Plan, type PlanList } from "@family-hub/contract";
@@ -146,7 +146,7 @@ function fakeTelegram(choices: string[] = []) {
   };
 }
 
-function startPlans(backend = fakeBackend(), telegram = fakeTelegram()) {
+function startPlans(backend = fakeBackend(), telegram = fakeTelegram(), liveVersion = atom(0)) {
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const api = createPlansApi(client);
   const openedAlbums: string[] = [];
@@ -155,6 +155,7 @@ function startPlans(backend = fakeBackend(), telegram = fakeTelegram()) {
     members: reatomFamilyMembers(createFamilyApi(client)),
     pets: reatomPets({ api: createPetsApi(client) }).list,
     telegram,
+    liveVersion,
     self: () => "member-1",
     viewer: () => ({ timeZone: "Europe/Moscow", today: "2026-10-16" }),
     onOpenAlbum: (albumId) => {
@@ -165,7 +166,7 @@ function startPlans(backend = fakeBackend(), telegram = fakeTelegram()) {
   model.screen.subscribe(noop);
   model.planForm.assignees.subscribe(noop);
 
-  return { model, backend, telegram, openedAlbums };
+  return { model, backend, telegram, openedAlbums, liveVersion };
 }
 
 type Model = ReturnType<typeof startPlans>["model"];
@@ -365,6 +366,36 @@ describe("a Plan", () => {
     await settled(model);
 
     expect(model.failure()).toBe("Не получилось сохранить. Попробуйте ещё раз.");
+  });
+});
+
+describe("another Member's change", () => {
+  test("refetches the list when the Plans version moves", async () => {
+    const list = [vacation];
+    const { model, liveVersion } = startPlans(fakeBackend(list));
+
+    await loaded(model);
+    list.push({ ...bedroom, completed: null, subplans: [] });
+    liveVersion.set(1);
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ open: [{ id: "plan-2" }, { id: "plan-1" }] });
+    });
+  });
+
+  test("leaves an open form's draft alone", async () => {
+    const { model, backend, liveVersion } = startPlans();
+
+    await loaded(model);
+    effect(() => model.openPlansOf("pet-1"));
+    model.add();
+    model.planForm.form.fields.title.set("Купить диван");
+    liveVersion.set(1);
+
+    await vi.waitFor(() => {
+      expect(backend.requests.filter((request) => request === "GET /api/plans")).toHaveLength(2);
+    });
+    expect(model.planForm.form.fields.title()).toBe("Купить диван");
   });
 });
 

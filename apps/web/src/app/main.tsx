@@ -5,6 +5,7 @@ import { Temporal } from "temporal-polyfill";
 
 import { deviceTimeZone, today as todayIn } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
+import { openLiveSocket, reatomLiveUpdates } from "@/common/live-updates";
 import { preparePhoto } from "@/common/photo";
 import { reatomTelegram } from "@/common/telegram";
 import { createVoiceRecorder } from "@/common/voice-recorder";
@@ -100,18 +101,20 @@ function self(): string | undefined {
   return session.member()?.member.id;
 }
 
-const commandApi = createCommandApi(httpClient);
-const familyApi = createFamilyApi(httpClient);
-// One query each for the Family's Members and Pets, so every picker sees the same list.
-const members = reatomFamilyMembers(familyApi);
-const petsApi = createPetsApi(httpClient);
-const petsModel = reatomPets({ api: petsApi });
-
 async function wait(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
 }
+
+const live = reatomLiveUpdates({ open: () => openLiveSocket(httpClient), page: document, wait });
+
+const commandApi = createCommandApi(httpClient);
+const familyApi = createFamilyApi(httpClient);
+// One query each for the Family's Members and Pets, so every picker sees the same list.
+const members = reatomFamilyMembers(familyApi);
+const petsApi = createPetsApi(httpClient);
+const petsModel = reatomPets({ api: petsApi, liveVersion: () => live.versionOf("pet") });
 
 const tabBarModules = reatomTabBarModules({
   api: createTabBarApi(httpClient),
@@ -123,6 +126,7 @@ const photoStorage = reatomPhotoStorage({
 });
 const albums = reatomAlbumsScreen({
   api: createAlbumsApi(httpClient),
+  liveVersion: () => live.versionOf("albums"),
   telegram,
   viewer,
   preparePhoto: prepare,
@@ -135,6 +139,7 @@ const albums = reatomAlbumsScreen({
 });
 const recipes = reatomRecipesScreen({
   api: createRecipesApi(httpClient),
+  liveVersion: () => live.versionOf("recipes"),
   telegram,
   today,
   timeZone: zone,
@@ -143,6 +148,7 @@ const recipes = reatomRecipesScreen({
 });
 const plans = reatomPlansScreen({
   api: createPlansApi(httpClient),
+  liveVersion: () => live.versionOf("plans"),
   members,
   pets: petsModel.list,
   telegram,
@@ -154,6 +160,7 @@ const plans = reatomPlansScreen({
 });
 const goals = reatomGoalsScreen({
   api: createGoalsApi(httpClient),
+  liveVersion: () => live.versionOf("goals"),
   members,
   telegram,
   self,
@@ -162,6 +169,7 @@ const goals = reatomGoalsScreen({
 });
 const pet = reatomPetTab({
   api: petsApi,
+  liveVersion: () => live.versionOf("pet"),
   route: {
     petId: () => navigation.openedPetId(),
     open: (petId) => {
@@ -198,6 +206,7 @@ const pet = reatomPetTab({
 });
 const calendar = reatomCalendar({
   api: createCalendarApi(httpClient),
+  liveVersion: () => live.versionOf("calendar"),
   members,
   pets: petsModel.list,
   today,
@@ -243,6 +252,7 @@ const microphone = reatomMicrophone({
 
 const feed = reatomFeed({
   api: createFeedApi(httpClient),
+  liveVersion: live.all,
   today,
   timeZone: zone,
   onOpen: (target) => {
@@ -255,6 +265,7 @@ const feed = reatomFeed({
 });
 const todayHub = reatomToday({
   api: createTodayApi(httpClient),
+  liveVersion: live.all,
   today,
   onOpen: (target) => {
     opener.open(target);
@@ -375,6 +386,7 @@ opener.launch();
 timeZone.keepFollowingDevice();
 session.signIn();
 joinFamily.load();
+live.start();
 
 createRoot(root).render(
   <StrictMode>

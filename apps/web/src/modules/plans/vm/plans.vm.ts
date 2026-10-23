@@ -3,6 +3,7 @@ import { action, atom, type Atom, type BooleanAtom, computed, reatomBoolean } fr
 import type { Plan } from "@family-hub/contract";
 
 import type { Viewer } from "@/common/format-date";
+import type { LiveVersion } from "@/common/live-updates";
 import type { Dialogs } from "@/common/telegram";
 
 import type { PlansApi } from "../plans.api.ts";
@@ -172,7 +173,9 @@ function openPlansOf(plans: PlansModel) {
     );
 }
 
-export function reatomPlansScreen(input: Omit<PlansDependencies, "plans"> & SharedLists) {
+export function reatomPlansScreen(
+  input: Omit<PlansDependencies, "plans"> & SharedLists & LiveVersion,
+) {
   const dependencies: PlansDependencies = { ...input, plans: reatomPlans(input) };
   const navigation: Navigation = {
     editing: atom<"plan" | "subplan" | undefined>(undefined, "plans.editing"),
