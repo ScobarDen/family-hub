@@ -67,11 +67,15 @@ function isEndAfterStart(when: {
   return when.time === null || when.endTime === null || when.endTime >= when.time;
 }
 
+// A Family is a household: more people than this on one Task is a broken request, and D1 binds at
+// most 100 parameters to one query.
+export const taskPeopleMaxCount = 30;
+
 // «default» reminds the Assignees, or the author of a Task without them.
 export const taskRecipients = z.union([
   z.literal("default"),
   z.literal("everyone"),
-  z.array(z.string()).min(1),
+  z.array(z.string()).min(1).max(taskPeopleMaxCount),
 ]);
 
 export type TaskRecipients = z.infer<typeof taskRecipients>;
@@ -83,7 +87,7 @@ const offsets = z
 
 const title = z.string().trim().min(1).max(taskTitleMaxLength);
 
-const assigneeIds = z.array(z.string()).default([]);
+const assigneeIds = z.array(z.string()).max(taskPeopleMaxCount).default([]);
 
 type Schedule = {
   when: TaskWhen | null;

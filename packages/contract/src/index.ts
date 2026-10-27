@@ -103,7 +103,14 @@ export {
   type CurrentMember,
   type SessionResponse,
 } from "./session.ts";
-export { encodeDeepLink, parseDeepLink, type DeepLink } from "./deep-link.ts";
+export {
+  encodeDeepLink,
+  encodeRecordLink,
+  parseDeepLink,
+  parseRecordLink,
+  type DeepLink,
+  type RecordLink,
+} from "./deep-link.ts";
 export { uuidv7 } from "./uuid.ts";
 export {
   feedPage,

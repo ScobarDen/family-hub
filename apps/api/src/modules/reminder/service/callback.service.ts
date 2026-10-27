@@ -4,6 +4,7 @@ import type { Membership } from "@/common/auth";
 import { ignoringBotErrors } from "@/common/telegram";
 
 import {
+  alreadyDoneText,
   doneText,
   notDoneText,
   notYoursText,
@@ -152,6 +153,25 @@ async function pressOf(
   return source && { row, source, presser };
 }
 
+// The text the pressed button answers with, or nothing when it did what it says.
+async function pressed(
+  dependencies: ReminderDependencies,
+  { press, isDone }: { press: Press; isDone: boolean },
+): Promise<string | undefined> {
+  if (isDone && press.source.closesForEveryone) {
+    return (await didComplete(dependencies, press)) ? undefined : notDoneText;
+  }
+
+  // Snoozing an Occurrence someone already did would bring it back and push the next one aside.
+  if (!isDone && press.row.doneAt !== null) {
+    return alreadyDoneText;
+  }
+
+  await didSnooze(dependencies, press);
+
+  return undefined;
+}
+
 export async function handleReminderCallback(
   dependencies: ReminderDependencies,
   query: CallbackQuery,
@@ -160,27 +180,15 @@ export async function handleReminderCallback(
   const press =
     parsed &&
     (await pressOf(dependencies, { dispatchId: parsed.dispatchId, telegramId: query.from.id }));
-
-  if (parsed === undefined || press === undefined) {
-    await ignoringBotErrors(
-      dependencies.bot.call("answerCallbackQuery", {
-        callback_query_id: query.id,
-        text: notYoursText,
-      }),
-    );
-
-    return;
-  }
-
-  const isDone =
-    parsed.action === "done" && press.source.closesForEveryone
-      ? await didComplete(dependencies, press)
-      : await didSnooze(dependencies, press);
+  const text =
+    parsed === undefined || press === undefined
+      ? notYoursText
+      : await pressed(dependencies, { press, isDone: parsed.action === "done" });
 
   await ignoringBotErrors(
     dependencies.bot.call(
       "answerCallbackQuery",
-      isDone ? { callback_query_id: query.id } : { callback_query_id: query.id, text: notDoneText },
+      text === undefined ? { callback_query_id: query.id } : { callback_query_id: query.id, text },
     ),
   );
 }

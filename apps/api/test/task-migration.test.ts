@@ -21,6 +21,9 @@ const ids = {
   ticksOld: "00000000-0000-7000-8000-000000000041",
   ticksNew: "00000000-0000-7000-8000-000000000042",
   checkup: "00000000-0000-7000-8000-000000000043",
+  vika: "00000000-0000-7000-8000-000000000005",
+  chip: "00000000-0000-7000-8000-000000000044",
+  secret: "00000000-0000-7000-8000-000000000032",
 };
 const audit = `${at}, '${ids.denis}', ${at}`;
 const meters = "Передать показания счётчиков. ".repeat(10).trim();
@@ -37,6 +40,13 @@ const checkup = JSON.stringify({
   dueDate: "2026-10-20",
 });
 
+const chipped = JSON.stringify({
+  kind: "vaccination",
+  vaccine: "Чума",
+  cost: null,
+  dueDate: "2026-11-01",
+});
+
 function ticks(dueDate: string | null) {
   return JSON.stringify({ kind: "treatment", target: "Клещи", product: null, cost: null, dueDate });
 }
@@ -46,7 +56,8 @@ function ticks(dueDate: string | null) {
 const seed = `
 INSERT INTO members (id, telegram_id, name, time_zone, created_at, updated_at) VALUES
   ('${ids.denis}', ${denis.id}, 'Денис', 'Europe/Moscow', ${at}, ${at}),
-  ('${ids.asya}', ${asya.id}, 'Ася', 'Europe/Moscow', ${at}, ${at});
+  ('${ids.asya}', ${asya.id}, 'Ася', 'Europe/Moscow', ${at}, ${at}),
+  ('${ids.vika}', 333, 'Вика', 'Europe/Moscow', ${at}, ${at});
 INSERT INTO families (id, name, owner_member_id, created_at, created_by, updated_at) VALUES
   ('${ids.family}', 'Гущины', '${ids.denis}', ${audit});
 INSERT INTO family_members (family_id, member_id, created_at, created_by, updated_at) VALUES
@@ -61,6 +72,7 @@ INSERT INTO events (id, family_id, owner_member_id, visibility, title, start_dat
   ('${ids.dentist}', '${ids.family}', '${ids.denis}', 'shared', 'Стоматолог', '2026-10-08', '15:00', 'Europe/Moscow', '2026-10-08', '17:00', 'weekly', NULL, '["2026-10-15"]', '["1h"]', ${audit});
 INSERT INTO reminders (id, family_id, owner_member_id, visibility, text, start_date, start_time, time_zone, frequency, until, is_for_everyone, created_at, created_by, updated_at) VALUES
   ('${ids.internet}', '${ids.family}', '${ids.denis}', 'shared', 'Оплатить интернет', '2026-10-16', '19:00', 'Europe/Moscow', 'monthly', NULL, 0, ${audit}),
+  ('${ids.secret}', '${ids.family}', '${ids.asya}', 'private', 'Подарок Денису', '2026-10-25', '10:00', 'Europe/Moscow', NULL, NULL, 0, ${audit}),
   ('${ids.meters}', '${ids.family}', '${ids.denis}', 'shared', '${meters}', '2026-10-20', '10:00', 'Europe/Moscow', 'monthly', NULL, 0, ${audit});
 INSERT INTO reminder_recipients (reminder_id, family_id, member_id) VALUES
   ('${ids.internet}', '${ids.family}', '${ids.asya}');
@@ -70,7 +82,8 @@ INSERT INTO care_entries (id, family_id, pet_id, kind, occurred_at, details, due
   ('${ids.rabies}', '${ids.family}', '${ids.buick}', 'vaccination', ${at}, '${rabies}', '2026-10-01', 'бешенство', ${audit}),
   ('${ids.ticksOld}', '${ids.family}', '${ids.buick}', 'treatment', ${at - 1000}, '${ticks("2026-09-15")}', '2026-09-15', 'клещи', ${audit}),
   ('${ids.ticksNew}', '${ids.family}', '${ids.buick}', 'treatment', ${at}, '${ticks(null)}', NULL, 'клещи', ${audit}),
-  ('${ids.checkup}', '${ids.family}', '${ids.buick}', 'vet_visit', ${at}, '${checkup}', '2026-10-20', 'vet_visit', ${audit});
+  ('${ids.checkup}', '${ids.family}', '${ids.buick}', 'vet_visit', ${at}, '${checkup}', '2026-10-20', 'vet_visit', ${audit}),
+  ('${ids.chip}', '${ids.family}', '${ids.buick}', 'vaccination', ${at}, '${chipped}', '2026-11-01', 'чума', ${at}, '${ids.vika}', ${at});
 INSERT INTO reminder_dispatch (id, family_id, source, source_id, member_id, occurrence, next_fire_at, created_at, updated_at) VALUES
   ('dispatch-checkup', '${ids.family}', 'pet_due', '${ids.buick}:${ids.checkup}', '${ids.asya}', '2026-10-13', ${Date.parse("2026-10-13T06:00:00Z")}, ${at}, ${at});
 `;
@@ -154,6 +167,22 @@ describe("the move to Tasks", () => {
     expect(moved?.title).toHaveLength(200);
     expect(moved?.title.endsWith("…")).toBe(true);
     expect(moved?.note).toBe(meters);
+  });
+
+  test("keeps a Private Reminder its owner's alone", async () => {
+    const worker = startMigrated();
+
+    expect(taskNamed(await tasksOf(worker, denis), "Подарок Денису")).toBeUndefined();
+    expect(taskNamed(await tasksOf(worker, asya), "Подарок Денису")).toMatchObject({
+      visibility: "private",
+      isOwn: true,
+    });
+  });
+
+  test("gives a Due Date of a Member who has left to the Family's owner", async () => {
+    const tasks = await tasksOf(startMigrated(), denis);
+
+    expect(taskNamed(tasks, "Прививка: Чума")).toMatchObject({ isOwn: true, assignees: [] });
   });
 
   test("turns an open Due Date into an Overdue Pet Task of its author and leaves a followed-up one", async () => {

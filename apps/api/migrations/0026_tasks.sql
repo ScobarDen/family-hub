@@ -104,7 +104,11 @@ FROM `reminder_dispatch` `d` JOIN `reminders` `r` ON `r`.`id` = `d`.`source_id`
 WHERE `d`.`source` = 'reminder' AND `d`.`done_at` IS NOT NULL AND `d`.`sent_occurrence` IS NOT NULL;
 --> statement-breakpoint
 INSERT INTO `tasks` (`id`, `family_id`, `owner_member_id`, `visibility`, `title`, `date`, `reminder_offsets`, `pet_id`, `created_at`, `created_by`, `updated_at`)
-SELECT `e`.`id`, `e`.`family_id`, `e`.`created_by`, 'shared',
+SELECT `e`.`id`, `e`.`family_id`,
+	-- A Member who has left could no longer delete it, so the Family's owner takes it over.
+	CASE WHEN EXISTS (SELECT 1 FROM `family_members` `m` WHERE `m`.`family_id` = `e`.`family_id` AND `m`.`member_id` = `e`.`created_by`)
+		THEN `e`.`created_by` ELSE (SELECT `f`.`owner_member_id` FROM `families` `f` WHERE `f`.`id` = `e`.`family_id`) END,
+	'shared',
 	CASE `e`.`kind` WHEN 'vaccination' THEN 'Прививка: ' || json_extract(`e`.`details`, '$.vaccine')
 		WHEN 'treatment' THEN 'Обработка: ' || json_extract(`e`.`details`, '$.target')
 		ELSE 'Визит к ветеринару' END,

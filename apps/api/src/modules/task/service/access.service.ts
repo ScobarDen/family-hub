@@ -1,11 +1,15 @@
 import { taskAlbumPreview, type Task, type TaskAlbum } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
-import { isHiddenFrom } from "@/common/visibility";
 
 import { toTask } from "../task.lib.ts";
-import type { TaskTree } from "../task.repo.ts";
+import type { TaskRow, TaskTree } from "../task.repo.ts";
 import type { TaskDependencies, TaskResult } from "../task.types.ts";
+
+// The same rule as the list's: a root not marked Shared is its owner's alone.
+function isHiddenFrom({ visibility, ownerMemberId }: TaskRow, memberId: string): boolean {
+  return visibility !== "shared" && ownerMemberId !== memberId;
+}
 
 export async function visibleTree(
   { tasks }: TaskDependencies,

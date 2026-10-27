@@ -117,18 +117,14 @@ describe("a Task", () => {
     expect(task.assignees.map(({ name }) => name)).toEqual(["Ася", "Денис"]);
   });
 
-  test.each([
-    ["a Recurrence without a date", { recurrence: { frequency: "weekly", until: null } }],
-    ["a Reminder an hour before a whole day", { when: on("2026-10-08"), reminderOffsets: ["1h"] }],
-    ["an empty title", { title: " " }],
-  ])("refuses %s", async (_case, change) => {
+  test("refuses a change the contract does not accept", async () => {
     const worker = await startWithFamily();
     const response = await send(worker, denis, {
       path: "/api/tasks",
-      body: { title: "Таблетка Бьюику", ...change },
+      body: { title: "Таблетка Бьюику", recurrence: { frequency: "weekly", until: null } },
     });
 
-    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "INVALID_REQUEST" });
   });
 
   test("refuses an Assignee from outside the Family", async () => {
@@ -199,6 +195,42 @@ describe("completing a Task", () => {
     expect(done.completions.map(({ occurrence }) => occurrence)).toEqual(["2026-10-01"]);
   });
 
+  test("of a recurring Task reopens one Occurrence and leaves the others done", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Таблетка Бьюику",
+      when: on("2026-10-01"),
+      recurrence: { frequency: "weekly", until: null },
+    });
+
+    await mark(worker, { taskId: task.id, occurrence: "2026-10-01" });
+    await mark(worker, { taskId: task.id, occurrence: "2026-10-08" });
+
+    const reopened = await mark(worker, {
+      taskId: task.id,
+      occurrence: "2026-10-08",
+      action: "reopen",
+    });
+
+    expect(reopened.completions.map(({ occurrence }) => occurrence)).toEqual(["2026-10-01"]);
+  });
+
+  test("reopens an Occurrence nobody completed without a change", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Таблетка Бьюику",
+      when: on("2026-10-01"),
+      recurrence: { frequency: "weekly", until: null },
+    });
+    const reopened = await mark(worker, {
+      taskId: task.id,
+      occurrence: "2026-10-08",
+      action: "reopen",
+    });
+
+    expect(reopened.completions).toEqual([]);
+  });
+
   test.each([
     ["no date", { action: "complete", body: { occurrence: null } }],
     ["a date between its Occurrences", { action: "complete", body: { occurrence: "2026-10-02" } }],
@@ -226,7 +258,7 @@ describe("completing a Task", () => {
       body: { date: "2026-10-10" },
     });
 
-    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "OCCURRENCE_NOT_FOUND" });
   });
 });
 
@@ -266,21 +298,42 @@ describe("Overdue", () => {
 });
 
 describe("an edit of a recurring Task", () => {
-  test("applies to every Occurrence and refuses Subtasks", async () => {
+  test("applies to every Occurrence", async () => {
     const worker = await startWithFamily();
     const task = await createTask(worker, {
       title: "Полить цветы",
       when: on("2026-10-05"),
-      recurrence: { frequency: "weekly", until: "2026-10-19" },
+      recurrence: { frequency: "weekly", until: null },
+    });
+
+    await send(worker, denis, {
+      method: "PUT",
+      path: `/api/tasks/${task.id}`,
+      body: {
+        title: "Полить цветы",
+        when: on("2026-10-06"),
+        recurrence: { frequency: "weekly", until: "2026-10-19" },
+      },
+    });
+
+    const { upcoming } = await feedOf(worker, denis);
+
+    expect(upcoming.map(({ date }) => date)).toEqual(["2026-10-06", "2026-10-13"]);
+  });
+
+  test("refuses Subtasks", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Полить цветы",
+      when: on("2026-10-05"),
+      recurrence: { frequency: "weekly", until: null },
     });
     const subtask = await send(worker, denis, {
       path: `/api/tasks/${task.id}/subtasks`,
       body: { title: "Кактус" },
     });
-    const { upcoming } = await feedOf(worker, denis);
 
     expect(await subtask.json()).toMatchObject({ code: "SUBTASKS_NOT_ALLOWED" });
-    expect(upcoming.map(({ date }) => date)).toEqual(["2026-10-05", "2026-10-12"]);
   });
 
   test("into a single one starts it afresh, without the Occurrences done before", async () => {
@@ -351,19 +404,23 @@ describe("Subtasks", () => {
 });
 
 describe("a Private Task", () => {
-  test("exists only for its owner and takes no one else as Assignee", async () => {
+  test("exists only for its owner", async () => {
     const worker = await startWithFamily();
 
     await createTask(worker, { title: "Подарок Асе", visibility: "private" });
 
-    const withAsya = await send(worker, denis, {
+    expect(await tasksOf(worker, asya)).toEqual([]);
+    expect(await tasksOf(worker, denis)).toHaveLength(1);
+  });
+
+  test("takes no one else as Assignee", async () => {
+    const worker = await startWithFamily();
+    const response = await send(worker, denis, {
       path: "/api/tasks",
       body: { title: "Сюрприз", visibility: "private", assigneeIds: [worker.asyaId] },
     });
 
-    expect(await tasksOf(worker, asya)).toEqual([]);
-    expect(await tasksOf(worker, denis)).toHaveLength(1);
-    expect(withAsya.status).toBe(400);
+    expect(await response.json()).toMatchObject({ code: "ASSIGNEE_NOT_ALLOWED" });
   });
 
   test("never comes back from Shared", async () => {

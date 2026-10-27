@@ -154,16 +154,14 @@ describe("a Task Reminder", () => {
     expect(textsTo(worker, asya)).toEqual(["📌 Позвонить маме · 5 октября"]);
   });
 
-  test("of a Pet-linked Task also offers to record it, and goes silent once the Pet is archived", async () => {
+  test("of a Pet-linked Task also offers to record it", async () => {
     const worker = await startWithFamily();
-    const buickId = await addBuick(worker);
-    const change: TaskChange = {
+    const task = await createTask(worker, {
       title: "Таблетка от глистов",
       when: { date: "2026-10-05", ...dateOnly },
       reminderOffsets: ["at-start"],
-      petId: buickId,
-    };
-    const task = await createTask(worker, change);
+      petId: await addBuick(worker),
+    });
 
     await tickAt(worker, "2026-10-05T06:00:00Z");
 
@@ -175,12 +173,22 @@ describe("a Task Reminder", () => {
     expect(buttonsOf(worker, denis).at(-1)).toMatchObject({
       url: expect.stringContaining(`startapp=rec_${task.id}_2026-10-05`),
     });
+  });
 
-    await createTask(worker, { ...change, when: { date: "2026-10-06", ...dateOnly } });
+  test("of an archived Pet's Task stays silent", async () => {
+    const worker = await startWithFamily();
+    const buickId = await addBuick(worker);
+
+    await createTask(worker, {
+      title: "Таблетка от глистов",
+      when: { date: "2026-10-06", ...dateOnly },
+      reminderOffsets: ["at-start"],
+      petId: buickId,
+    });
     await request(worker, denis, { method: "POST", path: `/api/pets/${buickId}/archive` });
     await tickAt(worker, "2026-10-06T06:00:00Z");
 
-    expect(textsTo(worker, denis)).toHaveLength(1);
+    expect(textsTo(worker, denis)).toEqual([]);
   });
 });
 
@@ -212,10 +220,34 @@ describe("«Готово»", () => {
 
     expect(textsTo(worker, denis).at(-1)).toBe("📌 Таблетка Бьюику · 12 октября");
   });
+
+  test.each([
+    ["the Task is deleted", "DELETE"],
+    ["the presser has left the Family", "LEAVE"],
+  ])("completes nothing once %s", async (_case, change) => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Полить цветы",
+      when: { date: "2026-10-05", ...dateOnly },
+      recipients: [worker.asyaId],
+      reminderOffsets: ["at-start"],
+    });
+
+    await tickAt(worker, "2026-10-04T23:00:00Z");
+    await (change === "DELETE"
+      ? request(worker, denis, { method: "DELETE", path: `/api/tasks/${task.id}` })
+      : request(worker, asya, { method: "POST", path: "/api/family/leave" }));
+    await press(worker, asya, "✅ Готово");
+
+    const tasks = await bodyOf<TaskList>(request(worker, denis, { path: "/api/tasks" }));
+
+    expect(tasks.flatMap(({ completions }) => completions)).toEqual([]);
+    expect(worker.bot.editedMessages()).toEqual([]);
+  });
 });
 
 describe("«Отложить»", () => {
-  test("brings a timed Task back in an hour and a date-only one in a day", async () => {
+  test("brings a timed Task back in an hour", async () => {
     const worker = await startWithFamily();
 
     await createTask(worker, {
@@ -232,6 +264,10 @@ describe("«Отложить»", () => {
     await tickAt(worker, "2026-10-05T12:00:00Z");
 
     expect(textsTo(worker, denis)).toHaveLength(2);
+  });
+
+  test("brings a date-only Task back in a day", async () => {
+    const worker = await startWithFamily();
 
     await createTask(worker, {
       title: "Купить корм",
@@ -242,10 +278,32 @@ describe("«Отложить»", () => {
     await press(worker, denis, "⏰ Отложить");
     await tickAt(worker, "2026-10-07T05:59:00Z");
 
-    expect(textsTo(worker, denis)).toHaveLength(3);
+    expect(textsTo(worker, denis)).toHaveLength(1);
 
     await tickAt(worker, "2026-10-07T06:00:00Z");
 
-    expect(textsTo(worker, denis)).toHaveLength(4);
+    expect(textsTo(worker, denis)).toHaveLength(2);
+  });
+
+  test("leaves an Occurrence already done alone and keeps the next one", async () => {
+    const worker = await startWithFamily();
+
+    await createTask(worker, {
+      title: "Таблетка Бьюику",
+      when: { date: "2026-10-05", ...dateOnly },
+      recurrence: { frequency: "weekly", until: null },
+      reminderOffsets: ["at-start"],
+    });
+    await tickAt(worker, "2026-10-05T06:00:00Z");
+    await press(worker, denis, "✅ Готово");
+    await press(worker, denis, "⏰ Отложить");
+    await tickAt(worker, "2026-10-06T06:00:00Z");
+    await tickAt(worker, "2026-10-12T06:00:00Z");
+
+    expect(textsTo(worker, denis)).toEqual([
+      "📌 Таблетка Бьюику · 5 октября",
+      "📌 Таблетка Бьюику · 12 октября",
+    ]);
+    expect(worker.bot.answeredCallbacks().at(-1)).toMatchObject({ text: "Уже сделано" });
   });
 });

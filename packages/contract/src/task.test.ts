@@ -27,6 +27,15 @@ describe("a Task change", () => {
     ).toBe(true);
   });
 
+  test.each([
+    ["Assignees", "assigneeIds"],
+    ["Recipients", "recipients"],
+  ])("refuses more %s than a household has", (_case, key) => {
+    const ids = Array.from({ length: 31 }, (_, index) => `member-${index}`);
+
+    expect(taskChange.safeParse({ title: "Вынести мусор", [key]: ids }).success).toBe(false);
+  });
+
   test("refuses more than three Reminders", () => {
     expect(
       taskChange.safeParse({

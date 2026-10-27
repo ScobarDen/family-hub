@@ -1,4 +1,4 @@
-import { encodeDeepLink, type ReminderOffset } from "@family-hub/contract";
+import { encodeRecordLink, type ReminderOffset } from "@family-hub/contract";
 import {
   daysAfter,
   firstOccurrenceFrom,
@@ -77,7 +77,7 @@ function taskSource(
   function recordUrlOf(occurrence: string): string | undefined {
     return chatLink === undefined
       ? undefined
-      : `${chatLink}?startapp=${encodeDeepLink({ kind: "rec", id: `${row.id}_${occurrence}` })}`;
+      : `${chatLink}?startapp=${encodeRecordLink({ taskId: row.id, occurrence })}`;
   }
 
   return {

@@ -68,6 +68,8 @@ export const notYoursText = "Это не ваше напоминание";
 
 export const notDoneText = "Не получилось отметить, откройте приложение";
 
+export const alreadyDoneText = "Уже сделано";
+
 export function openAppButton({ text, url }: { text: string; url: string }): InlineKeyboardMarkup {
   return { inline_keyboard: [[{ text, url }]] };
 }
