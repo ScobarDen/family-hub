@@ -1,6 +1,14 @@
 import { beforeAll, describe, expect, test } from "vite-plus/test";
 
-import type { FeedActivity, FeedPage, Goal, Pet, Photo, Plan } from "@family-hub/contract";
+import type {
+  FeedActivity,
+  FeedPage,
+  Goal,
+  Pet,
+  Photo,
+  Task,
+  TaskChange,
+} from "@family-hub/contract";
 
 import { addTo, createAlbum, startWithFamily, uploaded, type Worker } from "./album-fixtures.ts";
 import type { TelegramUserFixture } from "./init-data.ts";
@@ -27,23 +35,22 @@ async function pagesOf(worker: Worker, user: TelegramUserFixture): Promise<FeedA
   return pages;
 }
 
-async function addPlan(worker: Worker, user: TelegramUserFixture, change: Record<string, unknown>) {
+async function addTask(worker: Worker, user: TelegramUserFixture, change: Partial<TaskChange>) {
   const response = await request(worker, user, {
     method: "POST",
-    path: "/api/plans",
-    body: {
-      title: "Ремонт",
-      note: null,
-      dueDate: null,
-      reminder: null,
-      assigneeId: null,
-      visibility: "shared",
-      petId: null,
-      ...change,
-    },
+    path: "/api/tasks",
+    body: { title: "Ремонт", ...change },
   });
 
-  return response.json<Plan>();
+  return response.json<Task>();
+}
+
+async function complete(worker: Worker, user: TelegramUserFixture, taskId: string) {
+  await request(worker, user, {
+    method: "POST",
+    path: `/api/tasks/${taskId}/complete`,
+    body: { occurrence: null },
+  });
 }
 
 async function addGoal(worker: Worker, user: TelegramUserFixture, change: Record<string, unknown>) {
@@ -105,42 +112,43 @@ async function addWeights(worker: Worker, { petId, count }: { petId: string; cou
   }
 }
 
-async function completePlanWithSubplans(worker: Worker) {
-  const plan = await addPlan(worker, denis, {});
+async function completeTaskWithSubtasks(worker: Worker) {
+  const task = await addTask(worker, denis, {});
+  let tree = task;
 
   for (const title of ["Купить обои", "Поклеить"]) {
-    await request(worker, denis, {
+    const response = await request(worker, denis, {
       method: "POST",
-      path: `/api/plans/${plan.id}/subplans`,
-      body: { title, dueDate: null, assigneeId: null, reminder: null },
+      path: `/api/tasks/${task.id}/subtasks`,
+      body: { title },
     });
+
+    tree = await response.json<Task>();
   }
 
-  const listed = await request(worker, denis, { path: "/api/plans" });
-  const [tree] = await listed.json<Plan[]>();
-  const [first, last] = tree?.subplans ?? [];
+  const [first, last] = tree.subtasks;
 
   worker.clock.set("2026-10-04T10:05:00Z");
   await request(worker, asya, {
     method: "POST",
-    path: `/api/plans/${plan.id}/subplans/${first?.id}/complete`,
+    path: `/api/tasks/${task.id}/subtasks/${first?.id}/complete`,
   });
   worker.clock.set("2026-10-04T10:10:00Z");
   await request(worker, denis, {
     method: "POST",
-    path: `/api/plans/${plan.id}/subplans/${last?.id}/complete`,
+    path: `/api/tasks/${task.id}/subtasks/${last?.id}/complete`,
   });
 }
 
 async function addPrivateRecordsOfAsya(worker: Worker) {
-  const surprise = await addPlan(worker, asya, { title: "Сюрприз", visibility: "private" });
+  const surprise = await addTask(worker, asya, { title: "Сюрприз", visibility: "private" });
   const gift = await addGoal(worker, asya, { title: "Подарок Денису", visibility: "private" });
 
-  await request(worker, asya, { method: "POST", path: `/api/plans/${surprise.id}/complete` });
+  await complete(worker, asya, surprise.id);
   await contribute(worker, asya, gift.id);
 }
 
-// Two joins, three Plan lines, three Goal lines, two Upload Batches and 59 Care Entries; the newer
+// Two joins, three Task lines, three Goal lines, two Upload Batches and 59 Care Entries; the newer
 // batch is the 30th line for Денис, with 29 newer and 39 older ones.
 async function startWithHistory() {
   const worker = await startWithFamily();
@@ -148,10 +156,10 @@ async function startWithHistory() {
   const kazan = await createAlbum(worker, asya, "Казань");
   const vacation = await addGoal(worker, denis, {});
 
-  await completePlanWithSubplans(worker);
-  const food = await addPlan(worker, denis, { title: "Купить корм" });
+  await completeTaskWithSubtasks(worker);
+  const food = await addTask(worker, denis, { title: "Купить корм" });
 
-  await request(worker, asya, { method: "POST", path: `/api/plans/${food.id}/complete` });
+  await complete(worker, asya, food.id);
   await contribute(worker, denis, vacation.id);
   await contribute(worker, asya, vacation.id);
   await addTo(worker, kazan.id, [await uploaded(worker, { size: 1, takenAt: null })]);
@@ -232,11 +240,11 @@ describe("paging through a mixed Feed", () => {
 
     expect({
       care: countOf(activity, "care"),
-      plan: countOf(activity, "plan"),
+      task: countOf(activity, "task"),
       goal: countOf(activity, "goal"),
       upload: countOf(activity, "upload"),
       joined: countOf(activity, "joined"),
-    }).toEqual({ care: 59, plan: 3, goal: 3, upload: 2, joined: 2 });
+    }).toEqual({ care: 59, task: 3, goal: 3, upload: 2, joined: 2 });
   });
 
   test("keeps an Upload Batch on the page boundary in one place", () => {
@@ -244,7 +252,7 @@ describe("paging through a mixed Feed", () => {
     expect(denisPages[1]?.some(({ kind }) => kind === "upload")).toBe(false);
   });
 
-  test("hides another Member's Private Plan and Goal on every page", () => {
+  test("hides another Member's Private Task and Goal on every page", () => {
     const titles = denisPages.flat().map((item) => ("title" in item ? item.title : ""));
     const asyaTitles = asyaPages[0]?.map((item) => ("title" in item ? item.title : ""));
 

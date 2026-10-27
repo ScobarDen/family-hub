@@ -4,7 +4,6 @@ import { useEffect, type ReactNode } from "react";
 import type { AppModule } from "@family-hub/contract";
 
 import { Albums, type AlbumsScreenModel } from "@/modules/albums";
-import { Calendar, type CalendarModel } from "@/modules/calendar";
 import {
   CommandSheet,
   Microphone,
@@ -23,7 +22,6 @@ import {
 } from "@/modules/member-settings";
 import { PetTab, type PetTabModel } from "@/modules/pets";
 import type { PhotoStorageModel } from "@/modules/photo-storage";
-import { Plans, type PlansScreenModel } from "@/modules/plans";
 import { Recipes, type RecipesScreenModel } from "@/modules/recipes";
 import type { SessionModel } from "@/modules/session";
 import {
@@ -34,6 +32,7 @@ import {
   type TabBarMenuModel,
   type TabBarModel,
 } from "@/modules/tab-bar";
+import { Tasks, type TasksScreenModel } from "@/modules/tasks";
 import { Today, type TodayModel } from "@/modules/today";
 import { ModulePage } from "@/pages/module";
 import { ProfilePage } from "@/pages/profile";
@@ -53,12 +52,11 @@ export type HomeProps = {
   family: FamilyModel;
   invites: InvitesModel;
   pet: PetTabModel;
-  calendar: CalendarModel;
   feed: FeedModel;
   goals: GoalsScreenModel;
   albums: AlbumsScreenModel;
   recipes: RecipesScreenModel;
-  plans: PlansScreenModel;
+  tasks: TasksScreenModel;
   photoStorage: PhotoStorageModel;
   microphone: MicrophoneModel;
   commandSheet: CommandSheetModel;
@@ -82,8 +80,7 @@ const contents: Record<AppModule, (props: HomeProps) => ModuleContent> = {
     subtitle: feed.summary(),
     content: <Feed model={feed} />,
   }),
-  plans: ({ plans }) => ({ title: plans.title(), content: <Plans model={plans} /> }),
-  calendar: ({ calendar }) => ({ title: calendar.title(), content: <Calendar model={calendar} /> }),
+  tasks: ({ tasks }) => ({ title: tasks.title(), content: <Tasks model={tasks} /> }),
   pet: ({ pet }) => ({ title: pet.title(), content: <PetTab model={pet} /> }),
   goals: ({ goals }) => ({ title: goals.title(), content: <Goals model={goals} /> }),
   albums: ({ albums }) => ({ title: albums.title(), content: <Albums model={albums} /> }),

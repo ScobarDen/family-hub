@@ -26,18 +26,9 @@ import {
   createCareEntryRepo,
   createCareEntryService,
   createPetTile,
-  type CareEntryRepo,
   type CareEntryService,
 } from "@/modules/care-entry";
 import { commandRoute, createCommandRepo, createCommandService } from "@/modules/command";
-import {
-  createEventFeed,
-  createEventRepo,
-  createEventService,
-  createEventTile,
-  eventRoute,
-  type EventRepo,
-} from "@/modules/event";
 import {
   createFamilyFeed,
   createFamilyRepo,
@@ -73,15 +64,6 @@ import {
   photoStorageRoute,
 } from "@/modules/photo-storage";
 import {
-  createPlanFeed,
-  createPlanRepo,
-  createPlanService,
-  createPlanTile,
-  planRoute,
-  type PlanRepo,
-  type PlanService,
-} from "@/modules/plan";
-import {
   createRecipeFeed,
   createRecipeRepo,
   createRecipeService,
@@ -90,13 +72,19 @@ import {
 } from "@/modules/recipe";
 import {
   createDispatchRepo,
-  createReminderFeed,
-  createReminderRepo,
   createReminderService,
   createSourceRepo,
-  reminderRoute,
   type ReminderService,
 } from "@/modules/reminder";
+import {
+  createTaskFeed,
+  createTaskRepo,
+  createTaskService,
+  createTaskTile,
+  taskRoute,
+  type TaskRepo,
+  type TaskService,
+} from "@/modules/task";
 import { createTodayService, todayRoute } from "@/modules/today";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -150,6 +138,7 @@ function albumServiceOf(
       addNote: async (membership, { petId, photoIds }) => {
         await careEntries.create(membership, petId, {
           occurredAt: clock.now(),
+          repeatOn: null,
           note: null,
           details: { kind: "note" },
           photoIds,
@@ -157,20 +146,6 @@ function albumServiceOf(
       },
     },
   });
-}
-
-type FeedReads = {
-  plans: PlanRepo;
-  events: EventRepo;
-  entries: CareEntryRepo;
-};
-
-function readsOf(db: Db): FeedReads {
-  return {
-    plans: createPlanRepo(db),
-    events: createEventRepo(db),
-    entries: createCareEntryRepo(db),
-  };
 }
 
 function readOnce<Rows>(read: (...keys: string[]) => Promise<Rows>) {
@@ -186,59 +161,47 @@ function readOnce<Rows>(read: (...keys: string[]) => Promise<Rows>) {
   };
 }
 
-// The hub reads the same Plans, Events and Due Dates for its lists and for its tiles, once each.
-function sharedReadsOf(db: Db): FeedReads {
-  const { plans, events, entries } = readsOf(db);
+// The hub reads the same Tasks for its lists and for its tile, once.
+function sharedTasksOf(db: Db): TaskRepo {
+  const tasks = createTaskRepo(db);
 
-  return {
-    plans: { ...plans, listVisible: readOnce(plans.listVisible) },
-    events: { ...events, listVisible: readOnce(events.listVisible) },
-    entries: {
-      ...entries,
-      petsOf: readOnce(entries.petsOf),
-      allDueCandidates: readOnce(entries.allDueCandidates),
-    },
-  };
+  return { ...tasks, listVisible: readOnce(tasks.listVisible) };
 }
 
 function feedServiceOf(
   db: Db,
-  { links, clock, reads = readsOf(db) }: { links: PhotoLinks; clock: Clock; reads?: FeedReads },
+  {
+    links,
+    clock,
+    tasks = createTaskRepo(db),
+  }: { links: PhotoLinks; clock: Clock; tasks?: TaskRepo },
 ) {
-  const care = createCareFeed({ entries: reads.entries, links });
-  const plans = createPlanFeed({ plans: reads.plans });
+  const taskFeed = createTaskFeed({ tasks, links });
 
   return createFeedService({
     activity: [
-      care,
-      plans,
+      createCareFeed({ entries: createCareEntryRepo(db), links }),
+      taskFeed,
       createGoalFeed({ goals: createGoalRepo(db) }),
       createRecipeFeed({ recipes: createRecipeRepo(db), links }),
       createAlbumFeed({ albums: createAlbumRepo(db), links }),
       createFamilyFeed({ families: createFamilyRepo(db) }),
     ],
-    upcoming: [
-      care,
-      plans,
-      createEventFeed({ events: reads.events }),
-      createReminderFeed({ reminders: createReminderRepo(db), dispatch: createDispatchRepo(db) }),
-      createPetFeed({ pets: createPetRepo(db), links }),
-    ],
+    upcoming: [taskFeed, createPetFeed({ pets: createPetRepo(db), links })],
     clock,
   });
 }
 
 // Each section's tile comes from the module that owns it; the hub only merges them.
 function todayServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Clock }) {
-  const reads = sharedReadsOf(db);
+  const tasks = sharedTasksOf(db);
 
   return createTodayService({
-    feed: feedServiceOf(db, { links, clock, reads }),
+    feed: feedServiceOf(db, { links, clock, tasks }),
     clock,
     tiles: {
-      plans: createPlanTile({ plans: reads.plans }),
-      calendar: createEventTile({ events: reads.events }),
-      pet: createPetTile({ entries: reads.entries, links }),
+      tasks: createTaskTile({ tasks, links }),
+      pet: createPetTile({ entries: createCareEntryRepo(db), links }),
       goals: createGoalTile({ goals: createGoalRepo(db) }),
       albums: createAlbumTile({ albums: createAlbumRepo(db) }),
       recipes: createRecipeTile({ recipes: createRecipeRepo(db) }),
@@ -246,14 +209,19 @@ function todayServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Cl
   });
 }
 
-// A Plan's Reminder completes the Plan from the bot, and the Plan reschedules its Reminders;
-// the morning digest reads the Member's Feed.
+// «Готово» in the bot completes a Task Occurrence, and the Task reschedules its Reminders; the
+// morning digest reads the Member's Feed.
 function reminderServiceOf(
   db: Db,
-  { shared, feed, plans }: { shared: Shared; feed: FeedService; plans: () => PlanService },
+  { shared, feed, tasks }: { shared: Shared; feed: FeedService; tasks: () => TaskService },
 ) {
+  const taskRepo = createTaskRepo(db);
+
   return createReminderService({
-    plans: { completeById: async (membership, planId) => plans().completeById(membership, planId) },
+    tasks: {
+      findTree: taskRepo.findTree,
+      complete: async (membership, target) => tasks().complete(membership, target),
+    },
     digests: {
       contentOf: async (memberId) => {
         const membership = await shared.memberships.findByMemberId(memberId);
@@ -261,20 +229,19 @@ function reminderServiceOf(
         return membership && feed.digestOf(membership);
       },
     },
-    reminders: createReminderRepo(db),
     dispatch: createDispatchRepo(db),
     sources: createSourceRepo(db),
     ...shared,
   });
 }
 
-// The services of what a Family keeps: its Pets, journal, Plans, Events and Reminders.
+// The services of what a Family keeps: its Pets, journal and Tasks.
 function familyRecordServices(db: Db, { links, ...shared }: Records) {
   const { clock } = shared;
   const feed = feedServiceOf(db, { links, clock });
-  const reminders = reminderServiceOf(db, { shared, feed, plans: () => plans });
-  const plans = createPlanService({
-    plans: createPlanRepo(db),
+  const reminders = reminderServiceOf(db, { shared, feed, tasks: () => tasks });
+  const tasks = createTaskService({
+    tasks: createTaskRepo(db),
     ...shared,
     schedule: reminders,
     links,
@@ -282,16 +249,15 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
   const careEntries = createCareEntryService({
     entries: createCareEntryRepo(db),
     clock,
-    schedule: reminders,
+    followUps: tasks,
     links,
   });
 
   return {
     reminders,
-    plans,
+    tasks,
     careEntries,
     albums: albumServiceOf(db, { careEntries, links, clock }),
-    events: createEventService({ events: createEventRepo(db), clock, schedule: reminders }),
     pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders, links }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
     feed,
@@ -325,7 +291,7 @@ function commandServiceOf(
   }: {
     db: Db;
     shared: Shared;
-    records: Pick<AppServices, "reminders" | "events" | "careEntries">;
+    records: Pick<AppServices, "tasks" | "careEntries">;
   },
 ) {
   const perDay = Number(env.AI_COMMANDS_PER_FAMILY_DAY);
@@ -338,8 +304,7 @@ function commandServiceOf(
     speechModel: env.AI_SPEECH_MODEL,
     commandsPerFamilyDay:
       Number.isFinite(perDay) && perDay > 0 ? perDay : defaultCommandsPerFamilyDay,
-    reminders: records.reminders,
-    events: records.events,
+    tasks: records.tasks,
     careEntries: records.careEntries,
   });
 }
@@ -433,7 +398,7 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", memberRoute)
     .route("/", familyRoute)
     .route("/", petRoute)
-    .route("/", planRoute)
+    .route("/", taskRoute)
     .route("/", feedRoute)
     .route("/", todayRoute)
     .route("/", goalRoute)
@@ -442,8 +407,6 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", recipeRoute)
     .route("/", photoStorageRoute)
     .route("/", careEntryRoute)
-    .route("/", eventRoute)
-    .route("/", reminderRoute)
     .route("/", commandRoute);
 }
 

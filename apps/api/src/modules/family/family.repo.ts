@@ -2,14 +2,14 @@ import { and, eq, exists, gt, isNull, sql } from "drizzle-orm";
 
 import { bindFirst } from "@/common/bind";
 import {
-  events,
   families,
   familyMembers,
   goals,
   invites,
   members,
-  plans,
-  reminders,
+  taskAssignees,
+  taskRecipients,
+  tasks,
   type Db,
 } from "@/common/db";
 import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
@@ -20,7 +20,7 @@ type Departure = { familyId: string; memberId: string; now: number };
 
 type HandOver = { familyId: string; fromMemberId: string; toMemberId: string; now: number };
 
-type OwnedTable = typeof plans | typeof events | typeof reminders | typeof goals;
+type OwnedTable = typeof tasks | typeof goals;
 
 function familyOwnerOf(familyId: string) {
   return sql`(select ${families.ownerMemberId} from ${families} where ${families.id} = ${familyId})`;
@@ -44,19 +44,13 @@ async function depart(db: Db, departure: Departure): Promise<void> {
   const { familyId, memberId, now } = departure;
 
   await db.batch([
-    ...departFrom(db, plans, departure),
+    ...departFrom(db, tasks, departure),
     db
-      .update(plans)
-      .set({ assigneeMemberId: null, updatedAt: now })
-      .where(
-        and(
-          eq(plans.familyId, familyId),
-          eq(plans.assigneeMemberId, memberId),
-          isNull(plans.completedAt),
-        ),
-      ),
-    ...departFrom(db, events, departure),
-    ...departFrom(db, reminders, departure),
+      .delete(taskAssignees)
+      .where(and(eq(taskAssignees.familyId, familyId), eq(taskAssignees.memberId, memberId))),
+    db
+      .delete(taskRecipients)
+      .where(and(eq(taskRecipients.familyId, familyId), eq(taskRecipients.memberId, memberId))),
     ...departFrom(db, goals, departure),
     db
       .delete(familyMembers)

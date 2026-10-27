@@ -4,7 +4,9 @@ import { Care, CareSummary, ExpensesBlock, JournalBlock, PhotosBlock } from "../
 import type { PetTabModel } from "../vm/pet-tab.vm.ts";
 import { Pets } from "./pets.view.tsx";
 
-export const PetTab = reatomComponent(({ model: { pets, care } }: { model: PetTabModel }) => {
+export const PetTab = reatomComponent(({ model }: { model: PetTabModel }) => {
+  const { pets, care } = model;
+
   if (care.canGoBack()) {
     return <Care model={care} />;
   }
@@ -12,7 +14,7 @@ export const PetTab = reatomComponent(({ model: { pets, care } }: { model: PetTa
   return (
     <Pets
       model={pets}
-      summary={<CareSummary model={care} />}
+      summary={<CareSummary model={care} nextVisit={model.nextVisit()} />}
       onAddEntry={() => {
         care.add("note");
       }}

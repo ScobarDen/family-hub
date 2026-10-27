@@ -1,1 +1,1 @@
-export { byDueDate, upserted, withoutId } from "./records.lib.ts";
+export { upserted, withoutId } from "./records.lib.ts";

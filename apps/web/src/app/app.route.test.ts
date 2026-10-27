@@ -7,7 +7,7 @@ function startNavigation() {
   const button = { isAvailable: true, follow: () => noop };
   const navigation = reatomNavigation({
     base: "/family-hub/",
-    slots: () => ["plans", "calendar"],
+    slots: () => ["tasks", "recipes"],
     isSignedIn: () => true,
     telegram: { backButton: button, settingsButton: button },
   });
@@ -50,16 +50,16 @@ describe("the tab stacks", () => {
   test("switch to a slot's own tab when its section is opened from elsewhere", () => {
     const navigation = startNavigation();
 
-    navigation.openModule("plans");
+    navigation.openModule("tasks");
 
-    expect(navigation.screen()).toEqual({ kind: "module", module: "plans" });
-    expect(navigation.activeTab()).toBe("plans");
+    expect(navigation.screen()).toEqual({ kind: "module", module: "tasks" });
+    expect(navigation.activeTab()).toBe("tasks");
     expect(navigation.canGoBack()).toBe(false);
 
     navigation.openTab("sections");
-    navigation.open({ module: "calendar" });
+    navigation.open({ module: "recipes" });
 
-    expect(navigation.activeTab()).toBe("calendar");
+    expect(navigation.activeTab()).toBe("recipes");
     expect(navigation.canGoBack()).toBe(false);
   });
 
@@ -86,11 +86,11 @@ describe("the tab stacks", () => {
   test("go to a tab's root on a tap, the active tab included", () => {
     const navigation = startNavigation();
 
-    navigation.openTab("calendar");
+    navigation.openTab("recipes");
     navigation.openModule("goals");
-    navigation.openTab("calendar");
+    navigation.openTab("recipes");
 
-    expect(navigation.screen()).toEqual({ kind: "module", module: "calendar" });
+    expect(navigation.screen()).toEqual({ kind: "module", module: "recipes" });
     expect(navigation.canGoBack()).toBe(false);
   });
 
@@ -113,7 +113,7 @@ describe("the tab stacks", () => {
     let isFormOpen = true;
     const navigation = reatomNavigation({
       base: "/family-hub/",
-      slots: () => ["plans", "calendar"],
+      slots: () => ["tasks", "recipes"],
       isSignedIn: () => true,
       telegram: { backButton: button, settingsButton: button },
       nestedBack: {

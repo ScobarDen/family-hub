@@ -11,8 +11,7 @@ import {
   toListItem,
   type PetCard,
   type PetListItem,
-  type SoonSource,
-  type SoonTarget,
+  type PetTask,
   type Viewer,
 } from "../pets.lib.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -35,9 +34,9 @@ export type PetsDependencies = {
   telegram: Dialogs;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
-  soon: (petId: string) => SoonSource[];
-  onOpenSoon: (target: SoonTarget) => void;
-  onPlan: (petId: string) => void;
+  tasksOf: (petId: string) => PetTask[];
+  onOpenTask: (taskId: string) => void;
+  onAddTask: (petId: string) => void;
 };
 
 export type Navigation = {
@@ -61,11 +60,11 @@ const editingScreens: Record<Exclude<Editing, "profile">, PetsScreen> = {
 };
 
 function cardOf(dependencies: PetsDependencies, pet: Pet): PetsScreen {
-  const { pets, viewer, soon, isFamilyOwner } = dependencies;
+  const { pets, viewer, tasksOf, isFamilyOwner } = dependencies;
 
   return {
     kind: "card",
-    card: toCard(pet, viewer(), soon(pet.id)),
+    card: toCard(pet, viewer(), tasksOf(pet.id)),
     canDelete: isFamilyOwner() && pet.archivedAt !== null,
     archivedCount: pets.archived().length,
   };

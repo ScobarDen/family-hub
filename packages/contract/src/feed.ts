@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import { dueCareKind } from "./care-entry.ts";
 import { profilePicture } from "./member.ts";
 import { photo } from "./photo.ts";
+import { person } from "./task.ts";
 
 export const feedPageSize = 30;
 
@@ -18,27 +18,18 @@ const dated = { key: z.string(), title: z.string(), date: z.iso.date() };
 // The thumbnail of the Pet Avatar, so a Pet's line shows whose it is at a glance.
 const petPicture = z.string().nullable();
 
+// One Occurrence of a Task; Overdue ones come only from Tasks with Assignees.
 export const feedUpcoming = z.discriminatedUnion("kind", [
   z.object({
-    kind: z.literal("event"),
+    kind: z.literal("task"),
     ...dated,
     time: z.string().nullable(),
-    eventId: z.string(),
-  }),
-  z.object({ kind: z.literal("reminder"), ...dated, time: z.string(), reminderId: z.string() }),
-  z.object({
-    kind: z.literal("plan"),
-    ...dated,
-    planId: z.string(),
-    subplanId: z.string().nullable(),
-  }),
-  z.object({
-    kind: z.literal("due"),
-    ...dated,
-    careKind: dueCareKind,
-    petId: z.string(),
+    taskId: z.string(),
+    occurrence: z.iso.date(),
+    subtaskId: z.string().nullable(),
+    petId: z.string().nullable(),
     petPicture,
-    entryId: z.string(),
+    assignees: z.array(person),
   }),
   z.object({ kind: z.literal("birthday"), ...dated, petId: z.string(), petPicture }),
 ]);
@@ -71,7 +62,7 @@ const feedActivity = z.discriminatedUnion("kind", [
     albumId: z.string(),
     albumTitle: z.string(),
   }),
-  z.object({ kind: z.literal("plan"), ...done, title: z.string(), planId: z.string() }),
+  z.object({ kind: z.literal("task"), ...done, title: z.string(), taskId: z.string() }),
   z.object({ kind: z.literal("goal"), ...done, title: z.string(), goalId: z.string() }),
   z.object({
     kind: z.literal("cooked"),

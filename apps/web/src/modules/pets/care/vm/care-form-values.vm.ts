@@ -3,6 +3,7 @@ import { Temporal } from "temporal-polyfill";
 import {
   careEntryChange,
   careKind,
+  repeatableCareKind,
   type CareDetails,
   type CareEntry,
   type CareEntryChange,
@@ -11,6 +12,8 @@ import {
   type CommandPhrase,
 } from "@family-hub/contract";
 import { momentOfPhrase } from "@family-hub/recurrence";
+
+import { careKindOfTask } from "../care.lib.ts";
 
 export const emptyEntry = {
   kind: "note",
@@ -21,7 +24,7 @@ export const emptyEntry = {
   reason: "",
   costAmount: "",
   costCategory: "vet",
-  dueDate: "",
+  repeatOn: "",
   weightKg: "",
   amount: "",
   category: "food",
@@ -40,7 +43,7 @@ function costOf(values: EntryValues) {
 }
 
 function medicalOf(values: EntryValues) {
-  return { cost: costOf(values), dueDate: textOrNull(values.dueDate) };
+  return { cost: costOf(values) };
 }
 
 const detailsBuilders: Record<CareKind, (values: EntryValues) => unknown> = {
@@ -73,6 +76,10 @@ export function changeOf(values: EntryValues, timeZone: string): CareEntryChange
       .epochMilliseconds,
     note: values.note,
     details: detailsOf(values),
+    // The field shows only for a repeatable kind, so a date left from another kind is not sent.
+    repeatOn: repeatableCareKind.safeParse(values.kind).success
+      ? textOrNull(values.repeatOn)
+      : null,
   });
 }
 
@@ -105,7 +112,6 @@ function kindValuesOf(details: CareDetails): Partial<EntryValues> {
     ...medicalValuesOf(details),
     costAmount: details.cost === null ? "" : String(details.cost.amount),
     costCategory: details.cost?.category ?? "vet",
-    dueDate: details.dueDate ?? "",
   };
 }
 
@@ -135,6 +141,20 @@ export function valuesOfDraft(
     kind: draft.details?.kind ?? "note",
     occurredAt: wallClockOf(momentOfPhrase(draft, phrase), timeZone),
     note: draft.note ?? "",
+    repeatOn: draft.repeatOn ?? "",
     ...(draft.details === null ? {} : kindValuesOf(draft.details)),
   };
+}
+
+// Any Task title that names no care kind becomes a note.
+export function valuesOfTask(title: string): Partial<EntryValues> {
+  const care = careKindOfTask(title);
+
+  if (care === undefined) {
+    return { kind: "note", note: title };
+  }
+
+  return care.kind === "vet_visit"
+    ? { kind: care.kind, reason: care.subject }
+    : { kind: care.kind, name: care.subject };
 }

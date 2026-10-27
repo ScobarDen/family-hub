@@ -3,11 +3,13 @@ import { reatomComponent } from "@reatom/react";
 import type { CareModel } from "../vm/care.vm.ts";
 
 // The facts a Member checks most often lead the pet card.
-export const CareSummary = reatomComponent(({ model }: { model: CareModel }) => {
-  const { weight, vetVisit, monthExpenses } = model.summary();
+type CareSummaryProps = { model: CareModel; nextVisit: string | undefined };
+
+export const CareSummary = reatomComponent(({ model, nextVisit }: CareSummaryProps) => {
+  const { weight, monthExpenses } = model.summary();
   const facts = [
     { label: "Вес", value: weight ?? "—" },
-    { label: "Следующий визит", value: vetVisit ?? "—" },
+    { label: "Следующий визит", value: nextVisit ?? "—" },
     { label: "Траты за месяц", value: monthExpenses },
   ];
 

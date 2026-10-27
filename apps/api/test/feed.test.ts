@@ -1,19 +1,19 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type { FeedPage, Pet, Plan } from "@family-hub/contract";
+import type { FeedPage, Pet, Task, TaskChange } from "@family-hub/contract";
 
 import { type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
 async function startWithFamily() {
   const worker = startWorker({ now: "2026-10-01T09:00:00Z" });
-  const { familyId } = await worker.addFamily({
+  const { familyId, ownerId } = await worker.addFamily({
     name: "Гущины",
     owner: { telegramId: denis.id, name: "Денис" },
   });
 
   worker.clock.set("2026-10-01T09:01:00Z");
-  await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
+  const asyaId = await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
 
   for (const user of [denis, asya]) {
     await request(worker, user, {
@@ -23,10 +23,20 @@ async function startWithFamily() {
     });
   }
 
-  return worker;
+  return Object.assign(worker, { denisId: ownerId, asyaId });
 }
 
 type Worker = Awaited<ReturnType<typeof startWithFamily>>;
+
+function on(date: string, time: string | null = null): TaskChange["when"] {
+  return {
+    date,
+    time,
+    timeZone: time === null ? null : "Europe/Moscow",
+    endDate: null,
+    endTime: null,
+  };
+}
 
 async function feedOf(worker: Worker, user: TelegramUserFixture, before?: string) {
   const query = before === undefined ? "" : `?before=${encodeURIComponent(before)}`;
@@ -35,23 +45,26 @@ async function feedOf(worker: Worker, user: TelegramUserFixture, before?: string
   return response.json<FeedPage>();
 }
 
-async function addPlan(worker: Worker, user: TelegramUserFixture, change: Record<string, unknown>) {
+async function addTask(worker: Worker, user: TelegramUserFixture, change: Partial<TaskChange>) {
   const response = await request(worker, user, {
     method: "POST",
-    path: "/api/plans",
-    body: {
-      title: "Ремонт",
-      note: null,
-      dueDate: null,
-      reminder: null,
-      assigneeId: null,
-      visibility: "shared",
-      petId: null,
-      ...change,
-    },
+    path: "/api/tasks",
+    body: { title: "Ремонт", ...change },
   });
 
-  return response.json<Plan>();
+  return response.json<Task>();
+}
+
+async function complete(
+  worker: Worker,
+  user: TelegramUserFixture,
+  { taskId, occurrence = null }: { taskId: string; occurrence?: string | null },
+) {
+  await request(worker, user, {
+    method: "POST",
+    path: `/api/tasks/${taskId}/complete`,
+    body: { occurrence },
+  });
 }
 
 async function addBuick(worker: Worker) {
@@ -80,25 +93,6 @@ async function addEntry(worker: Worker, petId: string, details: Record<string, u
   });
 }
 
-async function addEvent(
-  worker: Worker,
-  user: TelegramUserFixture,
-  change: Record<string, unknown>,
-) {
-  await request(worker, user, {
-    method: "POST",
-    path: "/api/events",
-    body: {
-      note: null,
-      end: null,
-      recurrence: null,
-      visibility: "shared",
-      reminderOffsets: [],
-      ...change,
-    },
-  });
-}
-
 function titles(items: Array<{ title: string }>) {
   return items.map(({ title }) => title);
 }
@@ -108,102 +102,97 @@ describe("the Feed", () => {
     const worker = await startWithFamily();
     const buick = await addBuick(worker);
 
-    await addEntry(worker, buick.id, {
-      kind: "treatment",
-      target: "Клещи",
-      product: null,
-      cost: null,
-      dueDate: "2026-09-25",
+    await addTask(worker, asya, {
+      title: "Обработка от клещей",
+      when: on("2026-09-25"),
+      assigneeIds: [worker.asyaId],
+      petId: buick.id,
     });
-    await addEntry(worker, buick.id, {
-      kind: "vaccination",
-      vaccine: "Бешенство",
-      cost: null,
-      dueDate: "2026-10-10",
+    await addTask(worker, asya, {
+      title: "Прививка от бешенства",
+      when: on("2026-10-10"),
+      assigneeIds: [worker.asyaId],
+      petId: buick.id,
     });
-    await addPlan(worker, denis, { title: "Отправить документы", dueDate: "2026-09-28" });
-    await addEvent(worker, denis, {
-      title: "Созвон",
-      start: { date: "2026-10-03", time: "19:00", timeZone: "Europe/Moscow" },
+    await addTask(worker, denis, {
+      title: "Отправить документы",
+      when: on("2026-09-28"),
+      assigneeIds: [worker.denisId],
     });
-    await addEvent(worker, denis, {
-      title: "Через месяц",
-      start: { date: "2026-10-30", time: null, timeZone: null },
-    });
-    await request(worker, asya, {
-      method: "POST",
-      path: "/api/reminders",
-      body: {
-        text: "Оплатить интернет",
-        start: { date: "2026-10-02", time: "10:00", timeZone: "Europe/Moscow" },
-        recurrence: null,
-        visibility: "shared",
-        recipientIds: null,
-      },
+    await addTask(worker, denis, { title: "ДР бабушки", when: on("2026-09-29") });
+    await addTask(worker, denis, { title: "Созвон", when: on("2026-10-03", "19:00") });
+    await addTask(worker, denis, { title: "Через месяц", when: on("2026-10-30") });
+    await addTask(worker, asya, {
+      title: "Оплатить интернет",
+      when: on("2026-10-02", "10:00"),
+      reminderOffsets: ["at-start"],
     });
 
     const feed = await feedOf(worker, denis);
 
-    expect(titles(feed.overdue)).toEqual(["Обработка: Клещи — Бьюик", "Отправить документы"]);
+    expect(titles(feed.overdue)).toEqual(["Обработка от клещей — Бьюик", "Отправить документы"]);
     expect(feed.upcoming.map(({ title, date }) => [title, date])).toEqual([
       ["Оплатить интернет", "2026-10-02"],
       ["Созвон", "2026-10-03"],
       ["День рождения: Бьюик", "2026-10-05"],
-      ["Прививка: Бешенство — Бьюик", "2026-10-10"],
+      ["Прививка от бешенства — Бьюик", "2026-10-10"],
     ]);
   });
 
-  test("names a Due Date as the bot's reminder of it does", async () => {
+  test("shows a Pet's Task with its Pet and Assignees", async () => {
     const worker = await startWithFamily();
     const buick = await addBuick(worker);
-
-    await addEntry(worker, buick.id, {
-      kind: "vet_visit",
-      reason: "Хромает",
-      cost: null,
-      dueDate: "2026-10-08",
+    const task = await addTask(worker, asya, {
+      title: "Визит к ветеринару",
+      when: on("2026-10-08"),
+      assigneeIds: [worker.asyaId],
+      petId: buick.id,
     });
-    worker.clock.set("2026-10-08T06:00:00Z");
-    await worker.tick();
 
     const feed = await feedOf(worker, denis);
-    const reminder = worker.bot.sentMessages().find(({ chat_id: chatId }) => chatId === denis.id);
+    const line = feed.upcoming.find(({ kind }) => kind === "task");
 
-    expect(titles(feed.upcoming)).toEqual(["Визит к ветеринару — Бьюик"]);
-    expect(reminder?.text).toBe("💉 Визит к ветеринару — Бьюик: срок 8 октября");
+    expect(line).toMatchObject({
+      taskId: task.id,
+      occurrence: "2026-10-08",
+      petId: buick.id,
+      assignees: [{ id: worker.asyaId, name: "Ася" }],
+    });
   });
 
-  test("shows no Due Dates of an archived Pet", async () => {
+  test("shows neither the birthday nor the Overdue Tasks of an archived Pet", async () => {
     const worker = await startWithFamily();
     const buick = await addBuick(worker);
 
-    await addEntry(worker, buick.id, {
-      kind: "vaccination",
-      vaccine: "Бешенство",
-      cost: null,
-      dueDate: "2026-09-25",
+    await addTask(worker, asya, {
+      title: "Прививка",
+      when: on("2026-10-01"),
+      assigneeIds: [worker.asyaId],
+      petId: buick.id,
     });
     await request(worker, asya, { method: "POST", path: `/api/pets/${buick.id}/archive` });
 
     const feed = await feedOf(worker, denis);
 
+    expect(feed.upcoming).toEqual([]);
     expect(feed.overdue).toEqual([]);
   });
 
-  test("keeps Private records for their owner", async () => {
+  test("keeps Private Tasks for their owner", async () => {
     const worker = await startWithFamily();
-    const surprise = await addPlan(worker, asya, {
+    const surprise = await addTask(worker, asya, {
       title: "Сюрприз",
-      dueDate: "2026-10-05",
+      when: on("2026-10-05"),
+      assigneeIds: [worker.asyaId],
       visibility: "private",
     });
 
-    await addEvent(worker, asya, {
+    await addTask(worker, asya, {
       title: "Подарок",
-      start: { date: "2026-10-04", time: null, timeZone: null },
+      when: on("2026-10-04"),
       visibility: "private",
     });
-    await request(worker, asya, { method: "POST", path: `/api/plans/${surprise.id}/complete` });
+    await complete(worker, asya, { taskId: surprise.id, occurrence: "2026-10-05" });
 
     const denisFeed = await feedOf(worker, denis);
     const asyaFeed = await feedOf(worker, asya);
@@ -212,7 +201,7 @@ describe("the Feed", () => {
     expect(denisFeed.activity.map(({ kind }) => kind)).toEqual(["joined", "joined"]);
     expect(titles(asyaFeed.upcoming)).toEqual(["Подарок"]);
     expect(asyaFeed.activity[0]).toMatchObject({
-      kind: "plan",
+      kind: "task",
       title: "Сюрприз",
       memberName: "Ася",
     });
@@ -222,9 +211,9 @@ describe("the Feed", () => {
     const worker = await startWithFamily();
     const asyaPictured = { ...asya, photo_url: "https://t.me/i/userpic/320/asya.jpg" };
 
-    const plan = await addPlan(worker, asyaPictured, {});
+    const task = await addTask(worker, asyaPictured, {});
 
-    await request(worker, asyaPictured, { method: "POST", path: `/api/plans/${plan.id}/complete` });
+    await complete(worker, asyaPictured, { taskId: task.id });
 
     const feed = await feedOf(worker, denis);
 
@@ -237,39 +226,62 @@ describe("the Feed", () => {
     ]);
   });
 
-  test("shows a Plan completed by its last Subplan as one line", async () => {
+  test("shows one line per completed Occurrence of a recurring Task", async () => {
     const worker = await startWithFamily();
-    const plan = await addPlan(worker, denis, {});
+    const task = await addTask(worker, denis, {
+      title: "Таблетка Бьюику",
+      when: on("2026-09-24"),
+      recurrence: { frequency: "weekly", until: null },
+      assigneeIds: [worker.asyaId],
+    });
+
+    worker.clock.set("2026-10-01T10:00:00Z");
+    await complete(worker, asya, { taskId: task.id, occurrence: "2026-09-24" });
+    worker.clock.set("2026-10-01T11:00:00Z");
+    await complete(worker, asya, { taskId: task.id, occurrence: "2026-10-01" });
+
+    const feed = await feedOf(worker, denis);
+
+    expect(feed.activity.filter(({ kind }) => kind === "task").map(({ at }) => at)).toEqual([
+      Date.parse("2026-10-01T11:00:00Z"),
+      Date.parse("2026-10-01T10:00:00Z"),
+    ]);
+  });
+
+  test("shows a Task completed by its last Subtask as one line", async () => {
+    const worker = await startWithFamily();
+    const task = await addTask(worker, denis, {});
+    let withSubtasks = task;
 
     for (const title of ["Купить обои", "Поклеить"]) {
-      await request(worker, denis, {
+      const response = await request(worker, denis, {
         method: "POST",
-        path: `/api/plans/${plan.id}/subplans`,
-        body: { title, dueDate: null, assigneeId: null, reminder: null },
+        path: `/api/tasks/${task.id}/subtasks`,
+        body: { title },
       });
+
+      withSubtasks = await response.json<Task>();
     }
 
-    const listed = await request(worker, denis, { path: "/api/plans" });
-    const tree = await listed.json<Plan[]>();
-    const [first, last] = tree[0]?.subplans ?? [];
+    const [first, last] = withSubtasks.subtasks;
 
     worker.clock.set("2026-10-01T10:00:00Z");
     await request(worker, asya, {
       method: "POST",
-      path: `/api/plans/${plan.id}/subplans/${first?.id}/complete`,
+      path: `/api/tasks/${task.id}/subtasks/${first?.id}/complete`,
     });
     worker.clock.set("2026-10-01T11:00:00Z");
     await request(worker, denis, {
       method: "POST",
-      path: `/api/plans/${plan.id}/subplans/${last?.id}/complete`,
+      path: `/api/tasks/${task.id}/subtasks/${last?.id}/complete`,
     });
 
     const feed = await feedOf(worker, denis);
 
     expect(
       feed.activity
-        .filter(({ kind }) => kind === "plan")
-        .map((item) => [item.kind === "plan" && item.title, item.memberName]),
+        .filter(({ kind }) => kind === "task")
+        .map((item) => [item.kind === "task" && item.title, item.memberName]),
     ).toEqual([
       ["Ремонт", "Денис"],
       ["Ремонт: Купить обои", "Ася"],

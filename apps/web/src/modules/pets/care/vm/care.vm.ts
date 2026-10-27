@@ -2,7 +2,7 @@ import { action, atom, type Atom, computed, withAbort, withAsync, wrap } from "@
 
 import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hub/contract";
 
-import { formatDay, formatNearDate } from "@/common/format-date";
+import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
@@ -49,11 +49,8 @@ export type CareDependencies = LiveVersion & {
 // What the pet card's summary leads with; the month reads as nothing spent until it arrives.
 export type CareSummary = {
   weight: string | undefined;
-  vetVisit: string | undefined;
   monthExpenses: string;
 };
-
-export type DueSource = { id: string; title: string; dueDate: string; kind: "due" };
 
 export type YearExpenses = ExpensesView & {
   entries: Array<{ id: string; title: string; subtitle: string; amount: string }>;
@@ -167,17 +164,8 @@ function reatomOpening({ api, data, form, screen, onOpenPet }: Sources) {
     form.startEditing(entry);
     screen.set("form");
   }, "care.openEntryOfPet").extend(withAbort());
-  const followUp = action(async (entryId: string) => {
-    const entry = await wrap(entryOf(entryId));
 
-    form.startFollowUp(entry);
-    screen.set("form");
-  }, "care.followUpEntry").extend(withAbort());
-
-  return {
-    openEntry: detached(openEntry, "care.openEntry"),
-    followUp: detached(followUp, "care.followUp"),
-  };
+  return { openEntry: detached(openEntry, "care.openEntry") };
 }
 
 function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRange>) {
@@ -186,6 +174,11 @@ function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRa
       form.startCreating(kind);
       screen.set("form");
     }, "care.add"),
+    // «Записать» on a Pet's Task opens the entry filled in from what the Task was.
+    addFromTask: action((taskTitle: string) => {
+      form.startFromTask(taskTitle);
+      screen.set("form");
+    }, "care.addFromTask"),
     edit: action((entryId: string) => {
       const entry = data.entries.data()?.find(({ id }) => id === entryId);
 
@@ -218,39 +211,23 @@ function reatomTitle(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
   }, "care.title");
 }
 
-// The pet card shows the open Due Dates in «Скоро»; this module stays their only source.
-function reatomDueSources(data: CareData) {
+function reatomSummary(views: {
+  weightSummary: () => WeightSummary | undefined;
+  month: () => ExpensesView;
+}) {
   return computed(
-    (): DueSource[] =>
-      (data.dueDates.data() ?? []).map(({ entryId, label, dueDate }) => ({
-        id: entryId,
-        title: label,
-        dueDate,
-        kind: "due",
-      })),
-    "care.dueSources",
-  );
-}
-
-function reatomSummary(
-  { data, today }: Pick<Sources, "data" | "today">,
-  views: { weightSummary: () => WeightSummary | undefined; month: () => ExpensesView },
-) {
-  return computed((): CareSummary => {
-    const visit = (data.dueDates.data() ?? []).find(({ kind }) => kind === "vet_visit");
-
-    return {
+    (): CareSummary => ({
       weight: views.weightSummary()?.latest,
-      vetVisit: visit === undefined ? undefined : formatNearDate(visit.dueDate, today()),
       monthExpenses: views.month().total,
-    };
-  }, "care.summary");
+    }),
+    "care.summary",
+  );
 }
 
 function reatomSummarizedViews(sources: Sources, weightRange: Atom<WeightRange>) {
   const views = reatomViews(sources, weightRange);
 
-  return { ...views, summary: reatomSummary(sources, views) };
+  return { ...views, summary: reatomSummary(views) };
 }
 
 function reatomScreen(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
@@ -287,7 +264,6 @@ export function reatomCare(dependencies: CareDependencies) {
     title: reatomTitle(screen, form),
     canGoBack: computed(() => screen() !== "blocks", "care.canGoBack"),
     isReadOnly: readOnly(dependencies.isReadOnly),
-    dueSources: reatomDueSources(data),
     failure: reatomFailure(remove, {
       message: "Не получилось удалить запись. Попробуйте ещё раз.",
       name: "care.failure",

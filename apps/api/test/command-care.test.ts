@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type { CareEntryList, DueDateList, ExpenseSummary } from "@family-hub/contract";
+import type { CareEntryList, ExpenseSummary } from "@family-hub/contract";
 
 import {
   buttonsOf,
@@ -11,6 +11,7 @@ import {
   request,
   say,
   startWithFamily,
+  tasks,
   type Worker,
 } from "./command-fixtures.ts";
 
@@ -38,18 +39,18 @@ async function addPet(worker: Worker, name: string) {
   return id;
 }
 
-function rabiesFor(petId: string | null, dueDate = "2027-10-13") {
+function rabiesFor(petId: string | null) {
   return {
     outcome: "care_entry",
     petId,
     date: null,
     time: null,
+    repeatOn: "2027-10-13",
     note: null,
     details: {
       kind: "vaccination",
       vaccine: "Бешенство",
       cost: { amount: 1800, category: "vet" },
-      dueDate,
     },
     missing: [],
     ambiguities: [],
@@ -62,12 +63,6 @@ async function journalOf(worker: Worker, petId: string) {
   return response.json<CareEntryList>();
 }
 
-async function dueDatesOf(worker: Worker, petId: string) {
-  const response = await request(worker, denis, { path: `/api/pets/${petId}/due-dates` });
-
-  return response.json<DueDateList>();
-}
-
 async function expensesOf(worker: Worker, petId: string) {
   const response = await request(worker, denis, {
     path: `/api/pets/${petId}/expenses?from=${october.from}&to=${october.to}`,
@@ -77,7 +72,7 @@ async function expensesOf(worker: Worker, petId: string) {
 }
 
 describe("a Care Entry command to the bot", () => {
-  test("records a vaccination with its cost and Due Date in the journal, the expenses and «Скоро»", async () => {
+  test("records a vaccination with its cost in the journal and the expenses, and its repeat as the author's Task", async () => {
     const worker = await startWithFamily();
     const buickId = await addPet(worker, "Бьюик");
 
@@ -91,7 +86,7 @@ describe("a Care Entry command to the bot", () => {
     const preview = lastTo(worker, denis);
 
     expect(preview?.text).toMatch(
-      /^💉 Прививка «Бешенство» · Бьюик · сейчас · 1\s800\s₽ · следующий срок ср 13 окт/u,
+      /^💉 Прививка «Бешенство» · Бьюик · сейчас · 1\s800\s₽ · повторить ср 13 окт/u,
     );
     expect(preview?.text).toContain("Фото можно приложить в «Изменить».");
 
@@ -100,14 +95,19 @@ describe("a Care Entry command to the bot", () => {
     expect(await journalOf(worker, buickId)).toMatchObject([
       {
         occurredAt: worker.clock.now(),
-        details: { kind: "vaccination", vaccine: "Бешенство", dueDate: "2027-10-13" },
+        details: { kind: "vaccination", vaccine: "Бешенство" },
       },
     ]);
     const expenses = await expensesOf(worker, buickId);
 
     expect(expenses.byCategory).toEqual([{ category: "vet", amount: 1800 }]);
-    expect(await dueDatesOf(worker, buickId)).toMatchObject([
-      { label: "Прививка: Бешенство", dueDate: "2027-10-13" },
+    expect(await tasks(worker, denis)).toMatchObject([
+      {
+        title: "Прививка: Бешенство",
+        when: { date: "2027-10-13", time: null },
+        assignees: [{ id: worker.denisId }],
+        pet: { id: buickId, name: "Бьюик" },
+      },
     ]);
   });
 
@@ -123,7 +123,7 @@ describe("a Care Entry command to the bot", () => {
 
     const preview = lastTo(worker, denis);
 
-    expect(preview?.text).toContain("Для какого питомца запись?");
+    expect(preview?.text).toContain("Для какого питомца?");
     expect(buttonsOf(preview).map(({ text }) => text)).toEqual(["Бьюик", "Мурка", "Изменить", "×"]);
 
     await press(worker, denis, dataOf(preview, "Мурка"));

@@ -1,17 +1,18 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 import { describe, expect, test } from "vite-plus/test";
 
+import type { TaskChange } from "@family-hub/contract";
+
 import { signInitData, type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
 async function startWithFamily() {
   const worker = startWorker({ now: "2026-10-01T09:00:00Z" });
-  const { familyId } = await worker.addFamily({
+  const { familyId, ownerId } = await worker.addFamily({
     name: "Гущины",
     owner: { telegramId: denis.id, name: "Денис" },
   });
-
-  await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
+  const asyaId = await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
 
   for (const [user, timeZone] of [
     [denis, "Europe/Moscow"],
@@ -24,7 +25,7 @@ async function startWithFamily() {
     });
   }
 
-  return worker;
+  return Object.assign(worker, { denisId: ownerId, asyaId });
 }
 
 type Worker = Awaited<ReturnType<typeof startWithFamily>>;
@@ -40,28 +41,25 @@ async function tickAt(worker: Worker, moment: string) {
   await worker.tick();
 }
 
-async function addPlan(
-  worker: Worker,
-  user: TelegramUserFixture,
-  {
+async function addTask(worker: Worker, user: TelegramUserFixture, change: TaskChange) {
+  await request(worker, user, { method: "POST", path: "/api/tasks", body: change });
+}
+
+function on(date: string, time: string | null = null): TaskChange["when"] {
+  return {
+    date,
+    time,
+    timeZone: time === null ? null : "Europe/Moscow",
+    endDate: null,
+    endTime: null,
+  };
+}
+
+async function addOverdue(worker: Worker, title = "Отправить документы") {
+  await addTask(worker, denis, {
     title,
-    dueDate,
-    visibility = "shared",
-  }: { title: string; dueDate: string; visibility?: string },
-) {
-  await request(worker, user, {
-    method: "POST",
-    path: "/api/plans",
-    body: {
-      title,
-      note: null,
-      dueDate,
-      reminder: null,
-      assigneeId: null,
-      visibility,
-      petId: null,
-      albumId: null,
-    },
+    when: on("2026-09-28"),
+    assigneeIds: [worker.denisId],
   });
 }
 
@@ -69,20 +67,9 @@ describe("the morning digest", () => {
   test("comes at 09:00 on each Member's own clock with what is overdue and today", async () => {
     const worker = await startWithFamily();
 
-    await addPlan(worker, denis, { title: "Отправить документы", dueDate: "2026-09-28" });
-    await request(worker, denis, {
-      method: "POST",
-      path: "/api/events",
-      body: {
-        title: "Созвон",
-        note: null,
-        start: { date: "2026-10-02", time: "19:00", timeZone: "Europe/Moscow" },
-        end: null,
-        recurrence: null,
-        visibility: "shared",
-        reminderOffsets: [],
-      },
-    });
+    await addOverdue(worker);
+    await addTask(worker, denis, { title: "ДР бабушки", when: on("2026-09-30") });
+    await addTask(worker, denis, { title: "Созвон", when: on("2026-10-02", "19:00") });
     await tickAt(worker, "2026-10-02T05:59:00Z");
 
     expect(digestsTo(worker, denis)).toEqual([]);
@@ -107,7 +94,7 @@ describe("the morning digest", () => {
   test("keeps to the Member's time and stops once turned off", async () => {
     const worker = await startWithFamily();
 
-    await addPlan(worker, denis, { title: "Отправить документы", dueDate: "2026-09-28" });
+    await addOverdue(worker);
     await request(worker, denis, {
       method: "PUT",
       path: "/api/me/digest",
@@ -131,10 +118,7 @@ describe("the morning digest", () => {
     const worker = await startWithFamily();
 
     for (let index = 1; index <= 12; index += 1) {
-      await addPlan(worker, denis, {
-        title: `${"Разобрать антресоль ".repeat(9)}${index}`,
-        dueDate: "2026-09-28",
-      });
+      await addOverdue(worker, `${"Разобрать антресоль ".repeat(9)}${index}`);
     }
 
     await tickAt(worker, "2026-10-02T06:00:00Z");
@@ -153,12 +137,12 @@ describe("the morning digest", () => {
     expect(digestsTo(worker, denis)).toEqual([]);
   });
 
-  test("shows a Private Plan only to its owner", async () => {
+  test("shows a Private Task only to its owner", async () => {
     const worker = await startWithFamily();
 
-    await addPlan(worker, asya, {
+    await addTask(worker, asya, {
       title: "Подарок Денису",
-      dueDate: "2026-10-02",
+      when: on("2026-10-02"),
       visibility: "private",
     });
     await tickAt(worker, "2026-10-02T06:00:00Z");
@@ -172,7 +156,7 @@ describe("the morning digest", () => {
   test("marks a Member who blocked the bot as unreachable and moves on to the next day", async () => {
     const worker = await startWithFamily();
 
-    await addPlan(worker, denis, { title: "Отправить документы", dueDate: "2026-09-28" });
+    await addOverdue(worker);
     worker.bot.blockChat(denis.id);
     await tickAt(worker, "2026-10-02T06:00:00Z");
     worker.bot.unblockChat(denis.id);
@@ -187,7 +171,7 @@ describe("the morning digest", () => {
   test("comes back to a Member who left and joined again by an Invite", async () => {
     const worker = await startWithFamily();
 
-    await addPlan(worker, denis, { title: "Отправить документы", dueDate: "2026-09-28" });
+    await addOverdue(worker);
     await request(worker, asya, { method: "POST", path: "/api/family/leave" });
 
     const invite = await request(worker, denis, { method: "POST", path: "/api/invites" });

@@ -10,10 +10,10 @@ import {
   buttonsOf,
   record,
   recorded,
-  reminders,
   request,
   say,
   startWithFamily,
+  tasks,
 } from "./command-fixtures.ts";
 
 const phrase = "напомни в пятницу в 19:00 оплатить интернет";
@@ -27,7 +27,7 @@ function draftIdInLink(url: string): string {
 }
 
 describe("a recording from the Mini App microphone", () => {
-  test("streams into Whisper and answers with the draft, which «Создать» turns into a Reminder", async () => {
+  test("streams into Whisper and answers with the draft, which «Создать» turns into a Task", async () => {
     const worker = await startWithFamily();
 
     worker.ai.hear(phrase);
@@ -40,7 +40,7 @@ describe("a recording from the Mini App microphone", () => {
     expect(outcome).toMatchObject({
       status: "draft",
       heard: phrase,
-      draft: { kind: "reminder", text: "Оплатить интернет", date: "2026-10-16", time: "19:00" },
+      draft: { kind: "task", title: "Оплатить интернет", date: "2026-10-16", time: "19:00" },
       phrase: { saidAt: Date.parse("2026-10-13T09:00:01Z"), timeZone: "Europe/Moscow" },
     });
     expect(audio.contentType).toBe("audio/mp4");
@@ -54,11 +54,11 @@ describe("a recording from the Mini App microphone", () => {
       method: "POST",
       path: `/api/commands/${draftIdOf(outcome)}/create`,
     });
-    const [reminder] = await reminders(worker, asya);
+    const [task] = await tasks(worker, asya);
 
     expect(created.status).toBe(201);
-    expect(await created.json<DraftCreated>()).toEqual({ kind: "reminder", id: reminder?.id });
-    expect(reminder).toMatchObject({ text: "Оплатить интернет", isForEveryone: true });
+    expect(await created.json<DraftCreated>()).toEqual({ kind: "task", id: task?.id });
+    expect(task).toMatchObject({ title: "Оплатить интернет", recipients: "default" });
     expect(again.status).toBe(404);
   });
 
@@ -174,7 +174,7 @@ describe("a recording from the Mini App microphone", () => {
 
     expect(opened.status).toBe(404);
     expect(created.status).toBe(404);
-    expect(await reminders(worker, denis)).toEqual([]);
+    expect(await tasks(worker, denis)).toEqual([]);
   });
 });
 
@@ -189,8 +189,8 @@ describe("a bot draft opened in the Mini App by «Изменить»", () => {
   test("opens the draft and, once the form saved it, settles the bot's preview", async () => {
     const worker = await startWithFamily();
 
-    worker.ai.answer({ response: { ...internet, time: null } });
-    await say(worker, denis, "напомни в пятницу оплатить интернет");
+    worker.ai.answer({ response: { ...internet, title: null, missing: ["title"] } });
+    await say(worker, denis, "напомни в пятницу в 19:00");
 
     const preview = lastTo(worker, denis);
     const button = buttonsOf(preview).find((each) => each.text === "Изменить");
@@ -199,7 +199,7 @@ describe("a bot draft opened in the Mini App by «Изменить»", () => {
 
     expect(await opened.json<CommandOutcome>()).toMatchObject({
       status: "draft",
-      draft: { text: "Оплатить интернет", time: null, missing: ["time"] },
+      draft: { title: null, time: "19:00", missing: ["title"] },
     });
 
     await request(worker, denis, { method: "POST", path: `/api/commands/${draftId}/created` });

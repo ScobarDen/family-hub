@@ -1,17 +1,12 @@
 import { reatomComponent } from "@reatom/react";
 import {
-  Bell,
   Cake,
-  CalendarDays,
-  ChevronRight,
   CircleCheck,
   CookingPot,
   Images,
   ListTodo,
-  NotebookPen,
   PawPrint,
   PiggyBank,
-  Syringe,
   TriangleAlert,
   UserPlus,
   type LucideIcon,
@@ -24,10 +19,7 @@ import type { FeedRow } from "../feed.lib.ts";
 import { feedFilters, type FeedModel } from "../vm/feed.vm.ts";
 
 const icons: Record<FeedRow["kind"], LucideIcon> = {
-  event: CalendarDays,
-  reminder: Bell,
-  plan: ListTodo,
-  due: Syringe,
+  task: ListTodo,
   birthday: Cake,
   care: PawPrint,
   goal: PiggyBank,
@@ -38,20 +30,6 @@ const icons: Record<FeedRow["kind"], LucideIcon> = {
 };
 
 type RowProps = { row: FeedRow; model: FeedModel };
-
-function RecordAction({ row, model }: RowProps) {
-  return row.canRecord ? (
-    <Button
-      size="sm"
-      variant="ghost"
-      onClick={() => {
-        model.record(row.key);
-      }}
-    >
-      <NotebookPen /> Записать
-    </Button>
-  ) : undefined;
-}
 
 function checkOf({ row, model }: RowProps) {
   return (
@@ -68,8 +46,7 @@ function checkOf({ row, model }: RowProps) {
   );
 }
 
-// A Plan closes with the circle at its start and opens from the rest of the row. A Due Date has a
-// button of its own, so its row cannot be a button too and opens through a chevron instead.
+// A Task closes with the circle at its start and opens from the rest of the row.
 const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
   const check = checkOf({ row, model });
 
@@ -87,17 +64,7 @@ const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
         {...(check === false ? {} : { control: check })}
         title={row.title}
         subtitle={row.subtitle}
-        after={
-          row.canRecord && (
-            <>
-              <RecordAction row={row} model={model} />
-              <Button size="icon-sm" variant="ghost" aria-label="Открыть" onClick={open}>
-                <ChevronRight />
-              </Button>
-            </>
-          )
-        }
-        onClick={row.canRecord ? undefined : open}
+        onClick={open}
       />
       <PhotoThumbs
         photos={row.photos}
@@ -132,7 +99,7 @@ export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
       </div>
       {blocks.length === 0 && !model.isLoading() && (
         <Section>
-          <SectionItem title="Пока пусто: планы, события и записи о питомце появятся здесь" />
+          <SectionItem title="Пока пусто: дела и записи о питомце появятся здесь" />
         </Section>
       )}
       {blocks.map((block) => (

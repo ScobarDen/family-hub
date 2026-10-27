@@ -1,18 +1,12 @@
-import type { FeedActivity, FeedUpcoming } from "@family-hub/contract";
+import type { FeedActivity } from "@family-hub/contract";
 
 import type { Membership } from "@/common/auth";
 import type { KeysetPage } from "@/common/keyset";
 import type { PhotoLinks } from "@/common/photo-link";
-import {
-  previewOf,
-  type ActivitySource,
-  type FeedWindow,
-  type UpcomingSource,
-} from "@/modules/feed";
+import { previewOf, type ActivitySource } from "@/modules/feed";
 
 import { careTitleOf } from "../care-entry.lib.ts";
 import type { CareEntryRepo } from "../care-entry.repo.ts";
-import { openDueDates } from "../due-date/index.ts";
 
 type CareFeedDependencies = { entries: CareEntryRepo; links: PhotoLinks };
 
@@ -48,41 +42,6 @@ async function activityBefore(
   );
 }
 
-async function dueWithin(
-  { entries, links }: CareFeedDependencies,
-  { family }: Membership,
-  { last }: FeedWindow,
-): Promise<FeedUpcoming[]> {
-  const [pets, candidates] = await Promise.all([
-    entries.petsOf(family.id),
-    entries.allDueCandidates(family.id),
-  ]);
-
-  const pictures = new Map(
-    await Promise.all(
-      pets.map(async ({ id, avatarPhotoId }) => [id, await links.thumbOf(avatarPhotoId)] as const),
-    ),
-  );
-
-  return openDueDates({ pets, entries: candidates })
-    .filter(({ dueDate }) => dueDate <= last)
-    .map(({ entryId, petId, kind, title, dueDate }) => ({
-      kind: "due",
-      key: `due-${entryId}`,
-      title,
-      date: dueDate,
-      careKind: kind,
-      petId,
-      petPicture: pictures.get(petId) ?? null,
-      entryId,
-    }));
-}
-
-export function createCareFeed(
-  dependencies: CareFeedDependencies,
-): ActivitySource & UpcomingSource {
-  return {
-    before: async (viewer, page) => activityBefore(dependencies, viewer, page),
-    within: async (viewer, window) => dueWithin(dependencies, viewer, window),
-  };
+export function createCareFeed(dependencies: CareFeedDependencies): ActivitySource {
+  return { before: async (viewer, page) => activityBefore(dependencies, viewer, page) };
 }

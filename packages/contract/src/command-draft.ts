@@ -2,16 +2,15 @@ import { z } from "zod";
 
 import { careDetails, careNoteMaxLength } from "./care-entry.ts";
 import { errorCode } from "./error.ts";
-import {
-  eventNoteMaxLength,
-  eventReminderMaxCount,
-  eventReminderOffset,
-  eventTitleMaxLength,
-  recurrence,
-} from "./event.ts";
-import { visibility } from "./plan.ts";
 import { time } from "./primitive.ts";
-import { reminderTextMaxLength } from "./reminder.ts";
+import {
+  recurrence,
+  reminderMaxCount,
+  reminderOffset,
+  taskNoteMaxLength,
+  taskTitleMaxLength,
+  visibility,
+} from "./task.ts";
 
 export const commandDraftLifetimeMs = 86_400_000;
 
@@ -22,11 +21,6 @@ export const voiceMaxBytes = 2_097_152;
 
 const ambiguousCandidates = 2;
 
-// What a Reminder needs and the phrase may lack; such a draft is shown without «Создать».
-export const reminderDraftField = z.enum(["text", "date", "time"]);
-
-export type ReminderDraftField = z.infer<typeof reminderDraftField>;
-
 // A name that matched several Members or Pets comes back with all of them to pick from.
 const draftAmbiguity = z.object({
   field: z.enum(["recipients", "pet"]),
@@ -36,55 +30,43 @@ const draftAmbiguity = z.object({
 
 export type DraftAmbiguity = z.infer<typeof draftAmbiguity>;
 
-// The fields of the standalone Reminder form; the moment is in the zone the phrase was said in.
-export const reminderDraft = z.object({
-  kind: z.literal("reminder"),
-  text: z.string().trim().min(1).max(reminderTextMaxLength).nullable(),
-  date: z.iso.date().nullable(),
-  time: time.nullable(),
-  recurrence: recurrence.nullable(),
-  visibility,
-  recipientIds: z.array(z.string()).nullable(),
-  missing: z.array(reminderDraftField),
-  ambiguities: z.array(draftAmbiguity),
-});
+export const taskDraftField = z.enum(["title"]);
 
-export type ReminderDraft = z.infer<typeof reminderDraft>;
+export type TaskDraftField = z.infer<typeof taskDraftField>;
 
-export const eventDraftField = z.enum(["title", "date"]);
-
-export type EventDraftField = z.infer<typeof eventDraftField>;
-
-// The fields of the Event form: no time means all day, on a floating date; a time is a moment
-// in the speaker's zone. Its Reminders are offsets before the start, as in the form.
-export const eventDraft = z.object({
-  kind: z.literal("event"),
-  title: z.string().trim().min(1).max(eventTitleMaxLength).nullable(),
-  note: z.string().trim().min(1).max(eventNoteMaxLength).nullable(),
+// The fields of the Task form: no date means no date at all, no time the whole day on a floating
+// date, a time a moment in the speaker's zone. null Recipients are the Task's default ones.
+export const taskDraft = z.object({
+  kind: z.literal("task"),
+  title: z.string().trim().min(1).max(taskTitleMaxLength).nullable(),
+  note: z.string().trim().min(1).max(taskNoteMaxLength).nullable(),
   date: z.iso.date().nullable(),
   time: time.nullable(),
   endDate: z.iso.date().nullable(),
   endTime: time.nullable(),
   recurrence: recurrence.nullable(),
   visibility,
-  reminderOffsets: z.array(eventReminderOffset).max(eventReminderMaxCount),
-  missing: z.array(eventDraftField),
+  reminderOffsets: z.array(reminderOffset).max(reminderMaxCount),
+  recipientIds: z.array(z.string()).nullable(),
+  petId: z.string().nullable(),
+  missing: z.array(taskDraftField),
   ambiguities: z.array(draftAmbiguity),
 });
 
-export type EventDraft = z.infer<typeof eventDraft>;
+export type TaskDraft = z.infer<typeof taskDraft>;
 
 export const careEntryDraftField = z.enum(["pet", "details"]);
 
 export type CareEntryDraftField = z.infer<typeof careEntryDraftField>;
 
 // The fields of the Care Entry form. No date means now; a date alone («вчера») keeps the time of
-// day it was said at. Photos are added in the form only.
+// day it was said at; repeatOn asks for a follow-up Task. Photos are added in the form only.
 const careEntryDraft = z.object({
   kind: z.literal("care_entry"),
   petId: z.string().nullable(),
   date: z.iso.date().nullable(),
   time: time.nullable(),
+  repeatOn: z.iso.date().nullable(),
   note: z.string().trim().min(1).max(careNoteMaxLength).nullable(),
   details: careDetails.nullable(),
   missing: z.array(careEntryDraftField),
@@ -93,11 +75,11 @@ const careEntryDraft = z.object({
 
 export type CareEntryDraft = z.infer<typeof careEntryDraft>;
 
-const commandKind = z.enum(["reminder", "event", "care_entry"]);
+const commandKind = z.enum(["task", "care_entry"]);
 
 export type CommandKind = z.infer<typeof commandKind>;
 
-const commandDraft = z.discriminatedUnion("kind", [reminderDraft, eventDraft, careEntryDraft]);
+const commandDraft = z.discriminatedUnion("kind", [taskDraft, careEntryDraft]);
 
 export type CommandDraft = z.infer<typeof commandDraft>;
 
@@ -105,8 +87,7 @@ export type CommandDraft = z.infer<typeof commandDraft>;
 // Workers AI decodes properties in schema order, so outcome goes first: when it came last, the
 // model starting with «outcome» could only land on unsupported or unrecognized.
 export const commandAnswer = z.discriminatedUnion("outcome", [
-  z.object({ outcome: z.literal("reminder"), ...reminderDraft.omit({ kind: true }).shape }),
-  z.object({ outcome: z.literal("event"), ...eventDraft.omit({ kind: true }).shape }),
+  z.object({ outcome: z.literal("task"), ...taskDraft.omit({ kind: true }).shape }),
   z.object({ outcome: z.literal("care_entry"), ...careEntryDraft.omit({ kind: true }).shape }),
   z.object({ outcome: z.literal("unsupported") }),
   z.object({ outcome: z.literal("unrecognized") }),

@@ -7,7 +7,6 @@ import {
   type CareEntry,
   type Deleted,
   type CareEntryList,
-  type DueDateList,
   type ExpenseSummary,
 } from "@family-hub/contract";
 
@@ -56,7 +55,6 @@ const rangeQuery = sValidator("query", expenseRange, (result, context) =>
 export const careEntryRoute = new Hono<CareEntryEnv>()
   .use("/api/pets/:petId/care-entries", requireMember)
   .use("/api/pets/:petId/expenses", requireMember)
-  .use("/api/pets/:petId/due-dates", requireMember)
   .use("/api/care-entries/*", requireMember)
   .get("/api/pets/:petId/care-entries", async (context) =>
     context.json<CareEntryList>(
@@ -74,11 +72,6 @@ export const careEntryRoute = new Hono<CareEntryEnv>()
       ? context.json<CareEntry>(result.entry, httpStatus.created)
       : refuse(context, result.status);
   })
-  .get("/api/pets/:petId/due-dates", async (context) =>
-    context.json<DueDateList>(
-      await context.var.careEntries.dueDates(context.var.membership, context.req.param("petId")),
-    ),
-  )
   .get("/api/pets/:petId/expenses", rangeQuery, async (context) =>
     context.json<ExpenseSummary>(
       await context.var.careEntries.expenses(

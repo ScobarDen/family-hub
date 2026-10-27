@@ -1,12 +1,12 @@
 import { Temporal } from "temporal-polyfill";
 
-import type { CalendarEvent, EventReminderOffset, PlanReminder } from "@family-hub/contract";
+import type { ReminderOffset, TaskWhen } from "@family-hub/contract";
 
 import { occurrenceMoment } from "./occurrence.ts";
 
 const morningTime = "09:00";
 
-const offsetBefore: Record<EventReminderOffset, Temporal.DurationLike> = {
+const offsetBefore: Record<ReminderOffset, Temporal.DurationLike> = {
   "at-start": { minutes: 0 },
   "15m": { minutes: 15 },
   "1h": { hours: 1 },
@@ -14,62 +14,32 @@ const offsetBefore: Record<EventReminderOffset, Temporal.DurationLike> = {
   "1w": { weeks: 1 },
 };
 
-const planLeadDays: Record<PlanReminder, number> = { "on-day": 0, "1d": 1, "1w": 7 };
-
-const dueLeadDays = 7;
-const overdueRepeatDays = 7;
-
-// Floating dates — all-day Events, birthdays, Due Dates — nudge at 09:00 on the Recipient's clock.
+// Floating dates — Tasks without a time, birthdays — nudge at 09:00 on the Recipient's clock.
 export function morningOf(date: string, timeZone: string): number {
   return occurrenceMoment(date, { time: morningTime, timeZone });
 }
 
-// A timed Event's Reminder comes its offset before the start; an all-day one at 09:00 that day,
+// A timed Task's Reminder comes its offset before the start; one without a time at 09:00 that day,
 // the day before or the week before, in the Recipient's own zone.
-export function eventReminderMoment(
+export function taskReminderMoment(
   occurrence: string,
   {
-    start,
+    when,
     offset,
     recipientZone,
-  }: { start: CalendarEvent["start"]; offset: EventReminderOffset; recipientZone: string },
+  }: {
+    when: Pick<TaskWhen, "time" | "timeZone">;
+    offset: ReminderOffset;
+    recipientZone: string;
+  },
 ): number {
-  if (start.time === null || start.timeZone === null) {
+  if (when.time === null || when.timeZone === null) {
     const day = Temporal.PlainDate.from(occurrence).subtract(offsetBefore[offset]);
 
     return morningOf(day.toString(), recipientZone);
   }
 
   return Temporal.PlainDate.from(occurrence)
-    .toZonedDateTime({ timeZone: start.timeZone, plainTime: Temporal.PlainTime.from(start.time) })
+    .toZonedDateTime({ timeZone: when.timeZone, plainTime: Temporal.PlainTime.from(when.time) })
     .subtract(offsetBefore[offset]).epochMilliseconds;
-}
-
-// The days a Due Date nudges on: a week ahead, on the day, then every week while it stays open.
-export function dueStepFrom(dueDate: string, day: string): string {
-  const due = Temporal.PlainDate.from(dueDate);
-  const lead = due.subtract({ days: dueLeadDays });
-  const from = Temporal.PlainDate.from(day);
-
-  if (Temporal.PlainDate.compare(from, lead) <= 0) {
-    return lead.toString();
-  }
-
-  if (Temporal.PlainDate.compare(from, due) <= 0) {
-    return due.toString();
-  }
-
-  const weeksLate = Math.ceil(due.until(from).days / overdueRepeatDays);
-
-  return due.add({ days: weeksLate * overdueRepeatDays }).toString();
-}
-
-// A Plan's deadline nudges at 09:00 on the Recipient's clock: on the day, a day or a week before.
-export function planReminderMoment(
-  dueDate: string,
-  { lead, recipientZone }: { lead: PlanReminder; recipientZone: string },
-): number {
-  const day = Temporal.PlainDate.from(dueDate).subtract({ days: planLeadDays[lead] });
-
-  return morningOf(day.toString(), recipientZone);
 }

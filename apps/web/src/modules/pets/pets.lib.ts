@@ -1,8 +1,8 @@
 import type { Pet, PetMemo } from "@family-hub/contract";
 
-import { formatAge, formatDate, formatDay, formatNearDate } from "@/common/format-date";
-import { byDueDate } from "@/common/records";
+import { formatAge, formatDate, formatDay } from "@/common/format-date";
 
+import { careKindOfTask } from "./care/index.ts";
 import { sexTitles, speciesTitles } from "./pets.config.ts";
 
 export type PetListItem = { id: string; name: string; subtitle: string };
@@ -22,42 +22,31 @@ export type PetCard = {
   subtitle: string;
   facts: PetFact[];
   memo: PetMemoView;
-  soon: SoonItem[];
+  tasks: PetTaskRow[];
+  // The next open vet visit among the Pet's Tasks, as «Повторить» and the old Due Dates titled it.
+  nextVisit: string | undefined;
   isArchived: boolean;
   avatar: string | undefined;
 };
 
 export type Viewer = { today: string; timeZone: string };
 
-export type SoonKind = "plan" | "due";
-
-export type SoonTarget = { kind: "plan"; planId: string } | { kind: "due-date"; entryId: string };
-
-export type SoonSource = { id: string; title: string; dueDate: string | null; kind: SoonKind };
-
-export type SoonItem = {
-  id: string;
-  kind: SoonKind;
+// What the pet card reads of the Pet's Task rows, handed in by the tasks module.
+export type PetTask = {
+  key: string;
+  taskId: string;
   title: string;
-  subtitle: string | undefined;
-  isOverdue: boolean;
+  when: string | undefined;
+  status: "open" | "overdue" | "completed";
 };
 
-export function toSoon(sources: SoonSource[], today: string): SoonItem[] {
-  return sources.toSorted(byDueDate).map(({ id, title, dueDate, kind }) => {
-    const isOverdue = dueDate !== null && dueDate < today;
+export type PetTaskRow = Omit<PetTask, "when"> & { subtitle: string | undefined };
 
-    return {
-      id,
-      kind,
-      title,
-      subtitle:
-        dueDate === null
-          ? undefined
-          : `${isOverdue ? "Просрочено · " : ""}${formatNearDate(dueDate, today)}`,
-      isOverdue,
-    };
-  });
+function toTaskRow({ when, ...row }: PetTask): PetTaskRow {
+  return {
+    ...row,
+    subtitle: row.status === "overdue" && when !== undefined ? `Просрочено · ${when}` : when,
+  };
 }
 
 function subtitleOf(pet: Pet, today: string): string {
@@ -97,7 +86,7 @@ export function toListItem(pet: Pet, { today }: Viewer): PetListItem {
   return { id: pet.id, name: pet.name, subtitle: subtitleOf(pet, today) };
 }
 
-export function toCard(pet: Pet, viewer: Viewer, soonSources: SoonSource[]): PetCard {
+export function toCard(pet: Pet, viewer: Viewer, tasks: PetTask[]): PetCard {
   const { today } = viewer;
 
   return {
@@ -106,7 +95,10 @@ export function toCard(pet: Pet, viewer: Viewer, soonSources: SoonSource[]): Pet
     subtitle: subtitleOf(pet, today),
     facts: factsOf(pet),
     memo: memoOf(pet.memo, viewer),
-    soon: toSoon(soonSources, today),
+    tasks: tasks.map(toTaskRow),
+    nextVisit: tasks.find(
+      ({ title, when }) => when !== undefined && careKindOfTask(title)?.kind === "vet_visit",
+    )?.when,
     isArchived: pet.archivedAt !== null,
     avatar: pet.avatar?.medium,
   };

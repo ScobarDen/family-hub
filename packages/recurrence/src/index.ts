@@ -11,5 +11,5 @@ export {
   type ZonedDays,
 } from "./occurrence.ts";
 export { birthdayFrom, birthdaysIn } from "./birthday.ts";
-export { dueStepFrom, eventReminderMoment, morningOf, planReminderMoment } from "./fire-time.ts";
+export { morningOf, taskReminderMoment } from "./fire-time.ts";
 export { momentOfPhrase, type Phrase } from "./phrase.ts";

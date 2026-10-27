@@ -9,7 +9,7 @@ import { createFakeClock } from "./fake-clock.ts";
 import { createFakeLive, type FakeLive } from "./fake-live.ts";
 import { createFamilyFixtures } from "./family-fixtures.ts";
 import { signInitData, type TelegramUserFixture } from "./init-data.ts";
-import { createMigratedSqliteD1 } from "./sqlite-d1.ts";
+import { createMigratedSqliteD1, type SeedBefore } from "./sqlite-d1.ts";
 
 const origin = "https://api.family-hub.test";
 
@@ -33,9 +33,17 @@ async function withContext<Result>(
   return result;
 }
 
-function createTestEnv({ ai, live }: { ai: FakeAi; live: FakeLive }): Env {
+function createTestEnv({
+  ai,
+  live,
+  seedBefore,
+}: {
+  ai: FakeAi;
+  live: FakeLive;
+  seedBefore: SeedBefore | undefined;
+}): Env {
   return {
-    DB: createMigratedSqliteD1(),
+    DB: createMigratedSqliteD1(seedBefore),
     BOT_TOKEN: "test-bot-token",
     JWT_SECRET: "test-jwt-secret",
     WEBHOOK_SECRET: "test-webhook-secret",
@@ -100,14 +108,26 @@ export async function request(
 
 type Worker = ReturnType<typeof startWorker>;
 
-export function startWorker({ now = "2026-10-04T09:00:00Z" }: { now?: string } = {}) {
-  vi.stubGlobal("caches", { default: createEdgeCache() });
-
-  const clock = createFakeClock(now);
-  const bot = createFakeBotApi();
+function fakesOf({ now, seedBefore }: { now: string; seedBefore: SeedBefore | undefined }) {
   const ai = createFakeAi();
   const live = createFakeLive();
-  const env = createTestEnv({ ai, live });
+
+  return {
+    clock: createFakeClock(now),
+    bot: createFakeBotApi(),
+    ai,
+    live,
+    env: createTestEnv({ ai, live, seedBefore }),
+  };
+}
+
+export function startWorker({
+  now = "2026-10-04T09:00:00Z",
+  seedBefore,
+}: { now?: string; seedBefore?: SeedBefore } = {}) {
+  vi.stubGlobal("caches", { default: createEdgeCache() });
+
+  const { clock, bot, ai, live, env } = fakesOf({ now, seedBefore });
   const worker = createWorker({ clock, createBotApi: () => bot.api });
 
   async function fetchPath(path: string, init?: RequestInit) {

@@ -6,7 +6,7 @@ import { cn, RoundPicture } from "@/common/ui";
 import type { TodayModel } from "../vm/today.vm.ts";
 
 // The section's colour sits on its icon only, over the neutral card of either theme. The tile is
-// square and holds no note (that goes to «Разделы»); an Overdue Due Date turns its number red.
+// square and holds no note (that goes to «Разделы»); an Overdue Task turns its number red.
 export const Tiles = reatomComponent(
   ({ model }: { model: TodayModel }) => (
     <section aria-label="Разделы" className="grid grid-cols-3 gap-2 px-4 pb-7">

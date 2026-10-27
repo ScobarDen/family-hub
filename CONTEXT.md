@@ -1,6 +1,6 @@
 # Family Hub
 
-A Telegram Mini App in which a family runs its shared household: plans, events and reminders, savings goals, recipes, photo albums and the care of its pets.
+A Telegram Mini App in which a family runs its shared household: tasks, savings goals, recipes, photo albums and the care of its pets.
 
 ## Language
 
@@ -65,7 +65,7 @@ _Avoid_: Deleted pet, inactive pet
 ### Pet care
 
 **Care Entry**:
-A dated record in a Pet's journal of something done for or observed about that Pet.
+A dated record in a Pet's journal of something done for or observed about that Pet; what is still to be done for a Pet is a Task linked to it.
 _Avoid_: Event, log, activity
 
 **Care Kind**:
@@ -80,10 +80,6 @@ _Avoid_: Payment, purchase, bill
 The pinned facts about a Pet that anyone looking after it needs now: current food, vet clinic and important notes.
 _Avoid_: Profile, info, cheat sheet
 
-**Due Date**:
-The date by which a vaccination, treatment or vet visit should be repeated, set on the Care Entry that precedes it.
-_Avoid_: Deadline, next date
-
 ### Feed
 
 **Feed**:
@@ -91,34 +87,50 @@ The Family's chronology: what is overdue, what is upcoming and what Members have
 _Avoid_: Timeline, event feed, log
 
 **Activity**:
-A past fact in the Feed that a Member did something, such as a Care Entry, a Completed Plan or a Contribution.
+A past fact in the Feed that a Member did something, such as a Care Entry, a Completed Task or a Contribution.
 _Avoid_: Event, action, log entry
 
 **Upcoming**:
-A dated thing ahead of the Family shown in the Feed: an Event Occurrence, a Plan due date, a Pet's Due Date or a Reminder.
+A Task Occurrence or a Pet's birthday ahead of the Family, shown in the Feed.
 _Avoid_: Agenda, schedule
 
 **Overdue**:
-A Plan due date or a Pet's Due Date that has passed while the Plan is not Completed or no later Care Entry has recorded it.
+A Task Occurrence with Assignees whose date has passed while it is not Completed; a Task without Assignees never becomes Overdue. Of a recurring Task, only the Occurrences of the last 30 days count.
 _Avoid_: Late, urgent, missed
 
-### Plans
+### Tasks
 
-**Plan**:
-Something the Family intends to get done, optionally by a due date; it ends up Completed.
-_Avoid_: Task, todo, checklist
+**Task**:
+Anything the Family intends to do or has coming up: optionally a date with a time and an end, Assignees, a Recurrence, Reminders, Subtasks and a linked Pet or Album; a Task without a date has no Occurrences. «Дело» in the app.
+_Avoid_: Plan, Event, Due Date, todo, appointment
 
-**Subplan**:
-A step inside a Plan; Plans have exactly one level of Subplans.
-_Avoid_: Subtask, item, step
+**Subtask**:
+A step inside a Task without a Recurrence; Tasks have exactly one level of Subtasks.
+_Avoid_: Subplan, item, step
 
 **Assignee**:
-The one Member responsible for a Plan or Subplan; optional.
+A Member responsible for a Task or Subtask; a Task may have several or none, and any one of them completes it for all.
 _Avoid_: Owner, executor, responsible
 
 **Completed**:
-The state of a Plan or Subplan a Member has marked as done; a Plan becomes Completed when all its Subplans are.
+The state of a Task Occurrence or Subtask a Member has marked as done, in the app or from the bot's Reminder; a Task becomes Completed when all its Subtasks are.
 _Avoid_: Done, finished, closed
+
+**Recurrence**:
+The rule by which a Task repeats: weekly, monthly or yearly, optionally until an end date.
+_Avoid_: Repeat, schedule, series rule
+
+**Occurrence**:
+One concrete date of a Task; each Occurrence of a recurring Task is Completed or skipped on its own, while edits apply to all of them.
+_Avoid_: Instance, repetition
+
+**Reminder**:
+A prompt the bot delivers to a Task's Recipients in Telegram at a set offset from an Occurrence.
+_Avoid_: Notification, alert, push
+
+**Recipient**:
+A Member a Reminder is delivered to; by default a Task's Assignees, or its author when it has none.
+_Avoid_: Subscriber, target
 
 ### Recipes
 
@@ -159,30 +171,6 @@ _Avoid_: Done, reached, finished
 **Completed Goal**:
 A Savings Goal a Member has closed as either fulfilled or cancelled; it is read-only.
 _Avoid_: Archived goal, closed goal
-
-### Calendar
-
-**Event**:
-A dated entry in the Family calendar, either all-day or at a specific time.
-_Avoid_: Meeting, appointment, task
-
-**Recurrence**:
-The rule by which an Event or Reminder repeats: weekly, monthly or yearly, optionally until an end date.
-_Avoid_: Repeat, schedule, series rule
-
-**Occurrence**:
-One concrete date of a recurring Event or Reminder.
-_Avoid_: Instance, repetition
-
-### Reminders
-
-**Reminder**:
-A prompt the bot delivers to chosen Members in Telegram at a given moment; it comes from an Event, a Pet's Due Date, or stands alone.
-_Avoid_: Notification, alert, push
-
-**Recipient**:
-A Member a Reminder is delivered to.
-_Avoid_: Subscriber, target
 
 ### Commands
 

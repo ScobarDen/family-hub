@@ -1,57 +1,17 @@
-import { and, desc, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { bindFirst } from "@/common/bind";
-import {
-  careEntries,
-  events,
-  familyMembers,
-  members,
-  pets,
-  plans,
-  reminders,
-  type Db,
-} from "@/common/db";
-
-export type EventRow = typeof events.$inferSelect;
+import { familyMembers, members, pets, tasks, type Db } from "@/common/db";
 
 export type PetRow = typeof pets.$inferSelect;
 
-export type PlanRow = typeof plans.$inferSelect;
-
 export type DigestRow = Pick<typeof members.$inferSelect, "isDigestEnabled" | "digestTime">;
-
-type DueEntryRow = Pick<
-  typeof careEntries.$inferSelect,
-  "id" | "petId" | "details" | "dueDate" | "dueKey" | "occurredAt"
->;
 
 type InFamily = { familyId: string; id: string };
 
-export type FamilyHolderKind = "reminder" | "event" | "pet" | "plan";
+export type FamilyHolderKind = "task" | "pet";
 
 type FamilyHolder = { kind: FamilyHolderKind; id: string };
-
-async function dueEntriesOf(db: Db, { familyId, id }: InFamily): Promise<DueEntryRow[]> {
-  return db
-    .select({
-      id: careEntries.id,
-      petId: careEntries.petId,
-      details: careEntries.details,
-      dueDate: careEntries.dueDate,
-      dueKey: careEntries.dueKey,
-      occurredAt: careEntries.occurredAt,
-    })
-    .from(careEntries)
-    .where(
-      and(
-        eq(careEntries.familyId, familyId),
-        eq(careEntries.petId, id),
-        isNotNull(careEntries.dueKey),
-      ),
-    )
-    .orderBy(desc(careEntries.occurredAt), desc(sql`${careEntries}.rowid`))
-    .all();
-}
 
 function heldBy(kind: FamilyHolderKind, rows: Array<{ id: string }>): FamilyHolder[] {
   return rows.map(({ id }) => ({ kind, id }));
@@ -59,31 +19,16 @@ function heldBy(kind: FamilyHolderKind, rows: Array<{ id: string }>): FamilyHold
 
 // A digest belongs to its Member, not to the Family, so it is not among these.
 async function holdersOf(db: Db, familyId: string): Promise<FamilyHolder[]> {
-  const [reminderRows, eventRows, petRows, planRows] = await Promise.all([
-    db.select({ id: reminders.id }).from(reminders).where(eq(reminders.familyId, familyId)).all(),
-    db.select({ id: events.id }).from(events).where(eq(events.familyId, familyId)).all(),
-    db.select({ id: pets.id }).from(pets).where(eq(pets.familyId, familyId)).all(),
+  const [taskRows, petRows] = await Promise.all([
     db
-      .select({ id: plans.id })
-      .from(plans)
-      .where(and(eq(plans.familyId, familyId), isNull(plans.parentId)))
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(and(eq(tasks.familyId, familyId), isNull(tasks.parentId)))
       .all(),
+    db.select({ id: pets.id }).from(pets).where(eq(pets.familyId, familyId)).all(),
   ]);
 
-  return [
-    ...heldBy("reminder", reminderRows),
-    ...heldBy("event", eventRows),
-    ...heldBy("pet", petRows),
-    ...heldBy("plan", planRows),
-  ];
-}
-
-async function eventOf(db: Db, { familyId, id }: InFamily): Promise<EventRow | undefined> {
-  return db
-    .select()
-    .from(events)
-    .where(and(eq(events.familyId, familyId), eq(events.id, id)))
-    .get();
+  return [...heldBy("task", taskRows), ...heldBy("pet", petRows)];
 }
 
 async function petOf(db: Db, { familyId, id }: InFamily): Promise<PetRow | undefined> {
@@ -94,12 +39,14 @@ async function petOf(db: Db, { familyId, id }: InFamily): Promise<PetRow | undef
     .get();
 }
 
-async function planTree(db: Db, { familyId, id }: InFamily): Promise<PlanRow[]> {
-  return db
-    .select()
-    .from(plans)
-    .where(and(eq(plans.familyId, familyId), or(eq(plans.id, id), eq(plans.parentId, id))))
+async function tasksOfPet(db: Db, { familyId, id }: InFamily): Promise<string[]> {
+  const rows = await db
+    .select({ id: tasks.id })
+    .from(tasks)
+    .where(and(eq(tasks.familyId, familyId), eq(tasks.petId, id)))
     .all();
+
+  return rows.map((row) => row.id);
 }
 
 async function memberIdsOf(db: Db, familyId: string): Promise<string[]> {
@@ -116,10 +63,8 @@ export function createSourceRepo(db: Db) {
   return {
     ...bindFirst(db, {
       holdersOf,
-      event: eventOf,
       pet: petOf,
-      dueEntriesOf,
-      planTree,
+      tasksOfPet,
       memberIdsOf,
     }),
 

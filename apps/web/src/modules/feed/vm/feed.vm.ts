@@ -17,9 +17,7 @@ import {
 } from "../feed.lib.ts";
 
 export type FeedTarget =
-  | { kind: "plan"; planId: string }
-  | { kind: "event"; eventId: string }
-  | { kind: "calendar" }
+  | { kind: "task"; taskId: string }
   | { kind: "pet"; petId: string }
   | { kind: "care-entry"; petId: string; entryId: string }
   | { kind: "goal"; goalId: string }
@@ -31,14 +29,12 @@ export type FeedDependencies = LiveVersion & {
   today: () => string;
   timeZone: () => string;
   onOpen: (target: FeedTarget) => void;
-  onRecord: (due: { petId: string; entryId: string }) => void;
   telegram: Dialogs;
 };
 
 export const feedFilters: Array<{ value: FeedFilter; title: string }> = [
   { value: "all", title: "Всё" },
-  { value: "plans", title: "Планы" },
-  { value: "calendar", title: "Календарь" },
+  { value: "tasks", title: "Дела" },
   { value: "pet", title: "Питомцы" },
   { value: "goals", title: "Цели" },
   { value: "albums", title: "Альбомы" },
@@ -52,16 +48,8 @@ function petTargetOf(item: Extract<FeedItem, { petId: string }>): FeedTarget {
 }
 
 function targetOf(item: FeedItem): FeedTarget | undefined {
-  if (item.kind === "plan") {
-    return { kind: "plan", planId: item.planId };
-  }
-
-  if (item.kind === "event") {
-    return { kind: "event", eventId: item.eventId };
-  }
-
-  if (item.kind === "reminder") {
-    return { kind: "calendar" };
+  if (item.kind === "task") {
+    return { kind: "task", taskId: item.taskId };
   }
 
   if (item.kind === "goal") {
@@ -143,7 +131,7 @@ function reatomCompletion(api: FeedApi, pages: Pages) {
     const item = find(key);
     const page = pages.first.data();
 
-    if (item?.kind === "plan" && "subplanId" in item && page !== undefined) {
+    if (item?.kind === "task" && "occurrence" in item && page !== undefined) {
       await wrap(api.complete(item));
       pages.first.data.set({
         ...page,
@@ -176,13 +164,6 @@ function reatomTaps(dependencies: FeedDependencies, pages: Pages) {
   const find = finder(pages);
 
   return {
-    record: action((key: string) => {
-      const item = find(key);
-
-      if (item?.kind === "due") {
-        dependencies.onRecord({ petId: item.petId, entryId: item.entryId });
-      }
-    }, "feed.record"),
     open: action((key: string) => {
       const item = find(key);
       const target = item && targetOf(item);

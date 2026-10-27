@@ -1,9 +1,9 @@
-import { feedPage, plan, type FeedPage } from "@family-hub/contract";
+import { feedPage, task, type FeedPage } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
 import { createPhotoCalls, resolvedPhoto, resolvedUpcoming } from "@/common/photo";
 
-export type PlanStep = { planId: string; subplanId: string | null };
+export type OccurrenceTarget = { taskId: string; occurrence: string; subtaskId: string | null };
 
 // Thumbnails are the Worker's signed paths; the browser loads them from its origin.
 function resolvedPage(client: HttpClient, page: FeedPage): FeedPage {
@@ -30,13 +30,18 @@ export function createFeedApi(client: HttpClient) {
       return resolvedPage(client, page);
     },
     deletePhoto: createPhotoCalls(client).deletePhoto,
-    complete: async ({ planId, subplanId }: PlanStep) =>
-      client.request(
-        subplanId === null
-          ? `/api/plans/${planId}/complete`
-          : `/api/plans/${planId}/subplans/${subplanId}/complete`,
-        { method: "POST", schema: plan },
-      ),
+    // A Subtask has no Occurrences of its own: it is completed whole.
+    complete: async ({ taskId, occurrence, subtaskId }: OccurrenceTarget) =>
+      subtaskId === null
+        ? client.request(`/api/tasks/${taskId}/complete`, {
+            method: "POST",
+            body: { occurrence },
+            schema: task,
+          })
+        : client.request(`/api/tasks/${taskId}/subtasks/${subtaskId}/complete`, {
+            method: "POST",
+            schema: task,
+          }),
   };
 }
 

@@ -7,8 +7,7 @@ import { sectionTitles } from "@/common/sections";
 import type { TabBarModules } from "../tab-bar.model.ts";
 
 export type QuickAdd =
-  | { kind: "new-plan" }
-  | { kind: "new-event" }
+  | { kind: "new-task" }
   | { kind: "new-care-entry" }
   | { kind: "new-contribution"; goalId: string };
 
@@ -34,8 +33,7 @@ function rowsOf(modules: AppModule[]) {
 
 function quickAddsOf(goalId: string | undefined): QuickAddButton[] {
   return [
-    { title: "План", target: { kind: "new-plan" } },
-    { title: "Событие", target: { kind: "new-event" } },
+    { title: "Дело", target: { kind: "new-task" } },
     { title: "Запись питомцу", target: { kind: "new-care-entry" } },
     ...(goalId === undefined
       ? []

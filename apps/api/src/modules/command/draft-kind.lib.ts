@@ -2,8 +2,7 @@ import { z } from "zod";
 
 import {
   careEntryChange,
-  eventChange,
-  reminderChange,
+  taskChange,
   type CareDetails,
   type CommandDraft,
   type CommandKind,
@@ -17,7 +16,7 @@ import type { CommandDependencies } from "./command.types.ts";
 
 type Creation = { status: "created"; id: string } | { status: "refused"; refusal: DraftRefusal };
 
-type CommandRecords = Pick<CommandDependencies, "reminders" | "events" | "careEntries">;
+type CommandRecords = Pick<CommandDependencies, "tasks" | "careEntries">;
 
 type Confirmation<Draft> = { membership: Membership; draft: Draft; phrase: Phrase };
 
@@ -52,7 +51,7 @@ const careEmoji: Record<CareDetails["kind"], string> = {
   note: "📝",
 };
 
-// The Care Entry use case also derives the Due Date's key, so the entry closes the one before.
+// The Care Entry use case also creates the follow-up Task a repeat date asks for.
 const careEntryCreation = z.object({ petId: z.string(), change: careEntryChange });
 
 // «Создать» goes through the same use case as the Mini App form of the draft's kind.
@@ -78,53 +77,44 @@ function draftKind<Draft, Change, Refusal extends string>(
   };
 }
 
-// Picking a candidate settles one ambiguity: a Member joins the Recipients, a Pet becomes the one;
-// an Event refers to nobody, so it has no candidates.
+// Picking a candidate settles one ambiguity: a Member joins the Recipients, a Pet becomes the one.
 const draftKinds: { [Kind in CommandKind]: DraftKind<DraftOf<Kind>> } = {
-  reminder: draftKind({
-    emoji: () => "⏰",
-    withCandidate: (draft, chosenId) => ({
-      ...draft,
-      recipientIds: [...(draft.recipientIds ?? []), chosenId],
-    }),
+  task: draftKind({
+    emoji: (draft) => (draft.reminderOffsets.length > 0 ? "⏰" : "📌"),
+    withCandidate: (draft, chosenId) =>
+      draft.ambiguities[0]?.field === "pet"
+        ? { ...draft, petId: chosenId }
+        : { ...draft, recipientIds: [...(draft.recipientIds ?? []), chosenId] },
+    // No time keeps a floating date; a time is a moment in the phrase's zone.
     changeOf: (draft, { timeZone }) =>
-      reminderChange.safeParse({
-        text: draft.text,
-        start: { date: draft.date, time: draft.time, timeZone },
-        recurrence: draft.recurrence,
-        visibility: draft.visibility,
-        recipientIds: draft.recipientIds,
-      }),
-    save: async ({ reminders }, { membership, change }) => {
-      const result = await reminders.create(membership, change);
-
-      return result.status === "ok" ? { status: "ok", id: result.reminder.id } : result;
-    },
-    refusals: { "recipients-not-allowed": "RECIPIENTS_NOT_ALLOWED" },
-  }),
-  event: draftKind({
-    emoji: () => "📅",
-    // An all-day Event keeps a floating date; a timed one is a moment in the phrase's zone.
-    changeOf: (draft, { timeZone }) =>
-      eventChange.safeParse({
+      taskChange.safeParse({
         title: draft.title,
         note: draft.note,
-        start: {
-          date: draft.date,
-          time: draft.time,
-          timeZone: draft.time === null ? null : timeZone,
-        },
-        end: draft.endDate === null ? null : { date: draft.endDate, time: draft.endTime },
+        when:
+          draft.date === null
+            ? null
+            : {
+                date: draft.date,
+                time: draft.time,
+                timeZone: draft.time === null ? null : timeZone,
+                endDate: draft.endDate,
+                endTime: draft.endTime,
+              },
         recurrence: draft.recurrence,
-        visibility: draft.visibility,
+        recipients: draft.recipientIds ?? "default",
         reminderOffsets: draft.reminderOffsets,
+        visibility: draft.visibility,
+        petId: draft.petId,
       }),
-    save: async ({ events }, { membership, change }) => {
-      const result = await events.create(membership, change);
+    save: async ({ tasks }, { membership, change }) => {
+      const result = await tasks.create(membership, change);
 
-      return result.status === "ok" ? { status: "ok", id: result.event.id } : result;
+      return result.status === "ok" ? { status: "ok", id: result.task.id } : result;
     },
-    refusals: {},
+    refusals: {
+      "recipients-not-allowed": "RECIPIENTS_NOT_ALLOWED",
+      "pet-not-found": "PET_NOT_FOUND",
+    },
   }),
   care_entry: draftKind({
     emoji: ({ details }) => (details === null ? "🐾" : careEmoji[details.kind]),
@@ -134,6 +124,7 @@ const draftKinds: { [Kind in CommandKind]: DraftKind<DraftOf<Kind>> } = {
         petId: draft.petId,
         change: {
           occurredAt: momentOfPhrase(draft, phrase),
+          repeatOn: draft.repeatOn,
           note: draft.note,
           details: draft.details,
           photoIds: [],

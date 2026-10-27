@@ -3,10 +3,8 @@ import type {
   CommandDraft,
   CommandKind,
   DraftAmbiguity,
-  EventDraft,
-  EventDraftField,
-  ReminderDraft,
-  ReminderDraftField,
+  TaskDraft,
+  TaskDraftField,
 } from "@family-hub/contract";
 
 import { careDetailsOf, careTitleOf } from "./care-preview.ts";
@@ -29,16 +27,7 @@ export type DraftPreview = {
   canCreate: boolean;
 };
 
-const reminderFieldTitles: Record<ReminderDraftField, string> = {
-  text: "что напомнить",
-  date: "дату",
-  time: "время",
-};
-
-const eventFieldTitles: Record<EventDraftField, string> = {
-  title: "что за событие",
-  date: "дату",
-};
+const taskFieldTitles: Record<TaskDraftField, string> = { title: "что за дело" };
 
 const careFieldTitles: Record<CareEntryDraftField, string> = {
   pet: "питомца",
@@ -49,27 +38,29 @@ const frequencyTitles = { weekly: "каждую неделю", monthly: "каж�
 
 const photoHint = "Фото можно приложить в «Изменить».";
 
-function repeatOf({ recurrence }: ReminderDraft | EventDraft): string {
+function repeatOf({ recurrence }: TaskDraft): string {
   return recurrence === null ? "" : frequencyTitles[recurrence.frequency];
 }
 
-function recipientsOf(draft: ReminderDraft, members: FamilyPerson[]): string {
-  if (draft.visibility === "private") {
-    return "только мне";
+// A Task from a phrase has no Assignees, so its default Recipient is the speaker.
+function recipientsOf(draft: TaskDraft, members: FamilyPerson[]): string {
+  if (draft.reminderOffsets.length === 0) {
+    return "";
   }
 
-  const chosen =
-    draft.recipientIds === null
-      ? members
-      : members.filter(({ id }) => draft.recipientIds?.includes(id) === true);
+  if (draft.visibility === "private" || draft.recipientIds === null) {
+    return "напомнить мне";
+  }
 
-  return chosen.map(({ name }) => name).join(", ");
+  const chosen = members.filter(({ id }) => draft.recipientIds?.includes(id) === true);
+
+  return `напомнить: ${chosen.map(({ name }) => name).join(", ")}`;
 }
 
 // «сб 17 окт, 12:00 – 14:00», «сб 17 окт, весь день», «пн 1 дек – ср 3 дек».
-function eventMomentOf(draft: EventDraft): string {
+function whenOf(draft: TaskDraft): string {
   if (draft.date === null) {
-    return "";
+    return "без срока";
   }
 
   const start = draft.time === null ? `${dayOf(draft.date)}, весь день` : momentOf(draft);
@@ -86,13 +77,13 @@ function eventMomentOf(draft: EventDraft): string {
   return `${start} – ${end}`;
 }
 
-function eventDetailsOf(draft: EventDraft): string[] {
+function taskDetailsOf(draft: TaskDraft, { members, pets }: FamilyNames): string[] {
   return [
-    eventMomentOf(draft),
+    whenOf(draft),
     repeatOf(draft),
-    draft.reminderOffsets.length === 0
-      ? ""
-      : `напомнить ${draft.reminderOffsets.map((offset) => offsetTitles[offset]).join(", ")}`,
+    draft.reminderOffsets.map((offset) => offsetTitles[offset]).join(", "),
+    recipientsOf(draft, members),
+    pets.find(({ id }) => id === draft.petId)?.name ?? "",
     draft.visibility === "private" ? "только мне" : "",
   ];
 }
@@ -107,20 +98,10 @@ type KindPreview<Draft> = {
 type DraftOf<Kind extends CommandKind> = Extract<CommandDraft, { kind: Kind }>;
 
 const kindPreviews: { [Kind in CommandKind]: KindPreview<DraftOf<Kind>> } = {
-  reminder: {
-    title: ({ text }) => text ?? "…",
-    details: (draft, { members }) => [
-      momentOf(draft),
-      repeatOf(draft),
-      recipientsOf(draft, members),
-    ],
-    missing: ({ missing }) => missing.map((field) => reminderFieldTitles[field]),
-    hint: undefined,
-  },
-  event: {
+  task: {
     title: ({ title }) => title ?? "…",
-    details: eventDetailsOf,
-    missing: ({ missing }) => missing.map((field) => eventFieldTitles[field]),
+    details: taskDetailsOf,
+    missing: ({ missing }) => missing.map((field) => taskFieldTitles[field]),
     hint: undefined,
   },
   care_entry: {
@@ -141,7 +122,7 @@ function questionTitleOf({ field, mention }: DraftAmbiguity): string {
   }
 
   return mention === ""
-    ? "Для какого питомца запись?"
+    ? "Для какого питомца?"
     : `Какого питомца вы имели в виду под «${mention}»?`;
 }
 

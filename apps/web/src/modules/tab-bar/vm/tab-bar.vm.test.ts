@@ -46,11 +46,11 @@ beforeEach(() => {
 });
 
 describe("the tab bar", () => {
-  test("puts Планы and Календарь between Сегодня and Разделы until the Member's settings arrive", () => {
+  test("puts Дела and Питомцы between Сегодня and Разделы until the Member's settings arrive", () => {
     const { model } = startTabBar();
 
-    expect(titles(model.tabs().start)).toEqual(["Сегодня", "Планы"]);
-    expect(titles(model.tabs().end)).toEqual(["Календарь", "Разделы"]);
+    expect(titles(model.tabs().start)).toEqual(["Сегодня", "Дела"]);
+    expect(titles(model.tabs().end)).toEqual(["Питомцы", "Разделы"]);
   });
 
   test("puts the Member's two slots on either side of the microphone", () => {
@@ -61,18 +61,18 @@ describe("the tab bar", () => {
   });
 
   test("marks the tab the open screen belongs to", () => {
-    const { model, activeTab } = startTabBar(["plans", "calendar"]);
+    const { model, activeTab } = startTabBar(["tasks", "goals"]);
 
     activeTab.set("sections");
 
     expect(model.tabs().end).toEqual([
-      { id: "calendar", title: "Календарь", isActive: false },
+      { id: "goals", title: "Цели", isActive: false },
       { id: "sections", title: "Разделы", isActive: true },
     ]);
   });
 
   test("names a slot the way its module asks, like the pet tab after the only Pet", () => {
-    const { model } = startTabBar(["pet", "plans"], () => ({ pet: "Бьюик" }));
+    const { model } = startTabBar(["pet", "tasks"], () => ({ pet: "Бьюик" }));
 
     expect(titles(model.tabs().start)).toEqual(["Сегодня", "Бьюик"]);
   });
@@ -81,34 +81,34 @@ describe("the tab bar", () => {
     const { model, opened } = startTabBar();
 
     model.open("today");
-    model.open("calendar");
+    model.open("goals");
 
-    expect(opened).toEqual(["today", "calendar"]);
+    expect(opened).toEqual(["today", "goals"]);
   });
 });
 
 describe("the slot setup", () => {
   test("puts the picked module in the slot and saves the pair", async () => {
-    const { model, menu, saves } = startTabBar(["plans", "calendar"]);
+    const { model, menu, saves } = startTabBar(["tasks", "goals"]);
 
     menu.choose(1, "recipes");
 
     expect(titles(model.tabs().end)).toEqual(["Рецепты", "Разделы"]);
-    await expect.poll(() => saves).toEqual([{ modules: ["plans", "recipes"] }]);
+    await expect.poll(() => saves).toEqual([{ modules: ["tasks", "recipes"] }]);
   });
 
   test("swaps the slots when the module is already in the other one", async () => {
-    const { menu, saves } = startTabBar(["plans", "calendar"]);
+    const { menu, saves } = startTabBar(["tasks", "goals"]);
 
-    menu.choose(0, "calendar");
+    menu.choose(0, "goals");
 
-    await expect.poll(() => saves).toEqual([{ modules: ["calendar", "plans"] }]);
+    await expect.poll(() => saves).toEqual([{ modules: ["goals", "tasks"] }]);
   });
 
   test("keeps the slots as they are when the module is already in that slot", async () => {
-    const { menu, saves } = startTabBar(["plans", "calendar"]);
+    const { menu, saves } = startTabBar(["tasks", "goals"]);
 
-    menu.choose(1, "calendar");
+    menu.choose(1, "goals");
     await Promise.resolve();
 
     expect(saves).toEqual([]);

@@ -1,4 +1,5 @@
 export { createCareApi, type CareApi } from "./care.api.ts";
+export { careKindOfTask } from "./care.lib.ts";
 export { Care } from "./view/care.view.tsx";
 export { CareSummary } from "./view/care-summary.view.tsx";
 export { ExpensesBlock } from "./view/expenses-block.view.tsx";

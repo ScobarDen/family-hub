@@ -9,7 +9,7 @@ import {
   type DraftRefusal,
   type FamilyMember,
   type Pet,
-  type ReminderDraft,
+  type TaskDraft,
 } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
@@ -25,14 +25,19 @@ import {
 
 const phrase = { saidAt: Date.parse("2026-10-11T06:00:00Z"), timeZone: "Europe/Moscow" };
 
-const internet: ReminderDraft = {
-  kind: "reminder",
-  text: "Оплатить интернет",
+const internet: TaskDraft = {
+  kind: "task",
+  title: "Оплатить интернет",
+  note: null,
   date: "2026-10-16",
   time: "19:00",
+  endDate: null,
+  endTime: null,
   recurrence: { frequency: "monthly", until: null },
   visibility: "shared",
-  recipientIds: null,
+  reminderOffsets: ["at-start"],
+  recipientIds: ["member-1", "member-2", "member-3"],
+  petId: null,
   missing: [],
   ambiguities: [],
 };
@@ -78,7 +83,7 @@ function fakeBackend(outcome: CommandOutcome) {
     "GET /api/commands/draft-1": () => Response.json(outcome),
     "POST /api/commands/draft-1/create": () =>
       createFailure ??
-      Response.json({ kind: "reminder", id: "reminder-1" } satisfies DraftCreated, {
+      Response.json({ kind: "task", id: "task-1" } satisfies DraftCreated, {
         status: 201,
       }),
     "POST /api/commands/draft-1/dismiss": () => Response.json({ status: "dismissed" }),
@@ -138,7 +143,7 @@ function sheetOver(
   });
 }
 
-function startSheet(draft: ReminderDraft = internet) {
+function startSheet(draft: TaskDraft = internet) {
   const backend = fakeBackend({ status: "draft", draftId: "draft-1", phrase, heard, draft });
   const edited: OpenedDraft[] = [];
   const created: DraftCreated[] = [];
@@ -160,7 +165,7 @@ async function sent(model: ReturnType<typeof reatomCommandSheet>) {
   await vi.waitFor(() => {
     const sheet = model.sheet();
 
-    expect(sheet.kind === "draft" && sheet.preview.details.length === 3).toBe(true);
+    expect(sheet.kind === "draft" && sheet.preview.details.length === 4).toBe(true);
   });
 }
 
@@ -179,7 +184,7 @@ describe("the preview sheet", () => {
       heard,
       preview: {
         title: "Оплатить интернет",
-        details: ["пт 16 окт, 19:00", "каждый месяц", "Денис, Ася, Ася"],
+        details: ["пт 16 окт, 19:00", "каждый месяц", "в момент", "напомнить: Денис, Ася, Ася"],
         missing: undefined,
         question: undefined,
         hint: undefined,
@@ -227,7 +232,7 @@ describe("the preview sheet", () => {
     model.create();
 
     await vi.waitFor(() => {
-      expect(created).toEqual([{ kind: "reminder", id: "reminder-1" }]);
+      expect(created).toEqual([{ kind: "task", id: "task-1" }]);
     });
     expect(model.sheet().kind).toBe("created");
   });
@@ -235,8 +240,9 @@ describe("the preview sheet", () => {
   test("offers no «Создать» to an incomplete draft and asks which Member was meant", async () => {
     const { model } = startSheet({
       ...internet,
-      time: null,
-      missing: ["time"],
+      title: null,
+      recipientIds: [],
+      missing: ["title"],
       ambiguities: [
         { field: "recipients", mention: "Ася", candidateIds: ["member-2", "member-3"] },
       ],
@@ -248,7 +254,7 @@ describe("the preview sheet", () => {
       expect(model.sheet()).toMatchObject({
         kind: "draft",
         preview: {
-          missing: "Не хватает: время",
+          missing: "Не хватает: что за дело",
           question: {
             title: "Кого вы имели в виду под «Ася»?",
             candidates: [
@@ -267,7 +273,10 @@ describe("the preview sheet", () => {
       expect(model.sheet()).toMatchObject({
         kind: "draft",
         heard,
-        preview: { question: undefined, details: ["пт 16 окт, 19:00", "каждый месяц", "Ася"] },
+        preview: {
+          question: undefined,
+          details: ["пт 16 окт, 19:00", "каждый месяц", "в момент", "напомнить: Ася"],
+        },
       });
     });
   });
@@ -319,14 +328,14 @@ describe("the preview sheet", () => {
     });
   });
 
-  test("shows an Event draft with its time, repeat and Reminders", async () => {
+  test("shows a timed Task draft with its repeat and Reminders", async () => {
     const backend = fakeBackend({
       status: "draft",
       draftId: "draft-1",
       phrase,
       heard: null,
       draft: {
-        kind: "event",
+        kind: "task",
         title: "Груминг Бьюика",
         note: null,
         date: "2026-10-17",
@@ -336,6 +345,8 @@ describe("the preview sheet", () => {
         recurrence: { frequency: "monthly", until: null },
         visibility: "private",
         reminderOffsets: ["1h", "1d"],
+        recipientIds: ["member-1"],
+        petId: null,
         missing: [],
         ambiguities: [],
       },
@@ -349,14 +360,20 @@ describe("the preview sheet", () => {
         kind: "draft",
         preview: {
           title: "Груминг Бьюика",
-          details: ["сб 17 окт, 12:00", "каждый месяц", "напомнить за час, за день", "только мне"],
+          details: [
+            "сб 17 окт, 12:00",
+            "каждый месяц",
+            "за час, за день",
+            "напомнить мне",
+            "только мне",
+          ],
           canCreate: true,
         },
       });
     });
   });
 
-  test("shows a Care Entry with its Pet, cost and Due Date, and asks which Pet in care", async () => {
+  test("shows a Care Entry with its cost and repeat date, and asks which Pet in care", async () => {
     const backend = fakeBackend({
       status: "draft",
       draftId: "draft-1",
@@ -367,12 +384,12 @@ describe("the preview sheet", () => {
         petId: null,
         date: null,
         time: null,
+        repeatOn: "2027-10-13",
         note: null,
         details: {
           kind: "vaccination",
           vaccine: "Бешенство",
           cost: { amount: 1800, category: "vet" },
-          dueDate: "2027-10-13",
         },
         missing: [],
         ambiguities: [{ field: "pet", mention: "", candidateIds: ["pet-1", "pet-2"] }],
@@ -387,9 +404,9 @@ describe("the preview sheet", () => {
         kind: "draft",
         preview: {
           title: "Прививка «Бешенство»",
-          details: ["сейчас", expect.stringMatching(/^1\s800\s₽$/u), "следующий срок ср 13 окт"],
+          details: ["сейчас", expect.stringMatching(/^1\s800\s₽$/u), "повторить ср 13 окт"],
           question: {
-            title: "Для какого питомца запись?",
+            title: "Для какого питомца?",
             candidates: [
               { index: 0, name: "Бьюик" },
               { index: 1, name: "Мурка" },

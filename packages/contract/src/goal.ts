@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import { visibility } from "./plan.ts";
 import { named, rubles } from "./primitive.ts";
+import { visibility } from "./task.ts";
 import { optionalText } from "./text.ts";
 
 export const goalTitleMaxLength = 200;

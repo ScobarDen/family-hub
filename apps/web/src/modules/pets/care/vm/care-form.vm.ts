@@ -21,6 +21,7 @@ import {
   emptyEntry,
   valuesOf,
   valuesOfDraft,
+  valuesOfTask,
   type EntryValues,
 } from "./care-form-values.vm.ts";
 
@@ -61,7 +62,7 @@ const fields = z.object({
   reason: z.string(),
   costAmount: z.string(),
   costCategory: z.string(),
-  dueDate: z.string(),
+  repeatOn: z.string(),
   weightKg: z.string(),
   amount: z.string(),
   category: z.string(),
@@ -86,19 +87,16 @@ const schema = fields.superRefine((values, issues) => {
 
 type CareRecord = ReturnType<typeof reatomCareRecord>;
 
-function reatomStarts({ now, timeZone, photos }: CareFormDependencies, record: CareRecord) {
+function reatomStarts({ now, photos }: CareFormDependencies, record: CareRecord) {
   return {
     startCreating: action((kind: CareKind) => {
       photos.reset([]);
       record.startCreating({ ...emptyEntry, kind, occurredAt: now() });
     }, "care.form.startCreating"),
-    // A due vaccination, treatment or visit is closed by recording the next one of the same name.
-    startFollowUp: action((entry: CareEntry) => {
-      const { kind, name } = valuesOf(entry, timeZone());
-
+    startFromTask: action((taskTitle: string) => {
       photos.reset([]);
-      record.startCreating({ ...emptyEntry, kind, name, occurredAt: now() });
-    }, "care.form.startFollowUp"),
+      record.startCreating({ ...emptyEntry, ...valuesOfTask(taskTitle), occurredAt: now() });
+    }, "care.form.startFromTask"),
     // Photos never come by voice; the form is where they are added.
     startFromDraft: action((opening: CareEntryDraftOpening) => {
       photos.reset([]);

@@ -9,24 +9,22 @@ import type { TodayModel } from "../vm/today.vm.ts";
 
 type RowProps = { row: DueRow; model: TodayModel };
 
+// A Task closes with the circle at its start and opens from the rest of the row; a birthday
+// only opens.
 function DueItem({ row, model }: RowProps) {
-  function act() {
-    model.completeOrRecord(row.key);
-  }
-
   function open() {
     model.openItem(row.key);
   }
 
-  // A Plan closes with the circle at its start and opens from the rest of the row; a Due Date
-  // opens its Care Entry form from the whole row, anything else opens itself.
-  return row.action?.kind === "complete" ? (
+  return row.canComplete ? (
     <SectionItem
       control={
         <CheckButton
-          label={`${row.action.title}: ${row.title}`}
+          label={`Отметить выполненным: ${row.title}`}
           isAlert={row.isOverdue}
-          onClick={act}
+          onClick={() => {
+            model.complete(row.key);
+          }}
         />
       }
       title={row.title}
@@ -40,10 +38,7 @@ function DueItem({ row, model }: RowProps) {
       isAlert={row.isOverdue}
       title={row.title}
       subtitle={row.when}
-      {...(row.action === undefined
-        ? {}
-        : { after: <span className="text-[0.9375rem] text-link-text">{row.action.title}</span> })}
-      onClick={row.action === undefined ? open : act}
+      onClick={open}
     />
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type { CareEntryDraft, EventDraft, ReminderDraft } from "@family-hub/contract";
+import type { CareEntryDraft, TaskDraft } from "@family-hub/contract";
 
 import { previewOf, type FamilyNames } from "./preview.ts";
 
@@ -16,20 +16,8 @@ const names: FamilyNames = {
   ],
 };
 
-const internet: ReminderDraft = {
-  kind: "reminder",
-  text: "Оплатить интернет",
-  date: "2026-10-16",
-  time: "19:00",
-  recurrence: { frequency: "monthly", until: null },
-  visibility: "shared",
-  recipientIds: null,
-  missing: [],
-  ambiguities: [],
-};
-
-const grooming: EventDraft = {
-  kind: "event",
+const grooming: TaskDraft = {
+  kind: "task",
   title: "Груминг Бьюика",
   note: null,
   date: "2026-10-17",
@@ -39,6 +27,8 @@ const grooming: EventDraft = {
   recurrence: null,
   visibility: "shared",
   reminderOffsets: [],
+  recipientIds: null,
+  petId: null,
   missing: [],
   ambiguities: [],
 };
@@ -48,45 +38,59 @@ const weighing: CareEntryDraft = {
   petId: "pet-buick",
   date: null,
   time: null,
+  repeatOn: null,
   note: null,
   details: { kind: "weight", weightKg: 12.4 },
   missing: [],
   ambiguities: [],
 };
 
-describe("a Reminder draft's preview", () => {
-  test("reads its text, moment, repeat and everyone it reaches", () => {
-    expect(previewOf(internet, names)).toEqual({
-      title: "Оплатить интернет",
-      details: ["пт 16 окт, 19:00", "каждый месяц", "Денис, Ася, Ася"],
-      missing: undefined,
-      question: undefined,
-      hint: undefined,
-      canCreate: true,
-    });
-  });
-
-  test("names only the chosen Recipients, or the speaker alone when private", () => {
-    expect(previewOf({ ...internet, recipientIds: ["member-asya"] }, names).details).toEqual([
-      "пт 16 окт, 19:00",
-      "каждый месяц",
-      "Ася",
-    ]);
-    expect(previewOf({ ...internet, visibility: "private" }, names).details).toContain(
+describe("a Task draft's preview", () => {
+  test("reads a timed start with its end, repeat, Reminders, Pet and privacy", () => {
+    expect(
+      previewOf(
+        {
+          ...grooming,
+          endDate: "2026-10-17",
+          endTime: "14:00",
+          recurrence: { frequency: "weekly", until: null },
+          reminderOffsets: ["at-start", "15m", "1w"],
+          petId: "pet-buick",
+          visibility: "private",
+        },
+        names,
+      ).details,
+    ).toEqual([
+      "сб 17 окт, 12:00 – 14:00",
+      "каждую неделю",
+      "в момент, за 15 минут, за неделю",
+      "напомнить мне",
+      "Бьюик",
       "только мне",
-    );
+    ]);
   });
 
-  test("lists what is missing and takes «Создать» away", () => {
-    const preview = previewOf(
-      { ...internet, text: null, time: null, recurrence: null, missing: ["text", "time"] },
-      names,
-    );
+  test("reads a whole day, several days and no date at all", () => {
+    expect(previewOf({ ...grooming, time: null }, names).details).toEqual(["сб 17 окт, весь день"]);
+    expect(previewOf({ ...grooming, time: null, endDate: "2026-10-19" }, names).details).toEqual([
+      "сб 17 окт, весь день – пн 19 окт",
+    ]);
+    expect(previewOf({ ...grooming, date: null, time: null }, names).details).toEqual([
+      "без срока",
+    ]);
+  });
 
-    expect(preview).toMatchObject({
+  test("names the chosen Recipients of its Reminder", () => {
+    expect(
+      previewOf({ ...grooming, reminderOffsets: ["1d"], recipientIds: ["member-asya"] }, names)
+        .details,
+    ).toContain("напомнить: Ася");
+  });
+
+  test("lists a missing title and takes «Создать» away", () => {
+    expect(previewOf({ ...grooming, title: null, missing: ["title"] }, names)).toMatchObject({
       title: "…",
-      details: ["пт 16 окт", "Денис, Ася, Ася"],
-      missing: "Не хватает: что напомнить, время",
+      missing: "Не хватает: что за дело",
       canCreate: false,
     });
   });
@@ -94,7 +98,7 @@ describe("a Reminder draft's preview", () => {
   test("asks which Member a name meant and offers each by name", () => {
     const preview = previewOf(
       {
-        ...internet,
+        ...grooming,
         ambiguities: [
           { field: "recipients", mention: "Ася", candidateIds: ["member-asya", "member-asya-mom"] },
         ],
@@ -115,42 +119,6 @@ describe("a Reminder draft's preview", () => {
   });
 });
 
-describe("an Event draft's preview", () => {
-  test("reads a timed start with its end, repeat, Reminders and privacy", () => {
-    expect(
-      previewOf(
-        {
-          ...grooming,
-          endDate: "2026-10-17",
-          endTime: "14:00",
-          recurrence: { frequency: "weekly", until: null },
-          reminderOffsets: ["at-start", "15m", "1w"],
-          visibility: "private",
-        },
-        names,
-      ).details,
-    ).toEqual([
-      "сб 17 окт, 12:00 – 14:00",
-      "каждую неделю",
-      "напомнить в момент начала, за 15 минут, за неделю",
-      "только мне",
-    ]);
-  });
-
-  test("reads an all-day Event and one spanning several days", () => {
-    expect(previewOf({ ...grooming, time: null }, names).details).toEqual(["сб 17 окт, весь день"]);
-    expect(previewOf({ ...grooming, time: null, endDate: "2026-10-19" }, names).details).toEqual([
-      "сб 17 окт, весь день – пн 19 окт",
-    ]);
-  });
-
-  test("lists a missing title and date", () => {
-    expect(
-      previewOf({ ...grooming, title: null, date: null, missing: ["title", "date"] }, names),
-    ).toMatchObject({ title: "…", details: [], missing: "Не хватает: что за событие, дату" });
-  });
-});
-
 function titleOf(details: CareEntryDraft["details"]): string {
   return previewOf({ ...weighing, details }, names).title;
 }
@@ -158,18 +126,16 @@ function titleOf(details: CareEntryDraft["details"]): string {
 describe("a Care Entry draft's preview", () => {
   test("titles each Care Kind by what was done", () => {
     expect(titleOf({ kind: "weight", weightKg: 12.4 })).toBe("Вес 12,4 кг");
-    expect(titleOf({ kind: "vaccination", vaccine: "Бешенство", cost: null, dueDate: null })).toBe(
+    expect(titleOf({ kind: "vaccination", vaccine: "Бешенство", cost: null })).toBe(
       "Прививка «Бешенство»",
     );
-    expect(
-      titleOf({ kind: "treatment", target: "Клещи", product: null, cost: null, dueDate: null }),
-    ).toBe("Обработка «Клещи»");
-    expect(titleOf({ kind: "vet_visit", reason: "хромает", cost: null, dueDate: null })).toBe(
+    expect(titleOf({ kind: "treatment", target: "Клещи", product: null, cost: null })).toBe(
+      "Обработка «Клещи»",
+    );
+    expect(titleOf({ kind: "vet_visit", reason: "хромает", cost: null })).toBe(
       "Визит к ветеринару: хромает",
     );
-    expect(titleOf({ kind: "vet_visit", reason: null, cost: null, dueDate: null })).toBe(
-      "Визит к ветеринару",
-    );
+    expect(titleOf({ kind: "vet_visit", reason: null, cost: null })).toBe("Визит к ветеринару");
     expect(titleOf({ kind: "expense", amount: 3200, category: "food" })).toMatch(
       /^Трата 3\s200\s₽ · корм$/u,
     );
@@ -177,7 +143,7 @@ describe("a Care Entry draft's preview", () => {
     expect(titleOf(null)).toBe("Запись");
   });
 
-  test("reads its Pet, «сейчас» without a date, the cost and the Due Date", () => {
+  test("reads its Pet, «сейчас» without a date, the cost and when to repeat it", () => {
     const preview = previewOf(
       {
         ...weighing,
@@ -185,19 +151,14 @@ describe("a Care Entry draft's preview", () => {
           kind: "vaccination",
           vaccine: "Бешенство",
           cost: { amount: 1800, category: "vet" },
-          dueDate: "2027-10-13",
         },
+        repeatOn: "2027-10-13",
       },
       names,
     );
 
     expect(preview).toMatchObject({
-      details: [
-        "Бьюик",
-        "сейчас",
-        expect.stringMatching(/^1\s800\s₽$/u),
-        "следующий срок ср 13 окт",
-      ],
+      details: ["Бьюик", "сейчас", expect.stringMatching(/^1\s800\s₽$/u), "повторить ср 13 окт"],
       hint: "Фото можно приложить в «Изменить».",
       canCreate: true,
     });
@@ -222,7 +183,7 @@ describe("a Care Entry draft's preview", () => {
       ),
     ).toMatchObject({
       question: {
-        title: "Для какого питомца запись?",
+        title: "Для какого питомца?",
         candidates: [
           { index: 0, name: "Бьюик" },
           { index: 1, name: "Мурка" },

@@ -1,18 +1,16 @@
 import type { AppModule } from "@family-hub/contract";
 
-// The Calendar also lists Plans with a due date and Pets' Due Dates and birthdays.
-// «Готово» closes a Plan or an Occurrence; a Command Draft's buttons create Events, Reminders and Care Entries.
-export const reminderCallbackModules: AppModule[] = ["plans", "calendar"];
+// «Готово» completes a Task Occurrence, which a Pet card shows too; a Command Draft's buttons create Tasks and Care Entries.
+export const reminderCallbackModules: AppModule[] = ["tasks", "pet"];
 
-export const commandCallbackModules: AppModule[] = ["calendar", "pet"];
+export const commandCallbackModules: AppModule[] = ["tasks", "pet"];
 
 // The first segment after `/api/` names what a write changed; the Feed and Today read every module.
+// Pets carry their Tasks and birthdays, and a Care Entry may create a follow-up Task.
 export const modulesByPath = new Map<string, AppModule[]>([
-  ["plans", ["plans", "calendar"]],
-  ["events", ["calendar"]],
-  ["reminders", ["calendar"]],
-  ["pets", ["pet", "calendar"]],
-  ["care-entries", ["pet", "calendar"]],
+  ["tasks", ["tasks", "pet"]],
+  ["pets", ["pet", "tasks"]],
+  ["care-entries", ["pet", "tasks"]],
   ["goals", ["goals"]],
   ["albums", ["albums"]],
   ["photos", ["albums"]],

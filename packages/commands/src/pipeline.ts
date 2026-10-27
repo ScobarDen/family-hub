@@ -3,8 +3,7 @@ import { z } from "zod";
 import {
   careEntryDraftField,
   commandAnswer,
-  eventDraftField,
-  reminderDraftField,
+  taskDraftField,
   type CareEntryDraft,
   type CareEntryDraftField,
   type CommandAnswer,
@@ -77,44 +76,37 @@ function absentFieldsOf<Field extends string>(
   return options.filter((field) => fields[field] === null || fields.missing.includes(field));
 }
 
-// Only ids from the Family's list count; a private Reminder goes to its speaker alone.
-function reminderDraftOf(answer: AnswerOf<"reminder">, context: CommandContext): CommandResult {
+// Only ids from the Family's list count; a private Task reminds its speaker alone, and an end time
+// means nothing without a start time.
+function taskDraftOf(answer: AnswerOf<"task">, context: CommandContext): CommandResult {
   const { outcome: _outcome, ...fields } = answer;
-  const known = new Set(context.members.map(({ id }) => id));
+  const knownMembers = new Set(context.members.map(({ id }) => id));
+  const knownPets = new Set(context.pets.map(({ id }) => id));
   const mentioned = [
-    ...(fields.recipientIds ?? []),
-    ...fields.ambiguities.flatMap(({ candidateIds }) => candidateIds),
+    ...(fields.recipientIds ?? []).map((id) => knownMembers.has(id)),
+    ...(fields.petId === null ? [] : [knownPets.has(fields.petId)]),
+    ...fields.ambiguities.flatMap(({ field, candidateIds }) =>
+      candidateIds.map((id) => (field === "pet" ? knownPets : knownMembers).has(id)),
+    ),
   ];
 
-  if (mentioned.some((id) => !known.has(id))) {
+  if (mentioned.includes(false)) {
     return { status: "unrecognized" };
   }
 
-  return {
-    status: "draft",
-    draft: {
-      kind: "reminder",
-      ...fields,
-      recipientIds: fields.visibility === "private" ? [context.speaker.id] : fields.recipientIds,
-      ambiguities: fields.visibility === "private" ? [] : fields.ambiguities,
-      missing: absentFieldsOf(fields, reminderDraftField.options),
-    },
-  };
-}
-
-// An Event refers to nobody, so it has nothing to be ambiguous about.
-function eventDraftOf(answer: AnswerOf<"event">): CommandResult {
-  const { outcome: _outcome, ...fields } = answer;
-  const hasEnd = fields.endDate !== null;
+  const isPrivate = fields.visibility === "private";
 
   return {
     status: "draft",
     draft: {
-      kind: "event",
+      kind: "task",
       ...fields,
-      endTime: hasEnd && fields.time !== null ? fields.endTime : null,
-      ambiguities: [],
-      missing: absentFieldsOf(fields, eventDraftField.options),
+      endTime: fields.endDate !== null && fields.time !== null ? fields.endTime : null,
+      recipientIds: isPrivate ? [context.speaker.id] : fields.recipientIds,
+      ambiguities: isPrivate
+        ? fields.ambiguities.filter(({ field }) => field === "pet")
+        : fields.ambiguities,
+      missing: absentFieldsOf(fields, taskDraftField.options),
     },
   };
 }
@@ -171,8 +163,7 @@ function careDraftOf(answer: AnswerOf<"care_entry">, context: CommandContext): C
 type KindReading<Answer> = (answer: Answer, context: CommandContext) => CommandResult;
 
 const kindReadings: { [Kind in CommandKind]: KindReading<AnswerOf<Kind>> } = {
-  reminder: reminderDraftOf,
-  event: eventDraftOf,
+  task: taskDraftOf,
   care_entry: careDraftOf,
 };
 

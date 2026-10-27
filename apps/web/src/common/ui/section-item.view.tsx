@@ -24,6 +24,7 @@ type SectionItemProps = {
   after?: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  isExpanded?: boolean;
 };
 
 const row =
@@ -102,7 +103,7 @@ function withControl(props: SectionItemProps, control: ReactNode): ReactNode {
 }
 
 function plainRowOf(props: SectionItemProps): ReactNode {
-  const { onClick, disabled = false, isAlert = false, isDestructive = false } = props;
+  const { onClick, disabled = false, isAlert = false, isDestructive = false, isExpanded } = props;
   const content = (
     <>
       {leadingOf({ ...props, isAlert: isAlert || isDestructive })}
@@ -122,6 +123,7 @@ function plainRowOf(props: SectionItemProps): ReactNode {
         "focus-visible:-outline-offset-2 active:bg-muted aria-disabled:opacity-50",
       )}
       aria-disabled={disabled || undefined}
+      aria-expanded={isExpanded}
       onClick={disabled ? undefined : onClick}
     >
       {content}

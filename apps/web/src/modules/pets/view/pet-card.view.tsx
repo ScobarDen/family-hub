@@ -8,7 +8,7 @@ import { PetArchiveSection } from "./pet-archive-section.view.tsx";
 import { PetAvatar } from "./pet-avatar.view.tsx";
 import { PetHeader } from "./pet-header.view.tsx";
 import { PetMemoSection } from "./pet-memo-section.view.tsx";
-import { PetSoon } from "./pet-soon.view.tsx";
+import { PetTasks } from "./pet-tasks.view.tsx";
 
 type PetCardProps = {
   screen: Extract<PetsScreen, { kind: "card" }>;
@@ -37,7 +37,7 @@ function tabsOf({ screen, model, expenses, journal, photos }: PetCardProps) {
   ];
 }
 
-// An archived Pet's card reads only: no editing, no planning, its history and the way back out.
+// An archived Pet's card reads only: no editing, no new Tasks, its history and the way back out.
 export const PetCard = reatomComponent((props: PetCardProps) => {
   const { screen, model, summary, onAddEntry } = props;
   const { card } = screen;
@@ -53,13 +53,13 @@ export const PetCard = reatomComponent((props: PetCardProps) => {
       <SectionLayout
         summary={summary}
         lead={
-          <PetSoon
-            soon={card.soon}
-            onOpen={model.openSoon}
-            onPlan={
+          <PetTasks
+            tasks={card.tasks}
+            onOpen={model.openTask}
+            onAdd={
               isEditable
                 ? () => {
-                    model.plan(card.id);
+                    model.addTask(card.id);
                   }
                 : undefined
             }

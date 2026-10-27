@@ -27,16 +27,15 @@ async function tileOf<Name extends Section>(
 }
 
 async function tilesOf(tiles: TileSources, reading: { viewer: Membership; window: TileWindow }) {
-  const [plans, calendar, pet, goals, albums, recipes] = await Promise.all([
-    tileOf("plans", tiles.plans, reading),
-    tileOf("calendar", tiles.calendar, reading),
+  const [tasks, pet, goals, albums, recipes] = await Promise.all([
+    tileOf("tasks", tiles.tasks, reading),
     tileOf("pet", tiles.pet, reading),
     tileOf("goals", tiles.goals, reading),
     tileOf("albums", tiles.albums, reading),
     tileOf("recipes", tiles.recipes, reading),
   ]);
 
-  return { plans, calendar, pet, goals, albums, recipes };
+  return { tasks, pet, goals, albums, recipes };
 }
 
 export function createTodayService({ feed, tiles, clock }: TodayDependencies) {

@@ -20,7 +20,7 @@ export type KindField = {
     | "reason"
     | "costAmount"
     | "costCategory"
-    | "dueDate";
+    | "repeatOn";
   label: string;
   placeholder?: string;
   type?: "date";
@@ -35,7 +35,7 @@ const costChoices: Choice[] = [
 const costFields: KindField[] = [
   { name: "costAmount", label: "Стоимость, ₽" },
   { name: "costCategory", label: "Стоимость — это", choices: costChoices },
-  { name: "dueDate", label: "Повторить до", type: "date" },
+  { name: "repeatOn", label: "Повторить", type: "date" },
 ];
 
 // What each kind of entry asks for besides its time and note.

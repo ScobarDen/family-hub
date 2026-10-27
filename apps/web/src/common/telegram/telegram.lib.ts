@@ -8,7 +8,7 @@ export type Dialogs = {
   showAlert: (message: string) => void;
 };
 
-// The button reads as destructive unless the step loses nothing, such as completing a Plan.
+// The button reads as destructive unless the step loses nothing, such as completing a Task.
 export type Confirmation = {
   title: string;
   message: string;

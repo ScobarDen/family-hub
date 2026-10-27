@@ -14,6 +14,7 @@ import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
 
 import { createPetsApi } from "../pets.api.ts";
+import type { PetTask } from "../pets.lib.ts";
 import { reatomPets } from "../pets.model.ts";
 import { reatomPetsScreen } from "./pets.vm.ts";
 
@@ -103,10 +104,29 @@ function fakeBackend(list: PetList | Error = [buick], { failSaving = false } = {
   return { fetch, requests };
 }
 
-const soon = [
-  { id: "plan-2", title: "К ветеринару", dueDate: null, kind: "plan" as const },
-  { id: "plan-1", title: "Груминг", dueDate: "2026-10-20", kind: "plan" as const },
-  { id: "entry-1", title: "Прививка: Бешенство", dueDate: "2026-10-01", kind: "due" as const },
+const buickTasks: PetTask[] = [
+  {
+    key: "task-1-2026-10-01",
+    taskId: "task-1",
+    title: "Прививка от бешенства",
+    when: "1 октября",
+    status: "overdue",
+  },
+  {
+    key: "task-2-2026-10-20",
+    taskId: "task-2",
+    title: "Груминг",
+    when: "20 октября",
+    status: "open",
+  },
+  {
+    key: "task-4-2026-11-02",
+    taskId: "task-4",
+    title: "Визит к ветеринару: осмотр",
+    when: "2 ноября",
+    status: "open",
+  },
+  { key: "task-3", taskId: "task-3", title: "К ветеринару", when: undefined, status: "open" },
 ];
 
 function startPets(
@@ -147,12 +167,12 @@ function startPets(
       return { file, takenAt: null };
     },
     photoHint: () => photoHint,
-    soon: (petId) => (petId === "pet-1" ? soon : []),
-    onOpenSoon: (target) => {
-      opened.push(target);
+    tasksOf: (petId) => (petId === "pet-1" ? buickTasks : []),
+    onOpenTask: (taskId) => {
+      opened.push(`task ${taskId}`);
     },
-    onPlan: (petId) => {
-      opened.push(`new plan for ${petId}`);
+    onAddTask: (petId) => {
+      opened.push(`new task for ${petId}`);
     },
   });
 
@@ -198,29 +218,37 @@ describe("the pet tab", () => {
           { label: "Дата рождения", value: "14 мая 2022 г." },
         ],
         memo: { food: undefined, clinic: undefined, important: undefined, updated: undefined },
-        soon: [
+        tasks: [
           {
-            id: "entry-1",
-            kind: "due",
-            title: "Прививка: Бешенство",
+            key: "task-1-2026-10-01",
+            taskId: "task-1",
+            title: "Прививка от бешенства",
             subtitle: "Просрочено · 1 октября",
-            isOverdue: true,
+            status: "overdue",
           },
           {
-            id: "plan-1",
-            kind: "plan",
+            key: "task-2-2026-10-20",
+            taskId: "task-2",
             title: "Груминг",
             subtitle: "20 октября",
-            isOverdue: false,
+            status: "open",
           },
           {
-            id: "plan-2",
-            kind: "plan",
+            key: "task-4-2026-11-02",
+            taskId: "task-4",
+            title: "Визит к ветеринару: осмотр",
+            subtitle: "2 ноября",
+            status: "open",
+          },
+          {
+            key: "task-3",
+            taskId: "task-3",
             title: "К ветеринару",
             subtitle: undefined,
-            isOverdue: false,
+            status: "open",
           },
         ],
+        nextVisit: "2 ноября",
         isArchived: false,
       },
     });
@@ -474,20 +502,15 @@ describe("the tab title", () => {
   });
 });
 
-describe("«Скоро» on the card", () => {
-  test("opens a Plan and plans a new one for this Pet through the plans module", async () => {
+describe("«Дела» on the card", () => {
+  test("opens a Task and adds a new one for this Pet through the tasks module", async () => {
     const { model, opened } = startPets();
 
     await loaded(model);
-    model.openSoon({ id: "plan-1", kind: "plan" });
-    model.openSoon({ id: "entry-1", kind: "due" });
-    model.plan("pet-1");
+    model.openTask("task-2");
+    model.addTask("pet-1");
 
-    expect(opened).toEqual([
-      { kind: "plan", planId: "plan-1" },
-      { kind: "due-date", entryId: "entry-1" },
-      "new plan for pet-1",
-    ]);
+    expect(opened).toEqual(["task task-2", "new task for pet-1"]);
   });
 });
 

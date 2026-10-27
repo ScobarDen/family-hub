@@ -75,20 +75,27 @@ async function runBatch(db: DatabaseSync, statements: Statement[]) {
   }
 }
 
-function applyMigrations(db: DatabaseSync): void {
+// Rows in the shape a database had before a migration, written just before it runs.
+export type SeedBefore = { migration: string; sql: string };
+
+function applyMigrations(db: DatabaseSync, seedBefore: SeedBefore | undefined): void {
   const migrations = readdirSync(migrationsDirectory)
     .filter((file) => file.endsWith(".sql"))
     .toSorted();
 
   for (const file of migrations) {
+    if (seedBefore !== undefined && file.startsWith(seedBefore.migration)) {
+      db.exec(seedBefore.sql);
+    }
+
     db.exec(readFileSync(join(migrationsDirectory, file), "utf8"));
   }
 }
 
-export function createMigratedSqliteD1(): D1Database {
+export function createMigratedSqliteD1(seedBefore?: SeedBefore): D1Database {
   const db = new DatabaseSync(":memory:");
 
-  applyMigrations(db);
+  applyMigrations(db, seedBefore);
 
   const d1 = {
     prepare: (query: string) => createStatement(db, query),

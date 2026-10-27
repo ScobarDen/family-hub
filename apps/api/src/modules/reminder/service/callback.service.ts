@@ -4,6 +4,7 @@ import type { Membership } from "@/common/auth";
 import { ignoringBotErrors } from "@/common/telegram";
 
 import {
+  alreadyDoneText,
   doneText,
   notDoneText,
   notYoursText,
@@ -89,7 +90,10 @@ async function markDone(
 }
 
 // «Отложить» is the presser's own: their row comes back for the same Occurrence later.
-async function snooze(dependencies: ReminderDependencies, { row, source, presser }: Press) {
+async function didSnooze(
+  dependencies: ReminderDependencies,
+  { row, source, presser }: Press,
+): Promise<boolean> {
   const { dispatch, bot, clock } = dependencies;
   const until = clock.now() + source.snoozeMs;
   const occurrence = row.sentOccurrence ?? row.occurrence;
@@ -110,6 +114,23 @@ async function snooze(dependencies: ReminderDependencies, { row, source, presser
       }),
     );
   }
+
+  return true;
+}
+
+// The source closes first, so a message never says «Сделал(а)» about what the app still shows open;
+// its rows are read before, as completing a single Task drops them.
+async function didComplete(dependencies: ReminderDependencies, press: Press): Promise<boolean> {
+  const rows = await dependencies.dispatch.ofSource(press.row);
+  const occurrence = press.row.sentOccurrence ?? press.row.occurrence;
+
+  if ((await press.source.complete?.(press.presser, occurrence)) === false) {
+    return false;
+  }
+
+  await markDone(dependencies, { press, rows });
+
+  return true;
 }
 
 async function pressOf(
@@ -132,6 +153,25 @@ async function pressOf(
   return source && { row, source, presser };
 }
 
+// The text the pressed button answers with, or nothing when it did what it says.
+async function pressed(
+  dependencies: ReminderDependencies,
+  { press, isDone }: { press: Press; isDone: boolean },
+): Promise<string | undefined> {
+  if (isDone && press.source.closesForEveryone) {
+    return (await didComplete(dependencies, press)) ? undefined : notDoneText;
+  }
+
+  // Snoozing an Occurrence someone already did would bring it back and push the next one aside.
+  if (!isDone && press.row.doneAt !== null) {
+    return alreadyDoneText;
+  }
+
+  await didSnooze(dependencies, press);
+
+  return undefined;
+}
+
 export async function handleReminderCallback(
   dependencies: ReminderDependencies,
   query: CallbackQuery,
@@ -140,40 +180,15 @@ export async function handleReminderCallback(
   const press =
     parsed &&
     (await pressOf(dependencies, { dispatchId: parsed.dispatchId, telegramId: query.from.id }));
-
-  if (parsed === undefined || press === undefined) {
-    await ignoringBotErrors(
-      dependencies.bot.call("answerCallbackQuery", {
-        callback_query_id: query.id,
-        text: notYoursText,
-      }),
-    );
-
-    return;
-  }
-
-  // The source closes first, so a message never says «Сделал(а)» about what the app still shows open;
-  // its rows are read before, as closing a Plan drops them.
-  if (parsed.action === "done" && press.source.closesForEveryone) {
-    const rows = await dependencies.dispatch.ofSource(press.row);
-
-    if ((await press.source.complete?.(press.presser)) === false) {
-      await ignoringBotErrors(
-        dependencies.bot.call("answerCallbackQuery", {
-          callback_query_id: query.id,
-          text: notDoneText,
-        }),
-      );
-
-      return;
-    }
-
-    await markDone(dependencies, { press, rows });
-  } else {
-    await snooze(dependencies, press);
-  }
+  const text =
+    parsed === undefined || press === undefined
+      ? notYoursText
+      : await pressed(dependencies, { press, isDone: parsed.action === "done" });
 
   await ignoringBotErrors(
-    dependencies.bot.call("answerCallbackQuery", { callback_query_id: query.id }),
+    dependencies.bot.call(
+      "answerCallbackQuery",
+      text === undefined ? { callback_query_id: query.id } : { callback_query_id: query.id, text },
+    ),
   );
 }

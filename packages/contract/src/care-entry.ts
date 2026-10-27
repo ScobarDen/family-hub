@@ -46,25 +46,22 @@ const weightStepsPerKg = 10;
 const roundingTolerance = 1e-9;
 
 const name = z.string().trim().min(1).max(careTextMaxLength);
-const dueDate = z.iso.date().nullable();
 
 // The cost of a medical Care Entry is a Pet Expense of the vet or of medicine.
 const careCost = z.object({ amount: rubles, category: z.enum(["vet", "medicine"]) });
 
 export const careDetails = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("vaccination"), vaccine: name, cost: careCost.nullable(), dueDate }),
+  z.object({ kind: z.literal("vaccination"), vaccine: name, cost: careCost.nullable() }),
   z.object({
     kind: z.literal("treatment"),
     target: name,
     product: optionalText(careTextMaxLength),
     cost: careCost.nullable(),
-    dueDate,
   }),
   z.object({
     kind: z.literal("vet_visit"),
     reason: optionalText(careTextMaxLength),
     cost: careCost.nullable(),
-    dueDate,
   }),
   z.object({
     kind: z.literal("weight"),
@@ -84,8 +81,11 @@ export const careDetails = z.discriminatedUnion("kind", [
 
 export type CareDetails = z.infer<typeof careDetails>;
 
+// A vaccination, treatment or vet visit asked to be repeated on a date creates a Task linked to the
+// Pet with its author as Assignee; the Care Entry itself keeps nothing of it.
 export const careEntryChange = z.object({
   occurredAt: z.number().int().positive(),
+  repeatOn: z.iso.date().nullable().default(null),
   note: optionalText(careNoteMaxLength),
   details: careDetails,
   photoIds: z.array(z.string()).max(careEntryPhotoMax).default([]),
@@ -130,19 +130,6 @@ export const expenseSummary = z.object({
 
 export type ExpenseSummary = z.infer<typeof expenseSummary>;
 
-export const dueCareKind = z.enum(["vaccination", "treatment", "vet_visit"]);
+export const repeatableCareKind = z.enum(["vaccination", "treatment", "vet_visit"]);
 
-const dueDateItem = z.object({
-  entryId: z.string(),
-  kind: dueCareKind,
-  label: z.string(),
-  title: z.string(),
-  dueDate: z.iso.date(),
-  isOverdue: z.boolean(),
-});
-
-export type DueDateItem = z.infer<typeof dueDateItem>;
-
-export const dueDateList = z.array(dueDateItem);
-
-export type DueDateList = z.infer<typeof dueDateList>;
+export type RepeatableCareKind = z.infer<typeof repeatableCareKind>;

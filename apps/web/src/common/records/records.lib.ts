@@ -10,19 +10,3 @@ export function upserted<Item extends Identified>(items: Item[], saved: Item): I
 export function withoutId<Item extends Identified>(items: Item[], id: string): Item[] {
   return items.filter((item) => item.id !== id);
 }
-
-// Undated records go last.
-export function byDueDate(
-  left: { dueDate: string | null },
-  right: { dueDate: string | null },
-): number {
-  if (left.dueDate === right.dueDate) {
-    return 0;
-  }
-
-  if (left.dueDate === null || right.dueDate === null) {
-    return left.dueDate === null ? 1 : -1;
-  }
-
-  return left.dueDate < right.dueDate ? -1 : 1;
-}

@@ -8,26 +8,28 @@ import {
   internet,
   lastTo,
   press,
-  reminders,
   request,
   say,
   speak,
   startWithFamily,
   stranger,
+  tasks,
 } from "./command-fixtures.ts";
 
 describe("a text command to the bot", () => {
-  test("answers with a preview and creates the Reminder on «Создать»", async () => {
+  test("answers with a preview and creates the Task on «Создать»", async () => {
     const worker = await startWithFamily();
 
-    worker.ai.answer({ response: internet });
+    worker.ai.answer({
+      response: { ...internet, recipientIds: [worker.denisId, worker.asyaId] },
+    });
 
-    const response = await say(worker, denis, "напомни в пятницу в 19:00 оплатить интернет");
+    const response = await say(worker, denis, "напомни нам в пятницу в 19:00 оплатить интернет");
     const preview = lastTo(worker, denis);
 
     expect(response.status).toBe(200);
     expect(preview?.text).toBe(
-      "⏰ Оплатить интернет · пт 16 окт, 19:00 · каждый месяц · Денис, Ася",
+      "⏰ Оплатить интернет · пт 16 окт, 19:00 · каждый месяц · в момент · напомнить: Денис, Ася",
     );
     expect(buttonsOf(preview).map(({ text }) => text)).toEqual(["Создать", "Изменить", "×"]);
     expect(buttonsOf(preview)[1]).toMatchObject({
@@ -38,12 +40,15 @@ describe("a text command to the bot", () => {
 
     await press(worker, denis, dataOf(preview, "Создать"));
 
-    expect(await reminders(worker, asya)).toMatchObject([
+    expect(await tasks(worker, asya)).toMatchObject([
       {
-        text: "Оплатить интернет",
-        start: { date: "2026-10-16", time: "19:00", timeZone: "Europe/Moscow" },
+        title: "Оплатить интернет",
+        when: { date: "2026-10-16", time: "19:00", timeZone: "Europe/Moscow" },
         recurrence: { frequency: "monthly", until: null },
-        isForEveryone: true,
+        recipients: expect.arrayContaining([
+          expect.objectContaining({ id: worker.denisId }),
+          expect.objectContaining({ id: worker.asyaId }),
+        ]),
       },
     ]);
     expect(worker.bot.editedMessages().at(-1)?.text).toMatch(/^✅ Создано/u);
@@ -51,7 +56,7 @@ describe("a text command to the bot", () => {
     worker.clock.set("2026-10-16T16:00:00Z");
     await worker.tick();
 
-    expect(lastTo(worker, asya)?.text).toBe("🔔 Оплатить интернет");
+    expect(lastTo(worker, asya)?.text).toBe("📌 Оплатить интернет · 16 октября, 19:00");
   });
 
   test("creates nothing on a second «Создать» or after «×»", async () => {
@@ -71,7 +76,7 @@ describe("a text command to the bot", () => {
     await press(worker, denis, dataOf(second, "×"));
     await press(worker, denis, dataOf(second, "Создать"));
 
-    expect(await reminders(worker, denis)).toHaveLength(1);
+    expect(await tasks(worker, denis)).toHaveLength(1);
     expect(worker.bot.editedMessages().at(-1)?.text).toBe("Отменено");
     expect(worker.bot.answeredCallbacks().at(-1)?.text).toBe("Черновик устарел");
   });
@@ -84,17 +89,18 @@ describe("a text command to the bot", () => {
     await press(worker, asya, dataOf(lastTo(worker, denis), "Создать"));
 
     expect(worker.bot.answeredCallbacks().at(-1)?.text).toBe("Это не ваш черновик");
-    expect(await reminders(worker, denis)).toEqual([]);
+    expect(await tasks(worker, denis)).toEqual([]);
   });
 
-  test("offers the matching Members as buttons and creates nothing without a time", async () => {
+  test("offers the matching Members as buttons and creates nothing without a title", async () => {
     const worker = await startWithFamily();
     const mother = await worker.addMember(worker.familyId, { telegramId: 333, name: "Ася" });
 
     worker.ai.answer({
       response: {
         ...internet,
-        time: null,
+        title: null,
+        missing: ["title"],
         ambiguities: [
           { field: "recipients", mention: "Ася", candidateIds: [worker.asyaId, mother] },
         ],
@@ -110,7 +116,7 @@ describe("a text command to the bot", () => {
 
     const edited = worker.bot.editedMessages().at(-1);
 
-    expect(edited?.text).toContain("Не хватает: время");
+    expect(edited?.text).toContain("Не хватает: что за дело");
     expect(edited?.reply_markup?.inline_keyboard.flat().map(({ text }) => text)).toEqual([
       "Изменить",
       "×",
@@ -128,7 +134,7 @@ describe("a text command to the bot", () => {
     await say(worker, denis, "удали все напоминания");
 
     expect(lastTo(worker, denis)?.text).toBe(
-      "Такое голосом и текстом не умею — только создать напоминание, событие или запись питомца.",
+      "Такое голосом и текстом не умею — только создать дело или запись питомца.",
     );
   });
 
@@ -186,7 +192,7 @@ describe("a text command to the bot", () => {
     await press(worker, denis, dataOf(lastTo(worker, denis), "Создать"));
 
     expect(worker.bot.answeredCallbacks().at(-1)?.text).toBe("Черновик устарел");
-    expect(await reminders(worker, denis)).toEqual([]);
+    expect(await tasks(worker, denis)).toEqual([]);
   });
 
   test("keeps the phrase's day and zone when «Создать» comes the next day in another zone", async () => {
@@ -208,8 +214,8 @@ describe("a text command to the bot", () => {
         expect.objectContaining({ content: expect.stringContaining("Сегодня 2026-10-13") }),
       ]),
     });
-    expect(await reminders(worker, denis)).toMatchObject([
-      { start: { date: "2026-10-14", time: "09:00", timeZone: "Europe/Moscow" } },
+    expect(await tasks(worker, denis)).toMatchObject([
+      { when: { date: "2026-10-14", time: "09:00", timeZone: "Europe/Moscow" } },
     ]);
   });
 
@@ -227,12 +233,12 @@ describe("a text command to the bot", () => {
     expect(worker.bot.editedMessages().at(-1)?.text).toMatch(
       /\n\nНе получилось создать: кого-то из получателей уже нет в семье\. Выберите получателей в «Изменить»\.$/u,
     );
-    expect(await reminders(worker, denis)).toEqual([]);
+    expect(await tasks(worker, denis)).toEqual([]);
   });
 });
 
 const grooming = {
-  outcome: "event",
+  outcome: "task",
   title: "Груминг Бьюика",
   note: null,
   date: "2026-10-17",
@@ -242,12 +248,14 @@ const grooming = {
   recurrence: null,
   visibility: "shared",
   reminderOffsets: ["1d"],
+  recipientIds: null,
+  petId: null,
   missing: [],
   ambiguities: [],
 };
 
-describe("an Event command to the bot", () => {
-  test("previews the Event and creates it with its Reminder on «Создать»", async () => {
+describe("a dated Task command to the bot", () => {
+  test("previews the Task and creates it with its Reminder on «Создать»", async () => {
     const worker = await startWithFamily();
 
     worker.ai.answer({ response: grooming });
@@ -255,27 +263,26 @@ describe("an Event command to the bot", () => {
 
     const preview = lastTo(worker, denis);
 
-    expect(preview?.text).toBe("📅 Груминг Бьюика · сб 17 окт, 12:00 · напомнить за день");
+    expect(preview?.text).toBe("⏰ Груминг Бьюика · сб 17 окт, 12:00 · за день · напомнить мне");
 
     await press(worker, denis, dataOf(preview, "Создать"));
 
-    const events = await request(worker, asya, { path: "/api/events" });
-
-    expect(await events.json()).toMatchObject([
+    expect(await tasks(worker, asya)).toMatchObject([
       {
         title: "Груминг Бьюика",
-        start: { date: "2026-10-17", time: "12:00", timeZone: "Europe/Moscow" },
+        when: { date: "2026-10-17", time: "12:00", timeZone: "Europe/Moscow" },
         reminderOffsets: ["1d"],
+        recipients: "default",
       },
     ]);
 
     worker.clock.set("2026-10-16T09:00:00Z");
     await worker.tick();
 
-    expect(lastTo(worker, asya)?.text).toMatch(/Груминг Бьюика/u);
+    expect(lastTo(worker, denis)?.text).toMatch(/^📌 Груминг Бьюика/u);
   });
 
-  test("shows an all-day Event without a time", async () => {
+  test("shows an all-day Task without a time", async () => {
     const worker = await startWithFamily();
 
     worker.ai.answer({
@@ -291,7 +298,7 @@ describe("an Event command to the bot", () => {
     await say(worker, denis, "каждый год 3 марта день рождения мамы");
 
     expect(lastTo(worker, denis)?.text).toBe(
-      "📅 День рождения мамы · ср 3 мар, весь день · каждый год",
+      "📌 День рождения мамы · ср 3 мар, весь день · каждый год",
     );
   });
 
@@ -308,14 +315,12 @@ describe("an Event command to the bot", () => {
     });
     await press(worker, denis, dataOf(lastTo(worker, denis), "Создать"));
 
-    const events = await request(worker, denis, { path: "/api/events" });
-
-    expect(await events.json()).toMatchObject([
-      { start: { date: "2026-10-17", time: "12:00", timeZone: "Europe/Moscow" } },
+    expect(await tasks(worker, denis)).toMatchObject([
+      { when: { date: "2026-10-17", time: "12:00", timeZone: "Europe/Moscow" } },
     ]);
   });
 
-  test("says what does not add up in a draft the Event form would refuse", async () => {
+  test("says what does not add up in a draft the Task form would refuse", async () => {
     const worker = await startWithFamily();
 
     worker.ai.answer({ response: { ...grooming, endDate: "2026-10-16", endTime: "14:00" } });
@@ -350,12 +355,12 @@ describe("a voice command to the bot", () => {
     );
     expect(preview?.text).toBe(
       "🎙 «напомни в пятницу в 19:00 оплатить интернет»\n\n" +
-        "⏰ Оплатить интернет · пт 16 окт, 19:00 · каждый месяц · Денис, Ася",
+        "⏰ Оплатить интернет · пт 16 окт, 19:00 · каждый месяц · в момент · напомнить мне",
     );
 
     await press(worker, denis, dataOf(preview, "Создать"));
 
-    expect(await reminders(worker, denis)).toMatchObject([{ text: "Оплатить интернет" }]);
+    expect(await tasks(worker, denis)).toMatchObject([{ title: "Оплатить интернет" }]);
   });
 
   test("turns down a voice longer than 30 seconds without downloading it or counting it", async () => {

@@ -3,7 +3,7 @@ import { dateInZone, timeInZone } from "@family-hub/recurrence";
 
 import { formatNearDate } from "@/common/format-date";
 
-export type FeedFilter = "all" | "plans" | "calendar" | "pet" | "goals" | "albums" | "recipes";
+export type FeedFilter = "all" | "tasks" | "pet" | "goals" | "albums" | "recipes";
 
 export type FeedItem = FeedUpcoming | FeedActivity;
 
@@ -14,7 +14,6 @@ export type FeedRow = {
   subtitle: string | undefined;
   isOverdue: boolean;
   canComplete: boolean;
-  canRecord: boolean;
   photos: Photo[];
   morePhotos: number;
   author: { name: string; profilePicture: string | null } | undefined;
@@ -32,10 +31,7 @@ export type FeedData = {
 type Viewer = { today: string; timeZone: string };
 
 const modules: Record<FeedItem["kind"], FeedFilter> = {
-  event: "calendar",
-  reminder: "calendar",
-  plan: "plans",
-  due: "pet",
+  task: "tasks",
   birthday: "pet",
   care: "pet",
   goal: "goals",
@@ -49,20 +45,20 @@ export function isShownBy(item: FeedItem, filter: FeedFilter): boolean {
 }
 
 function aheadRow(item: FeedUpcoming, isOverdue: boolean, { today }: Viewer): FeedRow {
-  const time = "time" in item ? item.time : null;
+  const time = item.kind === "task" ? item.time : null;
+  const when = [formatNearDate(item.date, today), time].filter((part) => part !== null).join(", ");
 
   return {
     key: item.key,
     kind: item.kind,
     title: item.title,
-    subtitle: [formatNearDate(item.date, today), time].filter((part) => part !== null).join(", "),
+    subtitle: isOverdue ? `Просрочено · ${when}` : when,
     isOverdue,
-    canComplete: item.kind === "plan",
-    canRecord: item.kind === "due",
+    canComplete: item.kind === "task",
     photos: [],
     morePhotos: 0,
     author: undefined,
-    picture: ("petPicture" in item ? item.petPicture : null) ?? undefined,
+    picture: item.petPicture ?? undefined,
   };
 }
 
@@ -91,7 +87,7 @@ function activityRow(item: FeedActivity, timeZone: string): FeedRow {
 
   return {
     key: item.key,
-    kind: item.kind === "plan" ? "done" : item.kind,
+    kind: item.kind === "task" ? "done" : item.kind,
     title: titleOf(item),
     subtitle:
       item.kind === "joined" || item.kind === "upload" || item.kind === "cooked"
@@ -99,7 +95,6 @@ function activityRow(item: FeedActivity, timeZone: string): FeedRow {
         : `${item.memberName} · ${time}`,
     isOverdue: false,
     canComplete: false,
-    canRecord: false,
     ...photosOf(item),
     author: { name: item.memberName, profilePicture: item.memberPicture },
     picture: undefined,
