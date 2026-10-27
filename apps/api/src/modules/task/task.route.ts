@@ -61,6 +61,11 @@ const refuse = refusalsOf<TaskRefusal>({
     message: "A recurring Task has no Subtasks",
     status: httpStatus.conflict,
   },
+  "not-an-occurrence": {
+    code: "OCCURRENCE_NOT_FOUND",
+    message: "The date is not an Occurrence of the Task",
+    status: httpStatus.badRequest,
+  },
 });
 
 function reply(context: Context<TaskEnv>, result: TaskResult, status?: typeof httpStatus.created) {
@@ -171,12 +176,12 @@ export const taskRoute = new Hono<TaskEnv>()
   .post(`${subtaskPath}/complete`, async (context) =>
     reply(
       context,
-      await context.var.tasks.markSubtask(context.var.membership, subtaskOf(context), true),
+      await context.var.tasks.completeSubtask(context.var.membership, subtaskOf(context)),
     ),
   )
   .post(`${subtaskPath}/reopen`, async (context) =>
     reply(
       context,
-      await context.var.tasks.markSubtask(context.var.membership, subtaskOf(context), false),
+      await context.var.tasks.reopenSubtask(context.var.membership, subtaskOf(context)),
     ),
   );

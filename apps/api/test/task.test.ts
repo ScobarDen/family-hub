@@ -198,6 +198,36 @@ describe("completing a Task", () => {
 
     expect(done.completions.map(({ occurrence }) => occurrence)).toEqual(["2026-10-01"]);
   });
+
+  test.each([
+    ["no date", { action: "complete", body: { occurrence: null } }],
+    ["a date between its Occurrences", { action: "complete", body: { occurrence: "2026-10-02" } }],
+    ["a date between its Occurrences to skip", { action: "skip", body: { date: "2026-10-02" } }],
+  ])("of a recurring Task refuses %s", async (_case, { action, body }) => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Таблетка Бьюику",
+      when: on("2026-10-01"),
+      recurrence: { frequency: "weekly", until: null },
+    });
+    const response = await send(worker, denis, { path: `/api/tasks/${task.id}/${action}`, body });
+
+    const [unchanged] = await tasksOf(worker, denis);
+
+    expect(await response.json()).toMatchObject({ code: "OCCURRENCE_NOT_FOUND" });
+    expect(unchanged).toMatchObject({ completions: [], skippedDates: [] });
+  });
+
+  test("refuses to skip the one Occurrence of a single Task", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, { title: "Отпуск", when: on("2026-10-10") });
+    const response = await send(worker, denis, {
+      path: `/api/tasks/${task.id}/skip`,
+      body: { date: "2026-10-10" },
+    });
+
+    expect(response.status).toBe(400);
+  });
 });
 
 describe("Overdue", () => {
@@ -251,6 +281,28 @@ describe("an edit of a recurring Task", () => {
 
     expect(await subtask.json()).toMatchObject({ code: "SUBTASKS_NOT_ALLOWED" });
     expect(upcoming.map(({ date }) => date)).toEqual(["2026-10-05", "2026-10-12"]);
+  });
+
+  test("into a single one starts it afresh, without the Occurrences done before", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Вынести мусор",
+      when: on("2026-09-28"),
+      recurrence: { frequency: "weekly", until: null },
+      assigneeIds: [worker.asyaId],
+    });
+
+    await mark(worker, { taskId: task.id, occurrence: "2026-09-28" });
+
+    const edited = await send(worker, denis, {
+      method: "PUT",
+      path: `/api/tasks/${task.id}`,
+      body: { title: "Вынести мусор", when: on("2026-10-01"), assigneeIds: [worker.asyaId] },
+    });
+    const { overdue } = await feedOf(worker, denis);
+
+    expect(await edited.json()).toMatchObject({ recurrence: null, completions: [] });
+    expect(overdue.map(({ title }) => title)).toEqual(["Вынести мусор"]);
   });
 });
 

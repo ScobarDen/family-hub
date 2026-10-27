@@ -39,11 +39,16 @@ export async function sourcesOf(
   return groups.flat();
 }
 
-// A row whose source is gone, or no longer has its id, reminds of nothing.
+// A row whose source is gone, or no longer has its id, reminds of nothing. Its kind can be gone
+// too: a Worker one release behind keeps writing the kinds it knows until the deploy finishes.
 export async function sourceOfRow(
   dependencies: ReminderDependencies,
   { familyId, source, sourceId }: Pick<DispatchRow, "familyId" | "source" | "sourceId">,
 ): Promise<Source | undefined> {
+  if (!isSourceKind(source)) {
+    return undefined;
+  }
+
   const sources = await sourceKinds[source].load(dependencies, {
     familyId,
     id: holderIdOf(sourceId),

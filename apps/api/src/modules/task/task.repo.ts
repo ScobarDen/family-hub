@@ -155,16 +155,6 @@ async function findTree(db: Db, familyId: string, taskId: string): Promise<TaskT
   return treesOf(records)[0];
 }
 
-async function parentOf(db: Db, familyId: string, taskId: string): Promise<string | undefined> {
-  const row = await db
-    .select({ parentId: tasks.parentId })
-    .from(tasks)
-    .where(inFamily(familyId, eq(tasks.id, taskId)))
-    .get();
-
-  return row?.parentId ?? undefined;
-}
-
 async function areMembers(db: Db, familyId: string, memberIds: string[]): Promise<boolean> {
   if (memberIds.length === 0) {
     return true;
@@ -223,6 +213,7 @@ type Saving = {
   isNew: boolean;
   assigneeIds: string[];
   recipientIds: string[];
+  dropsCompletions?: boolean;
 };
 
 function peopleRows(table: PeopleTable, row: Saving["row"], memberIds: string[]) {
@@ -232,12 +223,16 @@ function peopleRows(table: PeopleTable, row: Saving["row"], memberIds: string[])
   }));
 }
 
-function ofTask(table: PeopleTable, { familyId, id }: { familyId: string; id: string }) {
+function ofTask(
+  table: PeopleTable | typeof taskCompletions,
+  { familyId, id }: { familyId: string; id: string },
+) {
   return and(eq(table.familyId, familyId), eq(table.taskId, id));
 }
 
 // The Task, its Assignees and its Recipients are written as one batch.
-async function save(db: Db, { row, isNew, assigneeIds, recipientIds }: Saving): Promise<void> {
+async function save(db: Db, saving: Saving): Promise<void> {
+  const { row, isNew, assigneeIds, recipientIds, dropsCompletions = false } = saving;
   const { createdAt: _createdAt, createdBy: _createdBy, ...changed } = row;
   const inserts = [
     ...peopleRows(taskAssignees, row, assigneeIds),
@@ -253,6 +248,7 @@ async function save(db: Db, { row, isNew, assigneeIds, recipientIds }: Saving): 
           .where(inFamily(row.familyId, eq(tasks.id, row.id))),
     db.delete(taskAssignees).where(ofTask(taskAssignees, row)),
     db.delete(taskRecipients).where(ofTask(taskRecipients, row)),
+    ...(dropsCompletions ? [db.delete(taskCompletions).where(ofTask(taskCompletions, row))] : []),
     ...inserts,
   ]);
 }
@@ -361,7 +357,6 @@ export function createTaskRepo(db: Db) {
     ...bindFirst(db, {
       listVisible,
       findTree,
-      parentOf,
       areMembers,
       petOf,
       albumOf,

@@ -3,12 +3,10 @@ import { uuidv7, type SubtaskChange } from "@family-hub/contract";
 import type { Membership } from "@/common/auth";
 
 import type { TaskTree } from "../task.repo.ts";
-import type { TaskDependencies, TaskRefusal, TaskResult } from "../task.types.ts";
+import type { SubtaskTarget, TaskDependencies, TaskRefusal, TaskResult } from "../task.types.ts";
 import { currentTask, hasSubtask, visibleTree } from "./access.service.ts";
 import { notifyAssignees } from "./assignment.service.ts";
 import { settle } from "./completion.service.ts";
-
-type SubtaskTarget = { taskId: string; subtaskId: string };
 
 // A Subtask's Assignees follow its Task: of a Private one, only the owner.
 async function refusalOf(

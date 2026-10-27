@@ -95,7 +95,7 @@ A Task Occurrence or a Pet's birthday ahead of the Family, shown in the Feed.
 _Avoid_: Agenda, schedule
 
 **Overdue**:
-A Task Occurrence with Assignees whose date has passed while it is not Completed; a Task without Assignees never becomes Overdue.
+A Task Occurrence with Assignees whose date has passed while it is not Completed; a Task without Assignees never becomes Overdue. Of a recurring Task, only the Occurrences of the last 30 days count.
 _Avoid_: Late, urgent, missed
 
 ### Tasks

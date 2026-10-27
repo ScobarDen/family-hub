@@ -85,8 +85,12 @@ SELECT `id`, `family_id`, `owner_member_id`, `visibility`, `title`, `note`, `sta
 	`created_at`, `created_by`, `updated_at`
 FROM `events`;
 --> statement-breakpoint
-INSERT INTO `tasks` (`id`, `family_id`, `owner_member_id`, `visibility`, `title`, `date`, `time`, `time_zone`, `frequency`, `until`, `reminder_offsets`, `recipients_mode`, `created_at`, `created_by`, `updated_at`)
-SELECT `id`, `family_id`, `owner_member_id`, `visibility`, `text`, `start_date`, `start_time`, `time_zone`, `frequency`, `until`, '["at-start"]',
+-- A Reminder's text ran to 500 characters and a Task's title runs to 200: a longer one keeps its whole text as the note.
+INSERT INTO `tasks` (`id`, `family_id`, `owner_member_id`, `visibility`, `title`, `note`, `date`, `time`, `time_zone`, `frequency`, `until`, `reminder_offsets`, `recipients_mode`, `created_at`, `created_by`, `updated_at`)
+SELECT `id`, `family_id`, `owner_member_id`, `visibility`,
+	CASE WHEN length(`text`) > 200 THEN substr(`text`, 1, 199) || '…' ELSE `text` END,
+	CASE WHEN length(`text`) > 200 THEN `text` END,
+	`start_date`, `start_time`, `time_zone`, `frequency`, `until`, '["at-start"]',
 	CASE WHEN `is_for_everyone` THEN 'everyone' ELSE 'members' END,
 	`created_at`, `created_by`, `updated_at`
 FROM `reminders`;

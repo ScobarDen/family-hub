@@ -78,7 +78,7 @@ describe("live updates", () => {
       },
     });
 
-    expect(worker.live.signals).toEqual([{ familyId: worker.familyId, modules: ["tasks"] }]);
+    expect(worker.live.signals).toEqual([{ familyId: worker.familyId, modules: ["tasks", "pet"] }]);
   });
 
   test("the socket opens on the Family's Object for a valid session token", async () => {

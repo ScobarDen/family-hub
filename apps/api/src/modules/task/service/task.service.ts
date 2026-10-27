@@ -3,15 +3,11 @@ import type { ParsedTaskChange, SubtaskChange } from "@family-hub/contract";
 import type { Membership } from "@/common/auth";
 import { bindFirst } from "@/common/bind";
 
-import type { TaskDependencies } from "../task.types.ts";
-import { complete, markSubtask, reopen, skip } from "./completion.service.ts";
+import type { OccurrenceOf, SubtaskTarget, TaskDependencies } from "../task.types.ts";
+import { complete, completeSubtask, reopen, reopenSubtask, skip } from "./completion.service.ts";
 import { followUp, type FollowUp } from "./follow-up.service.ts";
 import { addSubtask, removeSubtask, updateSubtask } from "./subtask.service.ts";
 import { create, list, remove, update } from "./task-root.service.ts";
-
-type SubtaskTarget = { taskId: string; subtaskId: string };
-
-type OccurrenceOf = { taskId: string; occurrence: string | null };
 
 function scheduling({ schedule }: TaskDependencies) {
   return async function rescheduled<Result extends { status: string }>(
@@ -45,10 +41,15 @@ function subtaskCommands(dependencies: TaskDependencies) {
         taskId: target.taskId,
         result: await removeSubtask(dependencies, membership, target),
       }),
-    markSubtask: async (membership: Membership, target: SubtaskTarget, isDone: boolean) =>
+    completeSubtask: async (membership: Membership, target: SubtaskTarget) =>
       rescheduled(membership, {
         taskId: target.taskId,
-        result: await markSubtask(dependencies, membership, { ...target, isDone }),
+        result: await completeSubtask(dependencies, membership, target),
+      }),
+    reopenSubtask: async (membership: Membership, target: SubtaskTarget) =>
+      rescheduled(membership, {
+        taskId: target.taskId,
+        result: await reopenSubtask(dependencies, membership, target),
       }),
   };
 }

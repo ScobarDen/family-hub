@@ -12,7 +12,7 @@ import { notifyAssignees } from "./assignment.service.ts";
 type Checking = { change: ParsedTaskChange; ownerId: string; tree?: TaskTree };
 
 // A Private Task's people could reveal the surprise, so they are its owner or nobody.
-async function arePeopleAllowed(
+async function peopleRefusalOf(
   { tasks }: TaskDependencies,
   { family }: Membership,
   { change, ownerId }: Checking,
@@ -61,7 +61,7 @@ async function refusalOf(
   }
 
   return (
-    (await arePeopleAllowed(dependencies, membership, checking)) ??
+    (await peopleRefusalOf(dependencies, membership, checking)) ??
     (await linkRefusalOf(dependencies, membership, change))
   );
 }
@@ -81,12 +81,18 @@ export async function list(dependencies: TaskDependencies, membership: Membershi
   return all.toSorted(byDate);
 }
 
-type Saving = { taskId: string; ownerId: string; isNew: boolean; change: ParsedTaskChange };
+type Saving = {
+  taskId: string;
+  ownerId: string;
+  isNew: boolean;
+  change: ParsedTaskChange;
+  dropsCompletions?: boolean;
+};
 
 async function save(
   dependencies: TaskDependencies,
   membership: Membership,
-  { taskId, ownerId, isNew, change }: Saving,
+  { taskId, ownerId, isNew, change, dropsCompletions }: Saving,
 ): Promise<void> {
   const now = dependencies.clock.now();
 
@@ -103,6 +109,7 @@ async function save(
     isNew,
     assigneeIds: change.assigneeIds,
     recipientIds: Array.isArray(change.recipients) ? change.recipients : [],
+    dropsCompletions,
   });
 }
 
@@ -155,7 +162,17 @@ export async function update(
     return { status: refusal };
   }
 
-  await save(dependencies, membership, { taskId, ownerId, isNew: false, change });
+  // A one-off Task stores its completion under "" and a recurring one under each date, so turning
+  // one into the other leaves completions that no longer name an Occurrence.
+  const isRecurringChanged = (tree.root.row.frequency === null) !== (change.recurrence === null);
+
+  await save(dependencies, membership, {
+    taskId,
+    ownerId,
+    isNew: false,
+    change,
+    dropsCompletions: isRecurringChanged,
+  });
   await notifyAssignees(dependencies, membership, {
     taskId,
     title: change.title,

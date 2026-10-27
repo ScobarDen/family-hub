@@ -16,12 +16,14 @@ const ids = {
   vacuum: "00000000-0000-7000-8000-000000000012",
   dentist: "00000000-0000-7000-8000-000000000020",
   internet: "00000000-0000-7000-8000-000000000030",
+  meters: "00000000-0000-7000-8000-000000000031",
   rabies: "00000000-0000-7000-8000-000000000040",
   ticksOld: "00000000-0000-7000-8000-000000000041",
   ticksNew: "00000000-0000-7000-8000-000000000042",
   checkup: "00000000-0000-7000-8000-000000000043",
 };
 const audit = `${at}, '${ids.denis}', ${at}`;
+const meters = "Передать показания счётчиков. ".repeat(10).trim();
 const rabies = JSON.stringify({
   kind: "vaccination",
   vaccine: "Бешенство",
@@ -58,7 +60,8 @@ INSERT INTO plans (id, family_id, parent_id, owner_member_id, visibility, title,
 INSERT INTO events (id, family_id, owner_member_id, visibility, title, start_date, start_time, time_zone, end_date, end_time, frequency, until, skipped_dates, reminder_offsets, created_at, created_by, updated_at) VALUES
   ('${ids.dentist}', '${ids.family}', '${ids.denis}', 'shared', 'Стоматолог', '2026-10-08', '15:00', 'Europe/Moscow', '2026-10-08', '17:00', 'weekly', NULL, '["2026-10-15"]', '["1h"]', ${audit});
 INSERT INTO reminders (id, family_id, owner_member_id, visibility, text, start_date, start_time, time_zone, frequency, until, is_for_everyone, created_at, created_by, updated_at) VALUES
-  ('${ids.internet}', '${ids.family}', '${ids.denis}', 'shared', 'Оплатить интернет', '2026-10-16', '19:00', 'Europe/Moscow', 'monthly', NULL, 0, ${audit});
+  ('${ids.internet}', '${ids.family}', '${ids.denis}', 'shared', 'Оплатить интернет', '2026-10-16', '19:00', 'Europe/Moscow', 'monthly', NULL, 0, ${audit}),
+  ('${ids.meters}', '${ids.family}', '${ids.denis}', 'shared', '${meters}', '2026-10-20', '10:00', 'Europe/Moscow', 'monthly', NULL, 0, ${audit});
 INSERT INTO reminder_recipients (reminder_id, family_id, member_id) VALUES
   ('${ids.internet}', '${ids.family}', '${ids.asya}');
 INSERT INTO reminder_dispatch (id, family_id, source, source_id, member_id, occurrence, next_fire_at, created_at, updated_at) VALUES
@@ -142,6 +145,15 @@ describe("the move to Tasks", () => {
     expect(worker.bot.sentMessages().map(({ text }) => text)).toEqual([
       "📌 Оплатить интернет · 16 октября, 19:00",
     ]);
+  });
+
+  test("cuts a Reminder's text longer than a title and keeps all of it as the note", async () => {
+    const tasks = await tasksOf(startMigrated(), denis);
+    const moved = tasks.find(({ id }) => id === ids.meters);
+
+    expect(moved?.title).toHaveLength(200);
+    expect(moved?.title.endsWith("…")).toBe(true);
+    expect(moved?.note).toBe(meters);
   });
 
   test("turns an open Due Date into an Overdue Pet Task of its author and leaves a followed-up one", async () => {

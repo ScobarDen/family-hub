@@ -1,7 +1,7 @@
 import type { AppModule } from "@family-hub/contract";
 
-// «Готово» completes a Task Occurrence; a Command Draft's buttons create Tasks and Care Entries.
-export const reminderCallbackModules: AppModule[] = ["tasks"];
+// «Готово» completes a Task Occurrence, which a Pet card shows too; a Command Draft's buttons create Tasks and Care Entries.
+export const reminderCallbackModules: AppModule[] = ["tasks", "pet"];
 
 export const commandCallbackModules: AppModule[] = ["tasks", "pet"];
 

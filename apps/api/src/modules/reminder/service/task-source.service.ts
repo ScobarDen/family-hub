@@ -6,7 +6,7 @@ import {
   taskReminderMoment,
 } from "@family-hub/recurrence";
 
-import type { TaskRecord, TaskTree } from "@/modules/task";
+import type { TaskRecord, TaskRow, TaskTree } from "@/modules/task";
 
 import {
   daySnoozeMs,
@@ -17,8 +17,6 @@ import {
   sourceIdOf,
 } from "../reminder.lib.ts";
 import type { ReminderDependencies, Source, SourceHolder } from "../reminder.types.ts";
-
-type TaskRow = TaskRecord["row"];
 
 // The Occurrences still to remind of: skipped and Completed ones are left out.
 function seriesSteps(root: TaskRecord, date: string) {

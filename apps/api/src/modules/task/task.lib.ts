@@ -10,6 +10,7 @@ import type {
   TaskAlbum,
   TaskWhen,
 } from "@family-hub/contract";
+import { firstOccurrenceFrom } from "@family-hub/recurrence";
 
 import type { RecipientsMode } from "@/common/db";
 
@@ -18,6 +19,19 @@ import type { CompletionRow, PersonRow, TaskRecord, TaskRow, TaskTree } from "./
 // A Task without a Recurrence has one Occurrence, stored as "", so moving its date keeps it done.
 export function occurrenceKey(row: TaskRow, occurrence: string | null): string {
   return row.frequency === null ? "" : (occurrence ?? "");
+}
+
+// Any date stands for the one Occurrence of a Task without a Recurrence.
+export function isOccurrenceOf(row: TaskRow, date: string | null): boolean {
+  if (row.frequency === null) {
+    return true;
+  }
+
+  return (
+    row.date !== null &&
+    date !== null &&
+    firstOccurrenceFrom(row.date, recurrenceOf(row), date) === date
+  );
 }
 
 export function isCompleted(record: TaskRecord, occurrence: string | null): boolean {

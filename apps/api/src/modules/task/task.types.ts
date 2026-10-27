@@ -31,7 +31,12 @@ export type TaskRefusal =
   | "visibility-one-way"
   | "pet-not-found"
   | "album-not-found"
-  | "subtasks-not-allowed";
+  | "subtasks-not-allowed"
+  | "not-an-occurrence";
+
+export type OccurrenceOf = { taskId: string; occurrence: string | null };
+
+export type SubtaskTarget = { taskId: string; subtaskId: string };
 
 export type TaskResult = { status: "ok"; task: Task } | { status: TaskRefusal };
 
