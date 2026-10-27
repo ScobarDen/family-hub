@@ -11,12 +11,13 @@ type TaskRowProps = {
 };
 
 // Overdue reads in words as well as in red, so it does not rest on colour alone.
-function subtitleOf({ when, isOverdue }: Row): string | undefined {
-  if (!isOverdue) {
-    return when;
-  }
+// The Pet is named too, as two Pets' vaccinations would otherwise read the same.
+function subtitleOf({ when, isOverdue, petName }: Row): string | undefined {
+  const parts = [isOverdue ? "просрочено" : undefined, when, petName].filter(
+    (part) => part !== undefined,
+  );
 
-  return when === undefined ? "просрочено" : `просрочено · ${when}`;
+  return parts.length === 0 ? undefined : parts.join(" · ");
 }
 
 export function TaskRow({ row, disabled, onToggle, onOpen }: TaskRowProps) {

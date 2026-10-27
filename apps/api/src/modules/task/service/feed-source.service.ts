@@ -13,7 +13,12 @@ type TaskFeedDependencies = { tasks: TaskRepo; links: PhotoLinks };
 
 const farPast = "1970-01-01";
 
-type Line = Pick<FeedUpcoming & { kind: "task" }, "taskId" | "subtaskId" | "petId" | "petPicture">;
+type Line = Pick<
+  FeedUpcoming & { kind: "task" },
+  "taskId" | "subtaskId" | "petId" | "petPicture"
+> & {
+  petName: string | undefined;
+};
 
 function itemOf(
   record: TaskRecord,
@@ -25,10 +30,12 @@ function itemOf(
     time,
   }: { line: Line; title: string; occurrence: string; date: string; time: string | null },
 ): FeedUpcoming {
+  const { petName, ...link } = line;
+
   return {
     kind: "task",
     key: `task-${record.row.id}-${occurrence}`,
-    title,
+    title: petName === undefined ? title : `${title} — ${petName}`,
     date,
     time,
     occurrence,
@@ -37,7 +44,7 @@ function itemOf(
       name,
       profilePicture,
     })),
-    ...line,
+    ...link,
   };
 }
 
@@ -131,6 +138,7 @@ export async function taskItemsWithin(
         subtaskId: null,
         petId,
         petPicture: pet === undefined ? null : await links.thumbOf(pet.avatarPhotoId),
+        petName: pet?.name,
       };
 
       return [...rootItems(tree, { window, line }), ...subtaskItems(tree, { window, line })];

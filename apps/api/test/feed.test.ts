@@ -130,12 +130,12 @@ describe("the Feed", () => {
 
     const feed = await feedOf(worker, denis);
 
-    expect(titles(feed.overdue)).toEqual(["Обработка от клещей", "Отправить документы"]);
+    expect(titles(feed.overdue)).toEqual(["Обработка от клещей — Бьюик", "Отправить документы"]);
     expect(feed.upcoming.map(({ title, date }) => [title, date])).toEqual([
       ["Оплатить интернет", "2026-10-02"],
       ["Созвон", "2026-10-03"],
       ["День рождения: Бьюик", "2026-10-05"],
-      ["Прививка от бешенства", "2026-10-10"],
+      ["Прививка от бешенства — Бьюик", "2026-10-10"],
     ]);
   });
 

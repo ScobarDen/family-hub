@@ -155,7 +155,7 @@ describe("the move to Tasks", () => {
       assignees: [{ id: ids.denis }],
     });
     expect(tasks.some(({ title }) => title.startsWith("Обработка"))).toBe(false);
-    expect(feed.overdue.map(({ title }) => title)).toContain("Прививка: Бешенство");
+    expect(feed.overdue.map(({ title }) => title)).toContain("Прививка: Бешенство — Бьюик");
   });
 
   test("reminds the author of a Due Date a week ahead and on the day, from the next cron tick", async () => {

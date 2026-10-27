@@ -21,6 +21,7 @@ export type TaskRow = {
   when: string | undefined;
   assignees: Person[];
   petPicture: string | undefined;
+  petName: string | undefined;
   isRecurring: boolean;
   hasReminder: boolean;
   isOverdue: boolean;
@@ -99,7 +100,7 @@ function whenText(
 
 type TaskMarks = Pick<
   TaskRow,
-  "taskId" | "title" | "assignees" | "petPicture" | "isRecurring" | "hasReminder"
+  "taskId" | "title" | "assignees" | "petPicture" | "petName" | "isRecurring" | "hasReminder"
 >;
 
 function marksOf(task: Task): TaskMarks {
@@ -108,6 +109,7 @@ function marksOf(task: Task): TaskMarks {
     title: task.title,
     assignees: task.assignees,
     petPicture: task.pet?.picture ?? undefined,
+    petName: task.pet?.name,
     isRecurring: task.recurrence !== null,
     hasReminder: task.reminderOffsets.length > 0,
   };
