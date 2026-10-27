@@ -1,9 +1,6 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import type { Reminder } from "@family-hub/contract";
 import { timeInZone } from "@family-hub/recurrence";
-
-import type { ReminderWithRecipients } from "./repo/reminder.repo.ts";
 
 export const callbackPrefix = "rd";
 export const snoozeMs = 3_600_000;
@@ -15,31 +12,13 @@ const callbackPattern = new RegExp(`^${callbackPrefix}:(done|snooze):(.+)$`);
 
 const sourceIdSeparator = ":";
 
-// A holder with several sources, an Event's offsets or a Pet's Due Dates, tells them apart by a part
-// after its own id.
+// A holder with several sources, a Task's offsets, tells them apart by a part after its own id.
 export function sourceIdOf(holderId: string, part?: string): string {
   return part === undefined ? holderId : `${holderId}${sourceIdSeparator}${part}`;
 }
 
 export function holderIdOf(sourceId: string): string {
   return sourceId.split(sourceIdSeparator)[0] ?? sourceId;
-}
-
-export function toReminder(
-  { reminder, recipients }: ReminderWithRecipients,
-  memberId: string,
-): Reminder {
-  return {
-    id: reminder.id,
-    text: reminder.text,
-    start: { date: reminder.startDate, time: reminder.startTime, timeZone: reminder.timeZone },
-    recurrence:
-      reminder.frequency === null ? null : { frequency: reminder.frequency, until: reminder.until },
-    visibility: reminder.visibility,
-    isOwn: reminder.ownerMemberId === memberId,
-    isForEveryone: reminder.isForEveryone,
-    recipients,
-  };
 }
 
 export function parseCallback(data: string | undefined) {
@@ -53,13 +32,18 @@ export function parseCallback(data: string | undefined) {
       };
 }
 
-export function reminderButtons(dispatchId: string): InlineKeyboardMarkup {
+// One set for every Reminder; a Pet-linked Task adds «Записать», which the Mini App opens on.
+export function reminderButtons(
+  dispatchId: string,
+  { recordUrl }: { recordUrl?: string } = {},
+): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
       [
         { text: "✅ Готово", callback_data: `${callbackPrefix}:done:${dispatchId}` },
-        { text: "⏰ Отложить на час", callback_data: `${callbackPrefix}:snooze:${dispatchId}` },
+        { text: "⏰ Отложить", callback_data: `${callbackPrefix}:snooze:${dispatchId}` },
       ],
+      ...(recordUrl === undefined ? [] : [[{ text: "📝 Записать", url: recordUrl }]]),
     ],
   };
 }
@@ -84,30 +68,8 @@ export const notYoursText = "Это не ваше напоминание";
 
 export const notDoneText = "Не получилось отметить, откройте приложение";
 
-export function planButtons(dispatchId: string): InlineKeyboardMarkup {
-  return {
-    inline_keyboard: [
-      [
-        { text: "✅ Выполнено", callback_data: `${callbackPrefix}:done:${dispatchId}` },
-        { text: "⏰ Отложить на день", callback_data: `${callbackPrefix}:snooze:${dispatchId}` },
-      ],
-    ],
-  };
-}
-
 export function openAppButton({ text, url }: { text: string; url: string }): InlineKeyboardMarkup {
   return { inline_keyboard: [[{ text, url }]] };
-}
-
-export function dueButtons({ dispatchId, recordUrl }: { dispatchId: string; recordUrl: string }) {
-  return {
-    inline_keyboard: [
-      [
-        { text: "📝 Записать", url: recordUrl },
-        { text: "⏰ Отложить на день", callback_data: `${callbackPrefix}:snooze:${dispatchId}` },
-      ],
-    ],
-  };
 }
 
 function dayMonth(timeZone: string) {

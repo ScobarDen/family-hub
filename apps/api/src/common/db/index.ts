@@ -1,5 +1,5 @@
 export { createDb, type Db } from "./db.lib.ts";
-export type { CommandSource, DispatchSource, PhotoVariants } from "./schema.ts";
+export type { CommandSource, DispatchSource, PhotoVariants, RecipientsMode } from "./schema.ts";
 export {
   albumPhotos,
   albumUploadBatches,
@@ -7,7 +7,6 @@ export {
   careEntries,
   careEntryPhotos,
   commandDrafts,
-  events,
   families,
   familyMembers,
   familyRequests,
@@ -17,7 +16,6 @@ export {
   members,
   pets,
   photos,
-  plans,
   recipeCooks,
   recipeFavorites,
   recipePhotos,
@@ -25,6 +23,8 @@ export {
   recipeTags,
   recipes,
   reminderDispatch,
-  reminderRecipients,
-  reminders,
+  taskAssignees,
+  taskCompletions,
+  taskRecipients,
+  tasks,
 } from "./schema.ts";

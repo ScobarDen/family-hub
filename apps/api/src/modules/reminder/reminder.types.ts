@@ -1,20 +1,24 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import type { FeedUpcoming, Reminder } from "@family-hub/contract";
+import type { FeedUpcoming } from "@family-hub/contract";
 
 import type { Membership, MembershipRepo } from "@/common/auth";
 import type { Clock } from "@/common/clock";
 import type { DispatchSource } from "@/common/db";
 import type { MiniAppLinks } from "@/common/mini-app-link";
 import type { BotApi } from "@/common/telegram";
+import type { TaskTree } from "@/modules/task";
 
 import type { DispatchRepo } from "./repo/dispatch.repo.ts";
-import type { ReminderRepo } from "./repo/reminder.repo.ts";
 import type { FamilyHolderKind, SourceRepo } from "./repo/source.repo.ts";
 
-// «✅ Выполнено» on a Plan's Reminder completes it in the plan module, which the app wires in.
-type PlanCompletion = {
-  completeById(membership: Membership, planId: string): Promise<{ status: string }>;
+// «✅ Готово» completes an Occurrence in the task module, which the app wires in with its reads.
+type TaskPort = {
+  findTree(familyId: string, taskId: string): Promise<TaskTree | undefined>;
+  complete(
+    membership: Membership,
+    target: { taskId: string; occurrence: string | null },
+  ): Promise<{ status: string }>;
 };
 
 // The digest reads the Feed of its Member; the app wires the feed module in.
@@ -26,8 +30,7 @@ type DigestContent = {
 
 export type ReminderDependencies = {
   digests: DigestContent;
-  plans: PlanCompletion;
-  reminders: ReminderRepo;
+  tasks: TaskPort;
   dispatch: DispatchRepo;
   sources: SourceRepo;
   memberships: MembershipRepo;
@@ -36,19 +39,11 @@ export type ReminderDependencies = {
   clock: Clock;
 };
 
-export type ReminderRefusal =
-  | "not-found"
-  | "not-owner"
-  | "visibility-one-way"
-  | "recipients-not-allowed";
-
-export type ReminderResult = { status: "ok"; reminder: Reminder } | { status: ReminderRefusal };
-
 export type HolderKind = FamilyHolderKind | "member";
 
 export type SourceHolder = { familyId: string; id: string };
 
-export type ChangedSource = { kind: "event" | "pet" | "plan"; id: string };
+export type ChangedSource = { kind: "task" | "pet"; id: string };
 
 // What a dispatch row reminds of, read the same way for every kind of source: its Occurrences on a
 // Recipient's calendar, the moment each one fires and what the message says.
@@ -63,10 +58,10 @@ export type Source = {
   fireAt: (occurrence: string, timeZone: string) => number;
   emoji: string;
   title: (occurrence: string, timeZone: string) => string;
-  buttons: (dispatchId: string) => InlineKeyboardMarkup;
+  buttons: (dispatchId: string, occurrence: string) => InlineKeyboardMarkup;
   closesForEveryone: boolean;
   // False when the source refused, so the messages are left as they were.
-  complete?: (presser: Membership) => Promise<boolean>;
+  complete?: (presser: Membership, occurrence: string | null) => Promise<boolean>;
   // A message built when it is due; nothing to say means nothing is sent.
   compose?: (occurrence: string, timeZone: string) => Promise<string | undefined>;
   snoozeMs: number;

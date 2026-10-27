@@ -20,9 +20,8 @@ const viewer: Membership = {
 
 function tilesWith(failing: keyof TileSources): TileSources {
   const tiles: TileSources = {
-    plans: { tile: async () => ({ open: 2, overdue: 0 }) },
-    calendar: { tile: async () => ({ events: 1 }) },
-    pet: { tile: async () => ({ activeCount: 0, only: null, due: null }) },
+    tasks: { tile: async () => ({ open: 2, overdue: 0, week: 1 }) },
+    pet: { tile: async () => ({ activeCount: 0, only: null }) },
     goals: { tile: async () => ({ nearest: null }) },
     albums: { tile: async () => ({ photos: 3 }) },
     recipes: { tile: async () => ({ lastCooked: null }) },
@@ -41,15 +40,15 @@ describe("the Today hub", () => {
 
     const service = createTodayService({
       feed: { todayOf: async () => ({ due: [], next: [] }) },
-      tiles: tilesWith("plans"),
+      tiles: tilesWith("tasks"),
       clock: { now: () => Date.parse("2026-10-02T06:00:00Z") },
     });
 
     const today = await service.of(viewer);
 
     expect(today.tiles).toMatchObject({
-      plans: null,
-      calendar: { events: 1 },
+      tasks: null,
+      pet: { activeCount: 0 },
       albums: { photos: 3 },
     });
   });

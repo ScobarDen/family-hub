@@ -3,10 +3,9 @@ import type { DispatchSource } from "@/common/db";
 import { holderIdOf } from "../reminder.lib.ts";
 import type { HolderKind, ReminderDependencies, Source, SourceHolder } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
-import { eventSources, reminderSources } from "./calendar-source.service.ts";
 import { digestSources } from "./digest-source.service.ts";
-import { birthdaySources, dueSources } from "./pet-source.service.ts";
-import { planSources } from "./plan-source.service.ts";
+import { birthdaySources } from "./pet-source.service.ts";
+import { taskSources } from "./task-source.service.ts";
 
 type SourceKind = {
   holder: HolderKind;
@@ -14,11 +13,8 @@ type SourceKind = {
 };
 
 const sourceKinds: Record<DispatchSource, SourceKind> = {
-  reminder: { holder: "reminder", load: reminderSources },
-  event: { holder: "event", load: eventSources },
+  task: { holder: "task", load: taskSources },
   pet_birthday: { holder: "pet", load: birthdaySources },
-  pet_due: { holder: "pet", load: dueSources },
-  plan: { holder: "plan", load: planSources },
   digest: { holder: "member", load: digestSources },
 };
 

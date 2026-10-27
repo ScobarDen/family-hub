@@ -4,7 +4,7 @@ import { BotApiError } from "@/common/telegram";
 import { latenessLimitMs } from "../reminder.lib.ts";
 import type { ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
-import { fireAfter, zoneOf } from "./schedule.service.ts";
+import { fireAfter, upcoming, zoneOf } from "./schedule.service.ts";
 import { sourceOfRow } from "./source.service.ts";
 
 const batchSize = 50;
@@ -37,7 +37,7 @@ async function send(
     const message = await bot.call("sendMessage", {
       chat_id: telegramId,
       text,
-      reply_markup: source.buttons(row.id),
+      reply_markup: source.buttons(row.id, occurrence),
     });
 
     return { status: "sent", sent: { chatId: telegramId, messageId: message.message_id } };
@@ -60,7 +60,7 @@ async function send(
   }
 }
 
-// A Reminder more than 12 hours late moves on without a stale message, except a Due Date.
+// A Reminder more than 12 hours late moves on without a stale message.
 async function attempt(
   dependencies: ReminderDependencies,
   {
@@ -107,11 +107,34 @@ async function advance(
   });
 }
 
+// A row with a fire time but no Occurrence was written by a data migration, which cannot tell a
+// Recipient's zone: it is planned now instead of sent.
+async function plan(
+  dependencies: ReminderDependencies,
+  { row, source, timeZone }: { row: DispatchRow; source: Source | undefined; timeZone: string },
+): Promise<Delivery> {
+  const fire = source && upcoming(source, { timeZone, now: dependencies.clock.now() });
+
+  await dependencies.dispatch.update(row.familyId, row.id, {
+    occurrence: fire?.occurrence ?? null,
+    nextFireAt: fire?.fireAt ?? null,
+    lockedUntil: null,
+    updatedAt: dependencies.clock.now(),
+  });
+
+  return { status: "skipped" };
+}
+
 async function deliver(dependencies: ReminderDependencies, row: DispatchRow, now: number) {
   const source = await sourceOfRow(dependencies, row);
   const timeZone = await zoneOf(dependencies, { memberId: row.memberId, source });
+
+  if (row.occurrence === null) {
+    return plan(dependencies, { row, source, timeZone });
+  }
+
   const delivery: Delivery =
-    source === undefined || row.occurrence === null
+    source === undefined
       ? { status: "skipped" }
       : await attempt(dependencies, { row, source, now, timeZone });
 
@@ -120,7 +143,7 @@ async function deliver(dependencies: ReminderDependencies, row: DispatchRow, now
     await dependencies.dispatch.removeDeparted(row.familyId);
   } else if (delivery.status !== "rate-limited") {
     const next =
-      source === undefined || row.occurrence === null
+      source === undefined
         ? undefined
         : fireAfter(source, { occurrence: row.occurrence, timeZone });
 

@@ -5,15 +5,12 @@ import type { Clock } from "@/common/clock";
 import type { MiniAppLinks } from "@/common/mini-app-link";
 import type { BotApi } from "@/common/telegram";
 import type { CareEntryService } from "@/modules/care-entry";
-import type { EventService } from "@/modules/event";
-import type { ReminderService } from "@/modules/reminder";
+import type { TaskService } from "@/modules/task";
 
 import type { CommandRepo } from "./command.repo.ts";
 
 // «Создать» goes through the same use case as the Mini App form of the draft's kind.
-type ReminderCreation = Pick<ReminderService, "create">;
-
-type EventCreation = Pick<EventService, "create">;
+type TaskCreation = Pick<TaskService, "create">;
 
 type CareEntryCreation = Pick<CareEntryService, "create">;
 
@@ -27,7 +24,6 @@ export type CommandDependencies = {
   models: CommandModels;
   speechModel: string;
   commandsPerFamilyDay: number;
-  reminders: ReminderCreation;
-  events: EventCreation;
+  tasks: TaskCreation;
   careEntries: CareEntryCreation;
 };

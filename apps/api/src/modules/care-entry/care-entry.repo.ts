@@ -56,17 +56,6 @@ async function petsOf(db: Db, familyId: string) {
     .all();
 }
 
-async function dueCandidates(db: Db, familyId: string, petId: string) {
-  return selectWhere(
-    db,
-    and(
-      eq(careEntries.familyId, familyId),
-      eq(careEntries.petId, petId),
-      isNotNull(careEntries.dueKey),
-    ),
-  );
-}
-
 async function expenses(db: Db, { familyId, petId, from, to }: ExpenseQuery) {
   return selectWhere(
     db,
@@ -135,7 +124,6 @@ export function createCareEntryRepo(db: Db) {
     ...bindFirst(db, {
       find,
       petOf,
-      dueCandidates,
       expenses,
       photosOf,
       knownPhotoIds,
@@ -143,8 +131,6 @@ export function createCareEntryRepo(db: Db) {
       activityBefore,
     }),
     petsOf: async (familyId: string) => petsOf(db, familyId),
-    allDueCandidates: async (familyId: string) =>
-      selectWhere(db, and(eq(careEntries.familyId, familyId), isNotNull(careEntries.dueKey))),
     list: async (familyId: string, petId: string) =>
       selectWhere(db, and(eq(careEntries.familyId, familyId), eq(careEntries.petId, petId))),
 

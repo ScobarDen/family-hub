@@ -183,6 +183,20 @@
       "when": 1792786099438,
       "tag": "0025_member_profile_picture",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1793103528005,
+      "tag": "0026_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1793103531778,
+      "tag": "0027_drop_plans_events_reminders",
+      "breakpoints": true
     }
   ]
 }

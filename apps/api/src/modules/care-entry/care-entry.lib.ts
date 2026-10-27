@@ -3,7 +3,6 @@ import {
   expenseCategoryTitles,
   type CareDetails,
   type CareEntry,
-  type DueDateItem,
   type ExpenseCategory,
   type ExpenseSummary,
   type Photo,
@@ -12,19 +11,14 @@ import {
 import { formatRubles } from "@/common/money";
 
 import type { CareEntryRow } from "./care-entry.repo.ts";
-import { dueKeyOf, type OpenDueDate } from "./due-date/index.ts";
 
 type PromotedColumns = {
-  dueDate: string | null;
-  dueKey: string | null;
   weightKg: number | null;
   expenseAmount: number | null;
   expenseCategory: ExpenseCategory | null;
 };
 
 const noColumns: PromotedColumns = {
-  dueDate: null,
-  dueKey: null,
   weightKg: null,
   expenseAmount: null,
   expenseCategory: null,
@@ -45,8 +39,6 @@ export function columnsOf(details: CareDetails): PromotedColumns {
 
   return {
     ...noColumns,
-    dueDate: details.dueDate,
-    dueKey: dueKeyOf(details),
     expenseAmount: details.cost?.amount ?? null,
     expenseCategory: details.cost?.category ?? null,
   };
@@ -83,14 +75,6 @@ export function summaryOf(rows: CareEntryRow[]): ExpenseSummary {
       .toSorted((left, right) => right.amount - left.amount),
     entries,
   };
-}
-
-// A Due Date is a calendar day, overdue once the Member's own day has passed it.
-export function toDueDateItem(
-  { entryId, kind, label, title, dueDate }: OpenDueDate,
-  today: string,
-): DueDateItem {
-  return { entryId, kind, label, title, dueDate, isOverdue: dueDate < today };
 }
 
 export function careTitleOf(details: CareDetails): string {

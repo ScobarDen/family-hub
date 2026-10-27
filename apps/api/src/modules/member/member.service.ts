@@ -3,7 +3,6 @@ import {
   defaultTabBar,
   slotModule,
   tabBarSlots,
-  type AppModule,
   type DigestSettings,
   type FamilyMemberList,
   type MemberSettings,
@@ -30,10 +29,17 @@ function digestFrom(row: MemberSettingsRow | undefined): DigestSettings {
     : { isEnabled: row.isDigestEnabled, time: row.digestTime };
 }
 
-// A tab bar saved before the two slots keeps its first two modules besides the Feed.
-function slotsOf(stored: AppModule[] | null | undefined): SlotModule[] {
+// Plans and Calendar became «Дела», so a slot of either reads as tasks.
+const renamedModules = new Map([
+  ["plans", "tasks"],
+  ["calendar", "tasks"],
+]);
+
+// The raw column keeps what was saved: a tab bar from before the two slots keeps its first two
+// modules besides the Feed, and one with both Plans and Calendar gets Pets in its second slot.
+function slotsOf(stored: string[] | null | undefined): SlotModule[] {
   const kept = (stored ?? []).flatMap((module) => {
-    const slot = slotModule.safeParse(module);
+    const slot = slotModule.safeParse(renamedModules.get(module) ?? module);
 
     return slot.success ? [slot.data] : [];
   });

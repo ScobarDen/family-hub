@@ -143,11 +143,10 @@ export async function zoneChanged(dependencies: ReminderDependencies, memberId: 
 }
 
 // Rows already there stay as they are, snoozes included: a Member who joined gets rows for every
-// source that now reaches them, and one who left loses theirs along with their chosen-Recipient places.
+// source that now reaches them, and one who left loses theirs.
 export async function membershipChanged(dependencies: ReminderDependencies, familyId: string) {
   const now = dependencies.clock.now();
 
-  await dependencies.reminders.removeDepartedRecipients(familyId);
   await dependencies.dispatch.removeDeparted(familyId);
 
   const rows = await dependencies.dispatch.ofFamily(familyId);

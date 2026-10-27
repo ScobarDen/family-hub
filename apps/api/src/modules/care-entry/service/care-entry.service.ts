@@ -2,30 +2,30 @@ import {
   uuidv7,
   type CareEntry,
   type CareEntryChange,
-  type DueDateItem,
   type ExpenseSummary,
 } from "@family-hub/contract";
-import { dateInZone } from "@family-hub/recurrence";
 
 import type { Membership } from "@/common/auth";
 import { bindFirst } from "@/common/bind";
-import { fallbackTimeZone, type Clock } from "@/common/clock";
+import type { Clock } from "@/common/clock";
 import type { PhotoLinks } from "@/common/photo-link";
 
-import { columnsOf, summaryOf, toDueDateItem } from "../care-entry.lib.ts";
+import { careTitleOf, columnsOf, summaryOf } from "../care-entry.lib.ts";
 import type { CareEntryRepo, CareEntryRow } from "../care-entry.repo.ts";
-import { openDueDates } from "../due-date/index.ts";
 import { hasForeignPhotos, withPhotos } from "./entry-photo.service.ts";
 
-// A new entry may close or move a Due Date, whose Reminders live in the reminder module.
-type CareSchedule = {
-  sourceChanged(familyId: string, source: { kind: "pet"; id: string }): Promise<void>;
+// «Повторить» creates a Task linked to the Pet in the task module, which the app wires in.
+type CareFollowUps = {
+  followUp(
+    membership: Membership,
+    request: { petId: string; title: string; date: string },
+  ): Promise<{ status: string }>;
 };
 
 type CareEntryDependencies = {
   entries: CareEntryRepo;
   clock: Clock;
-  schedule: CareSchedule;
+  followUps: CareFollowUps;
   links: PhotoLinks;
 };
 
@@ -36,6 +36,22 @@ export type CareRefusal = "not-found" | "pet-not-found" | "archived" | "photo-no
 type CareResult = { status: "ok"; entry: CareEntry } | { status: CareRefusal };
 
 export type RemoveResult = { status: "deleted" } | { status: CareRefusal };
+
+const repeatableKinds = new Set(["vaccination", "treatment", "vet_visit"]);
+
+async function followUpOf(
+  { followUps }: CareEntryDependencies,
+  membership: Membership,
+  { petId, change }: { petId: string; change: CareEntryChange },
+): Promise<void> {
+  if (change.repeatOn !== null && repeatableKinds.has(change.details.kind)) {
+    await followUps.followUp(membership, {
+      petId,
+      title: careTitleOf(change.details),
+      date: change.repeatOn,
+    });
+  }
+}
 
 function valuesOf(change: CareEntryChange) {
   return {
@@ -87,17 +103,6 @@ async function writableEntry(
   return (await writablePet(dependencies, membership, entry.petId)) ?? entry;
 }
 
-// Only an entry with a Due Date, before or after the change, moves the Pet's Reminders.
-async function scheduleIfDue(
-  { schedule }: CareEntryDependencies,
-  { family }: Membership,
-  { petId, dueKeys }: { petId: string; dueKeys: Array<string | null> },
-): Promise<void> {
-  if (dueKeys.some((dueKey) => dueKey !== null)) {
-    await schedule.sourceChanged(family.id, { kind: "pet", id: petId });
-  }
-}
-
 async function photoRefusal(
   dependencies: CareEntryDependencies,
   membership: Membership,
@@ -139,7 +144,7 @@ async function create(
     entryId: id,
     photoIds: change.photoIds,
   });
-  await scheduleIfDue(dependencies, membership, { petId, dueKeys: [values.dueKey] });
+  await followUpOf(dependencies, membership, { petId, change });
 
   return current(dependencies, membership, id);
 }
@@ -173,10 +178,7 @@ async function update(
     entryId,
     photoIds: change.photoIds,
   });
-  await scheduleIfDue(dependencies, membership, {
-    petId: entry.petId,
-    dueKeys: [entry.dueKey, values.dueKey],
-  });
+  await followUpOf(dependencies, membership, { petId: entry.petId, change });
 
   return current(dependencies, membership, entryId);
 }
@@ -193,29 +195,15 @@ async function remove(
   }
 
   await dependencies.entries.delete(membership.family.id, entryId);
-  await scheduleIfDue(dependencies, membership, { petId: entry.petId, dueKeys: [entry.dueKey] });
 
   return { status: "deleted" };
-}
-
-async function dueDates(
-  { entries, clock }: CareEntryDependencies,
-  { family, member }: Membership,
-  petId: string,
-): Promise<DueDateItem[]> {
-  const pet = await entries.petOf(family.id, petId);
-  const rows = await entries.dueCandidates(family.id, petId);
-  const today = dateInZone(clock.now(), member.timeZone ?? fallbackTimeZone);
-  const open = openDueDates({ pets: pet === undefined ? [] : [pet], entries: rows });
-
-  return open.map((due) => toDueDateItem(due, today));
 }
 
 export function createCareEntryService(dependencies: CareEntryDependencies) {
   const { entries } = dependencies;
 
   return {
-    ...bindFirst(dependencies, { get: current, remove, dueDates }),
+    ...bindFirst(dependencies, { get: current, remove }),
     async list(membership: Membership, petId: string): Promise<CareEntry[]> {
       const rows = await entries.list(membership.family.id, petId);
 

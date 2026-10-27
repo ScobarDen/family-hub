@@ -89,7 +89,10 @@ async function markDone(
 }
 
 // «Отложить» is the presser's own: their row comes back for the same Occurrence later.
-async function snooze(dependencies: ReminderDependencies, { row, source, presser }: Press) {
+async function didSnooze(
+  dependencies: ReminderDependencies,
+  { row, source, presser }: Press,
+): Promise<boolean> {
   const { dispatch, bot, clock } = dependencies;
   const until = clock.now() + source.snoozeMs;
   const occurrence = row.sentOccurrence ?? row.occurrence;
@@ -110,6 +113,23 @@ async function snooze(dependencies: ReminderDependencies, { row, source, presser
       }),
     );
   }
+
+  return true;
+}
+
+// The source closes first, so a message never says «Сделал(а)» about what the app still shows open;
+// its rows are read before, as completing a single Task drops them.
+async function didComplete(dependencies: ReminderDependencies, press: Press): Promise<boolean> {
+  const rows = await dependencies.dispatch.ofSource(press.row);
+  const occurrence = press.row.sentOccurrence ?? press.row.occurrence;
+
+  if ((await press.source.complete?.(press.presser, occurrence)) === false) {
+    return false;
+  }
+
+  await markDone(dependencies, { press, rows });
+
+  return true;
 }
 
 async function pressOf(
@@ -152,28 +172,15 @@ export async function handleReminderCallback(
     return;
   }
 
-  // The source closes first, so a message never says «Сделал(а)» about what the app still shows open;
-  // its rows are read before, as closing a Plan drops them.
-  if (parsed.action === "done" && press.source.closesForEveryone) {
-    const rows = await dependencies.dispatch.ofSource(press.row);
-
-    if ((await press.source.complete?.(press.presser)) === false) {
-      await ignoringBotErrors(
-        dependencies.bot.call("answerCallbackQuery", {
-          callback_query_id: query.id,
-          text: notDoneText,
-        }),
-      );
-
-      return;
-    }
-
-    await markDone(dependencies, { press, rows });
-  } else {
-    await snooze(dependencies, press);
-  }
+  const isDone =
+    parsed.action === "done" && press.source.closesForEveryone
+      ? await didComplete(dependencies, press)
+      : await didSnooze(dependencies, press);
 
   await ignoringBotErrors(
-    dependencies.bot.call("answerCallbackQuery", { callback_query_id: query.id }),
+    dependencies.bot.call(
+      "answerCallbackQuery",
+      isDone ? { callback_query_id: query.id } : { callback_query_id: query.id, text: notDoneText },
+    ),
   );
 }

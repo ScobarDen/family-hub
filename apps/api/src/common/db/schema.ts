@@ -11,11 +11,9 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 import type {
-  AppModule,
   CareDetails,
   CommandDraft,
   CareKind,
-  EventReminderOffset,
   ExpenseCategory,
   GoalColor,
   GoalIcon,
@@ -23,8 +21,8 @@ import type {
   MovementKind,
   PetSex,
   PetSpecies,
-  PlanReminder,
   Recurrence,
+  ReminderOffset,
   Visibility,
 } from "@family-hub/contract";
 
@@ -34,8 +32,9 @@ export const members = sqliteTable("members", {
   name: text("name").notNull(),
   // NULL while the Member hides it in Telegram; refreshed at every login.
   profilePicture: text("profile_picture"),
-  // NULL until the Member customises it, so a changed default reaches everyone who never did.
-  tabBar: text("tab_bar", { mode: "json" }).$type<AppModule[]>(),
+  // NULL until the Member customises it, so a changed default reaches everyone who never did; it
+  // may still name modules that were renamed since.
+  tabBar: text("tab_bar", { mode: "json" }).$type<string[]>(),
   timeZone: text("time_zone"),
   isTimeZoneAuto: integer("is_time_zone_auto", { mode: "boolean" }).notNull().default(true),
   canMessage: integer("can_message", { mode: "boolean" }).notNull().default(true),
@@ -155,30 +154,41 @@ export const pets = sqliteTable(
   (table) => [index("pets_family_id_idx").on(table.familyId)],
 );
 
-// A root Plan carries the owner and the visibility; its Subplans (parent_id set) inherit both.
-export const plans = sqliteTable(
-  "plans",
+export type RecipientsMode = "default" | "everyone" | "members";
+
+// A root Task carries the owner and the visibility; its Subtasks (parent_id set) inherit both. A
+// timed Task keeps its wall-clock time and the zone it was set in; one without a date has neither.
+export const tasks = sqliteTable(
+  "tasks",
   {
     id: text("id").primaryKey(),
     familyId: text("family_id")
       .notNull()
       .references(() => families.id, { onDelete: "cascade" }),
-    parentId: text("parent_id").references((): AnySQLiteColumn => plans.id, {
+    parentId: text("parent_id").references((): AnySQLiteColumn => tasks.id, {
       onDelete: "cascade",
     }),
     ownerMemberId: text("owner_member_id").references(() => members.id),
     visibility: text("visibility").$type<Visibility>(),
     title: text("title").notNull(),
     note: text("note"),
-    dueDate: text("due_date"),
-    reminder: text("reminder").$type<PlanReminder>(),
-    assigneeMemberId: text("assignee_member_id").references(() => members.id),
+    date: text("date"),
+    time: text("time"),
+    timeZone: text("time_zone"),
+    endDate: text("end_date"),
+    endTime: text("end_time"),
+    frequency: text("frequency").$type<Recurrence["frequency"]>(),
+    until: text("until"),
+    skippedDates: text("skipped_dates", { mode: "json" }).$type<string[]>().notNull().default([]),
+    reminderOffsets: text("reminder_offsets", { mode: "json" })
+      .$type<ReminderOffset[]>()
+      .notNull()
+      .default([]),
+    recipientsMode: text("recipients_mode").$type<RecipientsMode>().notNull().default("default"),
     petId: text("pet_id").references(() => pets.id, { onDelete: "set null" }),
     albumId: text("album_id").references((): AnySQLiteColumn => albums.id, {
       onDelete: "set null",
     }),
-    completedAt: integer("completed_at"),
-    completedBy: text("completed_by").references(() => members.id),
     createdAt: integer("created_at").notNull(),
     createdBy: text("created_by")
       .notNull()
@@ -186,8 +196,60 @@ export const plans = sqliteTable(
     updatedAt: integer("updated_at").notNull(),
   },
   (table) => [
-    index("plans_family_id_completed_at_idx").on(table.familyId, table.completedAt),
-    index("plans_parent_id_idx").on(table.parentId),
+    index("tasks_family_id_idx").on(table.familyId),
+    index("tasks_parent_id_idx").on(table.parentId),
+  ],
+);
+
+export const taskAssignees = sqliteTable(
+  "task_assignees",
+  {
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id),
+  },
+  (table) => [primaryKey({ columns: [table.taskId, table.memberId] })],
+);
+
+export const taskRecipients = sqliteTable(
+  "task_recipients",
+  {
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id),
+  },
+  (table) => [primaryKey({ columns: [table.taskId, table.memberId] })],
+);
+
+// One row per Completed Occurrence; a Task without a date and a Subtask have one, named "".
+export const taskCompletions = sqliteTable(
+  "task_completions",
+  {
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    familyId: text("family_id")
+      .notNull()
+      .references(() => families.id, { onDelete: "cascade" }),
+    occurrence: text("occurrence").notNull(),
+    completedAt: integer("completed_at").notNull(),
+    completedBy: text("completed_by").references(() => members.id),
+  },
+  (table) => [
+    primaryKey({ columns: [table.taskId, table.occurrence] }),
+    index("task_completions_family_id_completed_at_idx").on(table.familyId, table.completedAt),
   ],
 );
 
@@ -207,8 +269,6 @@ export const careEntries = sqliteTable(
     occurredAt: integer("occurred_at").notNull(),
     note: text("note"),
     details: text("details", { mode: "json" }).$type<CareDetails>().notNull(),
-    dueDate: text("due_date"),
-    dueKey: text("due_key"),
     weightKg: real("weight_kg"),
     expenseAmount: integer("expense_amount"),
     expenseCategory: text("expense_category").$type<ExpenseCategory>(),
@@ -224,83 +284,9 @@ export const careEntries = sqliteTable(
   ],
 );
 
-// A timed Event keeps its wall-clock time and the zone it was set in; an all-day one has neither.
-export const events = sqliteTable(
-  "events",
-  {
-    id: text("id").primaryKey(),
-    familyId: text("family_id")
-      .notNull()
-      .references(() => families.id, { onDelete: "cascade" }),
-    ownerMemberId: text("owner_member_id").references(() => members.id),
-    visibility: text("visibility").$type<Visibility>().notNull(),
-    title: text("title").notNull(),
-    note: text("note"),
-    startDate: text("start_date").notNull(),
-    startTime: text("start_time"),
-    timeZone: text("time_zone"),
-    endDate: text("end_date"),
-    endTime: text("end_time"),
-    frequency: text("frequency").$type<Recurrence["frequency"]>(),
-    until: text("until"),
-    skippedDates: text("skipped_dates", { mode: "json" }).$type<string[]>().notNull().default([]),
-    reminderOffsets: text("reminder_offsets", { mode: "json" })
-      .$type<EventReminderOffset[]>()
-      .notNull()
-      .default([]),
-    createdAt: integer("created_at").notNull(),
-    createdBy: text("created_by")
-      .notNull()
-      .references(() => members.id),
-    updatedAt: integer("updated_at").notNull(),
-  },
-  (table) => [index("events_family_id_idx").on(table.familyId)],
-);
-
-export const reminders = sqliteTable(
-  "reminders",
-  {
-    id: text("id").primaryKey(),
-    familyId: text("family_id")
-      .notNull()
-      .references(() => families.id, { onDelete: "cascade" }),
-    ownerMemberId: text("owner_member_id").references(() => members.id),
-    visibility: text("visibility").$type<Visibility>().notNull(),
-    text: text("text").notNull(),
-    startDate: text("start_date").notNull(),
-    startTime: text("start_time").notNull(),
-    timeZone: text("time_zone").notNull(),
-    frequency: text("frequency").$type<Recurrence["frequency"]>(),
-    until: text("until"),
-    isForEveryone: integer("is_for_everyone", { mode: "boolean" }).notNull(),
-    createdAt: integer("created_at").notNull(),
-    createdBy: text("created_by")
-      .notNull()
-      .references(() => members.id),
-    updatedAt: integer("updated_at").notNull(),
-  },
-  (table) => [index("reminders_family_id_idx").on(table.familyId)],
-);
-
-export const reminderRecipients = sqliteTable(
-  "reminder_recipients",
-  {
-    reminderId: text("reminder_id")
-      .notNull()
-      .references(() => reminders.id, { onDelete: "cascade" }),
-    familyId: text("family_id")
-      .notNull()
-      .references(() => families.id, { onDelete: "cascade" }),
-    memberId: text("member_id")
-      .notNull()
-      .references(() => members.id),
-  },
-  (table) => [primaryKey({ columns: [table.reminderId, table.memberId] })],
-);
-
-// A Pet's Due Dates and an Event's offsets each get their own source id, "<pet>:<entry>" and
-// "<event>:<offset>", so a source's rows are found by that prefix.
-export type DispatchSource = "reminder" | "event" | "pet_birthday" | "pet_due" | "plan" | "digest";
+// A Task's offsets each get their own source id, "<task>:<offset>", so a source's rows are found by
+// that prefix.
+export type DispatchSource = "task" | "pet_birthday" | "digest";
 
 // One row per source and Recipient: services set next_fire_at whenever the source changes; the
 // cron only takes due rows, sends and moves them on to the next Occurrence.
