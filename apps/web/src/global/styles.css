@@ -46,8 +46,7 @@
   --person-4: color-mix(in oklch, oklch(0.72 0.12 75) 34%, var(--card));
   /* A section's own icon colour on a neutral tile: at least 3:1 on the card in either scheme. */
   --section-feed: oklch(0.52 0.13 250);
-  --section-plans: oklch(0.52 0.13 150);
-  --section-calendar: oklch(0.52 0.15 345);
+  --section-tasks: oklch(0.52 0.13 150);
   --section-pet: oklch(0.52 0.12 55);
   --section-goals: oklch(0.52 0.15 300);
   --section-albums: oklch(0.52 0.085 200);
@@ -62,8 +61,7 @@
 
 .dark {
   --section-feed: oklch(0.78 0.11 250);
-  --section-plans: oklch(0.78 0.13 150);
-  --section-calendar: oklch(0.78 0.13 345);
+  --section-tasks: oklch(0.78 0.13 150);
   --section-pet: oklch(0.78 0.13 55);
   --section-goals: oklch(0.78 0.13 300);
   --section-albums: oklch(0.78 0.13 200);
@@ -102,8 +100,7 @@
   --color-person-3: var(--person-3);
   --color-person-4: var(--person-4);
   --color-section-feed: var(--section-feed);
-  --color-section-plans: var(--section-plans);
-  --color-section-calendar: var(--section-calendar);
+  --color-section-tasks: var(--section-tasks);
   --color-section-pet: var(--section-pet);
   --color-section-goals: var(--section-goals);
   --color-section-albums: var(--section-albums);

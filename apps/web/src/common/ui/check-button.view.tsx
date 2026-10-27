@@ -11,7 +11,7 @@ type CheckButtonProps = {
   onClick: () => void;
 };
 
-// The one control that closes a Plan or a Subplan anywhere in the app: a circle at the row's start.
+// The one control that completes a Task Occurrence or a Subtask anywhere in the app: a circle at the row's start.
 // It takes an icon's place in the row and still gives the thumb a 44px target.
 export function CheckButton({
   label,

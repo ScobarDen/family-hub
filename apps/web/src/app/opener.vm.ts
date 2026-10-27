@@ -5,9 +5,8 @@ import {
   type AppModule,
   type CareEntryDraft,
   type DeepLink,
-  type EventDraft,
   type MovementKind,
-  type ReminderDraft,
+  type TaskDraft,
 } from "@family-hub/contract";
 
 import type { DraftOpening } from "@/common/form";
@@ -17,20 +16,18 @@ import type { OpenedDraft } from "@/modules/command";
 import type { Place } from "./app.route.ts";
 
 type TargetFields = {
-  plan: { planId: string };
-  "plan-for-pet": { petId: string };
-  event: { eventId: string };
-  calendar: object;
+  task: { taskId: string };
+  "task-for-pet": { petId: string };
+  record: { taskId: string; occurrence: string | null };
+  "care-entry-for-pet": { petId: string };
   pet: { petId: string };
   "new-pet": object;
   "care-entry": { entryId: string; petId?: string };
-  "due-date": { entryId: string; petId?: string };
   goal: { goalId: string };
   album: { albumId: string };
   recipe: { recipeId: string };
   draft: { draftId: string };
-  "new-plan": object;
-  "new-event": object;
+  "new-task": object;
   "new-care-entry": object;
   "new-contribution": { goalId: string };
   "opened-draft": OpenedDraft;
@@ -57,18 +54,17 @@ type OpenerDependencies = {
   // A draft or a Care Entry is fetched by its id with the session's token.
   isSignedIn: () => boolean;
   pets: { showChoice: () => void; openedPetId: () => string | undefined; add: () => void };
-  plans: { open: Open; add: () => void; addForPet: Open };
+  tasks: {
+    open: Open;
+    add: () => void;
+    addForPet: Open;
+    openDraft: (opening: DraftOpening<TaskDraft>) => void;
+    recordOccurrence: (target: { taskId: string; occurrence: string | null }) => void;
+  };
   care: {
     openEntry: Open;
-    followUp: Open;
     add: () => void;
     editDraft: (opening: DraftOpening<CareEntryDraft>) => void;
-  };
-  calendar: {
-    openEvent: Open;
-    add: () => void;
-    openEventDraft: (opening: DraftOpening<EventDraft>) => void;
-    openReminderDraft: (opening: DraftOpening<ReminderDraft>) => void;
   };
   goals: {
     open: Open;
@@ -82,16 +78,13 @@ type OpenerDependencies = {
 
 // A draft's module is known only once the draft is at hand.
 const modules: Partial<Record<TargetKind, AppModule>> = {
-  plan: "plans",
-  "plan-for-pet": "plans",
-  "new-plan": "plans",
-  event: "calendar",
-  calendar: "calendar",
-  "new-event": "calendar",
+  task: "tasks",
+  "task-for-pet": "tasks",
+  "new-task": "tasks",
+  record: "tasks",
   pet: "pet",
   "new-pet": "pet",
   "care-entry": "pet",
-  "due-date": "pet",
   "new-care-entry": "pet",
   goal: "goals",
   "new-contribution": "goals",
@@ -102,7 +95,7 @@ const modules: Partial<Record<TargetKind, AppModule>> = {
 // A Pet named by the target opens at its own address.
 function placeOf(target: AnyTarget): Place | undefined {
   const module = modules[target.kind];
-  const petId = "petId" in target && target.kind !== "plan-for-pet" ? target.petId : undefined;
+  const petId = "petId" in target && target.kind !== "task-for-pet" ? target.petId : undefined;
 
   if (module === undefined) {
     return undefined;
@@ -116,11 +109,23 @@ const linkTargets: Record<DeepLink["kind"], (id: string) => OpenTarget | undefin
   inv: noop,
   pet: (petId) => ({ kind: "pet", petId }),
   entry: (entryId) => ({ kind: "care-entry", entryId }),
-  event: (eventId) => ({ kind: "event", eventId }),
+  task: (taskId) => ({ kind: "task", taskId }),
+  // Bot messages sent before Tasks still name a Plan or an Event, which kept its id as a Task.
+  plan: (taskId) => ({ kind: "task", taskId }),
+  event: (taskId) => ({ kind: "task", taskId }),
+  rec: recordTargetOf,
   goal: (goalId) => ({ kind: "goal", goalId }),
-  plan: (planId) => ({ kind: "plan", planId }),
   cmd: (draftId) => ({ kind: "draft", draftId }),
 };
+
+// «📝 Записать» names the Task and the Occurrence: `<task>_<YYYY-MM-DD>`.
+function recordTargetOf(id: string): OpenTarget | undefined {
+  const separator = id.lastIndexOf("_");
+
+  return separator < 0
+    ? undefined
+    : { kind: "record", taskId: id.slice(0, separator), occurrence: id.slice(separator + 1) };
+}
 
 function targetOfLink(startParameter: string | undefined): OpenTarget | undefined {
   const link = parseDeepLink(startParameter);
@@ -183,7 +188,7 @@ async function openDraft(
   dependencies: OpenerDependencies,
   { draftId, draft, phrase }: OpenedDraft,
 ) {
-  const { navigation, calendar, care } = dependencies;
+  const { navigation, tasks, care } = dependencies;
 
   if (draft.kind === "care_entry") {
     await openForPet(dependencies, {
@@ -196,13 +201,8 @@ async function openDraft(
     return;
   }
 
-  navigation.open({ module: "calendar" });
-
-  if (draft.kind === "event") {
-    calendar.openEventDraft({ draftId, draft, phrase });
-  } else {
-    calendar.openReminderDraft({ draftId, draft, phrase });
-  }
+  navigation.open({ module: "tasks" });
+  tasks.openDraft({ draftId, draft, phrase });
 }
 
 type Openers = {
@@ -210,7 +210,7 @@ type Openers = {
 };
 
 function openersOf(dependencies: OpenerDependencies): Openers {
-  const { plans, pets, care, calendar, goals, albums, recipes, commandSheet } = dependencies;
+  const { tasks, pets, care, goals, albums, recipes, commandSheet } = dependencies;
 
   async function signedInThen(open: () => void): Promise<void> {
     await wrap(untilTrue(dependencies.isSignedIn));
@@ -218,16 +218,16 @@ function openersOf(dependencies: OpenerDependencies): Openers {
   }
 
   return {
-    plan: ({ planId }) => plans.open(planId),
-    "plan-for-pet": ({ petId }) => plans.addForPet(petId),
-    "new-plan": () => plans.add(),
-    event: ({ eventId }) => calendar.openEvent(eventId),
-    calendar: noop,
-    "new-event": () => calendar.add(),
+    task: ({ taskId }) => tasks.open(taskId),
+    "task-for-pet": ({ petId }) => tasks.addForPet(petId),
+    "new-task": () => tasks.add(),
+    record: async ({ taskId, occurrence }) =>
+      signedInThen(() => tasks.recordOccurrence({ taskId, occurrence })),
+    "care-entry-for-pet": async ({ petId }) =>
+      openForPet(dependencies, { petId, onPicked: care.add }),
     pet: noop,
     "new-pet": () => pets.add(),
     "care-entry": async ({ entryId }) => signedInThen(() => care.openEntry(entryId)),
-    "due-date": async ({ entryId }) => signedInThen(() => care.followUp(entryId)),
     "new-care-entry": async () => openForPet(dependencies, { petId: null, onPicked: care.add }),
     goal: ({ goalId }) => goals.open(goalId),
     "new-contribution": async ({ goalId }) => {

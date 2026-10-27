@@ -9,18 +9,16 @@ import {
   type Atom,
 } from "@reatom/core";
 
-import type { FeedUpcoming, Plan, SlotModule, Today } from "@family-hub/contract";
+import type { FeedUpcoming, SlotModule, Today } from "@family-hub/contract";
 
 import type { LiveVersion } from "@/common/live-updates";
 import { detached, readOnly } from "@/common/state";
 
-import type { PlanOrSubplan, TodayApi } from "../today.api.ts";
+import type { OccurrenceTarget, TodayApi } from "../today.api.ts";
 import { dueRowOf, headerOf, moreOf, nextRowOf, tilesOf, type Tile } from "../today.lib.ts";
 
 export type TodayTarget =
-  | { kind: "plan"; planId: string }
-  | { kind: "event"; eventId: string }
-  | { kind: "calendar" }
+  | { kind: "task"; taskId: string }
   | { kind: "pet"; petId: string }
   | { kind: "new-pet" };
 
@@ -29,28 +27,21 @@ export type TodayDependencies = LiveVersion & {
   today: () => string;
   onOpen: (target: TodayTarget) => void;
   onOpenSection: (module: SlotModule) => void;
-  onRecord: (due: { petId: string; entryId: string }) => void;
   onOpenFeed: () => void;
 };
 
 const shownDue = 3;
 
-type PlanItem = Extract<FeedUpcoming, { kind: "plan" }>;
+type TaskItem = Extract<FeedUpcoming, { kind: "task" }>;
 
-type Completing = { key: string; title: string; target: PlanOrSubplan; done: Promise<Plan> };
+type Completing = { key: string; title: string; target: OccurrenceTarget; done: Promise<void> };
 
 type Loaded = { data: () => Today | undefined };
 
 function targetOf(item: FeedUpcoming): TodayTarget {
-  if (item.kind === "plan") {
-    return { kind: "plan", planId: item.planId };
-  }
-
-  if (item.kind === "event") {
-    return { kind: "event", eventId: item.eventId };
-  }
-
-  return item.kind === "reminder" ? { kind: "calendar" } : { kind: "pet", petId: item.petId };
+  return item.kind === "task"
+    ? { kind: "task", taskId: item.taskId }
+    : { kind: "pet", petId: item.petId };
 }
 
 // One Pet opens its card, none offers adding one, several (or an unread tile) open the list.
@@ -102,16 +93,16 @@ type CompletionState = ReturnType<typeof reatomHidden> & {
   failure: Atom<string | undefined>;
 };
 
-// The Plan API hears of the tap at once, so closing the app loses nothing; the undo stays offered
-// with no timer, until it is dismissed or the next Plan is completed.
+// The server hears of the tap at once, so closing the app loses nothing; the undo stays offered
+// with no timer, until it is dismissed or the next Occurrence is completed.
 function reatomComplete(
   { api }: Pick<TodayDependencies, "api">,
   { state, onSettled }: { state: CompletionState; onSettled: () => void },
 ) {
   const { pending, failure, hide, show } = state;
 
-  return action(async ({ key, title, planId, subplanId }: PlanItem) => {
-    const target = { planId, subplanId };
+  return action(async ({ key, title, taskId, occurrence, subtaskId }: TaskItem) => {
+    const target = { taskId, occurrence, subtaskId };
     const completing = { key, title, target, done: api.complete(target) };
 
     failure.set(undefined);
@@ -132,7 +123,7 @@ function reatomComplete(
   }, "today.complete").extend(withAsync());
 }
 
-// The undo reopens the Plan and the Subplans its completion closed, once that completion is in.
+// The undo reopens the Occurrence once its completion is in.
 function reatomRevert(
   { api }: Pick<TodayDependencies, "api">,
   { state, onSettled }: { state: CompletionState; onSettled: () => void },
@@ -150,7 +141,8 @@ function reatomRevert(
     show(completing.key);
 
     try {
-      await wrap(api.reopen(completing.target, await wrap(completing.done)));
+      await wrap(completing.done);
+      await wrap(api.reopen(completing.target));
     } catch {
       failure.set(`Не получилось вернуть «${completing.title}». Попробуйте ещё раз.`);
     }
@@ -225,15 +217,13 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
   }
 
   return {
-    completeOrRecord: action((key: string) => {
+    complete: action((key: string) => {
       const item = find(key);
 
-      if (item?.kind === "plan") {
+      if (item?.kind === "task") {
         completion.complete(item).catch(noop);
-      } else if (item?.kind === "due") {
-        dependencies.onRecord({ petId: item.petId, entryId: item.entryId });
       }
-    }, "today.completeOrRecord"),
+    }, "today.completeRow"),
     revert: detached(completion.revert, "today.revert"),
     dismissUndo: completion.dismiss,
     dismissFailure: completion.dismissFailure,

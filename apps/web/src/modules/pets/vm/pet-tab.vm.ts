@@ -1,7 +1,6 @@
 import { action, computed } from "@reatom/core";
 
 import { reatomCare, type CareApi, type CareDependencies } from "../care/index.ts";
-import type { SoonSource } from "../pets.lib.ts";
 import type { PetsDependencies } from "./pets-screen.vm.ts";
 import { reatomPetsScreen } from "./pets.vm.ts";
 
@@ -14,19 +13,15 @@ type WiredInside =
   | "onMakeAvatar"
   | "onOpenPet";
 
-export type PetTabDependencies = Omit<PetsDependencies, "soon"> &
+export type PetTabDependencies = PetsDependencies &
   Omit<CareDependencies, WiredInside> & {
     careApi: CareApi;
-    plansOf: (petId: string) => SoonSource[];
   };
 
 // The care journal opens over the pet card, so its forms come first on the way back.
-export function reatomPetTab({ careApi, plansOf, ...dependencies }: PetTabDependencies) {
+export function reatomPetTab({ careApi, ...dependencies }: PetTabDependencies) {
   const { viewer } = dependencies;
-  const pets = reatomPetsScreen({
-    ...dependencies,
-    soon: (petId) => [...plansOf(petId), ...care.dueSources()],
-  });
+  const pets = reatomPetsScreen(dependencies);
   const care = reatomCare({
     ...dependencies,
     api: careApi,

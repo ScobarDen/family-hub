@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 
 import { cn } from "@/common/ui";
 
-import type { CalendarModel } from "../vm/calendar.vm.ts";
+import type { TasksScreenModel } from "../vm/tasks.vm.ts";
 import { DayButton } from "./day-button.view.tsx";
 import { MonthHeader } from "./month-header.view.tsx";
 
@@ -16,7 +16,7 @@ const weekdays = [
   { title: "Вс", isWeekend: true },
 ];
 
-export const MonthGrid = reatomComponent(({ model }: { model: CalendarModel }) => {
+export const MonthGrid = reatomComponent(({ model }: { model: TasksScreenModel }) => {
   const selected = model.selected();
 
   return (

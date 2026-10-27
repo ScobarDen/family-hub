@@ -10,8 +10,8 @@ export type DueRow = {
   title: string;
   when: string;
   isOverdue: boolean;
-  // Events, Reminders and birthdays come and go by themselves, so they only open.
-  action: { kind: "complete" | "record"; title: string } | undefined;
+  // A birthday comes and goes by itself, so it only opens.
+  canComplete: boolean;
   picture: string | undefined;
 };
 
@@ -42,24 +42,13 @@ export function moreOf(rest: number): string | undefined {
 }
 
 const moduleOfKind: Record<FeedUpcoming["kind"], SlotModule> = {
-  plan: "plans",
-  due: "pet",
+  task: "tasks",
   birthday: "pet",
-  event: "calendar",
-  reminder: "calendar",
 };
-
-function actionOf({ kind }: FeedUpcoming): DueRow["action"] {
-  if (kind === "plan") {
-    return { kind: "complete", title: "Отметить выполненным" };
-  }
-
-  return kind === "due" ? { kind: "record", title: "Записать" } : undefined;
-}
 
 function whenOf(item: FeedUpcoming, today: string): string {
   const day = formatNearDate(item.date, today);
-  const time = "time" in item ? item.time : null;
+  const time = item.kind === "task" ? item.time : null;
 
   return time === null ? day : `${day}, ${time}`;
 }
@@ -71,8 +60,8 @@ export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
     title: item.title,
     when: item.date < today ? `Просрочено · ${whenOf(item, today)}` : whenOf(item, today),
     isOverdue: item.date < today,
-    action: actionOf(item),
-    picture: ("petPicture" in item ? item.petPicture : null) ?? undefined,
+    canComplete: item.kind === "task",
+    picture: item.petPicture ?? undefined,
   };
 }
 
@@ -94,21 +83,14 @@ function tile(module: SlotModule, fields: Partial<Omit<Tile, "module">> = {}): T
 
 type Tiles = TodayTiles;
 
-function petTile(pet: NonNullable<Tiles["pet"]>, today: string): Tile {
-  const { activeCount, only, due } = pet;
-  const isAlert = due !== null && due.date < today;
-  const note =
-    due === null
-      ? undefined
-      : `${isAlert ? "Просрочено · " : ""}${due.label} · ${formatNearDate(due.date, today)}`;
-
+function petTile({ activeCount, only }: NonNullable<Tiles["pet"]>): Tile {
   if (only !== null) {
-    return tile("pet", { title: only.name, note, isAlert, picture: only.picture ?? undefined });
+    return tile("pet", { title: only.name, picture: only.picture ?? undefined });
   }
 
   return activeCount === 0
     ? tile("pet", { title: "Питомцы", note: "Добавить питомца" })
-    : tile("pet", { title: "Питомцы", value: String(activeCount), note, isAlert });
+    : tile("pet", { title: "Питомцы", value: String(activeCount) });
 }
 
 // A count of zero says nothing, so such a tile shows only its caption.
@@ -116,18 +98,24 @@ function counted(count: number): string | undefined {
   return count === 0 ? undefined : String(count);
 }
 
+function tasksNoteOf({ overdue, week }: { overdue: number; week: number }): string | undefined {
+  if (overdue > 0) {
+    return `${overdue} просрочено`;
+  }
+
+  return week === 0 ? undefined : `${week} на неделе`;
+}
+
 // A section the server could not read keeps its place with only its caption.
 const tileOf: {
   [Section in SlotModule]: (read: NonNullable<Tiles[Section]>, today: string) => Tile;
 } = {
-  plans: ({ open, overdue }) =>
-    tile("plans", {
+  tasks: ({ open, overdue, week }) =>
+    tile("tasks", {
       value: counted(open),
-      note: overdue === 0 ? undefined : `${overdue} просрочено`,
+      note: tasksNoteOf({ overdue, week }),
       isAlert: overdue > 0,
     }),
-  calendar: ({ events }) =>
-    tile("calendar", { value: counted(events), note: events === 0 ? undefined : "на неделе" }),
   pet: petTile,
   goals: ({ nearest }) =>
     tile("goals", {
@@ -152,8 +140,7 @@ function readOrBare<Read>(
 
 export function tilesOf(tiles: Tiles, today: string): Tile[] {
   return [
-    readOrBare("plans", tiles.plans, (read) => tileOf.plans(read, today)),
-    readOrBare("calendar", tiles.calendar, (read) => tileOf.calendar(read, today)),
+    readOrBare("tasks", tiles.tasks, (read) => tileOf.tasks(read, today)),
     readOrBare("pet", tiles.pet, (read) => tileOf.pet(read, today)),
     readOrBare("goals", tiles.goals, (read) => tileOf.goals(read, today)),
     readOrBare("albums", tiles.albums, (read) => tileOf.albums(read, today)),

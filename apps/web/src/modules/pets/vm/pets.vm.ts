@@ -2,7 +2,6 @@ import { action, atom, computed, reatomBoolean } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
-import type { SoonKind } from "../pets.lib.ts";
 import { reatomPetArchive } from "./pet-archive.vm.ts";
 import { reatomPetAvatar } from "./pet-avatar.vm.ts";
 import { reatomPetMemoForm } from "./pet-memo-form.vm.ts";
@@ -129,14 +128,12 @@ function reatomBrowsing(
 
 function reatomLinks(dependencies: PetsDependencies) {
   return {
-    openSoon: action(({ id, kind }: { id: string; kind: SoonKind }) => {
-      dependencies.onOpenSoon(
-        kind === "plan" ? { kind: "plan", planId: id } : { kind: "due-date", entryId: id },
-      );
-    }, "pets.openSoon"),
-    plan: action((petId: string) => {
-      dependencies.onPlan(petId);
-    }, "pets.plan"),
+    openTask: action((taskId: string) => {
+      dependencies.onOpenTask(taskId);
+    }, "pets.openTask"),
+    addTask: action((petId: string) => {
+      dependencies.onAddTask(petId);
+    }, "pets.addTask"),
   };
 }
 

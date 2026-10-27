@@ -50,33 +50,24 @@ function startOpener({
       },
       openedPetId: () => openedPetId(),
     },
-    plans: {
-      open: record("plans.open"),
+    tasks: {
+      open: record("tasks.open"),
       add: () => {
-        opened.push("plans.add");
+        opened.push("tasks.add");
       },
-      addForPet: record("plans.addForPet"),
+      addForPet: record("tasks.addForPet"),
+      openDraft: ({ draftId }) => {
+        opened.push(`tasks.openDraft ${draftId}`);
+      },
+      recordOccurrence: record("tasks.recordOccurrence"),
     },
     care: {
       openEntry: record("care.openEntry"),
-      followUp: record("care.followUp"),
       add: () => {
         opened.push(`care.add for ${openedPetId() ?? "nobody"}`);
       },
       editDraft: ({ draftId }) => {
         opened.push(`care.editDraft ${draftId} for ${openedPetId() ?? "nobody"}`);
-      },
-    },
-    calendar: {
-      openEvent: record("calendar.openEvent"),
-      add: () => {
-        opened.push("calendar.add");
-      },
-      openEventDraft: ({ draftId }) => {
-        opened.push(`calendar.openEventDraft ${draftId}`);
-      },
-      openReminderDraft: ({ draftId }) => {
-        opened.push(`calendar.openReminderDraft ${draftId}`);
       },
     },
     goals: {
@@ -105,14 +96,15 @@ const careDraft: CareEntryDraft = {
   petId: null,
   date: null,
   time: null,
+  repeatOn: null,
   note: null,
   details: { kind: "weight", weightKg: 31.5 },
   missing: ["pet"],
   ambiguities: [],
 };
 
-const eventDraft: CommandDraft = {
-  kind: "event",
+const taskDraft: CommandDraft = {
+  kind: "task",
   title: "Груминг Бьюика",
   note: null,
   date: "2026-10-24",
@@ -122,18 +114,8 @@ const eventDraft: CommandDraft = {
   recurrence: null,
   visibility: "shared",
   reminderOffsets: [],
-  missing: [],
-  ambiguities: [],
-};
-
-const reminderDraft: CommandDraft = {
-  kind: "reminder",
-  text: "Купить корм Бьюику",
-  date: "2026-10-22",
-  time: "19:00",
-  recurrence: null,
-  visibility: "shared",
   recipientIds: null,
+  petId: null,
   missing: [],
   ambiguities: [],
 };
@@ -151,9 +133,14 @@ describe("a deep link the Mini App was launched with", () => {
       opened: ["care.openEntry entry-7"],
     },
     {
+      startParam: "task_task-1",
+      places: ['launch {"module":"tasks"}'],
+      opened: ["tasks.open task-1"],
+    },
+    {
       startParam: "event_event-1",
-      places: ['launch {"module":"calendar"}'],
-      opened: ["calendar.openEvent event-1"],
+      places: ['launch {"module":"tasks"}'],
+      opened: ["tasks.open event-1"],
     },
     {
       startParam: "goal_goal-1",
@@ -162,8 +149,15 @@ describe("a deep link the Mini App was launched with", () => {
     },
     {
       startParam: "plan_plan-1",
-      places: ['launch {"module":"plans"}'],
-      opened: ["plans.open plan-1"],
+      places: ['launch {"module":"tasks"}'],
+      opened: ["tasks.open plan-1"],
+    },
+    {
+      startParam: "rec_0199b4d2-6c00-7abc-8def-0123456789ab_2026-10-05",
+      places: ['launch {"module":"tasks"}'],
+      opened: [
+        'tasks.recordOccurrence {"taskId":"0199b4d2-6c00-7abc-8def-0123456789ab","occurrence":"2026-10-05"}',
+      ],
     },
     { startParam: "cmd_draft-1", places: [], opened: ["commandSheet.openForEdit draft-1"] },
     { startParam: "inv_token-1", places: [], opened: [] },
@@ -204,27 +198,21 @@ describe("a deep link the Mini App was launched with", () => {
 
 describe("a record opened from another module", () => {
   test.each([
-    { target: { kind: "plan", planId: "plan-1" }, module: "plans", opened: ["plans.open plan-1"] },
+    { target: { kind: "task", taskId: "task-1" }, module: "tasks", opened: ["tasks.open task-1"] },
     {
-      target: { kind: "plan-for-pet", petId: "pet-1" },
-      module: "plans",
-      opened: ["plans.addForPet pet-1"],
+      target: { kind: "task-for-pet", petId: "pet-1" },
+      module: "tasks",
+      opened: ["tasks.addForPet pet-1"],
     },
-    { target: { kind: "calendar" }, module: "calendar", opened: [] },
+    {
+      target: { kind: "care-entry-for-pet", petId: "pet-2" },
+      module: "pet",
+      opened: ["care.add for pet-2"],
+    },
     {
       target: { kind: "care-entry", petId: "pet-2", entryId: "entry-7" },
       module: "pet",
       opened: ["care.openEntry entry-7"],
-    },
-    {
-      target: { kind: "due-date", petId: "pet-2", entryId: "entry-7" },
-      module: "pet",
-      opened: ["care.followUp entry-7"],
-    },
-    {
-      target: { kind: "due-date", entryId: "entry-7" },
-      module: "pet",
-      opened: ["care.followUp entry-7"],
     },
     {
       target: { kind: "album", albumId: "album-1" },
@@ -249,17 +237,13 @@ describe("a record opened from another module", () => {
 });
 
 describe("a Command Draft handed over by «Изменить»", () => {
-  test("lands in the Event or the Reminder form of the calendar", () => {
+  test("of a Task lands in the Task form of «Дела»", () => {
     const started = startOpener();
 
-    started.opener.editDraft({ draftId: "draft-2", phrase, draft: eventDraft });
-    expect(started.shownModule()).toBe("calendar");
+    started.opener.editDraft({ draftId: "draft-2", phrase, draft: taskDraft });
 
-    started.opener.editDraft({ draftId: "draft-1", phrase, draft: reminderDraft });
-    expect(started.opened).toEqual([
-      "calendar.openEventDraft draft-2",
-      "calendar.openReminderDraft draft-1",
-    ]);
+    expect(started.shownModule()).toBe("tasks");
+    expect(started.opened).toEqual(["tasks.openDraft draft-2"]);
   });
 
   test("of a Care Entry opens its Pet's card and the form over it", async () => {
@@ -324,8 +308,7 @@ describe("a Command Draft handed over by «Изменить»", () => {
 
 describe("«Быстро добавить»", () => {
   test.each([
-    { target: { kind: "new-plan" }, opened: ["plans.add"] },
-    { target: { kind: "new-event" }, opened: ["calendar.add"] },
+    { target: { kind: "new-task" }, opened: ["tasks.add"] },
     {
       target: { kind: "new-contribution", goalId: "goal-1" },
       opened: ["goals.open goal-1", "goals.addMovement contribution"],

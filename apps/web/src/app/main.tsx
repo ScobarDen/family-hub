@@ -10,7 +10,6 @@ import { preparePhoto } from "@/common/photo";
 import { reatomTelegram } from "@/common/telegram";
 import { createVoiceRecorder } from "@/common/voice-recorder";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
-import { createCalendarApi, reatomCalendar } from "@/modules/calendar";
 import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
 import { createFamilyApi, reatomFamily, reatomFamilyMembers } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
@@ -26,7 +25,6 @@ import {
 } from "@/modules/member-settings";
 import { createCareApi, createPetsApi, reatomPets, reatomPetTab } from "@/modules/pets";
 import { createPhotoStorageApi, reatomPhotoStorage } from "@/modules/photo-storage";
-import { createPlansApi, reatomPlansScreen } from "@/modules/plans";
 import { createRecipesApi, reatomRecipesScreen } from "@/modules/recipes";
 import { createSessionApi, reatomSession } from "@/modules/session";
 import {
@@ -36,6 +34,7 @@ import {
   reatomTabBarMenu,
   reatomTabBarModules,
 } from "@/modules/tab-bar";
+import { createTasksApi, reatomTasksScreen } from "@/modules/tasks";
 import { createTodayApi, reatomToday } from "@/modules/today";
 
 import { reatomNavigation } from "./app.route.ts";
@@ -146,9 +145,9 @@ const recipes = reatomRecipesScreen({
   preparePhoto: prepare,
   photoHint: photoStorage.uploadHint,
 });
-const plans = reatomPlansScreen({
-  api: createPlansApi(httpClient),
-  liveVersion: () => live.versionOf("plans"),
+const tasks = reatomTasksScreen({
+  api: createTasksApi(httpClient),
+  liveVersion: () => live.versionOf("tasks"),
   members,
   pets: petsModel.list,
   telegram,
@@ -156,6 +155,15 @@ const plans = reatomPlansScreen({
   viewer,
   onOpenAlbum: (albumId) => {
     opener.open({ kind: "album", albumId });
+  },
+  onOpenPet: (petId) => {
+    opener.open({ kind: "pet", petId });
+  },
+  onRecord: (petId) => {
+    opener.open({ kind: "care-entry-for-pet", petId });
+  },
+  onDraftSaved: (draftId) => {
+    commandApi.markCreated(draftId).catch(noop);
   },
 });
 const goals = reatomGoalsScreen({
@@ -187,43 +195,17 @@ const pet = reatomPetTab({
   isFamilyOwner: () => session.member()?.isFamilyOwner === true,
   preparePhoto: prepare,
   photoHint: photoStorage.uploadHint,
-  plansOf: (petId) =>
-    plans.openPlansOf(petId).map(({ id, title, dueDate }) => ({
-      id,
-      title,
-      dueDate,
-      kind: "plan" as const,
-    })),
-  onOpenSoon: (target) => {
-    opener.open(target);
+  tasksOf: (petId) => tasks.tasksOf(petId),
+  onOpenTask: (taskId) => {
+    opener.open({ kind: "task", taskId });
   },
-  onPlan: (petId) => {
-    opener.open({ kind: "plan-for-pet", petId });
+  onAddTask: (petId) => {
+    opener.open({ kind: "task-for-pet", petId });
   },
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
 });
-const calendar = reatomCalendar({
-  api: createCalendarApi(httpClient),
-  liveVersion: () => live.versionOf("calendar"),
-  members,
-  pets: petsModel.list,
-  today,
-  timeZone: zone,
-  telegram,
-  onOpenPet: (petId) => {
-    opener.open({ kind: "pet", petId });
-  },
-  onOpenPlan: (planId) => {
-    opener.open({ kind: "plan", planId });
-  },
-  self,
-  onDraftSaved: (draftId) => {
-    commandApi.markCreated(draftId).catch(noop);
-  },
-});
-
 const commandSheet = reatomCommandSheet({
   api: commandApi,
   members,
@@ -232,7 +214,7 @@ const commandSheet = reatomCommandSheet({
     opener.editDraft(opened);
   },
   onCreated: () => {
-    calendar.reload();
+    tasks.reload();
     pet.care.reload();
     feed.reload();
     todayHub.reload();
@@ -259,9 +241,6 @@ const feed = reatomFeed({
     opener.open(target);
   },
   telegram,
-  onRecord: (due) => {
-    opener.open({ kind: "due-date", ...due });
-  },
 });
 const todayHub = reatomToday({
   api: createTodayApi(httpClient),
@@ -272,9 +251,6 @@ const todayHub = reatomToday({
   },
   onOpenSection: (module) => {
     navigation.openModule(module);
-  },
-  onRecord: (due) => {
-    opener.open({ kind: "due-date", ...due });
   },
   onOpenFeed: () => {
     navigation.openModule("feed");
@@ -290,8 +266,7 @@ const navigation = reatomNavigation({
   telegram,
   nestedBack: {
     pet,
-    plans,
-    calendar,
+    tasks,
     goals,
     albums,
     recipes,
@@ -302,14 +277,13 @@ const opener = reatomOpener({
   navigation,
   isSignedIn: () => session.member() !== undefined,
   pets: pet.pets,
-  plans,
+  tasks,
   care: {
     ...pet.care,
     add: () => {
       pet.care.add("note");
     },
   },
-  calendar,
   goals,
   albums,
   recipes,
@@ -366,9 +340,8 @@ const home = {
     viewer,
   }),
   pet,
-  plans,
+  tasks,
   photoStorage,
-  calendar,
   feed,
   goals,
   albums,

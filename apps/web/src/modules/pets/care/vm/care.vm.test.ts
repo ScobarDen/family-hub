@@ -1,13 +1,7 @@
 import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type {
-  CareEntry,
-  CommandPhrase,
-  DueDateItem,
-  ExpenseSummary,
-  Photo,
-} from "@family-hub/contract";
+import type { CareEntry, CommandPhrase, ExpenseSummary, Photo } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
@@ -34,7 +28,6 @@ const entries: CareEntry[] = [
       kind: "vet_visit",
       reason: "Хромает",
       cost: { amount: 2500, category: "vet" },
-      dueDate: null,
     },
     author: "Денис",
     photos: [],
@@ -59,7 +52,6 @@ const buickVaccine: CareEntry = {
     kind: "vaccination",
     vaccine: "Нобивак DHPPi",
     cost: { amount: 1800, category: "vet" },
-    dueDate: "2026-10-02",
   },
   author: "Ася",
   photos: [],
@@ -85,15 +77,6 @@ const walk: Photo = {
   canDelete: true,
 };
 
-const vetVisitDue: DueDateItem = {
-  entryId: "entry-2",
-  kind: "vet_visit",
-  label: "Визит к ветеринару",
-  title: "Визит к ветеринару — Бьюик",
-  dueDate: "2026-11-02",
-  isOverdue: false,
-};
-
 const saidThisMorning: CommandPhrase = {
   saidAt: Date.parse("2026-10-11T06:00:00Z"),
   timeZone: "Europe/Moscow",
@@ -103,7 +86,6 @@ const answers: Partial<Record<string, () => Response>> = {
   "POST /api/photos": () => Response.json(walk, { status: 201 }),
   "GET /api/care-entries/entry-7": () => Response.json(buickVaccine),
   "GET /api/pets/pet-2/care-entries": () => Response.json([buickVaccine]),
-  "GET /api/pets/pet-1/due-dates": () => Response.json([vetVisitDue]),
 };
 
 function fakeBackend() {
@@ -216,22 +198,8 @@ describe("the journal", () => {
   });
 });
 
-describe("«Скоро» on the pet card", () => {
-  test("names each open Due Date the way the server labels it", async () => {
-    const { model } = startCare();
-
-    model.dueSources.subscribe(noop);
-
-    await vi.waitFor(() => {
-      expect(model.dueSources()).toEqual([
-        { id: "entry-2", title: "Визит к ветеринару", dueDate: "2026-11-02", kind: "due" },
-      ]);
-    });
-  });
-});
-
 describe("the summary on top of the pet card", () => {
-  test("shows the last weight, the next vet visit and this month's expenses", async () => {
+  test("shows the last weight and this month's expenses", async () => {
     const { model } = startCare();
 
     model.summary.subscribe(noop);
@@ -239,7 +207,6 @@ describe("the summary on top of the pet card", () => {
     await vi.waitFor(() => {
       expect(model.summary()).toEqual({
         weight: "12,8 кг",
-        vetVisit: "2 ноября",
         monthExpenses: "6 500 ₽",
       });
     });
@@ -311,10 +278,45 @@ describe("the entry form", () => {
 
     expect(backend.requests.find(({ request }) => request.startsWith("POST"))?.body).toEqual({
       occurredAt: Date.parse("2026-10-11T15:30:00Z"),
+      repeatOn: null,
       note: null,
       details: { kind: "weight", weightKg: 12.6 },
       photoIds: [],
     });
+  });
+
+  test("asks to repeat a vaccination, but not an entry switched to a kind that does not repeat", async () => {
+    const { model, backend } = startCare();
+
+    await loaded(model);
+    model.add("vaccination");
+    model.form.form.fields.name.set("Бешенство");
+    model.form.form.fields.repeatOn.set("2027-10-11");
+
+    expect(model.form.kindFields().map(({ name }) => name)).toContain("repeatOn");
+
+    model.form.form.fields.kind.set("note");
+
+    expect(model.form.kindFields().map(({ name }) => name)).not.toContain("repeatOn");
+
+    model.form.save();
+    await vi.waitFor(() => {
+      expect(model.canGoBack()).toBe(false);
+    });
+    model.add("vaccination");
+    model.form.form.fields.name.set("Бешенство");
+    model.form.form.fields.repeatOn.set("2027-10-11");
+    model.form.save();
+    await vi.waitFor(() => {
+      expect(model.canGoBack()).toBe(false);
+    });
+
+    expect(
+      backend.requests.filter(({ request }) => request.startsWith("POST")).map(({ body }) => body),
+    ).toEqual([
+      expect.objectContaining({ repeatOn: null }),
+      expect.objectContaining({ repeatOn: "2027-10-11" }),
+    ]);
   });
 
   test("names the field to fix when the contract refuses the details", async () => {
@@ -418,12 +420,12 @@ describe("a Care Entry draft opened by «Изменить»", () => {
         petId: "pet-1",
         date: "2026-10-10",
         time: null,
+        repeatOn: "2027-10-10",
         note: null,
         details: {
           kind: "vaccination",
           vaccine: "Бешенство",
           cost: { amount: 1800, category: "vet" },
-          dueDate: "2027-10-10",
         },
         missing: [],
         ambiguities: [],
@@ -436,7 +438,7 @@ describe("a Care Entry draft opened by «Изменить»", () => {
     expect(model.form.form.fields.occurredAt()).toBe("2026-10-10T09:00");
     expect(model.form.form.fields.name()).toBe("Бешенство");
     expect(model.form.form.fields.costAmount()).toBe("1800");
-    expect(model.form.form.fields.dueDate()).toBe("2027-10-10");
+    expect(model.form.form.fields.repeatOn()).toBe("2027-10-10");
 
     model.form.save();
 
@@ -446,6 +448,7 @@ describe("a Care Entry draft opened by «Изменить»", () => {
           ?.body,
       ).toMatchObject({
         occurredAt: Date.parse("2026-10-10T06:00:00Z"),
+        repeatOn: "2027-10-10",
         details: { kind: "vaccination", vaccine: "Бешенство" },
         photoIds: [],
       });
@@ -463,6 +466,7 @@ describe("a Care Entry draft opened by «Изменить»", () => {
         petId: "pet-1",
         date: "2026-10-10",
         time: null,
+        repeatOn: null,
         note: null,
         details: { kind: "weight", weightKg: 31.5 },
         missing: [],
@@ -485,6 +489,7 @@ describe("a Care Entry draft opened by «Изменить»", () => {
         petId: "pet-1",
         date: null,
         time: null,
+        repeatOn: null,
         note: null,
         details: { kind: "weight", weightKg: 31.5 },
         missing: [],
@@ -507,6 +512,7 @@ describe("a Care Entry draft opened by «Изменить»", () => {
         petId: null,
         date: null,
         time: null,
+        repeatOn: null,
         note: null,
         details: { kind: "weight", weightKg: 31.5 },
         missing: ["pet"],
@@ -528,7 +534,7 @@ describe("a Care Entry draft opened by «Изменить»", () => {
 });
 
 describe("a Care Entry opened from outside the card", () => {
-  test("opens its Pet and its form when nothing is open yet, as a Due Date reminder's link does", async () => {
+  test("opens its Pet and its form when nothing is open yet, as a deep link does", async () => {
     const { model, openedPet } = startCare();
 
     openedPet.set(undefined);
@@ -539,7 +545,6 @@ describe("a Care Entry opened from outside the card", () => {
     });
     expect(openedPet()).toBe("pet-2");
     expect(model.form.form.fields.name()).toBe("Нобивак DHPPi");
-    expect(model.form.form.fields.dueDate()).toBe("2026-10-02");
   });
 
   test("opens an entry of another Pet than the open one and saves it in place", async () => {
@@ -588,18 +593,5 @@ describe("a Care Entry opened from outside the card", () => {
 
     expect(model.screen()).toEqual({ kind: "blocks" });
     expect(openedPet()).toBe("pet-1");
-  });
-
-  test("follows up a Due Date before the Pet's journal has loaded", async () => {
-    const { model, openedPet } = startCare();
-
-    openedPet.set("pet-2");
-    model.followUp("entry-7");
-
-    await vi.waitFor(() => {
-      expect(model.screen()).toEqual({ kind: "form", isCreating: true });
-    });
-    expect(model.form.kind()).toBe("vaccination");
-    expect(model.form.form.fields.name()).toBe("Нобивак DHPPi");
   });
 });

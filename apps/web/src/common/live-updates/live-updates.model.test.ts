@@ -58,14 +58,14 @@ describe("live updates", () => {
     const { live, sockets } = startLive();
     const [socket] = sockets;
 
-    socket?.receive("plans");
-    socket?.receive("plans");
+    socket?.receive("tasks");
+    socket?.receive("tasks");
     socket?.receive("nonsense");
 
     await vi.waitFor(() => {
-      expect(live.versionOf("plans")).toBe(1);
+      expect(live.versionOf("tasks")).toBe(1);
     });
-    expect(live.versionOf("calendar")).toBe(0);
+    expect(live.versionOf("goals")).toBe(0);
   });
 
   test("every module refetches when the socket opens", async () => {
@@ -74,9 +74,9 @@ describe("live updates", () => {
     sockets[0]?.dispatchEvent(new Event("open"));
 
     await vi.waitFor(() => {
-      expect(live.versionOf("calendar")).toBe(1);
+      expect(live.versionOf("goals")).toBe(1);
     });
-    expect(live.all()).toBe(7);
+    expect(live.all()).toBe(6);
   });
 
   test("a hidden app holds no socket and reconnects when it comes back", async () => {

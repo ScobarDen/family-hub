@@ -1,6 +1,6 @@
 # Family Hub
 
-Telegram Mini App for one family: feed, plans, calendar, pet, savings goals, recipes and albums. Domain glossary lives in [CONTEXT.md](CONTEXT.md), decisions in [docs/adr](docs/adr).
+Telegram Mini App for one family: feed, tasks, pet, savings goals, recipes and albums. Domain glossary lives in [CONTEXT.md](CONTEXT.md), decisions in [docs/adr](docs/adr).
 
 ## Layout
 
@@ -9,7 +9,7 @@ Telegram Mini App for one family: feed, plans, calendar, pet, savings goals, rec
 | `apps/web`            | Mini App (React), static build for GitHub Pages under `/family-hub/`     |
 | `apps/api`            | Cloudflare Worker (Hono + Drizzle on D1): `/api/*`, `/bot/webhook`, cron |
 | `packages/contract`   | what travels over the wire, shared by web and api                        |
-| `packages/recurrence` | Temporal-based occurrence and reminder math                              |
+| `packages/recurrence` | Temporal-based Task Occurrence and Reminder math                         |
 
 Internal packages are TypeScript sources without a build step.
 

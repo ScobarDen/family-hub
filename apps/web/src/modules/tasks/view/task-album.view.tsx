@@ -3,15 +3,15 @@ import { Images } from "lucide-react";
 import { PhotoThumbs } from "@/common/photo-viewer";
 import { Section, SectionItem } from "@/common/ui";
 
-import type { PlanDetails } from "../plans.lib.ts";
+import type { TaskDetails } from "../tasks.lib.ts";
 
-type PlanAlbumProps = {
-  album: NonNullable<PlanDetails["album"]>;
+type TaskAlbumProps = {
+  album: NonNullable<TaskDetails["album"]>;
   onOpen: (albumId: string) => void;
 };
 
 // The trip's photos at a glance; the Album itself lives in the albums tab.
-export function PlanAlbum({ album, onOpen }: PlanAlbumProps) {
+export function TaskAlbum({ album, onOpen }: TaskAlbumProps) {
   function open() {
     onOpen(album.id);
   }

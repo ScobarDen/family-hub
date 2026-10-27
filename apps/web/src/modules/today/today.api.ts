@@ -1,24 +1,9 @@
-import { plan, today, type Plan, type Today } from "@family-hub/contract";
+import { task, today, type Today } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
 import { resolvedUpcoming } from "@/common/photo";
 
-export type PlanOrSubplan = { planId: string; subplanId: string | null };
-
-function pathOf({ planId, subplanId }: PlanOrSubplan): string {
-  return subplanId === null ? `/api/plans/${planId}` : `/api/plans/${planId}/subplans/${subplanId}`;
-}
-
-// Completing a Plan closes its open Subplans at the same moment, so those are the ones to reopen.
-function closedWith(completed: Plan, target: PlanOrSubplan): PlanOrSubplan[] {
-  const at = completed.completed?.at;
-
-  return target.subplanId !== null || at === undefined
-    ? []
-    : completed.subplans
-        .filter(({ completed: subplanCompleted }) => subplanCompleted?.at === at)
-        .map(({ id }) => ({ planId: target.planId, subplanId: id }));
-}
+export type OccurrenceTarget = { taskId: string; occurrence: string; subtaskId: string | null };
 
 // The Pets' pictures are the Worker's signed paths; the browser loads them from its origin.
 function resolvedToday(client: HttpClient, loaded: Today): Today {
@@ -40,20 +25,24 @@ function resolvedToday(client: HttpClient, loaded: Today): Today {
 }
 
 export function createTodayApi(client: HttpClient) {
-  async function post(path: string): Promise<Plan> {
-    return client.request(path, { method: "POST", schema: plan });
+  // A Subtask has no Occurrences of its own: it is completed whole.
+  async function post({ taskId, occurrence, subtaskId }: OccurrenceTarget, verb: string) {
+    await (subtaskId === null
+      ? client.request(`/api/tasks/${taskId}/${verb}`, {
+          method: "POST",
+          body: { occurrence },
+          schema: task,
+        })
+      : client.request(`/api/tasks/${taskId}/subtasks/${subtaskId}/${verb}`, {
+          method: "POST",
+          schema: task,
+        }));
   }
 
   return {
     load: async () => resolvedToday(client, await client.request("/api/today", { schema: today })),
-    complete: async (target: PlanOrSubplan) => post(`${pathOf(target)}/complete`),
-    async reopen(target: PlanOrSubplan, completed: Plan): Promise<void> {
-      await post(`${pathOf(target)}/reopen`);
-
-      for (const subplan of closedWith(completed, target)) {
-        await post(`${pathOf(subplan)}/reopen`);
-      }
-    },
+    complete: async (target: OccurrenceTarget) => post(target, "complete"),
+    reopen: async (target: OccurrenceTarget) => post(target, "reopen"),
   };
 }
 

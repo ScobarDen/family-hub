@@ -1,7 +1,7 @@
 import { context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { FeedPage, Photo, Plan } from "@family-hub/contract";
+import type { FeedPage, FeedUpcoming, Photo, Task } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
 
@@ -22,35 +22,52 @@ const walk: Photo = {
   canDelete: true,
 };
 
+const occurrence = {
+  kind: "task" as const,
+  time: null,
+  subtaskId: null,
+  petId: null,
+  petPicture: null,
+  assignees: [],
+};
+
+const wallpaper: FeedUpcoming = {
+  ...occurrence,
+  key: "task-1-2026-10-12",
+  title: "Купить обои",
+  date: "2026-10-12",
+  taskId: "task-1",
+  occurrence: "2026-10-12",
+};
+
 const firstPage: FeedPage = {
-  overdue: [
-    {
-      kind: "plan",
-      key: "plan-sub-1",
-      title: "Ремонт: Купить обои",
-      date: "2026-10-12",
-      planId: "plan-1",
-      subplanId: "sub-1",
-    },
-  ],
+  overdue: [wallpaper],
   upcoming: [
     {
-      kind: "event",
-      key: "event-1-2026-10-16",
+      ...occurrence,
+      key: "task-3-2026-10-16",
       title: "Созвон",
       date: "2026-10-16",
       time: "19:00",
-      eventId: "event-1",
+      taskId: "task-3",
+      occurrence: "2026-10-16",
     },
     {
-      kind: "due",
-      careKind: "vaccination",
-      key: "due-entry-1",
-      title: "Прививка: Бешенство — Бьюик",
+      ...occurrence,
+      key: "task-4-2026-10-20",
+      title: "Прививка от бешенства — Бьюик",
       date: "2026-10-20",
+      taskId: "task-4",
+      occurrence: "2026-10-20",
+      petId: "pet-1",
+    },
+    {
+      kind: "birthday",
+      key: "birthday-pet-1",
+      title: "День рождения Бьюика",
+      date: "2026-10-21",
       petId: "pet-1",
       petPicture: null,
-      entryId: "entry-1",
     },
   ],
   activity: [
@@ -67,16 +84,16 @@ const firstPage: FeedPage = {
       photoCount: 4,
     },
     {
-      kind: "plan",
-      key: "plan-plan-2",
+      kind: "task",
+      key: "task-2-2026-10-13",
       at: Date.parse("2026-10-13T15:00:00Z"),
       memberName: "Денис",
       memberPicture: null,
       title: "Купить диван",
-      planId: "plan-2",
+      taskId: "task-2",
     },
   ],
-  next: "1760367600000.plan-plan-2",
+  next: "1760367600000.task-2-2026-10-13",
 };
 
 const olderPage: FeedPage = {
@@ -94,28 +111,32 @@ const olderPage: FeedPage = {
   next: null,
 };
 
-const bedroom: Plan = {
-  id: "plan-1",
-  title: "Ремонт",
+const wallpaperTask: Task = {
+  id: "task-1",
+  title: "Купить обои",
   note: null,
-  pet: null,
-  album: null,
-  dueDate: null,
-  reminder: null,
-  assignee: null,
+  when: null,
+  recurrence: null,
+  skippedDates: [],
+  assignees: [],
+  recipients: "default",
+  reminderOffsets: [],
   visibility: "shared",
   isOwn: true,
-  completed: null,
-  subplans: [],
+  pet: null,
+  album: null,
+  completions: [],
+  subtasks: [],
 };
 
 function startFeed() {
   const requests: string[] = [];
   const opened: FeedTarget[] = [];
-  const recorded: string[] = [];
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
-    const request = `${init.method ?? "GET"} ${url.pathname}${url.search}`;
+    const request = [`${init.method ?? "GET"} ${url.pathname}${url.search}`, init.body]
+      .filter((part) => typeof part === "string")
+      .join(" ");
 
     requests.push(request);
 
@@ -123,7 +144,7 @@ function startFeed() {
       return Response.json(olderPage);
     }
 
-    return Response.json(url.pathname === "/api/feed" ? firstPage : bedroom);
+    return Response.json(url.pathname === "/api/feed" ? firstPage : wallpaperTask);
   }
 
   const model = reatomFeed({
@@ -133,15 +154,12 @@ function startFeed() {
     onOpen: (target) => {
       opened.push(target);
     },
-    onRecord: ({ entryId }) => {
-      recorded.push(entryId);
-    },
     telegram: { showPopup: async () => noChoice, showAlert: noop },
   });
 
   model.blocks.subscribe(noop);
 
-  return { model, requests, opened, recorded };
+  return { model, requests, opened };
 }
 
 type Model = ReturnType<typeof startFeed>["model"];
@@ -167,12 +185,24 @@ describe("the Feed", () => {
     await loaded(model);
 
     expect(shape(model)).toEqual([
-      ["Просрочено", ["Ремонт: Купить обои"]],
-      ["Предстоит", ["Созвон", "Прививка: Бешенство — Бьюик"]],
+      ["Просрочено", ["Купить обои"]],
+      ["Предстоит", ["Созвон", "Прививка от бешенства — Бьюик", "День рождения Бьюика"]],
       ["Сегодня", ["Вес: 30 кг — Бьюик"]],
       ["Вчера", ["Купить диван"]],
     ]);
     expect(model.blocks()[2]?.rows[0]?.subtitle).toBe("Ася · 10:00");
+  });
+
+  test("says in words that a Task is Overdue, not by colour alone", async () => {
+    const { model } = startFeed();
+
+    await loaded(model);
+
+    expect(model.blocks()[0]?.rows[0]).toMatchObject({
+      subtitle: "Просрочено · 12 октября",
+      isOverdue: true,
+      canComplete: true,
+    });
   });
 
   test("sums up what is overdue under the title and names who did each thing", async () => {
@@ -194,8 +224,21 @@ describe("the Feed", () => {
     model.choose("pet");
 
     expect(shape(model)).toEqual([
-      ["Предстоит", ["Прививка: Бешенство — Бьюик"]],
+      ["Предстоит", ["День рождения Бьюика"]],
       ["Сегодня", ["Вес: 30 кг — Бьюик"]],
+    ]);
+  });
+
+  test("gathers every Task line, ahead and done, under «Дела»", async () => {
+    const { model } = startFeed();
+
+    await loaded(model);
+    model.choose("tasks");
+
+    expect(shape(model)).toEqual([
+      ["Просрочено", ["Купить обои"]],
+      ["Предстоит", ["Созвон", "Прививка от бешенства — Бьюик"]],
+      ["Вчера", ["Купить диван"]],
     ]);
   });
 
@@ -209,7 +252,7 @@ describe("the Feed", () => {
     });
 
     expect(model.canLoadMore()).toBe(false);
-    expect(requests).toContain("GET /api/feed?before=1760367600000.plan-plan-2");
+    expect(requests).toContain("GET /api/feed?before=1760367600000.task-2-2026-10-13");
     expect(model.blocks().at(-1)).toMatchObject({
       title: "1 октября",
       rows: [{ title: "Ася теперь в семье" }],
@@ -232,30 +275,30 @@ describe("the Feed", () => {
     expect(model.canLoadMore()).toBe(true);
   });
 
-  test("completes a step right from the Feed", async () => {
+  test("completes an Occurrence right from the Feed", async () => {
     const { model, requests } = startFeed();
 
     await loaded(model);
-    model.complete("plan-sub-1");
+    model.complete("task-1-2026-10-12");
     await vi.waitFor(() => {
       expect(model.blocks()[0]?.title).toBe("Предстоит");
     });
 
-    expect(requests).toContain("POST /api/plans/plan-1/subplans/sub-1/complete");
+    expect(requests).toContain('POST /api/tasks/task-1/complete {"occurrence":"2026-10-12"}');
   });
 
-  test("records a Due Date and opens what is tapped", async () => {
-    const { model, opened, recorded } = startFeed();
+  test("opens the Task of a line ahead and of a completed one, and a birthday's Pet", async () => {
+    const { model, opened } = startFeed();
 
     await loaded(model);
-    model.record("due-entry-1");
-    model.open("event-1-2026-10-16");
-    model.open("plan-plan-2");
+    model.open("task-3-2026-10-16");
+    model.open("task-2-2026-10-13");
+    model.open("birthday-pet-1");
 
-    expect(recorded).toEqual(["entry-1"]);
     expect(opened).toEqual([
-      { kind: "event", eventId: "event-1" },
-      { kind: "plan", planId: "plan-2" },
+      { kind: "task", taskId: "task-3" },
+      { kind: "task", taskId: "task-2" },
+      { kind: "pet", petId: "pet-1" },
     ]);
   });
 

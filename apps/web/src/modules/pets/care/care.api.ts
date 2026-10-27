@@ -2,7 +2,6 @@ import {
   careEntry,
   deleted,
   careEntryList,
-  dueDateList,
   expenseSummary,
   type CareEntry,
   type CareEntryChange,
@@ -55,8 +54,6 @@ export function createCareApi(client: HttpClient) {
         method: "DELETE",
         schema: deleted,
       }),
-    dueDates: async (petId: string) =>
-      client.request(`/api/pets/${petId}/due-dates`, { schema: dueDateList }),
     expenses: async (petId: string, { from, to }: Range) =>
       client.request(`/api/pets/${petId}/expenses?from=${from}&to=${to}`, {
         schema: expenseSummary,

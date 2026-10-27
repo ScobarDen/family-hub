@@ -61,7 +61,7 @@ const fields = z.object({
   reason: z.string(),
   costAmount: z.string(),
   costCategory: z.string(),
-  dueDate: z.string(),
+  repeatOn: z.string(),
   weightKg: z.string(),
   amount: z.string(),
   category: z.string(),
@@ -86,19 +86,12 @@ const schema = fields.superRefine((values, issues) => {
 
 type CareRecord = ReturnType<typeof reatomCareRecord>;
 
-function reatomStarts({ now, timeZone, photos }: CareFormDependencies, record: CareRecord) {
+function reatomStarts({ now, photos }: CareFormDependencies, record: CareRecord) {
   return {
     startCreating: action((kind: CareKind) => {
       photos.reset([]);
       record.startCreating({ ...emptyEntry, kind, occurredAt: now() });
     }, "care.form.startCreating"),
-    // A due vaccination, treatment or visit is closed by recording the next one of the same name.
-    startFollowUp: action((entry: CareEntry) => {
-      const { kind, name } = valuesOf(entry, timeZone());
-
-      photos.reset([]);
-      record.startCreating({ ...emptyEntry, kind, name, occurredAt: now() });
-    }, "care.form.startFollowUp"),
     // Photos never come by voice; the form is where they are added.
     startFromDraft: action((opening: CareEntryDraftOpening) => {
       photos.reset([]);

@@ -1,12 +1,11 @@
 # feed
 
-The «Лента» tab: the Family's chronology, assembled by the Worker on the fly from what the other modules keep. «Просрочено» leads with missed Plan, Subplan and Due Date deadlines, «Предстоит» shows the next 14 days — Event Occurrences, standalone Reminders, Plan deadlines, Due Dates and Pet birthdays — and the Activity follows under «Сегодня», «Вчера» and then by date: Care Entries, completed Plans and Subplans (a Plan completed by its last Subplan is one line), Contributions, Withdrawals and Completed Goals, Recipes cooked, uploads to an Album (one line per Member, Album and burst with pauses under ten minutes) and Members joining. An Activity with photos shows up to three thumbnails and «+N»; a tap opens them full screen. Private records reach only their owner. Activity comes 30 at a time; «Показать ещё» loads the next page. Chips narrow it to one module.
+The «Лента» tab: the Family's chronology, assembled by the Worker on the fly from what the other modules keep. «Просрочено» leads with the Overdue Task Occurrences (each line says «Просрочено» in words, not only in red), «Предстоит» shows the next 14 days — Task Occurrences, dated Subtasks and Pet birthdays — and the Activity follows under «Сегодня», «Вчера» and then by date: Care Entries, one line per completed Task Occurrence or Subtask, Contributions, Withdrawals and Completed Goals, Recipes cooked, uploads to an Album (one line per Member, Album and burst with pauses under ten minutes) and Members joining. An Activity with photos shows up to three thumbnails and «+N»; a tap opens them full screen. Private records reach only their owner. Activity comes 30 at a time; «Показать ещё» loads the next page. Chips narrow it to one module; «Дела» gathers every Task line, ahead and done.
 
-A Plan's deadline is ticked off right here, a Due Date gets «Записать», and a tap opens the record in its own module.
+An Occurrence is ticked off right here (`POST /api/tasks/:id/complete` with its `occurrence`, or the Subtask's own `complete`), and a tap opens the record in its own module.
 
 ## Injected
 
-- `api` — `createFeedApi(httpClient)`: the Feed's pages and completing a Plan or Subplan.
+- `api` — `createFeedApi(httpClient)`: the Feed's pages and completing a Task Occurrence or a Subtask.
 - `today`, `timeZone` — the viewer's date and zone for «Сегодня» and «Вчера»; the Member's own zone, the device's until it is known.
-- `onOpen` — opens a Plan, an Event, the calendar, a Pet's card, a Care Entry's form over its Pet's card, a Savings Goal, an Album or a Recipe; the app's opener switches tabs.
-- `onRecord` — opens a new Care Entry that follows up a Due Date on the Pet's card, through the app's opener too.
+- `onOpen` — opens a Task (`{ kind: "task", taskId }`), a Pet's card, a Care Entry's form over its Pet's card, a Savings Goal, an Album or a Recipe; the app's opener switches tabs.

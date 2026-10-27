@@ -22,7 +22,7 @@ type NavigationDependencies = {
   slots: () => SlotModule[];
   isSignedIn: () => boolean;
   telegram: Pick<Telegram, "backButton" | "settingsButton">;
-  // Screens inside a module (a form, a Plan's card) step back before the app does.
+  // Screens inside a module (a form, a Task's card) step back before the app does.
   nestedBack?: Partial<Record<AppModule, NestedBack>>;
   onTodayShown?: () => void;
 };
