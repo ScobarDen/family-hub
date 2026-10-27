@@ -103,7 +103,7 @@ function contentOf(model: TasksScreenModel, screen: TasksScreen): ReactNode {
   return (
     <LoadState
       failure={screen.kind === "failed" ? "Не получилось загрузить дела." : undefined}
-      onRetry={model.retry}
+      onRetry={model.reload}
     />
   );
 }

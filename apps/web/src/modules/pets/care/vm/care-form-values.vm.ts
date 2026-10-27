@@ -3,6 +3,7 @@ import { Temporal } from "temporal-polyfill";
 import {
   careEntryChange,
   careKind,
+  careKindTitles,
   repeatableCareKind,
   type CareDetails,
   type CareEntry,
@@ -142,4 +143,25 @@ export function valuesOfDraft(
     repeatOn: draft.repeatOn ?? "",
     ...(draft.details === null ? {} : kindValuesOf(draft.details)),
   };
+}
+
+// A Pet's Task is titled «Прививка: <vaccine>», «Обработка: <target>» or «Визит к ветеринару», as
+// the move from Due Dates and «Повторить» name them; any other title becomes a note.
+export function valuesOfTask(title: string): Partial<EntryValues> {
+  for (const kind of ["vaccination", "treatment"] as const) {
+    const prefix = `${careKindTitles[kind]}: `;
+
+    if (title.startsWith(prefix)) {
+      return { kind, name: title.slice(prefix.length) };
+    }
+  }
+
+  if (title.startsWith(careKindTitles.vet_visit)) {
+    return {
+      kind: "vet_visit",
+      reason: title.slice(careKindTitles.vet_visit.length).replace(/^:\s*/u, ""),
+    };
+  }
+
+  return { kind: "note", note: title };
 }

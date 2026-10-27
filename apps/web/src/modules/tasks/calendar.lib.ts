@@ -5,7 +5,7 @@ import { birthdaysIn, timeInZone, type DateRange } from "@family-hub/recurrence"
 
 import { formatAge } from "@/common/format-date";
 
-import { completionOf, isOverdue, placedOccurrences } from "./tasks.lib.ts";
+import { placedOccurrences, statusOf, type OccurrenceStatus } from "./occurrences.lib.ts";
 
 export type CalendarItem =
   | {
@@ -16,10 +16,18 @@ export type CalendarItem =
       title: string;
       taskId: string;
       occurrence: string;
-      isOverdue: boolean;
-      isCompleted: boolean;
+      status: OccurrenceStatus;
     }
-  | { kind: "birthday"; key: string; date: string; time: undefined; title: string; petId: string };
+  | Birthday;
+
+type Birthday = {
+  kind: "birthday";
+  key: string;
+  date: string;
+  time: undefined;
+  title: string;
+  petId: string;
+};
 
 export type CalendarViewer = { range: DateRange; timeZone: string; today: string };
 
@@ -42,13 +50,12 @@ function taskItems(task: Task, { range, timeZone, today }: CalendarViewer): Cale
     title: task.title,
     taskId: task.id,
     occurrence,
-    isOverdue: isOverdue(task, { occurrence, date, today }),
-    isCompleted: completionOf(task, occurrence) !== undefined,
+    status: statusOf(task, { occurrence, date, today }),
   }));
 }
 
 // A birthday is the Pet's own date, edited on its card; it only shows beside the Tasks.
-function birthdayItems(pet: Pet, range: DateRange): CalendarItem[] {
+export function birthdaysOf(pet: Pet, range: DateRange): Birthday[] {
   if (pet.birthDate === null || pet.archivedAt !== null) {
     return [];
   }
@@ -71,7 +78,7 @@ export function itemsIn(
 ): CalendarItem[] {
   return [
     ...tasks.flatMap((task) => taskItems(task, viewer)),
-    ...pets.flatMap((pet) => birthdayItems(pet, viewer.range)),
+    ...pets.flatMap((pet) => birthdaysOf(pet, viewer.range)),
   ].toSorted((left, right) =>
     left.date === right.date
       ? (left.time ?? "").localeCompare(right.time ?? "")
@@ -129,63 +136,28 @@ export function shiftMonth(month: string, months: number): string {
   return Temporal.PlainYearMonth.from(month).add({ months }).toString();
 }
 
-// The day's list leads with the time, the month's with the date, shown once for a run of one day.
-export type AgendaMark =
-  | { kind: "time"; text: string }
-  | { kind: "date"; day: number; month: string }
-  | { kind: "same-day" };
-
 export type AgendaRow = {
   item: CalendarItem;
   subtitle: string;
-  isOverdue: boolean;
-  mark: AgendaMark;
+  time: string;
 };
 
-function isOverdueItem(item: CalendarItem): boolean {
-  return item.kind === "task" && item.isOverdue;
-}
-
-function kindOf(item: CalendarItem): string | undefined {
+function subtitleOf(item: CalendarItem): string {
   if (item.kind === "birthday") {
     return "День рождения";
   }
 
-  return item.isCompleted ? "Выполнено" : undefined;
-}
-
-function markOf(
-  item: CalendarItem,
-  { isDated, isSameDay }: { isDated: boolean; isSameDay: boolean },
-): AgendaMark {
-  if (!isDated) {
-    return { kind: "time", text: item.time ?? "весь день" };
+  if (item.status === "overdue") {
+    return "просрочено";
   }
 
-  if (isSameDay) {
-    return { kind: "same-day" };
-  }
-
-  const date = Temporal.PlainDate.from(item.date);
-
-  return {
-    kind: "date",
-    day: date.day,
-    month: date.toLocaleString("ru-RU", { month: "short" }).replace(".", ""),
-  };
+  return item.status === "completed" ? "Выполнено" : "";
 }
 
-export function agendaRowsOf(items: CalendarItem[], isDated: boolean): AgendaRow[] {
-  return items.map((item, index) => {
-    const isItemOverdue = isOverdueItem(item);
-
-    return {
-      item,
-      isOverdue: isItemOverdue,
-      subtitle: [isItemOverdue ? "просрочено" : kindOf(item), isDated ? item.time : undefined]
-        .filter((part) => part !== undefined)
-        .join(" · "),
-      mark: markOf(item, { isDated, isSameDay: items[index - 1]?.date === item.date }),
-    };
-  });
+export function agendaRowsOf(items: CalendarItem[]): AgendaRow[] {
+  return items.map((item) => ({
+    item,
+    subtitle: subtitleOf(item),
+    time: item.time ?? "весь день",
+  }));
 }

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import {
   occurrenceTarget,
   skipTarget,
+  subtaskChange,
   taskChange,
   type FamilyMemberList,
   type Person,
@@ -13,7 +14,9 @@ import {
 
 import { createHttpClient } from "@/common/http-client";
 
+import type { TaskRow } from "../task-rows.lib.ts";
 import { createTasksApi } from "../tasks.api.ts";
+import type { CareRecord } from "./task-actions.vm.ts";
 import { reatomTasksScreen } from "./tasks.vm.ts";
 
 const denis: Person = { id: "member-1", name: "Денис", profilePicture: null };
@@ -105,9 +108,35 @@ const cleaning = taskOf({
 
 type Sent = { request: string; body: unknown };
 
-type Route = (body: unknown, taskId: string) => unknown;
+type Route = (body: unknown, ids: { taskId: string; subtaskId: string }) => unknown;
 
-function fakeBackend(initial: Task[] = [vaccination, food, repair, vacation, passport]) {
+function completedSubtask(task: Task, subtaskId: string): Task {
+  const subtasks = task.subtasks.map((each) =>
+    each.id === subtaskId ? { ...each, completed: { at: doneAt, by: "Денис" } } : each,
+  );
+  const isAllDone = subtasks.every(({ completed }) => completed !== null);
+
+  return {
+    ...task,
+    subtasks,
+    completions: isAllDone ? [{ occurrence: null, at: doneAt, by: "Денис" }] : task.completions,
+  };
+}
+
+function patternOf(request: string) {
+  const [, taskId = "", subtaskId = ""] =
+    /^\w+ \/api\/tasks\/([^/]+)(?:\/subtasks\/([^/]+))?/u.exec(request) ?? [];
+  const pattern = request
+    .replace(`/subtasks/${subtaskId}`, "/subtasks/:sub")
+    .replace(`/tasks/${taskId}`, "/tasks/:id");
+
+  return { pattern, ids: { taskId, subtaskId } };
+}
+
+function fakeBackend(
+  initial: Task[] = [vaccination, food, repair, vacation, passport],
+  { failing }: { failing?: string } = {},
+) {
   let tasks = initial;
   const sent: Sent[] = [];
 
@@ -125,7 +154,7 @@ function fakeBackend(initial: Task[] = [vaccination, food, repair, vacation, pas
 
       return taskOf({ ...change, id: "task-new", recipients: "default", assignees: [] });
     },
-    "POST /api/tasks/:id/complete": (body, taskId) =>
+    "POST /api/tasks/:id/complete": (body, { taskId }) =>
       saved(taskId, (task) => ({
         ...task,
         completions: [
@@ -137,31 +166,49 @@ function fakeBackend(initial: Task[] = [vaccination, food, repair, vacation, pas
           },
         ],
       })),
-    "POST /api/tasks/:id/reopen": (body, taskId) =>
+    "POST /api/tasks/:id/reopen": (body, { taskId }) =>
       saved(taskId, (task) => ({
         ...task,
         completions: task.completions.filter(
           ({ occurrence }) => occurrence !== occurrenceTarget.parse(body).occurrence,
         ),
       })),
-    "POST /api/tasks/:id/skip": (body, taskId) =>
+    "POST /api/tasks/:id/skip": (body, { taskId }) =>
       saved(taskId, (task) => ({
         ...task,
         skippedDates: [...task.skippedDates, skipTarget.parse(body).date],
       })),
+    "POST /api/tasks/:id/subtasks": (body, { taskId }) =>
+      saved(taskId, (task) => {
+        const { title, date } = subtaskChange.parse(body);
+
+        return {
+          ...task,
+          subtasks: [
+            ...task.subtasks,
+            { id: `sub-${task.subtasks.length + 1}`, title, date, assignees: [], completed: null },
+          ],
+        };
+      }),
+    "POST /api/tasks/:id/subtasks/:sub/complete": (_body, { taskId, subtaskId }) =>
+      saved(taskId, (task) => completedSubtask(task, subtaskId)),
   };
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
     const request = `${init.method ?? "GET"} ${url.pathname}`;
     const body: unknown = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
-    const taskId = /^\/api\/tasks\/([^/]+)\/\w+$/u.exec(url.pathname)?.[1] ?? "";
-    const route = routes[request] ?? routes[request.replace(taskId, ":id")];
+    const { pattern, ids } = patternOf(request);
+    const route = routes[pattern];
 
     sent.push({ request, body });
 
+    if (failing === pattern) {
+      return Response.json({ code: "INTERNAL", message: "" }, { status: 500 });
+    }
+
     return route === undefined
       ? Response.json({ code: "TASK_NOT_FOUND", message: "" }, { status: 404 })
-      : Response.json(route(body, taskId));
+      : Response.json(route(body, ids));
   }
 
   return { fetch, sent };
@@ -179,8 +226,9 @@ function fakeTelegram(choices: string[] = []) {
 
 function startTasks(backend = fakeBackend(), telegram = fakeTelegram()) {
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
-  const recorded: string[] = [];
+  const recorded: CareRecord[] = [];
   const openedPets: string[] = [];
+  const openedAlbums: string[] = [];
   const model = reatomTasksScreen({
     api: createTasksApi(client),
     members: { data: atom(members) },
@@ -189,19 +237,21 @@ function startTasks(backend = fakeBackend(), telegram = fakeTelegram()) {
     liveVersion: atom(0),
     self: () => "member-1",
     viewer: () => ({ timeZone: "Europe/Moscow", today: "2026-10-16" }),
-    onOpenAlbum: noop,
+    onOpenAlbum: (albumId) => {
+      openedAlbums.push(albumId);
+    },
     onOpenPet: (petId) => {
       openedPets.push(petId);
     },
-    onRecord: (petId) => {
-      recorded.push(petId);
+    onRecord: (record) => {
+      recorded.push(record);
     },
     onDraftSaved: noop,
   });
 
   model.screen.subscribe(noop);
 
-  return { model, backend, recorded, openedPets };
+  return { model, backend, recorded, openedPets, openedAlbums };
 }
 
 type Model = ReturnType<typeof startTasks>["model"];
@@ -228,11 +278,14 @@ function groups(model: Model) {
   return screen.groups;
 }
 
-function rowOf(model: Model, title: string, occurrence: string | null = null) {
+function rowOf(model: Model, title: string, occurrence: string | null = null): TaskRow {
   const row = Object.values(groups(model))
     .flat()
     .find(
-      (each) => each.title === title && (occurrence === null || each.occurrence === occurrence),
+      (each): each is TaskRow =>
+        each.kind === "task" &&
+        each.title === title &&
+        (occurrence === null || each.occurrence === occurrence),
     );
 
   if (row === undefined) {
@@ -255,11 +308,14 @@ describe("the list of Tasks", () => {
     expect(model.screen()).toMatchObject({
       kind: "list",
       groups: {
-        overdue: [{ title: "Прививка Бьюику", isOverdue: true }],
+        overdue: [{ title: "Прививка Бьюику", status: "overdue" }],
         today: [{ title: "Купить корм", hasReminder: true }],
-        upcoming: [{ title: "Ремонт" }],
+        upcoming: [
+          { kind: "task", title: "Ремонт" },
+          { kind: "birthday", title: "День рождения: Бьюик, 4 года", when: "20 октября" },
+        ],
         undated: [{ title: "Отпуск", date: undefined }],
-        completed: [{ title: "Паспорт", isCompleted: true }],
+        completed: [{ title: "Паспорт", status: "completed" }],
       },
       isCompletedShown: false,
     });
@@ -286,7 +342,7 @@ describe("the list of Tasks", () => {
     expect(groups(model)).toMatchObject({
       overdue: [],
       today: [{ title: "Купить корм" }],
-      upcoming: [],
+      upcoming: [{ kind: "birthday" }],
       undated: [],
       completed: [],
     });
@@ -333,7 +389,7 @@ describe("completing a Task", () => {
 
     model.recordCareEntry();
 
-    expect(recorded).toEqual(["pet-1"]);
+    expect(recorded).toEqual([{ petId: "pet-1", title: "Прививка Бьюику" }]);
     expect(model.undo()).toBeUndefined();
   });
 
@@ -345,7 +401,7 @@ describe("completing a Task", () => {
     expect(groups(model)).toMatchObject({
       overdue: [{ occurrence: "2026-10-02" }, { occurrence: "2026-10-09" }],
       today: [{ occurrence: "2026-10-16" }],
-      upcoming: [{ occurrence: "2026-10-23" }],
+      upcoming: [{ kind: "birthday" }, { occurrence: "2026-10-23" }],
     });
 
     model.toggle(rowOf(model, "Уборка", "2026-10-16"));
@@ -385,22 +441,199 @@ describe("completing a Task", () => {
   test("completes the bot's «Записать» Occurrence quietly and opens the Pet's journal", async () => {
     const { model, backend, recorded } = startTasks();
 
-    await model.recordOccurrence({ taskId: "task-vaccination", occurrence: "2026-10-12" });
+    model.recordOccurrence({ taskId: "task-vaccination", occurrence: "2026-10-12" });
+    await vi.waitFor(() => {
+      expect(recorded).toEqual([{ petId: "pet-1", title: "Прививка Бьюику" }]);
+    });
 
     expect(backend.sent.map(({ request }) => request)).toContain(
       "POST /api/tasks/task-vaccination/complete",
     );
-    expect(recorded).toEqual(["pet-1"]);
     expect(model.undo()).toBeUndefined();
   });
 
   test("does nothing on «Записать» for a Task without a Pet", async () => {
     const { model, backend, recorded } = startTasks();
 
-    await model.recordOccurrence({ taskId: "task-repair", occurrence: "2026-10-20" });
+    model.recordOccurrence({ taskId: "task-repair", occurrence: "2026-10-20" });
+    await settled(model);
 
     expect(backend.sent.map(({ request }) => request)).toEqual(["GET /api/tasks"]);
     expect(recorded).toEqual([]);
+  });
+
+  test("says so when «Записать» cannot complete the Occurrence", async () => {
+    const { model, recorded } = startTasks(
+      fakeBackend(undefined, { failing: "POST /api/tasks/:id/complete" }),
+    );
+
+    model.recordOccurrence({ taskId: "task-vaccination", occurrence: "2026-10-12" });
+    await settled(model);
+
+    expect(model.failure()).toBe("Не получилось сохранить. Попробуйте ещё раз.");
+    expect(recorded).toEqual([]);
+  });
+
+  test("stops waiting on «Записать» when the list cannot load", async () => {
+    const { model, recorded } = startTasks(fakeBackend(undefined, { failing: "GET /api/tasks" }));
+
+    model.recordOccurrence({ taskId: "task-vaccination", occurrence: "2026-10-12" });
+    await settled(model);
+
+    expect(model.screen().kind).toBe("failed");
+    expect(recorded).toEqual([]);
+  });
+
+  test("keeps a completion made while the list was refetching", async () => {
+    const backend = fakeBackend();
+    let release = noop;
+    let isHolding = false;
+    const held = {
+      ...backend,
+      fetch: async (url: URL, init: RequestInit) => {
+        const answer = backend.fetch(url, init);
+
+        if (isHolding && url.pathname === "/api/tasks" && init.method === undefined) {
+          isHolding = false;
+          await new Promise<void>((resolve) => {
+            release = resolve;
+          });
+        }
+
+        return answer;
+      },
+    };
+    const { model } = startTasks(held);
+
+    await loaded(model);
+    isHolding = true;
+    model.reload();
+    model.toggle(rowOf(model, "Отпуск"));
+    await settled(model);
+    release();
+
+    await vi.waitFor(() => {
+      expect(groups(model).undated).toEqual([]);
+    });
+    expect(groups(model).completed.map(({ title }) => title)).toContain("Отпуск");
+  });
+});
+
+describe("opening a Task by its id", () => {
+  test("waits for the list and opens a recurring Task on its next open Occurrence", async () => {
+    const { model, backend } = startTasks(fakeBackend([cleaning]));
+
+    model.open("task-cleaning");
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ kind: "task", task: { occurrence: "2026-10-02" } });
+    });
+
+    model.toggleOpened();
+    await settled(model);
+
+    expect(backend.sent.at(-1)).toEqual({
+      request: "POST /api/tasks/task-cleaning/complete",
+      body: { occurrence: "2026-10-02" },
+    });
+  });
+});
+
+describe("Subtasks", () => {
+  test("adds a Subtask to an open Task and counts the steps", async () => {
+    const { model } = startTasks();
+
+    await loaded(model);
+    model.open("task-vacation");
+    model.addSubtask();
+    model.subtaskForm.form.fields.title.set("Купить билеты");
+    model.subtaskForm.save();
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({
+        kind: "task",
+        task: { stepsTitle: "Шаги · 0 из 1", subtasks: [{ title: "Купить билеты" }] },
+      });
+    });
+  });
+
+  test("completes the Task once its last Subtask is completed", async () => {
+    const steps: Task["subtasks"] = [
+      { id: "sub-1", title: "Билеты", date: null, assignees: [], completed: null },
+      { id: "sub-2", title: "Отель", date: null, assignees: [], completed: null },
+    ];
+    const { model } = startTasks(fakeBackend([{ ...vacation, subtasks: steps }]));
+
+    await loaded(model);
+    model.open("task-vacation");
+    model.toggleSubtask("sub-1");
+    await settled(model);
+
+    expect(model.screen()).toMatchObject({
+      task: { stepsTitle: "Шаги · 1 из 2", completed: undefined },
+    });
+
+    model.toggleSubtask("sub-2");
+    await settled(model);
+
+    expect(model.screen()).toMatchObject({
+      task: { stepsTitle: "Шаги · 2 из 2", completed: expect.stringContaining("Выполнено") },
+    });
+  });
+
+  test("offers no Subtasks on a recurring Task", async () => {
+    const { model } = startTasks(fakeBackend([cleaning]));
+
+    await loaded(model);
+    model.open("task-cleaning");
+
+    expect(model.screen()).toMatchObject({ kind: "task", task: { canAddSubtask: false } });
+  });
+});
+
+describe("a Private Task", () => {
+  test("keeps only its owner among the people and is saved Private", async () => {
+    const { model, backend } = startTasks();
+
+    await loaded(model);
+    model.add();
+    model.taskForm.form.fields.title.set("Подарок Асе");
+    model.taskForm.toggleAssignee("member-2");
+    model.taskForm.chooseVisibility("private");
+
+    expect(model.taskForm.assignees().map(({ id }) => id)).toEqual(["member-1"]);
+
+    model.taskForm.save();
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ kind: "task", task: { isPrivate: true } });
+    });
+
+    expect(backend.sent.find(({ request }) => request === "POST /api/tasks")?.body).toMatchObject({
+      visibility: "private",
+      assigneeIds: [],
+    });
+  });
+});
+
+describe("a Task's Album", () => {
+  test("shows the Album strip and opens the Album", async () => {
+    const trip = taskOf({
+      id: "task-trip",
+      title: "Поездка в Казань",
+      album: { id: "album-1", title: "Казань", photos: [], photoCount: 0 },
+    });
+    const { model, openedAlbums } = startTasks(fakeBackend([trip]));
+
+    await loaded(model);
+    model.open("task-trip");
+
+    expect(model.screen()).toMatchObject({
+      kind: "task",
+      task: { album: { id: "album-1", title: "Казань" } },
+    });
+
+    model.openAlbum("album-1");
+
+    expect(openedAlbums).toEqual(["album-1"]);
   });
 });
 

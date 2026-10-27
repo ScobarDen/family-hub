@@ -188,7 +188,7 @@ describe("«Сделать сегодня»", () => {
 
     expect(model.rows()).toEqual([]);
     expect(model.header()).toBe("День свободен");
-    expect(model.undo()).toEqual({ title: "Дело 1" });
+    expect(model.undo()).toEqual({ title: "Дело 1", hasPet: false });
     await vi.waitFor(() => {
       expect(calls).toContain('POST /api/tasks/task-1/complete {"occurrence":"2026-10-12"}');
     });
@@ -196,12 +196,32 @@ describe("«Сделать сегодня»", () => {
     await vi.waitFor(() => {
       expect(calls.filter((call) => call === "GET /api/today")).toHaveLength(2);
     });
-    expect(model.undo()).toEqual({ title: "Дело 1" });
+    expect(model.undo()).toEqual({ title: "Дело 1", hasPet: false });
 
     model.dismissUndo();
 
     expect(model.undo()).toBeUndefined();
     expect(model.rows()).toEqual([]);
+  });
+
+  test("offers to record a Pet's Task in its journal from the undo bar", async () => {
+    const { model, opened } = startToday({
+      due: [{ ...taskDue(1, "2026-10-16"), title: "Прививка: бешенство", petId: "pet-1" }],
+    });
+
+    await vi.waitFor(() => {
+      expect(model.rows()).toHaveLength(1);
+    });
+    model.complete("task-1-2026-10-16");
+
+    expect(model.undo()).toEqual({ title: "Прививка: бешенство", hasPet: true });
+
+    model.recordCareEntry();
+
+    expect(opened).toEqual([
+      { kind: "care-entry-for-pet", petId: "pet-1", title: "Прививка: бешенство" },
+    ]);
+    expect(model.undo()).toBeUndefined();
   });
 
   test("completes a dated Subtask as the Subtask", async () => {

@@ -1,4 +1,4 @@
-import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
+import { action, atom, computed, take, throwAbort, withAsyncData, wrap } from "@reatom/core";
 
 import type { FamilyMember, Pet, Task } from "@family-hub/contract";
 
@@ -11,6 +11,54 @@ type Loaded<Item> = { data: () => Item[] | undefined };
 
 // Members and Pets are the Family's shared queries, loaded once for every module.
 export type SharedLists = { members: Loaded<FamilyMember>; pets: Loaded<Pet> };
+
+type TaskList = {
+  data: { (): Task[] | undefined; set: (tasks: Task[]) => unknown };
+  error: () => Error | undefined;
+  ready: () => boolean;
+};
+
+function settledOf(list: TaskList): Task[] | Error | undefined {
+  return list.data() ?? list.error();
+}
+
+// A link may come before the list; a failed load ends the wait instead of leaving it hanging.
+async function loadedOf(list: TaskList): Promise<Task[]> {
+  const outcome =
+    settledOf(list) ??
+    (await wrap(
+      take(
+        () => settledOf(list),
+        (next) => next ?? throwAbort(),
+      ),
+    ));
+
+  if (outcome instanceof Error) {
+    throw outcome;
+  }
+
+  return outcome;
+}
+
+// A fetch that left before a save would answer with the Task as it was, so it starts over.
+function reatomKeeping(list: TaskList, reload: () => void) {
+  function kept(tasks: Task[]): void {
+    list.data.set(tasks);
+
+    if (!list.ready()) {
+      reload();
+    }
+  }
+
+  return {
+    keep: action((saved: Task) => {
+      kept(upserted(list.data() ?? [], saved));
+    }, "tasks.keep"),
+    drop: action((taskId: string) => {
+      kept(withoutId(list.data() ?? [], taskId));
+    }, "tasks.drop"),
+  };
+}
 
 export function reatomTasks({
   api,
@@ -25,22 +73,18 @@ export function reatomTasks({
 
     return wrap(api.list());
   }, "tasks.list").extend(withAsyncData());
+  const reload = action(() => {
+    version.set(version() + 1);
+  }, "tasks.reload");
 
   return {
     list,
-    reload: action(() => {
-      version.set(version() + 1);
-    }, "tasks.reload"),
+    reload,
+    loaded: async () => loadedOf(list),
     members,
     pets,
     albums: computed(async () => wrap(api.albums()), "tasks.albums").extend(withAsyncData()),
-
-    keep: action((saved: Task) => {
-      list.data.set(upserted(list.data() ?? [], saved));
-    }, "tasks.keep"),
-    drop: action((taskId: string) => {
-      list.data.set(withoutId(list.data() ?? [], taskId));
-    }, "tasks.drop"),
+    ...reatomKeeping(list, reload),
   };
 }
 

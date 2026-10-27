@@ -20,7 +20,8 @@ import { dueRowOf, headerOf, moreOf, nextRowOf, tilesOf, type Tile } from "../to
 export type TodayTarget =
   | { kind: "task"; taskId: string }
   | { kind: "pet"; petId: string }
-  | { kind: "new-pet" };
+  | { kind: "new-pet" }
+  | { kind: "care-entry-for-pet"; petId: string; title: string };
 
 export type TodayDependencies = LiveVersion & {
   api: TodayApi;
@@ -34,7 +35,14 @@ const shownDue = 3;
 
 type TaskItem = Extract<FeedUpcoming, { kind: "task" }>;
 
-type Completing = { key: string; title: string; target: OccurrenceTarget; done: Promise<void> };
+type Completing = {
+  key: string;
+  title: string;
+  target: OccurrenceTarget;
+  // A Pet's Task, not one of its Subtasks, may be recorded in the Pet's journal.
+  petId: string | undefined;
+  done: Promise<void>;
+};
 
 type Loaded = { data: () => Today | undefined };
 
@@ -101,9 +109,15 @@ function reatomComplete(
 ) {
   const { pending, failure, hide, show } = state;
 
-  return action(async ({ key, title, taskId, occurrence, subtaskId }: TaskItem) => {
+  return action(async ({ key, title, taskId, occurrence, subtaskId, petId }: TaskItem) => {
     const target = { taskId, occurrence, subtaskId };
-    const completing = { key, title, target, done: api.complete(target) };
+    const completing = {
+      key,
+      title,
+      target,
+      petId: subtaskId === null ? (petId ?? undefined) : undefined,
+      done: api.complete(target),
+    };
 
     failure.set(undefined);
     hide(key);
@@ -151,7 +165,10 @@ function reatomRevert(
   }, "today.revertCompletion").extend(withAsync());
 }
 
-function reatomCompletion(dependencies: Pick<TodayDependencies, "api">, onSettled: () => void) {
+function reatomCompletion(
+  dependencies: Pick<TodayDependencies, "api" | "onOpen">,
+  onSettled: () => void,
+) {
   const state: CompletionState = {
     ...reatomHidden(),
     pending: atom<Completing | undefined>(undefined, "today.pending"),
@@ -166,6 +183,19 @@ function reatomCompletion(dependencies: Pick<TodayDependencies, "api">, onSettle
     dismiss: action(() => {
       state.pending.set(undefined);
     }, "today.dismissUndo"),
+    recordCareEntry: action(() => {
+      const completing = state.pending();
+
+      state.pending.set(undefined);
+
+      if (completing?.petId !== undefined) {
+        dependencies.onOpen({
+          kind: "care-entry-for-pet",
+          petId: completing.petId,
+          title: completing.title,
+        });
+      }
+    }, "today.recordCareEntry"),
     dismissFailure: action(() => {
       state.failure.set(undefined);
     }, "today.dismissFailure"),
@@ -226,6 +256,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
     }, "today.completeRow"),
     revert: detached(completion.revert, "today.revert"),
     dismissUndo: completion.dismiss,
+    recordCareEntry: completion.recordCareEntry,
     dismissFailure: completion.dismissFailure,
     openItem: action((key: string) => {
       const item = find(key);
@@ -267,7 +298,9 @@ export function reatomToday(dependencies: TodayDependencies) {
     undo: computed(() => {
       const completing = completion.pending();
 
-      return completing === undefined ? undefined : { title: completing.title };
+      return completing === undefined
+        ? undefined
+        : { title: completing.title, hasPet: completing.petId !== undefined };
     }, "today.undo"),
     reload,
     ...reatomBlocks(dependencies, data, completion),

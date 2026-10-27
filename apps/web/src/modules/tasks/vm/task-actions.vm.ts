@@ -1,36 +1,29 @@
-import {
-  action,
-  atom,
-  computed,
-  noop,
-  take,
-  throwAbort,
-  withAsync,
-  wrap,
-  type Atom,
-} from "@reatom/core";
+import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
 
 import type { Task } from "@family-hub/contract";
 
 import { reatomFailure } from "@/common/state";
 import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
-import type { OccurrenceTarget, TasksApi } from "../tasks.api.ts";
-import { completionOf } from "../tasks.lib.ts";
+import { completionOf } from "../occurrences.lib.ts";
+import type { TaskOccurrence, TasksApi } from "../tasks.api.ts";
 import type { TasksModel } from "../tasks.model.ts";
 
 // What the undo bar offers after a tap on the circle: to take it back, and for a Pet's Task to
 // record what was done in its journal.
-export type Undo = OccurrenceTarget & { title: string; petId: string | undefined };
+export type Undo = TaskOccurrence & { title: string; petId: string | undefined };
 
 export type TaskActionsDependencies = {
   api: TasksApi;
-  tasks: Pick<TasksModel, "keep" | "drop" | "list">;
+  tasks: Pick<TasksModel, "keep" | "drop" | "list" | "loaded">;
   telegram: Pick<Dialogs, "showPopup">;
-  opened: () => OccurrenceTarget | undefined;
-  onDeleted: () => void;
-  onRecord: (petId: string) => void;
+  opened: () => TaskOccurrence | undefined;
+  onClosed: () => void;
+  onRecord: (record: CareRecord) => void;
 };
+
+// What a Pet's Task tells its journal: whose it is and what was done.
+export type CareRecord = { petId: string; title: string };
 
 const confirmations: Record<"skip" | "delete" | "removeSubtask", Confirmation> = {
   skip: {
@@ -76,7 +69,7 @@ type UndoAtom = Atom<Undo | undefined>;
 async function toggleCompletion(
   dependencies: TaskActionsDependencies,
   undo: UndoAtom,
-  target: OccurrenceTarget,
+  target: TaskOccurrence,
 ): Promise<void> {
   const task = taskOf(dependencies, target.taskId);
 
@@ -86,19 +79,19 @@ async function toggleCompletion(
 
   if (completionOf(task, target.occurrence) !== undefined) {
     undo.set(undefined);
-    await keep(dependencies, dependencies.api.reopen(target));
+    await wrap(keep(dependencies, dependencies.api.reopen(target)));
 
     return;
   }
 
-  await keep(dependencies, dependencies.api.complete(target));
+  await wrap(keep(dependencies, dependencies.api.complete(target)));
   undo.set({ ...target, title: task.title, petId: task.pet?.id });
 }
 
 function onOpened(
   { opened }: TaskActionsDependencies,
   change: Change,
-  run: (target: OccurrenceTarget) => Promise<void>,
+  run: (target: TaskOccurrence) => Promise<void>,
 ): void {
   const target = opened();
 
@@ -110,7 +103,7 @@ function onOpened(
 function reatomCompletion(dependencies: TaskActionsDependencies, change: Change, undo: UndoAtom) {
   return {
     undo,
-    toggle: action((target: OccurrenceTarget) => {
+    toggle: action((target: TaskOccurrence) => {
       change(async () => toggleCompletion(dependencies, undo, target)).catch(noop);
     }, "tasks.toggle"),
     toggleOpened: action(() => {
@@ -136,12 +129,12 @@ function reatomUndoBar(dependencies: TaskActionsDependencies, change: Change, un
       undo.set(undefined);
     }, "tasks.dismissUndo"),
     recordCareEntry: action(() => {
-      const petId = undo()?.petId;
+      const completed = undo();
 
       undo.set(undefined);
 
-      if (petId !== undefined) {
-        dependencies.onRecord(petId);
+      if (completed?.petId !== undefined) {
+        dependencies.onRecord({ petId: completed.petId, title: completed.title });
       }
     }, "tasks.recordCareEntry"),
   };
@@ -151,18 +144,18 @@ function reatomOccurrenceChanges(dependencies: TaskActionsDependencies, change: 
   return {
     skipOccurrence: action(() => {
       onOpened(dependencies, change, async ({ taskId, occurrence }) => {
-        if (occurrence !== null && (await isSure(dependencies, "skip"))) {
-          await keep(dependencies, dependencies.api.skip(taskId, occurrence));
-          dependencies.onDeleted();
+        if (occurrence !== null && (await wrap(isSure(dependencies, "skip")))) {
+          await wrap(keep(dependencies, dependencies.api.skip(taskId, occurrence)));
+          dependencies.onClosed();
         }
       });
     }, "tasks.skipOccurrence"),
     removeTask: action(() => {
       onOpened(dependencies, change, async ({ taskId }) => {
-        if (await isSure(dependencies, "delete")) {
+        if (await wrap(isSure(dependencies, "delete"))) {
           await wrap(dependencies.api.remove(taskId));
           dependencies.tasks.drop(taskId);
-          dependencies.onDeleted();
+          dependencies.onClosed();
         }
       });
     }, "tasks.removeTask"),
@@ -176,18 +169,20 @@ function reatomSubtaskChanges(dependencies: TaskActionsDependencies, change: Cha
         const subtask = taskOf(dependencies, taskId)?.subtasks.find(({ id }) => id === subtaskId);
         const target = { taskId, subtaskId };
 
-        await keep(
-          dependencies,
-          subtask?.completed === null
-            ? dependencies.api.completeSubtask(target)
-            : dependencies.api.reopenSubtask(target),
+        await wrap(
+          keep(
+            dependencies,
+            subtask?.completed === null
+              ? dependencies.api.completeSubtask(target)
+              : dependencies.api.reopenSubtask(target),
+          ),
         );
       });
     }, "tasks.toggleSubtask"),
     removeSubtask: action((subtaskId: string) => {
       onOpened(dependencies, change, async ({ taskId }) => {
-        if (await isSure(dependencies, "removeSubtask")) {
-          await keep(dependencies, dependencies.api.removeSubtask({ taskId, subtaskId }));
+        if (await wrap(isSure(dependencies, "removeSubtask"))) {
+          await wrap(keep(dependencies, dependencies.api.removeSubtask({ taskId, subtaskId })));
         }
       });
     }, "tasks.removeSubtask"),
@@ -195,28 +190,22 @@ function reatomSubtaskChanges(dependencies: TaskActionsDependencies, change: Cha
 }
 
 // The bot's «Записать» completes the Occurrence before the journal opens, leaving no undo.
-function reatomQuietCompletion(dependencies: TaskActionsDependencies) {
-  const completeQuietly = action(async (target: OccurrenceTarget) => {
-    const task = taskOf(dependencies, target.taskId);
+async function recordOccurrence(
+  dependencies: TaskActionsDependencies,
+  target: TaskOccurrence,
+): Promise<void> {
+  const tasks = await wrap(dependencies.tasks.loaded());
+  const task = tasks.find(({ id }) => id === target.taskId);
 
-    if (task === undefined || completionOf(task, target.occurrence) === undefined) {
-      await wrap(keep(dependencies, dependencies.api.complete(target)));
-    }
-  }, "tasks.completeQuietly");
+  if (task === undefined || task.pet === null) {
+    return;
+  }
 
-  return {
-    completeQuietly,
-    recordOccurrence: action(async (target: OccurrenceTarget) => {
-      await wrap(take(dependencies.tasks.list.data, (tasks) => tasks ?? throwAbort()));
+  if (completionOf(task, target.occurrence) === undefined) {
+    await wrap(keep(dependencies, dependencies.api.complete(target)));
+  }
 
-      const petId = taskOf(dependencies, target.taskId)?.pet?.id;
-
-      if (petId !== undefined) {
-        await wrap(completeQuietly(target));
-        dependencies.onRecord(petId);
-      }
-    }, "tasks.recordOccurrence"),
-  };
+  dependencies.onRecord({ petId: task.pet.id, title: task.title });
 }
 
 export function reatomTaskActions(dependencies: TaskActionsDependencies) {
@@ -233,7 +222,9 @@ export function reatomTaskActions(dependencies: TaskActionsDependencies) {
     ...reatomUndoBar(dependencies, change, undo),
     ...reatomOccurrenceChanges(dependencies, change),
     ...reatomSubtaskChanges(dependencies, change),
-    ...reatomQuietCompletion(dependencies),
+    recordOccurrence: action((target: TaskOccurrence) => {
+      change(async () => recordOccurrence(dependencies, target)).catch(noop);
+    }, "tasks.recordOccurrence"),
   };
 }
 

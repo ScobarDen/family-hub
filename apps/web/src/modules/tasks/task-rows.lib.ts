@@ -1,18 +1,13 @@
-import { offsetTitles } from "@family-hub/commands";
-import { overdueLookbackDays, type Completion, type Person, type Task } from "@family-hub/contract";
-import {
-  daysAfter,
-  occurrenceMoment,
-  occurrencesOnDays,
-  timeInZone,
-  type PlacedOccurrence,
-} from "@family-hub/recurrence";
+import { overdueLookbackDays, type Person, type Pet, type Task } from "@family-hub/contract";
+import { daysAfter, timeInZone, type PlacedOccurrence } from "@family-hub/recurrence";
 
-import { formatDate, formatDay, formatNearDate, type Viewer } from "@/common/format-date";
+import { formatNearDate, type Viewer } from "@/common/format-date";
 
-import { repeatTitles } from "./tasks.config.ts";
+import { birthdaysOf } from "./calendar.lib.ts";
+import { placedOccurrences, statusOf, type OccurrenceStatus } from "./occurrences.lib.ts";
 
 export type TaskRow = {
+  kind: "task";
   key: string;
   taskId: string;
   occurrence: string | null;
@@ -24,70 +19,32 @@ export type TaskRow = {
   petName: string | undefined;
   isRecurring: boolean;
   hasReminder: boolean;
-  isOverdue: boolean;
-  isCompleted: boolean;
+  status: OccurrenceStatus;
 };
 
-export type TaskGroups = {
-  overdue: TaskRow[];
-  today: TaskRow[];
-  upcoming: TaskRow[];
-  undated: TaskRow[];
-  completed: TaskRow[];
+// A birthday is never done or late; it only stands among the Tasks of its day.
+export type BirthdayRow = {
+  kind: "birthday";
+  key: string;
+  petId: string;
+  title: string;
+  date: string;
+  when: string;
+  status: "open";
+};
+
+export type ListRow = TaskRow | BirthdayRow;
+
+export type TaskGroups<Row extends ListRow = ListRow> = {
+  overdue: Row[];
+  today: Row[];
+  upcoming: Row[];
+  undated: Row[];
+  completed: Row[];
 };
 
 const yearDays = 366;
 const farPast = "1970-01-01";
-
-// A Task without a Recurrence has one Occurrence, so its completion is any completion it has.
-export function completionOf(task: Task, occurrence: string | null): Completion | undefined {
-  return task.recurrence === null
-    ? task.completions[0]
-    : task.completions.find((completion) => completion.occurrence === occurrence);
-}
-
-// The one Overdue rule the server applies too: a past Occurrence of a Task with Assignees that is
-// not Completed; a Task without Assignees never turns Overdue.
-export function isOverdue(
-  task: Task,
-  {
-    occurrence,
-    date,
-    today,
-  }: { occurrence: string | null; date: string | undefined; today: string },
-): boolean {
-  return (
-    date !== undefined &&
-    date < today &&
-    task.assignees.length > 0 &&
-    completionOf(task, occurrence) === undefined
-  );
-}
-
-function momentOf(task: Task) {
-  const time = task.when?.time ?? null;
-  const zone = task.when?.timeZone ?? null;
-
-  return (occurrence: string) =>
-    time === null || zone === null
-      ? undefined
-      : occurrenceMoment(occurrence, { time, timeZone: zone });
-}
-
-// Each Occurrence falls on the viewer's own day, a timed one possibly the day before or after.
-export function placedOccurrences(
-  task: Task,
-  { from, to, timeZone }: { from: string; to: string; timeZone: string },
-): Array<PlacedOccurrence<number | undefined>> {
-  if (task.when === null) {
-    return [];
-  }
-
-  return occurrencesOnDays(
-    { startDate: task.when.date, recurrence: task.recurrence, skipped: task.skippedDates },
-    { days: { from, to, timeZone }, momentOf: momentOf(task) },
-  );
-}
 
 function whenText(
   { date, moment }: { date: string; moment: number | undefined },
@@ -123,13 +80,13 @@ function rowOf(
   const occurrence = placed?.occurrence ?? null;
 
   return {
+    kind: "task",
     ...marksOf(task),
     key: `${task.id}-${occurrence ?? "undated"}`,
     occurrence,
     date: placed?.date,
     when: placed === undefined ? undefined : whenText(placed, viewer),
-    isOverdue: isOverdue(task, { occurrence, date: placed?.date, today: viewer.today }),
-    isCompleted: completionOf(task, occurrence) !== undefined,
+    status: statusOf(task, { occurrence, date: placed?.date, today: viewer.today }),
   };
 }
 
@@ -151,34 +108,52 @@ export function rowsOf(task: Task, viewer: Viewer): TaskRow[] {
     return rows;
   }
 
-  const ahead = rows.find((row) => (row.date ?? "") > viewer.today && !row.isCompleted);
+  const ahead = rows.find((row) => (row.date ?? "") > viewer.today && row.status !== "completed");
 
   return [
     ...rows.filter(
       (row) =>
-        (row.date ?? "") <= viewer.today &&
-        (row.isCompleted || row.isOverdue || row.date === viewer.today),
+        (row.date ?? "") <= viewer.today && (row.status !== "open" || row.date === viewer.today),
     ),
     ...(ahead === undefined ? [] : [ahead]),
   ];
 }
 
-function byDate(left: TaskRow, right: TaskRow): number {
+// Each Pet's next birthday, as the calendar shows it.
+export function birthdayRowsOf(pets: Pet[], today: string): BirthdayRow[] {
+  const range = { from: today, to: daysAfter(today, yearDays) };
+
+  return pets.flatMap((pet) =>
+    birthdaysOf(pet, range)
+      .slice(0, 1)
+      .map(({ key, petId, title, date }) => ({
+        kind: "birthday" as const,
+        key,
+        petId,
+        title,
+        date,
+        when: formatNearDate(date, today),
+        status: "open" as const,
+      })),
+  );
+}
+
+function byDate(left: ListRow, right: ListRow): number {
   return `${left.date ?? ""}${left.when ?? ""}`.localeCompare(
     `${right.date ?? ""}${right.when ?? ""}`,
   );
 }
 
-export function groupsOf(rows: TaskRow[], today: string): TaskGroups {
-  const open = rows.filter(({ isCompleted }) => !isCompleted).toSorted(byDate);
+export function groupsOf<Row extends ListRow>(rows: Row[], today: string): TaskGroups<Row> {
+  const open = rows.filter(({ status }) => status !== "completed").toSorted(byDate);
 
   return {
-    overdue: open.filter((row) => row.isOverdue),
+    overdue: open.filter(({ status }) => status === "overdue"),
     today: open.filter(({ date }) => date === today),
     upcoming: open.filter(({ date }) => date !== undefined && date > today),
     undated: open.filter(({ date }) => date === undefined),
     completed: rows
-      .filter(({ isCompleted }) => isCompleted)
+      .filter(({ status }) => status === "completed")
       .toSorted(byDate)
       .toReversed(),
   };
@@ -206,134 +181,13 @@ export function isMine(task: Task, memberId: string | undefined): boolean {
     : task.recipients.some(({ id }) => id === memberId);
 }
 
-export type SubtaskRow = {
-  id: string;
-  title: string;
-  subtitle: string | undefined;
-  isCompleted: boolean;
-  isOverdue: boolean;
-};
-
-export type TaskDetails = {
-  id: string;
-  title: string;
-  occurrence: string | null;
-  when: string | undefined;
-  repeats: string | undefined;
-  facts: string | undefined;
-  reminders: string | undefined;
-  note: string | undefined;
-  completed: string | undefined;
-  isCompleted: boolean;
-  isPrivate: boolean;
-  isRecurring: boolean;
-  canDelete: boolean;
-  canAddSubtask: boolean;
-  stepsTitle: string;
-  subtasks: SubtaskRow[];
-  album: Task["album"];
-};
-
-function joined(parts: Array<string | undefined>): string | undefined {
-  const present = parts.filter((part) => part !== undefined && part !== "");
-
-  return present.length === 0 ? undefined : present.join(" · ");
-}
-
-function detailsWhen(task: Task, occurrence: string | null, viewer: Viewer): string | undefined {
-  const { when } = task;
-
-  if (when === null) {
-    return undefined;
-  }
-
-  const day = occurrence ?? when.date;
-  const moment = momentOf(task)(day);
-
-  if (moment === undefined) {
-    const end =
-      when.endDate === null || when.endDate === when.date ? "" : ` — ${formatDate(when.endDate)}`;
-
-    return `${formatDate(day)}${end}`;
-  }
-
-  const end = when.endTime === null ? "" : `–${when.endTime}`;
-
-  return `${formatDay(moment, viewer)}, ${timeInZone(moment, viewer.timeZone)}${end}`;
-}
-
-function repeatsOf({ recurrence }: Task): string | undefined {
-  if (recurrence === null) {
-    return undefined;
-  }
-
-  const until = recurrence.until === null ? "" : ` до ${formatDate(recurrence.until)}`;
-
-  return `${repeatTitles[recurrence.frequency]}${until}`;
-}
-
-function completedText(completion: Completion | undefined, viewer: Viewer): string | undefined {
-  return completion === undefined
-    ? undefined
-    : `Выполнено ${joined([formatDay(completion.at, viewer), completion.by ?? undefined])}`;
-}
-
-function progressOf({ subtasks }: Task): string | undefined {
-  const done = subtasks.filter(({ completed }) => completed !== null).length;
-
-  return subtasks.length === 0 ? undefined : `${done} из ${subtasks.length}`;
-}
-
-function subtaskRowOf(subtask: Task["subtasks"][number], today: string): SubtaskRow {
-  const isOpen = subtask.completed === null;
-
-  return {
-    id: subtask.id,
-    title: subtask.title,
-    subtitle: joined([
-      subtask.date === null ? undefined : formatNearDate(subtask.date, today),
-      subtask.assignees.map(({ name }) => name).join(", "),
-    ]),
-    isCompleted: !isOpen,
-    isOverdue:
-      isOpen && subtask.assignees.length > 0 && subtask.date !== null && subtask.date < today,
-  };
-}
-
-export function detailsOf(task: Task, occurrence: string | null, viewer: Viewer): TaskDetails {
-  const completion = completionOf(task, occurrence);
-
-  return {
-    id: task.id,
-    title: task.title,
-    occurrence,
-    when: detailsWhen(task, occurrence, viewer),
-    repeats: repeatsOf(task),
-    facts: joined([task.assignees.map(({ name }) => name).join(", "), task.pet?.name]),
-    reminders:
-      task.reminderOffsets.length === 0
-        ? undefined
-        : `Напомнить ${task.reminderOffsets.map((offset) => offsetTitles[offset]).join(", ")}`,
-    note: task.note ?? undefined,
-    completed: completedText(completion, viewer),
-    isCompleted: completion !== undefined,
-    isPrivate: task.visibility === "private",
-    isRecurring: task.recurrence !== null,
-    canDelete: task.isOwn,
-    canAddSubtask: task.recurrence === null,
-    stepsTitle: joined(["Шаги", progressOf(task)]) ?? "Шаги",
-    subtasks: task.subtasks.map((subtask) => subtaskRowOf(subtask, viewer.today)),
-    album: task.album,
-  };
-}
-
 // The Occurrence a Task opens on when nobody named one: the next open one, or its first.
 export function nextOccurrenceOf(task: Task, viewer: Viewer): string | null {
   if (task.when === null) {
     return null;
   }
 
-  const next = rowsOf(task, viewer).find(({ isCompleted }) => !isCompleted);
+  const next = rowsOf(task, viewer).find(({ status }) => status !== "completed");
 
   return next?.occurrence ?? task.when.date;
 }

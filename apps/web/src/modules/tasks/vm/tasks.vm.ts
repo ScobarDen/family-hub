@@ -4,14 +4,17 @@ import {
   computed,
   reatomBoolean,
   reatomEnum,
+  withAbort,
   withLocalStorage,
+  wrap,
   type Atom,
 } from "@reatom/core";
 
-import type { Task } from "@family-hub/contract";
+import type { Pet, Task } from "@family-hub/contract";
 
 import { formatNearDate, type Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
+import { detached } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
 
 import {
@@ -23,20 +26,20 @@ import {
   shiftMonth,
   type CalendarItem,
 } from "../calendar.lib.ts";
-import type { OccurrenceTarget, TasksApi } from "../tasks.api.ts";
+import { detailsOf, type TaskDetails } from "../task-details.lib.ts";
 import {
-  detailsOf,
+  birthdayRowsOf,
   groupsOf,
   isMine,
   nextOccurrenceOf,
   rowsOf,
-  type TaskDetails,
   type TaskGroups,
   type TaskRow,
-} from "../tasks.lib.ts";
+} from "../task-rows.lib.ts";
+import type { TaskOccurrence, TasksApi } from "../tasks.api.ts";
 import { reatomTasks, type SharedLists, type TasksModel } from "../tasks.model.ts";
 import { reatomSubtaskForm } from "./subtask-form.vm.ts";
-import { reatomTaskActions } from "./task-actions.vm.ts";
+import { reatomTaskActions, type CareRecord } from "./task-actions.vm.ts";
 import { reatomTaskForm, type TaskDraftOpening } from "./task-form.vm.ts";
 
 export type TasksScreen =
@@ -56,13 +59,13 @@ type TasksDependencies = SharedLists &
     viewer: () => Viewer;
     onOpenAlbum: (albumId: string) => void;
     onOpenPet: (petId: string) => void;
-    onRecord: (petId: string) => void;
+    onRecord: (record: CareRecord) => void;
     onDraftSaved: (draftId: string) => void;
   };
 
 type Navigation = {
   editing: Atom<"task" | "subtask" | undefined>;
-  opened: Atom<OccurrenceTarget | undefined>;
+  opened: Atom<TaskOccurrence | undefined>;
   isCompletedShown: ReturnType<typeof reatomBoolean>;
   view: ReturnType<typeof reatomEnum<"list" | "calendar">>;
   scope: ReturnType<typeof reatomEnum<"mine" | "all">>;
@@ -75,7 +78,7 @@ function reatomNavigation({ viewer }: TasksDependencies): Navigation {
 
   return {
     editing: atom<"task" | "subtask" | undefined>(undefined, "tasks.editing"),
-    opened: atom<OccurrenceTarget | undefined>(undefined, "tasks.opened"),
+    opened: atom<TaskOccurrence | undefined>(undefined, "tasks.opened"),
     isCompletedShown: reatomBoolean(false, "tasks.isCompletedShown"),
     // The list or the calendar is a per-device habit; without storage it starts at the list.
     view: reatomEnum(["list", "calendar"], "tasks.view").extend(withLocalStorage("tasks.view")),
@@ -130,13 +133,17 @@ function editingScreenOf(
     : undefined;
 }
 
-function browsingScreenOf(navigation: Navigation, tasks: Task[], viewer: Viewer): TasksScreen {
+function browsingScreenOf(
+  navigation: Navigation,
+  { tasks, pets }: { tasks: Task[]; pets: Pet[] },
+  viewer: Viewer,
+): TasksScreen {
   return navigation.view() === "calendar"
     ? { kind: "calendar" }
     : {
         kind: "list",
         groups: groupsOf(
-          tasks.flatMap((each) => rowsOf(each, viewer)),
+          [...tasks.flatMap((each) => rowsOf(each, viewer)), ...birthdayRowsOf(pets, viewer.today)],
           viewer.today,
         ),
         isCompletedShown: navigation.isCompletedShown(),
@@ -172,7 +179,7 @@ function reatomScreen(
     }
 
     return task === undefined
-      ? browsingScreenOf(navigation, tasks, viewer)
+      ? browsingScreenOf(navigation, { tasks, pets: dependencies.pets.data() ?? [] }, viewer)
       : { kind: "task", task: detailsOf(task, navigation.opened()?.occurrence ?? null, viewer) };
   }, "tasks.screen");
 }
@@ -190,6 +197,9 @@ function reatomCalendarMoves({ onOpenPet }: TasksDependencies, navigation: Navig
     select: action((date: string) => {
       selected.set(date);
     }, "tasks.select"),
+    openPet: action((petId: string) => {
+      onOpenPet(petId);
+    }, "tasks.openPet"),
     openItem: action((item: CalendarItem) => {
       if (item.kind === "birthday") {
         onOpenPet(item.petId);
@@ -227,15 +237,26 @@ function reatomCalendarView(
       "tasks.dayTitle",
     ),
     dayRows: computed(
-      () =>
-        agendaRowsOf(
-          monthItems().filter(({ date }) => date === selected()),
-          false,
-        ),
+      () => agendaRowsOf(monthItems().filter(({ date }) => date === selected())),
       "tasks.dayRows",
     ),
     ...reatomCalendarMoves(dependencies, navigation),
   };
+}
+
+// A deep link or another module names the Task, not an Occurrence, and may come before the list.
+function reatomOpen({ editing, opened }: Navigation, viewer: () => Viewer, tasks: TasksModel) {
+  return action(async (taskId: string) => {
+    editing.set(undefined);
+
+    const all = tasks.list.data() ?? (await wrap(tasks.loaded()));
+    const task = all.find(({ id }) => id === taskId);
+
+    opened.set({
+      taskId,
+      occurrence: task === undefined ? null : nextOccurrenceOf(task, viewer()),
+    });
+  }, "tasks.openTask").extend(withAbort());
 }
 
 function reatomBrowsing(
@@ -249,17 +270,7 @@ function reatomBrowsing(
     openRow: action((row: TaskRow) => {
       opened.set({ taskId: row.taskId, occurrence: row.occurrence });
     }, "tasks.openRow"),
-    // A deep link or another module names the Task, not an Occurrence.
-    open: action((taskId: string) => {
-      editing.set(undefined);
-
-      const task = tasks.list.data()?.find(({ id }) => id === taskId);
-
-      opened.set({
-        taskId,
-        occurrence: task === undefined ? null : nextOccurrenceOf(task, viewer()),
-      });
-    }, "tasks.open"),
+    open: detached(reatomOpen(navigation, viewer, tasks), "tasks.open"),
     toggleCompleted: action(() => {
       navigation.isCompletedShown.toggle();
     }, "tasks.toggleCompleted"),
@@ -370,7 +381,7 @@ export function reatomTasksScreen(input: TasksDependencies) {
   const actions = reatomTaskActions({
     ...dependencies,
     opened: navigation.opened,
-    onDeleted: () => {
+    onClosed: () => {
       navigation.opened.set(undefined);
     },
   });
@@ -381,7 +392,6 @@ export function reatomTasksScreen(input: TasksDependencies) {
     title: computed(() => titleOf(screen()), "tasks.title"),
     view: navigation.view,
     scope: navigation.scope,
-    retry: tasks.reload,
     reload: tasks.reload,
     tasksOf: tasksOfPet(tasks, input.viewer),
     canGoBack: computed(

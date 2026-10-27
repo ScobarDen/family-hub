@@ -2,7 +2,7 @@ import { BellRing, Repeat } from "lucide-react";
 
 import { PersonAvatar, RoundPicture } from "@/common/ui";
 
-import type { TaskRow } from "../tasks.lib.ts";
+import type { TaskRow } from "../task-rows.lib.ts";
 
 export function TaskMarks({ row }: { row: TaskRow }) {
   return (

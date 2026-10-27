@@ -27,6 +27,11 @@ export const UndoBar = reatomComponent(({ model }: { model: TodayModel }) => {
               <button type="button" autoFocus className="font-semibold" onClick={model.revert}>
                 Отменить
               </button>
+              {undo.hasPet && (
+                <button type="button" className="font-semibold" onClick={model.recordCareEntry}>
+                  Записать в журнал
+                </button>
+              )}
               <button type="button" className="opacity-80" onClick={model.dismissUndo}>
                 Скрыть
               </button>

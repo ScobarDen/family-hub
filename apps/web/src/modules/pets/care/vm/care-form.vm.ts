@@ -21,6 +21,7 @@ import {
   emptyEntry,
   valuesOf,
   valuesOfDraft,
+  valuesOfTask,
   type EntryValues,
 } from "./care-form-values.vm.ts";
 
@@ -92,6 +93,10 @@ function reatomStarts({ now, photos }: CareFormDependencies, record: CareRecord)
       photos.reset([]);
       record.startCreating({ ...emptyEntry, kind, occurredAt: now() });
     }, "care.form.startCreating"),
+    startFromTask: action((taskTitle: string) => {
+      photos.reset([]);
+      record.startCreating({ ...emptyEntry, ...valuesOfTask(taskTitle), occurredAt: now() });
+    }, "care.form.startFromTask"),
     // Photos never come by voice; the form is where they are added.
     startFromDraft: action((opening: CareEntryDraftOpening) => {
       photos.reset([]);

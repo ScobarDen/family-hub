@@ -32,7 +32,7 @@ function resolvedTask(client: HttpClient, saved: Task): Task {
 
 export type SubtaskTarget = { taskId: string; subtaskId: string };
 
-export type OccurrenceTarget = { taskId: string; occurrence: string | null };
+export type TaskOccurrence = { taskId: string; occurrence: string | null };
 
 type Method = Parameters<HttpClient["request"]>[1]["method"];
 
@@ -61,9 +61,9 @@ export function createTasksApi(client: HttpClient) {
       send(`/api/tasks/${taskId}`, { method: "PUT", body: change }),
     remove: async (taskId: string) =>
       client.request(`/api/tasks/${taskId}`, { method: "DELETE", schema: deleted }),
-    complete: async ({ taskId, occurrence }: OccurrenceTarget) =>
+    complete: async ({ taskId, occurrence }: TaskOccurrence) =>
       send(`/api/tasks/${taskId}/complete`, { body: { occurrence } }),
-    reopen: async ({ taskId, occurrence }: OccurrenceTarget) =>
+    reopen: async ({ taskId, occurrence }: TaskOccurrence) =>
       send(`/api/tasks/${taskId}/reopen`, { body: { occurrence } }),
     skip: async (taskId: string, date: string) =>
       send(`/api/tasks/${taskId}/skip`, { body: { date } }),

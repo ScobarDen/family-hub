@@ -36,7 +36,7 @@ export type PetTask = {
   taskId: string;
   title: string;
   when: string | undefined;
-  isOverdue: boolean;
+  status: "open" | "overdue" | "completed";
 };
 
 export type PetTaskRow = Omit<PetTask, "when"> & { subtitle: string | undefined };
@@ -44,7 +44,7 @@ export type PetTaskRow = Omit<PetTask, "when"> & { subtitle: string | undefined 
 function toTaskRow({ when, ...row }: PetTask): PetTaskRow {
   return {
     ...row,
-    subtitle: row.isOverdue && when !== undefined ? `Просрочено · ${when}` : when,
+    subtitle: row.status === "overdue" && when !== undefined ? `Просрочено · ${when}` : when,
   };
 }
 

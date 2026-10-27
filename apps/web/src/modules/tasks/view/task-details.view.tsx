@@ -13,16 +13,16 @@ import {
 
 import { Button, CheckButton, FieldError, Section, SectionItem } from "@/common/ui";
 
-import type { SubtaskRow, TaskDetails as Details } from "../tasks.lib.ts";
+import type { SubtaskRow, TaskDetails as Details } from "../task-details.lib.ts";
 import type { TasksScreenModel } from "../vm/tasks.vm.ts";
 import { TaskAlbum } from "./task-album.view.tsx";
 
 type DetailsProps = { task: Details; model: TasksScreenModel };
 
-function completionItemOf(isCompleted: boolean) {
-  return isCompleted
-    ? { icon: CircleCheck, title: "Вернуть в работу" }
-    : { icon: Circle, title: "Отметить выполненным" };
+function completionItemOf(completed: string | undefined) {
+  return completed === undefined
+    ? { icon: Circle, title: "Отметить выполненным" }
+    : { icon: CircleCheck, title: "Вернуть в работу" };
 }
 
 const TaskHeader = reatomComponent(
@@ -42,7 +42,7 @@ const TaskHeader = reatomComponent(
       {task.reminders !== undefined && <SectionItem icon={BellRing} title={task.reminders} />}
       {task.note !== undefined && <SectionItem title={task.note} />}
       <SectionItem
-        {...completionItemOf(task.isCompleted)}
+        {...completionItemOf(task.completed)}
         subtitle={task.completed}
         disabled={model.isChanging()}
         onClick={model.toggleOpened}
@@ -72,9 +72,9 @@ const SubtaskItem = reatomComponent(({ subtask, model }: SubtaskProps) => {
     <SectionItem
       control={
         <CheckButton
-          label={`${subtask.isCompleted ? "Вернуть в работу" : "Отметить выполненным"}: ${subtask.title}`}
-          isChecked={subtask.isCompleted}
-          isAlert={subtask.isOverdue}
+          label={`${subtask.status === "completed" ? "Вернуть в работу" : "Отметить выполненным"}: ${subtask.title}`}
+          isChecked={subtask.status === "completed"}
+          isAlert={subtask.status === "overdue"}
           disabled={model.isChanging()}
           onClick={() => {
             model.toggleSubtask(subtask.id);

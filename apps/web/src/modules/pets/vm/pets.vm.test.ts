@@ -14,6 +14,7 @@ import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
 
 import { createPetsApi } from "../pets.api.ts";
+import type { PetTask } from "../pets.lib.ts";
 import { reatomPets } from "../pets.model.ts";
 import { reatomPetsScreen } from "./pets.vm.ts";
 
@@ -103,29 +104,29 @@ function fakeBackend(list: PetList | Error = [buick], { failSaving = false } = {
   return { fetch, requests };
 }
 
-const buickTasks = [
+const buickTasks: PetTask[] = [
   {
     key: "task-1-2026-10-01",
     taskId: "task-1",
     title: "Прививка от бешенства",
     when: "1 октября",
-    isOverdue: true,
+    status: "overdue",
   },
   {
     key: "task-2-2026-10-20",
     taskId: "task-2",
     title: "Груминг",
     when: "20 октября",
-    isOverdue: false,
+    status: "open",
   },
   {
     key: "task-4-2026-11-02",
     taskId: "task-4",
     title: "Визит к ветеринару: осмотр",
     when: "2 ноября",
-    isOverdue: false,
+    status: "open",
   },
-  { key: "task-3", taskId: "task-3", title: "К ветеринару", when: undefined, isOverdue: false },
+  { key: "task-3", taskId: "task-3", title: "К ветеринару", when: undefined, status: "open" },
 ];
 
 function startPets(
@@ -223,28 +224,28 @@ describe("the pet tab", () => {
             taskId: "task-1",
             title: "Прививка от бешенства",
             subtitle: "Просрочено · 1 октября",
-            isOverdue: true,
+            status: "overdue",
           },
           {
             key: "task-2-2026-10-20",
             taskId: "task-2",
             title: "Груминг",
             subtitle: "20 октября",
-            isOverdue: false,
+            status: "open",
           },
           {
             key: "task-4-2026-11-02",
             taskId: "task-4",
             title: "Визит к ветеринару: осмотр",
             subtitle: "2 ноября",
-            isOverdue: false,
+            status: "open",
           },
           {
             key: "task-3",
             taskId: "task-3",
             title: "К ветеринару",
             subtitle: undefined,
-            isOverdue: false,
+            status: "open",
           },
         ],
         nextVisit: "2 ноября",

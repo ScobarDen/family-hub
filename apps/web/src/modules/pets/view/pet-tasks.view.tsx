@@ -28,8 +28,8 @@ export function PetTasks({ tasks, onOpen, onAdd }: PetTasksProps) {
       {tasks.map((task) => (
         <SectionItem
           key={task.key}
-          icon={task.isOverdue ? TriangleAlert : CalendarClock}
-          isAlert={task.isOverdue}
+          icon={task.status === "overdue" ? TriangleAlert : CalendarClock}
+          isAlert={task.status === "overdue"}
           title={task.title}
           subtitle={task.subtitle}
           onClick={() => {

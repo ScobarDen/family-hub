@@ -1,11 +1,11 @@
 import { reatomComponent } from "@reatom/react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { Cake, ChevronDown, ChevronUp } from "lucide-react";
 
 import { FieldError, Section, SectionItem } from "@/common/ui";
 
-import type { TaskGroups } from "../tasks.lib.ts";
+import type { ListRow, TaskGroups } from "../task-rows.lib.ts";
 import type { TasksScreen, TasksScreenModel } from "../vm/tasks.vm.ts";
-import { TaskRow } from "./task-row.view.tsx";
+import { TaskRow, type TaskRowProps } from "./task-row.view.tsx";
 
 type ListProps = { model: TasksScreenModel; screen: Extract<TasksScreen, { kind: "list" }> };
 
@@ -16,10 +16,32 @@ const groupTitles: Array<[keyof Omit<TaskGroups, "completed">, string]> = [
   ["undated", "Без срока"],
 ];
 
+type RowProps = Omit<TaskRowProps, "row"> & { onOpenPet: (petId: string) => void };
+
+function ListItem({ row, onOpenPet, ...rowProps }: RowProps & { row: ListRow }) {
+  return row.kind === "task" ? (
+    <TaskRow row={row} {...rowProps} />
+  ) : (
+    <SectionItem
+      icon={Cake}
+      title={row.title}
+      subtitle={row.when}
+      onClick={() => {
+        onOpenPet(row.petId);
+      }}
+    />
+  );
+}
+
 export const TaskList = reatomComponent(({ model, screen }: ListProps) => {
   const { groups } = screen;
   const isEmpty = groupTitles.every(([group]) => groups[group].length === 0);
-  const rowProps = { disabled: model.isChanging(), onToggle: model.toggle, onOpen: model.openRow };
+  const rowProps = {
+    disabled: model.isChanging(),
+    onToggle: model.toggle,
+    onOpen: model.openRow,
+    onOpenPet: model.openPet,
+  };
 
   return (
     <>
@@ -33,7 +55,7 @@ export const TaskList = reatomComponent(({ model, screen }: ListProps) => {
         groups[group].length === 0 ? null : (
           <Section key={group} title={title}>
             {groups[group].map((row) => (
-              <TaskRow key={row.key} row={row} {...rowProps} />
+              <ListItem key={row.key} row={row} {...rowProps} />
             ))}
           </Section>
         ),
@@ -46,7 +68,7 @@ export const TaskList = reatomComponent(({ model, screen }: ListProps) => {
             onClick={model.toggleCompleted}
           />
           {screen.isCompletedShown &&
-            groups.completed.map((row) => <TaskRow key={row.key} row={row} {...rowProps} />)}
+            groups.completed.map((row) => <ListItem key={row.key} row={row} {...rowProps} />)}
         </Section>
       )}
     </>

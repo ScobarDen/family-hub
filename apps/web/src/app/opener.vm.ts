@@ -19,7 +19,7 @@ type TargetFields = {
   task: { taskId: string };
   "task-for-pet": { petId: string };
   record: { taskId: string; occurrence: string | null };
-  "care-entry-for-pet": { petId: string };
+  "care-entry-for-pet": { petId: string; title: string };
   pet: { petId: string };
   "new-pet": object;
   "care-entry": { entryId: string; petId?: string };
@@ -64,6 +64,7 @@ type OpenerDependencies = {
   care: {
     openEntry: Open;
     add: () => void;
+    addFromTask: (taskTitle: string) => void;
     editDraft: (opening: DraftOpening<CareEntryDraft>) => void;
   };
   goals: {
@@ -223,8 +224,13 @@ function openersOf(dependencies: OpenerDependencies): Openers {
     "new-task": () => tasks.add(),
     record: async ({ taskId, occurrence }) =>
       signedInThen(() => tasks.recordOccurrence({ taskId, occurrence })),
-    "care-entry-for-pet": async ({ petId }) =>
-      openForPet(dependencies, { petId, onPicked: care.add }),
+    "care-entry-for-pet": async ({ petId, title }) =>
+      openForPet(dependencies, {
+        petId,
+        onPicked: () => {
+          care.addFromTask(title);
+        },
+      }),
     pet: noop,
     "new-pet": () => pets.add(),
     "care-entry": async ({ entryId }) => signedInThen(() => care.openEntry(entryId)),

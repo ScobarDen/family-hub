@@ -174,6 +174,11 @@ function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRa
       form.startCreating(kind);
       screen.set("form");
     }, "care.add"),
+    // «Записать» on a Pet's Task opens the entry filled in from what the Task was.
+    addFromTask: action((taskTitle: string) => {
+      form.startFromTask(taskTitle);
+      screen.set("form");
+    }, "care.addFromTask"),
     edit: action((entryId: string) => {
       const entry = data.entries.data()?.find(({ id }) => id === entryId);
 

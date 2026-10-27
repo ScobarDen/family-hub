@@ -3,7 +3,7 @@ import { Images } from "lucide-react";
 import { PhotoThumbs } from "@/common/photo-viewer";
 import { Section, SectionItem } from "@/common/ui";
 
-import type { TaskDetails } from "../tasks.lib.ts";
+import type { TaskDetails } from "../task-details.lib.ts";
 
 type TaskAlbumProps = {
   album: NonNullable<TaskDetails["album"]>;

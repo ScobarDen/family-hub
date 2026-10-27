@@ -159,8 +159,8 @@ const tasks = reatomTasksScreen({
   onOpenPet: (petId) => {
     opener.open({ kind: "pet", petId });
   },
-  onRecord: (petId) => {
-    opener.open({ kind: "care-entry-for-pet", petId });
+  onRecord: (record) => {
+    opener.open({ kind: "care-entry-for-pet", ...record });
   },
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);

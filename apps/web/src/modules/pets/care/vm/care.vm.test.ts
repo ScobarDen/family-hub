@@ -319,6 +319,21 @@ describe("the entry form", () => {
     ]);
   });
 
+  test.each([
+    { title: "Прививка: бешенство", kind: "vaccination", field: "name", value: "бешенство" },
+    { title: "Обработка: клещи", kind: "treatment", field: "name", value: "клещи" },
+    { title: "Визит к ветеринару: осмотр", kind: "vet_visit", field: "reason", value: "осмотр" },
+    { title: "Погулять с Бьюиком", kind: "note", field: "note", value: "Погулять с Бьюиком" },
+  ] as const)("fills the entry from the Task «$title»", async ({ title, kind, field, value }) => {
+    const { model } = startCare();
+
+    await loaded(model);
+    model.addFromTask(title);
+
+    expect(model.form.kind()).toBe(kind);
+    expect(model.form.form.fields[field]()).toBe(value);
+  });
+
   test("names the field to fix when the contract refuses the details", async () => {
     const { model, backend } = startCare();
 

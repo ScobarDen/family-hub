@@ -29,7 +29,6 @@ type TaskFormDependencies = {
   self: () => string | undefined;
   timeZone: () => string;
   onSaved: (task: Task) => void;
-  // A Task saved from a Command Draft settles that draft.
   onDraftSaved: (draftId: string) => void;
 };
 

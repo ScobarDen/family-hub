@@ -66,6 +66,9 @@ function startOpener({
       add: () => {
         opened.push(`care.add for ${openedPetId() ?? "nobody"}`);
       },
+      addFromTask: (taskTitle) => {
+        opened.push(`care.addFromTask ${taskTitle} for ${openedPetId() ?? "nobody"}`);
+      },
       editDraft: ({ draftId }) => {
         opened.push(`care.editDraft ${draftId} for ${openedPetId() ?? "nobody"}`);
       },
@@ -205,9 +208,9 @@ describe("a record opened from another module", () => {
       opened: ["tasks.addForPet pet-1"],
     },
     {
-      target: { kind: "care-entry-for-pet", petId: "pet-2" },
+      target: { kind: "care-entry-for-pet", petId: "pet-2", title: "Прививка: бешенство" },
       module: "pet",
-      opened: ["care.add for pet-2"],
+      opened: ["care.addFromTask Прививка: бешенство for pet-2"],
     },
     {
       target: { kind: "care-entry", petId: "pet-2", entryId: "entry-7" },
