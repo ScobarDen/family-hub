@@ -35,25 +35,26 @@ Bring up the Worker, the Mini App and the tunnel on the dev bot as in [docs/dev.
 - [ ] «✅ Готово» closes the Reminder for everyone and edits the other Recipients' messages.
 - [ ] «⏰ Отложить» postpones only the pressing Recipient's copy; a new message arrives after the delay (move the clock with a manual tick).
 - [ ] A button pressed by someone who is not that message's Recipient changes nothing and shows an alert.
-- [ ] Due Date buttons «📝 Записать» and «⏰ Отложить на день» behave the same way.
+- [ ] «⏰ Отложить» comes back in an hour for a timed Task and in a day for a Task without a time.
+- [ ] A Pet-linked Task's Reminder also has «📝 Записать»: it opens the Mini App, completes that Occurrence and opens a Care Entry for the Pet.
 
 ### Voice and commands
 
 Run on the dev bot with the real `AI` binding (`wrangler dev --remote`), since the models answer only on Cloudflare.
 
-- [ ] «напомни в пятницу в 19:00 оплатить интернет» answers with «⏰ Оплатить интернет · пт <date>, 19:00 · …» and «Создать / ×» within a few seconds, with «печатает…» meanwhile.
-- [ ] «Создать» creates the Reminder: it shows in the calendar and the bot sends it at the time; the preview turns into «✅ Создано».
-- [ ] «напомни мне завтра в 9 позвонить врачу» makes a Private Reminder for the speaker only.
-- [ ] A phrase without a time shows «Не хватает: время» and no «Создать»; nonsense answers «Не понял» with examples; «удали все напоминания» is refused.
+- [ ] «напомни в пятницу в 19:00 оплатить интернет» answers with «⏰ Оплатить интернет · пт <date>, 19:00 · в момент · напомнить мне» and «Создать / ×» within a few seconds, with «печатает…» meanwhile.
+- [ ] «Создать» creates the Task: it shows in «Дела» and the bot sends its Reminder at the time; the preview turns into «✅ Создано».
+- [ ] «напомни мне завтра в 9 позвонить врачу» makes a Private Task that reminds the speaker only.
+- [ ] A phrase without a subject shows «Не хватает: что за дело» and no «Создать»; nonsense answers «Не понял» with examples; «удали все напоминания» is refused.
 - [ ] After `AI_COMMANDS_PER_FAMILY_DAY` commands the bot says commands are over for today, without calling the model.
-- [ ] A voice message from a phone, «напомни в пятницу в семь вечера оплатить интернет», answers with «🎙 «…»» over the same preview, and «Создать» creates the Reminder.
+- [ ] A voice message from a phone, «напомни в пятницу в семь вечера оплатить интернет», answers with «🎙 «…»» over the same preview, and «Создать» creates the Task.
 - [ ] A voice message over 30 seconds is turned down at once; a silent one answers «Не расслышал».
 - [ ] `wrangler tail` shows the voice command's CPU time within 10 ms.
-- [ ] «Изменить» in the bot's preview opens the Mini App on the Reminder form filled from the draft; saving it turns the preview into «✅ Создано».
-- [ ] «в субботу в 12 груминг Бьюика, напомни за день» answers «📅 Груминг Бьюика · сб <date>, 12:00 · напомнить за день»; «Создать» puts it in the calendar and the Reminder arrives a day before.
-- [ ] «Бьюику сделали прививку от бешенства, 1800 рублей, следующая через год» previews a vaccination with its cost and Due Date and the photo hint; «Создать» puts it in the journal, the month's expenses and «Скоро», and closes the earlier rabies Due Date.
+- [ ] «Изменить» in the bot's preview opens the Mini App on the Task form filled from the draft; saving it turns the preview into «✅ Создано».
+- [ ] «в субботу в 12 груминг Бьюика, напомни за день» answers «⏰ Груминг Бьюика · сб <date>, 12:00 · за день · напомнить мне · Бьюик»; «Создать» puts it in «Дела» and the Reminder arrives a day before.
+- [ ] «Бьюику сделали прививку от бешенства, 1800 рублей, следующая через год» previews a vaccination with its cost, «повторить <date>» and the photo hint; «Создать» puts it in the journal and the month's expenses and adds a Task for the Pet on that date, assigned to the speaker.
 - [ ] «Бьюик весит 12,4» becomes a weight entry and shows on the chart; «вчера купили корм за 3200» is dated yesterday; with two Pets, a phrase without a name asks which Pet with buttons.
-- [ ] «каждый год 3 марта день рождения мамы» becomes an all-day yearly Event, while «напомни в пятницу оплатить интернет» stays a Reminder; «Изменить» on an Event opens the Event form.
+- [ ] «каждый год 3 марта день рождения мамы» becomes a yearly Task without a time or Assignees; «Изменить» on it opens the Task form.
 
 ### Microphone in the Mini App
 
