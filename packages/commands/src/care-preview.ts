@@ -37,14 +37,14 @@ export function careTitleOf(details: CareDetails | null): string {
     : careKindTitles.note;
 }
 
-function medicalDetailsOf(details: CareDetails | null): string[] {
-  if (details === null || !("dueDate" in details)) {
+function medicalDetailsOf({ details, repeatOn }: CareEntryDraft): string[] {
+  if (details === null || !("cost" in details)) {
     return [];
   }
 
   return [
     details.cost === null ? "" : rublesOf(details.cost.amount),
-    details.dueDate === null ? "" : `следующий срок ${dayOf(details.dueDate)}`,
+    repeatOn === null ? "" : `повторить ${dayOf(repeatOn)}`,
   ];
 }
 
@@ -55,6 +55,6 @@ export function careDetailsOf(
   return [
     pets.find(({ id }) => id === draft.petId)?.name ?? "",
     draft.date === null ? "сейчас" : momentOf(draft),
-    ...medicalDetailsOf(draft.details),
+    ...medicalDetailsOf(draft),
   ];
 }

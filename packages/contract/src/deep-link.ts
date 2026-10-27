@@ -2,7 +2,8 @@ import { z } from "zod";
 
 const deepLinkMaxLength = 64;
 
-const deepLinkKind = z.enum(["inv", "pet", "entry", "event", "goal", "plan", "cmd"]);
+// `plan` and `event` stay so old bot messages open the Task each became.
+const deepLinkKind = z.enum(["inv", "pet", "entry", "task", "rec", "event", "goal", "plan", "cmd"]);
 
 type DeepLinkKind = z.infer<typeof deepLinkKind>;
 

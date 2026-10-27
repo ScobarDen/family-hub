@@ -1,8 +1,8 @@
-import type { EventReminderOffset } from "@family-hub/contract";
+import type { ReminderOffset } from "@family-hub/contract";
 
-// The Event form shows the same words as chips, capitalised.
-export const offsetTitles: Record<EventReminderOffset, string> = {
-  "at-start": "в момент начала",
+// The Task form shows the same words as chips, capitalised.
+export const offsetTitles: Record<ReminderOffset, string> = {
+  "at-start": "в момент",
   "15m": "за 15 минут",
   "1h": "за час",
   "1d": "за день",

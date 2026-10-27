@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { named, time } from "./primitive.ts";
 
-export const appModule = z.enum(["feed", "plans", "calendar", "pet", "goals", "albums", "recipes"]);
+export const appModule = z.enum(["feed", "tasks", "pet", "goals", "albums", "recipes"]);
 
 export type AppModule = z.infer<typeof appModule>;
 
@@ -13,7 +13,7 @@ export type SlotModule = z.infer<typeof slotModule>;
 
 export const tabBarSlots = 2;
 
-export const defaultTabBar: SlotModule[] = ["plans", "calendar"];
+export const defaultTabBar: SlotModule[] = ["tasks", "pet"];
 
 export const tabBar = z
   .array(slotModule)

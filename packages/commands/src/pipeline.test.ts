@@ -19,14 +19,19 @@ const context: CommandContext = {
 
 const models = { primary: "primary-model", fallback: "fallback-model" };
 
-const internet = {
-  outcome: "reminder",
-  text: "Оплатить интернет",
-  date: "2026-10-16",
-  time: "19:00",
-  recurrence: { frequency: "monthly", until: null },
+const vet = {
+  outcome: "task",
+  title: "Ветеринар",
+  note: null,
+  date: "2026-10-15",
+  time: null,
+  endDate: null,
+  endTime: null,
+  recurrence: null,
   visibility: "shared",
+  reminderOffsets: ["at-start"],
   recipientIds: null,
+  petId: null,
   missing: [],
   ambiguities: [],
 };
@@ -63,31 +68,19 @@ async function parsedWith(pets: CommandContext["pets"], answer: unknown) {
 }
 
 describe("a command", () => {
-  test("becomes a Reminder draft from a valid answer, given as an object or a string", async () => {
-    const asObject = await parsed({ response: internet });
-    const asString = await parsed({ response: JSON.stringify(internet) });
+  test("becomes a Task draft from a valid answer, given as an object or a string", async () => {
+    const asObject = await parsed({ response: vet });
+    const asString = await parsed({ response: JSON.stringify(vet) });
+    const { outcome: _outcome, ...fields } = vet;
 
-    expect(asObject).toEqual({
-      status: "draft",
-      draft: {
-        kind: "reminder",
-        text: "Оплатить интернет",
-        date: "2026-10-16",
-        time: "19:00",
-        recurrence: { frequency: "monthly", until: null },
-        visibility: "shared",
-        recipientIds: null,
-        missing: [],
-        ambiguities: [],
-      },
-    });
+    expect(asObject).toEqual({ status: "draft", draft: { kind: "task", ...fields } });
     expect(asString).toEqual(asObject);
   });
 
-  test("lists what is missing even when the model forgets to", async () => {
-    const result = await parsed({ response: { ...internet, time: null } });
+  test("lists a missing title even when the model forgets to", async () => {
+    const result = await parsed({ response: { ...vet, title: null } });
 
-    expect(result).toMatchObject({ status: "draft", draft: { missing: ["time"] } });
+    expect(result).toMatchObject({ status: "draft", draft: { missing: ["title"] } });
   });
 
   test("keeps two Asyas as an ambiguity for the Member to pick from", async () => {
@@ -96,14 +89,14 @@ describe("a command", () => {
       mention: "Ася",
       candidateIds: ["member-asya", "member-asya-mom"],
     };
-    const result = await parsed({ response: { ...internet, ambiguities: [ambiguity] } });
+    const result = await parsed({ response: { ...vet, ambiguities: [ambiguity] } });
 
     expect(result).toMatchObject({ status: "draft", draft: { ambiguities: [ambiguity] } });
   });
 
-  test("gives a private Reminder to its speaker alone", async () => {
+  test("reminds the speaker alone of a private Task", async () => {
     const result = await parsed({
-      response: { ...internet, visibility: "private", recipientIds: ["member-asya"] },
+      response: { ...vet, visibility: "private", recipientIds: ["member-asya"] },
     });
 
     expect(result).toMatchObject({
@@ -111,13 +104,39 @@ describe("a command", () => {
     });
   });
 
+  test("lasts all day without a time and repeats yearly, like a birthday", async () => {
+    const result = await parsed({
+      response: {
+        ...vet,
+        title: "День рождения мамы",
+        date: "2027-03-03",
+        endDate: "2027-03-03",
+        endTime: "18:00",
+        reminderOffsets: [],
+        recurrence: { frequency: "yearly", until: null },
+      },
+    });
+
+    expect(result).toMatchObject({
+      draft: { kind: "task", time: null, endTime: null, recurrence: { frequency: "yearly" } },
+    });
+  });
+
+  test("keeps the Pet it is about", async () => {
+    expect(await parsed({ response: { ...vet, petId: "pet-buick" } })).toMatchObject({
+      draft: { petId: "pet-buick" },
+    });
+  });
+
   test.each([
-    [
-      "a Recipient from outside the Family",
-      { response: { ...internet, recipientIds: ["stranger"] } },
-    ],
+    ["a Recipient from outside the Family", { response: { ...vet, recipientIds: ["stranger"] } }],
+    ["an unknown Pet", { response: { ...vet, petId: "pet-stranger" } }],
     ["broken JSON", { response: "{ text: oops" }],
-    ["an answer the schema rejects", { response: { ...internet, date: "в пятницу" } }],
+    ["an answer the schema rejects", { response: { ...vet, date: "в пятницу" } }],
+    [
+      "more than three Reminders",
+      { response: { ...vet, reminderOffsets: ["at-start", "15m", "1h", "1d"] } },
+    ],
     ["the model giving up", { response: { outcome: "unrecognized" } }],
     ["JSON mode failing", new Error("AiError: JSON Mode couldn't be met")],
   ])("is not understood with %s", async (_case, answer) => {
@@ -131,108 +150,14 @@ describe("a command", () => {
   });
 });
 
-const grooming = {
-  outcome: "event",
-  title: "Груминг Бьюика",
-  note: null,
-  date: "2026-10-17",
-  time: "12:00",
-  endDate: null,
-  endTime: null,
-  recurrence: null,
-  visibility: "shared",
-  reminderOffsets: [],
-  missing: [],
-  ambiguities: [],
-};
-
-describe("an Event command", () => {
-  test("becomes an Event draft at a moment", async () => {
-    expect(await parsed({ response: grooming })).toEqual({
-      status: "draft",
-      draft: {
-        kind: "event",
-        title: "Груминг Бьюика",
-        note: null,
-        date: "2026-10-17",
-        time: "12:00",
-        endDate: null,
-        endTime: null,
-        recurrence: null,
-        visibility: "shared",
-        reminderOffsets: [],
-        missing: [],
-        ambiguities: [],
-      },
-    });
-  });
-
-  test("lasts all day without a time and repeats yearly, like a birthday", async () => {
-    const result = await parsed({
-      response: {
-        ...grooming,
-        title: "День рождения мамы",
-        date: "2027-03-03",
-        time: null,
-        endTime: "18:00",
-        recurrence: { frequency: "yearly", until: null },
-      },
-    });
-
-    expect(result).toMatchObject({
-      draft: {
-        kind: "event",
-        time: null,
-        endTime: null,
-        recurrence: { frequency: "yearly", until: null },
-      },
-    });
-  });
-
-  test("keeps the Reminder a day before that «напомни за день до» asks for", async () => {
-    const result = await parsed({ response: { ...grooming, reminderOffsets: ["1d"] } });
-
-    expect(result).toMatchObject({ draft: { kind: "event", reminderOffsets: ["1d"] } });
-  });
-
-  test("lists a missing date and has nothing to be ambiguous about", async () => {
-    const result = await parsed({
-      response: {
-        ...grooming,
-        date: null,
-        ambiguities: [{ field: "recipients", mention: "Ася", candidateIds: ["a", "b"] }],
-      },
-    });
-
-    expect(result).toMatchObject({ draft: { missing: ["date"], ambiguities: [] } });
-  });
-
-  test("is told apart from a Reminder by the model, whose answer decides the kind", async () => {
-    expect(await parsed({ response: internet })).toMatchObject({ draft: { kind: "reminder" } });
-    expect(await parsed({ response: grooming })).toMatchObject({ draft: { kind: "event" } });
-  });
-
-  test("is not understood with more than three Reminders", async () => {
-    const result = await parsed({
-      response: { ...grooming, reminderOffsets: ["at-start", "15m", "1h", "1d"] },
-    });
-
-    expect(result).toEqual({ status: "unrecognized" });
-  });
-});
-
 const rabies = {
   outcome: "care_entry",
   petId: "pet-buick",
   date: null,
   time: null,
+  repeatOn: "2027-10-13",
   note: null,
-  details: {
-    kind: "vaccination",
-    vaccine: "Бешенство",
-    cost: { amount: 1800, category: "vet" },
-    dueDate: "2027-10-13",
-  },
+  details: { kind: "vaccination", vaccine: "Бешенство", cost: { amount: 1800, category: "vet" } },
   missing: [],
   ambiguities: [],
 };
@@ -240,24 +165,12 @@ const rabies = {
 const cat = { id: "pet-cat", name: "Мурка", species: "cat" };
 
 describe("a Care Entry command", () => {
-  test("becomes a vaccination with its cost and the next Due Date", async () => {
+  test("becomes a vaccination with its cost and when to repeat it", async () => {
+    const { outcome: _outcome, ...fields } = rabies;
+
     expect(await parsed({ response: rabies })).toEqual({
       status: "draft",
-      draft: {
-        kind: "care_entry",
-        petId: "pet-buick",
-        date: null,
-        time: null,
-        note: null,
-        details: {
-          kind: "vaccination",
-          vaccine: "Бешенство",
-          cost: { amount: 1800, category: "vet" },
-          dueDate: "2027-10-13",
-        },
-        missing: [],
-        ambiguities: [],
-      },
+      draft: { kind: "care_entry", ...fields },
     });
   });
 
@@ -334,7 +247,7 @@ describe("a Care Entry command", () => {
 
 describe("the prompt", () => {
   test("carries today, the zone, the speaker and the Members", async () => {
-    const { model, calls } = modelAnswering({ response: internet });
+    const { model, calls } = modelAnswering({ response: vet });
 
     await parseCommand(
       { model, models },
@@ -358,7 +271,7 @@ describe("the prompt", () => {
   });
 
   test("asks for the outcome before any other field", async () => {
-    const { model, calls } = modelAnswering({ response: internet });
+    const { model, calls } = modelAnswering({ response: vet });
 
     await parseCommand({ model, models }, { text: "напомни", context });
 
@@ -375,7 +288,6 @@ describe("the prompt", () => {
       "outcome",
       "outcome",
       "outcome",
-      "outcome",
     ]);
   });
 });
@@ -383,7 +295,7 @@ describe("the prompt", () => {
 describe("the models", () => {
   test("fall back to the second one when the first is gone from the catalogue", async () => {
     const { model, calls } = modelAnswering(new Error("5007: No such model primary-model"), {
-      response: internet,
+      response: vet,
     });
     const result = await parseCommand({ model, models }, { text: "напомни", context });
 
