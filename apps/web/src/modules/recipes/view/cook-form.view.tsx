@@ -18,7 +18,7 @@ export const CookForm = reatomComponent(
           model.chooseCookDay(event.target.value);
         }}
       />
-      <Button className="h-11 shrink-0" disabled={!model.canCook()} onClick={model.cook}>
+      <Button className="shrink-0" disabled={!model.canCook()} onClick={model.cook}>
         <CookingPot /> Приготовили
       </Button>
     </div>

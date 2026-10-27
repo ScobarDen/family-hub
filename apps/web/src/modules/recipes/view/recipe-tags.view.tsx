@@ -33,7 +33,7 @@ export const RecipeTags = reatomComponent(({ model, tags }: RecipeTagsProps) => 
             model.typeNewTag(event.target.value);
           }}
         />
-        <Button type="submit" size="icon" className="size-11" aria-label="Добавить тег">
+        <Button type="submit" size="icon" aria-label="Добавить тег">
           <Plus />
         </Button>
       </form>

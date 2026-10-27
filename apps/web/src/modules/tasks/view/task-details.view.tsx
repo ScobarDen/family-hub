@@ -33,13 +33,7 @@ const TaskHeader = reatomComponent(
         title={task.when ?? "Без срока"}
         subtitle={task.facts}
         after={
-          <Button
-            size="icon"
-            variant="ghost"
-            className="size-11"
-            aria-label="Изменить"
-            onClick={model.edit}
-          >
+          <Button size="icon" variant="ghost" aria-label="Изменить" onClick={model.edit}>
             <Pencil />
           </Button>
         }
@@ -94,7 +88,6 @@ const SubtaskItem = reatomComponent(({ subtask, model }: SubtaskProps) => {
           key={label}
           size="icon"
           variant="ghost"
-          className="size-11"
           aria-label={label}
           disabled={model.isChanging()}
           onClick={() => {

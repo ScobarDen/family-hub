@@ -18,13 +18,7 @@ export function PetTasks({ tasks, onOpen, onAdd }: PetTasksProps) {
         ? {}
         : {
             aside: (
-              <Button
-                size="icon"
-                variant="ghost"
-                className="size-11"
-                aria-label="Добавить дело"
-                onClick={onAdd}
-              >
+              <Button size="icon" variant="ghost" aria-label="Добавить дело" onClick={onAdd}>
                 <Plus />
               </Button>
             ),
