@@ -1,7 +1,7 @@
 import {
+  CircleCheckBig,
   CookingPot,
   Images,
-  ListChecks,
   Newspaper,
   PawPrint,
   PiggyBank,
@@ -21,7 +21,7 @@ export const sectionTitles: Record<AppModule, string> = {
 
 export const sectionIcons: Record<AppModule, LucideIcon> = {
   feed: Newspaper,
-  tasks: ListChecks,
+  tasks: CircleCheckBig,
   pet: PawPrint,
   goals: PiggyBank,
   albums: Images,
