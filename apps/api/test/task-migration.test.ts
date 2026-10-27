@@ -213,3 +213,26 @@ describe("the move to Tasks", () => {
     ]);
   });
 });
+
+describe("the drop of what Tasks replaced", () => {
+  // Rows the Worker before Tasks wrote while the deploy that brought Tasks was running.
+  const lateRows = `
+INSERT INTO members (id, telegram_id, name, created_at, updated_at) VALUES
+  ('${ids.denis}', ${denis.id}, 'Денис', ${at}, ${at});
+INSERT INTO families (id, name, owner_member_id, created_at, created_by, updated_at) VALUES
+  ('${ids.family}', 'Гущины', '${ids.denis}', ${audit});
+INSERT INTO reminder_dispatch (id, family_id, source, source_id, member_id, next_fire_at, created_at, updated_at) VALUES
+  ('dispatch-plan', '${ids.family}', 'plan', '${ids.ceiling}:${ids.ceiling}', '${ids.denis}', ${at}, ${at}, ${at}),
+  ('dispatch-task', '${ids.family}', 'task', '${ids.ceiling}:at-start', '${ids.denis}', ${at}, ${at}, ${at});
+`;
+
+  test("clears the Reminder rows of kinds no Worker knows any more", async () => {
+    const worker = startWorker({
+      now: "2026-10-04T09:00:00Z",
+      seedBefore: { migration: "0027", sql: lateRows },
+    });
+    const { results } = await worker.env.DB.prepare("SELECT id FROM reminder_dispatch").all();
+
+    expect(results).toEqual([{ id: "dispatch-task" }]);
+  });
+});
