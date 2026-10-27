@@ -1,44 +1,28 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type {
-  CalendarEvent,
-  EventChange,
-  InviteCreated,
-  Pet,
-  PlanChange,
-  ReminderChange,
-} from "@family-hub/contract";
+import type { InviteCreated, Pet, Task, TaskChange, TaskList } from "@family-hub/contract";
 
 import { signInitData, type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
-const call: EventChange = {
+const call: TaskChange = {
   title: "Созвон с родителями",
-  note: null,
-  start: { date: "2026-10-10", time: "19:00", timeZone: "Europe/Moscow" },
-  end: null,
-  recurrence: null,
-  visibility: "shared",
+  when: {
+    date: "2026-10-10",
+    time: "19:00",
+    timeZone: "Europe/Moscow",
+    endDate: null,
+    endTime: null,
+  },
   reminderOffsets: ["1h"],
+  recipients: "everyone",
 };
 
-const ceiling: PlanChange = {
-  title: "Покрасить потолок",
-  note: null,
-  dueDate: "2026-10-20",
-  reminder: "on-day",
-  assigneeId: null,
-  visibility: "shared",
-  petId: null,
-  albumId: null,
-};
-
-const internet: ReminderChange = {
-  text: "Оплатить интернет",
-  start: { date: "2026-10-05", time: "13:00", timeZone: "Europe/Moscow" },
-  recurrence: null,
-  visibility: "shared",
-  recipientIds: null,
+const internet: TaskChange = {
+  title: "Оплатить интернет",
+  when: { date: "2026-10-05", time: null, timeZone: null, endDate: null, endTime: null },
+  reminderOffsets: ["at-start"],
+  recipients: "everyone",
 };
 
 function initDataOf(worker: ReturnType<typeof startWorker>, user: TelegramUserFixture) {
@@ -89,14 +73,14 @@ async function startWithAsya() {
   return Object.assign(worker, { asyaId });
 }
 
-async function createEvent(worker: Worker, change: Partial<EventChange> = {}) {
+async function createTask(worker: Worker, change: Partial<TaskChange> = {}) {
   const response = await request(worker, denis, {
     method: "POST",
-    path: "/api/events",
-    body: { ...call, ...change },
+    path: "/api/tasks",
+    body: { ...internet, ...change },
   });
 
-  return response.json<CalendarEvent>();
+  return response.json<Task>();
 }
 
 async function addBuick(worker: Worker) {
@@ -117,22 +101,6 @@ async function addBuick(worker: Worker) {
   return response.json<Pet>();
 }
 
-async function createPlan(worker: Worker, change: Partial<PlanChange> = {}) {
-  await request(worker, denis, {
-    method: "POST",
-    path: "/api/plans",
-    body: { ...ceiling, ...change },
-  });
-}
-
-async function createReminder(worker: Worker, change: Partial<ReminderChange> = {}) {
-  await request(worker, denis, {
-    method: "POST",
-    path: "/api/reminders",
-    body: { ...internet, ...change },
-  });
-}
-
 function textsTo(worker: Worker, user: TelegramUserFixture, emoji: string) {
   return worker.bot
     .sentMessages()
@@ -141,7 +109,7 @@ function textsTo(worker: Worker, user: TelegramUserFixture, emoji: string) {
 }
 
 function remindersTo(worker: Worker, user: TelegramUserFixture) {
-  return ["🔔", "📅", "🎂", "💉", "📌"].flatMap((emoji) => textsTo(worker, user, emoji));
+  return ["🎂", "📌"].flatMap((emoji) => textsTo(worker, user, emoji));
 }
 
 async function tickAt(worker: Worker, moment: string) {
@@ -150,14 +118,24 @@ async function tickAt(worker: Worker, moment: string) {
 }
 
 describe("a Member who joins by Invite", () => {
-  test("gets the next Occurrence of a Shared Event", async () => {
+  test("gets the next Occurrence of a timed Task for everyone", async () => {
     const worker = await startWithDenis();
 
-    await createEvent(worker);
+    await createTask(worker, call);
     await joinByInvite(worker, asya);
     await tickAt(worker, "2026-10-10T15:00:00Z");
 
-    expect(textsTo(worker, asya, "📅")).toEqual(["📅 Созвон с родителями · 10 октября, 19:00"]);
+    expect(textsTo(worker, asya, "📌")).toEqual(["📌 Созвон с родителями · 10 октября, 19:00"]);
+  });
+
+  test("gets a date-only Task for everyone", async () => {
+    const worker = await startWithDenis();
+
+    await createTask(worker);
+    await joinByInvite(worker, asya);
+    await tickAt(worker, "2026-10-05T06:00:00Z");
+
+    expect(textsTo(worker, asya, "📌")).toEqual(["📌 Оплатить интернет · 5 октября"]);
   });
 
   test("gets a Pet's birthday", async () => {
@@ -170,77 +148,48 @@ describe("a Member who joins by Invite", () => {
     expect(textsTo(worker, asya, "🎂")).toEqual(["🎂 Сегодня день рождения у Бьюик!"]);
   });
 
-  test("gets a Due Date", async () => {
+  test("is left out of a Task that reminds its author", async () => {
     const worker = await startWithDenis();
-    const buick = await addBuick(worker);
 
-    await request(worker, denis, {
-      method: "POST",
-      path: `/api/pets/${buick.id}/care-entries`,
-      body: {
-        occurredAt: worker.clock.now(),
-        note: null,
-        details: { kind: "vaccination", vaccine: "Нобивак", cost: null, dueDate: "2026-10-15" },
-      },
-    });
+    await createTask(worker, { recipients: "default" });
     await joinByInvite(worker, asya);
-    await tickAt(worker, "2026-10-08T06:00:00Z");
+    await tickAt(worker, "2026-10-05T06:00:00Z");
 
-    expect(textsTo(worker, asya, "💉")).toEqual(["💉 Прививка: Нобивак — Бьюик: срок 15 октября"]);
+    expect(textsTo(worker, denis, "📌")).toEqual(["📌 Оплатить интернет · 5 октября"]);
+    expect(textsTo(worker, asya, "📌")).toEqual([]);
   });
 
-  test("gets a Plan's deadline", async () => {
+  test("is left out of a Task with chosen Recipients", async () => {
     const worker = await startWithDenis();
 
-    await createPlan(worker);
+    await createTask(worker, { recipients: [worker.denisId] });
     await joinByInvite(worker, asya);
-    await tickAt(worker, "2026-10-20T06:00:00Z");
+    await tickAt(worker, "2026-10-05T06:00:00Z");
 
-    expect(textsTo(worker, asya, "📌")).toEqual(["📌 Покрасить потолок · до 20 октября"]);
+    expect(textsTo(worker, denis, "📌")).toEqual(["📌 Оплатить интернет · 5 октября"]);
+    expect(textsTo(worker, asya, "📌")).toEqual([]);
   });
 
-  test("gets a Reminder for everyone", async () => {
+  test("gets nothing of the others' Private Tasks", async () => {
     const worker = await startWithDenis();
 
-    await createReminder(worker);
-    await joinByInvite(worker, asya);
-    await tickAt(worker, "2026-10-05T10:00:00Z");
-
-    expect(textsTo(worker, asya, "🔔")).toEqual(["🔔 Оплатить интернет"]);
-  });
-
-  test("is left out of a Reminder with chosen Recipients", async () => {
-    const worker = await startWithDenis();
-
-    await createReminder(worker, { recipientIds: [worker.denisId] });
-    await joinByInvite(worker, asya);
-    await tickAt(worker, "2026-10-05T10:00:00Z");
-
-    expect(textsTo(worker, denis, "🔔")).toEqual(["🔔 Оплатить интернет"]);
-    expect(textsTo(worker, asya, "🔔")).toEqual([]);
-  });
-
-  test("gets nothing of the others' Private records", async () => {
-    const worker = await startWithDenis();
-
-    await createEvent(worker, { visibility: "private" });
-    await createPlan(worker, { visibility: "private" });
-    await createReminder(worker, { visibility: "private", recipientIds: [worker.denisId] });
+    await createTask(worker, { ...call, visibility: "private" });
+    await createTask(worker, { visibility: "private" });
     await joinByInvite(worker, asya);
 
-    for (const moment of ["2026-10-05T10:00:00Z", "2026-10-10T15:00:00Z", "2026-10-20T06:00:00Z"]) {
+    for (const moment of ["2026-10-05T06:00:00Z", "2026-10-10T15:00:00Z"]) {
       await tickAt(worker, moment);
     }
 
-    expect(remindersTo(worker, denis)).toHaveLength(3);
+    expect(remindersTo(worker, denis)).toHaveLength(2);
     expect(remindersTo(worker, asya)).toEqual([]);
   });
 
   test("leaves the snoozes of those already in the Family as they were", async () => {
     const worker = await startWithDenis();
 
-    await createReminder(worker);
-    await tickAt(worker, "2026-10-05T10:00:00Z");
+    await createTask(worker, call);
+    await tickAt(worker, "2026-10-10T15:00:00Z");
 
     const markup = worker.bot.sentMessages().at(-1)?.reply_markup as
       | { inline_keyboard: Array<Array<{ text: string; callback_data?: string }>> }
@@ -257,9 +206,12 @@ describe("a Member who joins by Invite", () => {
       },
     });
     await joinByInvite(worker, asya);
-    await tickAt(worker, "2026-10-05T11:00:00Z");
+    await tickAt(worker, "2026-10-10T16:00:00Z");
 
-    expect(textsTo(worker, denis, "🔔")).toEqual(["🔔 Оплатить интернет", "🔔 Оплатить интернет"]);
+    expect(textsTo(worker, denis, "📌")).toEqual([
+      "📌 Созвон с родителями · 10 октября, 19:00",
+      "📌 Созвон с родителями · 10 октября, 19:00",
+    ]);
   });
 });
 
@@ -267,13 +219,18 @@ describe("a Member who is no longer in the Family", () => {
   test("gets none of its Reminders after leaving", async () => {
     const worker = await startWithAsya();
 
-    await createEvent(worker);
+    await createTask(worker, call);
     await addBuick(worker);
-    await createPlan(worker);
-    await createReminder(worker, { recipientIds: [worker.denisId, worker.asyaId] });
+    await createTask(worker, {
+      title: "Покрасить потолок",
+      when: { date: "2026-10-20", time: null, timeZone: null, endDate: null, endTime: null },
+      recipients: "default",
+      assigneeIds: [worker.asyaId],
+    });
+    await createTask(worker, { recipients: [worker.denisId, worker.asyaId] });
     await request(worker, asya, { method: "POST", path: "/api/family/leave" });
 
-    for (const moment of ["2026-10-05T10:00:00Z", "2026-10-10T15:00:00Z", "2026-10-20T06:00:00Z"]) {
+    for (const moment of ["2026-10-05T06:00:00Z", "2026-10-10T15:00:00Z", "2026-10-20T06:00:00Z"]) {
       await tickAt(worker, moment);
     }
 
@@ -284,29 +241,37 @@ describe("a Member who is no longer in the Family", () => {
   test("gets none of its Reminders after the Family Owner removed them", async () => {
     const worker = await startWithAsya();
 
-    await createEvent(worker);
-    await createReminder(worker);
+    await createTask(worker, call);
+    await createTask(worker);
     await request(worker, denis, {
       method: "DELETE",
       path: `/api/family/members/${worker.asyaId}`,
     });
 
-    for (const moment of ["2026-10-05T10:00:00Z", "2026-10-10T15:00:00Z"]) {
+    for (const moment of ["2026-10-05T06:00:00Z", "2026-10-10T15:00:00Z"]) {
       await tickAt(worker, moment);
     }
 
-    expect(textsTo(worker, asya, "🔔")).toEqual([]);
-    expect(textsTo(worker, asya, "📅")).toEqual([]);
+    expect(textsTo(worker, asya, "📌")).toEqual([]);
   });
 
-  test("hands the Plan they were assigned to the whole Family's Reminders", async () => {
+  test("stops being an Assignee, so the Task reminds its author instead", async () => {
     const worker = await startWithAsya();
+    const ceiling = await createTask(worker, {
+      title: "Покрасить потолок",
+      when: { date: "2026-10-20", time: null, timeZone: null, endDate: null, endTime: null },
+      recipients: "default",
+      assigneeIds: [worker.asyaId],
+    });
 
-    await createPlan(worker, { assigneeId: worker.asyaId });
     await request(worker, asya, { method: "POST", path: "/api/family/leave" });
     await tickAt(worker, "2026-10-20T06:00:00Z");
 
-    expect(textsTo(worker, denis, "📌")).toEqual(["📌 Покрасить потолок · до 20 октября"]);
+    const response = await request(worker, denis, { path: "/api/tasks" });
+    const tasks = await response.json<TaskList>();
+
+    expect(tasks.find(({ id }) => id === ceiling.id)?.assignees).toEqual([]);
+    expect(textsTo(worker, denis, "📌")).toEqual(["📌 Покрасить потолок · 20 октября"]);
     expect(textsTo(worker, asya, "📌")).toEqual([]);
   });
 
@@ -314,7 +279,7 @@ describe("a Member who is no longer in the Family", () => {
     const worker = await startWithAsya();
     const ivan = { id: 333, first_name: "Иван" };
 
-    await createReminder(worker);
+    await createTask(worker);
     await worker.leaveFamily(worker.asyaId);
     await worker.addFamily({ name: "Ивановы", owner: { telegramId: ivan.id, name: "Иван" } });
 
@@ -327,9 +292,9 @@ describe("a Member who is no longer in the Family", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ initData: initDataOf(worker, asya) }),
     });
-    await tickAt(worker, "2026-10-05T10:00:00Z");
+    await tickAt(worker, "2026-10-05T06:00:00Z");
 
-    expect(textsTo(worker, denis, "🔔")).toEqual(["🔔 Оплатить интернет"]);
-    expect(textsTo(worker, asya, "🔔")).toEqual([]);
+    expect(textsTo(worker, denis, "📌")).toEqual(["📌 Оплатить интернет · 5 октября"]);
+    expect(textsTo(worker, asya, "📌")).toEqual([]);
   });
 });

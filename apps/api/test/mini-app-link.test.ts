@@ -35,15 +35,16 @@ type Worker = Awaited<ReturnType<typeof startWithBuick>>;
 
 async function vaccinate(
   worker: Worker,
-  { vaccine, dueDate }: { vaccine: string; dueDate: string },
+  { vaccine, repeatOn }: { vaccine: string; repeatOn: string },
 ) {
   await request(worker, asya, {
     method: "POST",
     path: `/api/pets/${worker.buickId}/care-entries`,
     body: {
       occurredAt: worker.clock.now(),
+      repeatOn,
       note: null,
-      details: { kind: "vaccination", vaccine, cost: null, dueDate },
+      details: { kind: "vaccination", vaccine, cost: null },
     },
   });
 }
@@ -57,14 +58,14 @@ async function getMeCallsDuring(worker: Worker, act: () => Promise<unknown>) {
 }
 
 describe("the bot's name for Mini App links", () => {
-  test("is asked once while a Care Entry is written beside several Due Dates", async () => {
+  test("is asked once while a Care Entry is written beside several Pet-linked Tasks", async () => {
     const worker = await startWithBuick();
 
-    await vaccinate(worker, { vaccine: "Нобивак", dueDate: "2026-10-15" });
-    await vaccinate(worker, { vaccine: "Бешенство", dueDate: "2026-10-15" });
+    await vaccinate(worker, { vaccine: "Нобивак", repeatOn: "2026-10-15" });
+    await vaccinate(worker, { vaccine: "Бешенство", repeatOn: "2026-10-15" });
 
     const calls = await getMeCallsDuring(worker, async () =>
-      vaccinate(worker, { vaccine: "Лептоспироз", dueDate: "2026-10-15" }),
+      vaccinate(worker, { vaccine: "Лептоспироз", repeatOn: "2026-10-15" }),
     );
 
     expect(calls).toBe(1);
@@ -73,14 +74,14 @@ describe("the bot's name for Mini App links", () => {
   test("is asked once in a cron tick that sends several Reminders", async () => {
     const worker = await startWithBuick();
 
-    await vaccinate(worker, { vaccine: "Нобивак", dueDate: "2026-10-15" });
-    await vaccinate(worker, { vaccine: "Бешенство", dueDate: "2026-10-15" });
+    await vaccinate(worker, { vaccine: "Нобивак", repeatOn: "2026-10-15" });
+    await vaccinate(worker, { vaccine: "Бешенство", repeatOn: "2026-10-15" });
     worker.clock.set("2026-10-15T09:00:00Z");
 
     const sentBefore = worker.bot.sentMessages().length;
     const calls = await getMeCallsDuring(worker, async () => worker.tick());
 
-    expect(worker.bot.sentMessages().length - sentBefore).toBe(4);
+    expect(worker.bot.sentMessages().length - sentBefore).toBe(2);
     expect(calls).toBe(1);
   });
 });

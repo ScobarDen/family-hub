@@ -58,12 +58,12 @@ async function startWithFamily() {
 }
 
 describe("the tab bar", () => {
-  test("starts with Планы and Календарь in its two slots", async () => {
+  test("starts with Дела and Питомцы in its two slots", async () => {
     const { worker } = await startWithFamily();
 
     const { settings } = await me(worker, denis);
 
-    expect(settings.tabBar).toEqual(["plans", "calendar"]);
+    expect(settings.tabBar).toEqual(["tasks", "pet"]);
   });
 
   test("keeps the two modules a Member saved for their next session", async () => {
@@ -85,9 +85,11 @@ describe("the tab bar", () => {
       ["feed", "pet", "goals", "albums"],
       ["pet", "goals"],
     ],
-    ["its one module topped up with Календарь", ["feed", "plans"], ["plans", "calendar"]],
-    ["its one module topped up with Планы", ["feed", "calendar"], ["calendar", "plans"]],
-  ] as const)("reads a tab bar saved before the slots as %s", async (_case, stored, slots) => {
+    ["its one module topped up with Дела", ["feed", "goals"], ["goals", "tasks"]],
+    ["Дела in place of Планы", ["plans", "goals"], ["tasks", "goals"]],
+    ["Дела in place of Календарь", ["calendar", "recipes"], ["tasks", "recipes"]],
+    ["Дела and Питомцы in place of Планы and Календарь", ["plans", "calendar"], ["tasks", "pet"]],
+  ] as const)("reads a tab bar saved before as %s", async (_case, stored, slots) => {
     const { worker, ownerId } = await startWithFamily();
 
     await worker.setTabBar(ownerId, [...stored]);
@@ -100,11 +102,12 @@ describe("the tab bar", () => {
 
 describe("saving the tab bar", () => {
   test.each([
-    ["a single module", ["plans"]],
-    ["three modules", ["plans", "calendar", "pet"]],
-    ["a repeated module", ["plans", "plans"]],
-    ["the Feed", ["feed", "plans"]],
-    ["an unknown module", ["plans", "shopping"]],
+    ["a single module", ["tasks"]],
+    ["three modules", ["tasks", "goals", "pet"]],
+    ["a repeated module", ["tasks", "tasks"]],
+    ["the Feed", ["feed", "tasks"]],
+    ["a module that is no more", ["plans", "goals"]],
+    ["an unknown module", ["tasks", "shopping"]],
   ])("refuses %s", async (_case, modules) => {
     const { worker } = await startWithFamily();
 
@@ -112,7 +115,7 @@ describe("saving the tab bar", () => {
     const { settings } = await me(worker, denis);
 
     expect(response.status).toBe(400);
-    expect(settings.tabBar).toEqual(["plans", "calendar"]);
+    expect(settings.tabBar).toEqual(["tasks", "pet"]);
   });
 
   test("leaves the other Members' tab bars alone", async () => {
@@ -123,7 +126,7 @@ describe("saving the tab bar", () => {
 
     const { settings } = await me(worker, asya);
 
-    expect(settings.tabBar).toEqual(["plans", "calendar"]);
+    expect(settings.tabBar).toEqual(["tasks", "pet"]);
   });
 
   test("needs a session", async () => {

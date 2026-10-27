@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type { FeedPage, Pet, Photo, Plan } from "@family-hub/contract";
+import type { FeedPage, Pet, Photo, Task, TaskChange } from "@family-hub/contract";
 
 import {
   addBuick,
@@ -19,29 +19,16 @@ async function feedOf(worker: Worker) {
   return response.json<FeedPage>();
 }
 
-async function addPlan(
-  worker: Worker,
-  user: TelegramUserFixture,
-  change: Partial<Plan> & { albumId: string | null; visibility?: string },
-) {
+async function addTask(worker: Worker, user: TelegramUserFixture, change: Partial<TaskChange>) {
   return request(worker, user, {
     method: "POST",
-    path: "/api/plans",
-    body: {
-      title: "Поездка в Казань",
-      note: null,
-      dueDate: null,
-      reminder: null,
-      assigneeId: null,
-      visibility: "shared",
-      petId: null,
-      ...change,
-    },
+    path: "/api/tasks",
+    body: { title: "Поездка в Казань", ...change },
   });
 }
 
-describe("a Plan's Album", () => {
-  test("shows on the Plan as a strip of its first photos", async () => {
+describe("a Task's Album", () => {
+  test("shows on the Task as a strip of its first photos", async () => {
     const worker = await startWithFamily();
     const kazan = await createAlbum(worker, asya, "Казань");
     const photos = await Promise.all(
@@ -50,38 +37,38 @@ describe("a Plan's Album", () => {
 
     await addTo(worker, kazan.id, photos);
 
-    const response = await addPlan(worker, denis, { albumId: kazan.id });
-    const plan = await response.json<Plan>();
+    const response = await addTask(worker, denis, { albumId: kazan.id });
+    const task = await response.json<Task>();
 
-    expect(plan.album).toMatchObject({ id: kazan.id, title: "Казань", photoCount: 3 });
-    expect(plan.album?.photos).toHaveLength(3);
+    expect(task.album).toMatchObject({ id: kazan.id, title: "Казань", photoCount: 3 });
+    expect(task.album?.photos).toHaveLength(3);
   });
 
   test("is one of the Family's Albums and drops off when the Album goes", async () => {
     const worker = await startWithFamily();
     const kazan = await createAlbum(worker, asya, "Казань");
-    const foreign = await addPlan(worker, denis, { albumId: "not-an-album" });
-    const created = await addPlan(worker, denis, { albumId: kazan.id });
-    const plan = await created.json<Plan>();
+    const foreign = await addTask(worker, denis, { albumId: "not-an-album" });
+    const created = await addTask(worker, denis, { albumId: kazan.id });
+    const task = await created.json<Task>();
 
     await request(worker, asya, { method: "DELETE", path: `/api/albums/${kazan.id}` });
 
-    const listed = await request(worker, denis, { path: "/api/plans" });
-    const [after] = await listed.json<Plan[]>();
+    const listed = await request(worker, denis, { path: "/api/tasks" });
+    const [after] = await listed.json<Task[]>();
 
     expect(foreign.status).toBe(400);
-    expect(after).toMatchObject({ id: plan.id, album: null });
+    expect(after).toMatchObject({ id: task.id, album: null });
   });
 
-  test("of a Private Plan stays with its owner", async () => {
+  test("of a Private Task stays with its owner", async () => {
     const worker = await startWithFamily();
     const kazan = await createAlbum(worker, asya, "Казань");
 
-    await addPlan(worker, asya, { albumId: kazan.id, visibility: "private" });
+    await addTask(worker, asya, { albumId: kazan.id, visibility: "private" });
 
-    const listed = await request(worker, denis, { path: "/api/plans" });
+    const listed = await request(worker, denis, { path: "/api/tasks" });
 
-    expect(await listed.json<Plan[]>()).toEqual([]);
+    expect(await listed.json<Task[]>()).toEqual([]);
   });
 });
 

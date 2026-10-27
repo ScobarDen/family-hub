@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type { CareEntry, CareEntryChange, ExpenseSummary } from "@family-hub/contract";
+import type { CareEntry, CareEntryChange, ExpenseSummary, TaskList } from "@family-hub/contract";
 
 import { type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, startWorker } from "./worker-harness.ts";
@@ -89,7 +89,7 @@ describe("the Care Entry journal", () => {
       denis,
       entryAt(
         "2026-10-02T15:00:00Z",
-        { kind: "vaccination", vaccine: "Нобивак DHPPi", cost: null, dueDate: "2027-10-02" },
+        { kind: "vaccination", vaccine: "Нобивак DHPPi", cost: null },
         "Перенёс спокойно",
       ),
     );
@@ -104,7 +104,6 @@ describe("the Care Entry journal", () => {
           kind: "vaccination",
           vaccine: "Нобивак DHPPi",
           cost: null,
-          dueDate: "2027-10-02",
         },
         author: "Денис",
         photos: [],
@@ -118,13 +117,10 @@ describe("the Care Entry journal", () => {
     ["a weight finer than 0.1 kg", { kind: "weight", weightKg: 12.45 }],
     ["an expense in kopecks", { kind: "expense", amount: 99.5, category: "food" }],
     ["an expense of an unknown category", { kind: "expense", amount: 900, category: "taxi" }],
-    [
-      "a vaccination without the vaccine",
-      { kind: "vaccination", vaccine: " ", cost: null, dueDate: null },
-    ],
+    ["a vaccination without the vaccine", { kind: "vaccination", vaccine: " ", cost: null }],
     [
       "a visit cost filed as food",
-      { kind: "vet_visit", reason: null, cost: { amount: 1500, category: "food" }, dueDate: null },
+      { kind: "vet_visit", reason: null, cost: { amount: 1500, category: "food" } },
     ],
     ["an unknown Care Kind", { kind: "walk" }],
   ])("refuses %s", async (_case, details) => {
@@ -177,7 +173,6 @@ describe("the Care Entry journal", () => {
         kind: "vaccination",
         vaccine: "Нобивак DHPPi",
         cost: null,
-        dueDate: "2027-10-02",
       }),
     );
 
@@ -216,6 +211,32 @@ describe("the Care Entry journal", () => {
   });
 });
 
+describe("repeating a Care Entry", () => {
+  test("creates a Task linked to the Pet, assigned to the Member who wrote the entry", async () => {
+    const worker = await startWithBuick();
+
+    await addEntry(worker, asya, {
+      ...entryAt("2026-10-02T15:00:00Z", {
+        kind: "vaccination",
+        vaccine: "Нобивак DHPPi",
+        cost: null,
+      }),
+      repeatOn: "2027-10-02",
+    });
+
+    const response = await request(worker, denis, { path: "/api/tasks" });
+
+    expect(await response.json<TaskList>()).toMatchObject([
+      {
+        title: "Прививка: Нобивак DHPPi",
+        when: { date: "2027-10-02", time: null },
+        pet: { id: worker.buickId, name: "Бьюик" },
+        assignees: [{ name: "Ася" }],
+      },
+    ]);
+  });
+});
+
 describe("Pet Expenses", () => {
   test("sum expenses and the cost of vet care by category within the range", async () => {
     const worker = await startWithBuick();
@@ -237,7 +258,6 @@ describe("Pet Expenses", () => {
         kind: "vet_visit",
         reason: "Хромает",
         cost: { amount: 2500, category: "vet" },
-        dueDate: null,
       }),
     );
     await addEntry(
@@ -247,7 +267,6 @@ describe("Pet Expenses", () => {
         kind: "vaccination",
         vaccine: "Бешенство",
         cost: null,
-        dueDate: null,
       }),
     );
     await addEntry(
@@ -275,7 +294,6 @@ describe("Pet Expenses", () => {
         kind: "vet_visit",
         reason: null,
         cost: { amount: 2500, category: "vet" },
-        dueDate: null,
       }),
     );
 
@@ -286,7 +304,6 @@ describe("Pet Expenses", () => {
         kind: "vet_visit",
         reason: null,
         cost: { amount: 1800, category: "medicine" },
-        dueDate: null,
       }),
     });
 

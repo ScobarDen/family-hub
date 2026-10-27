@@ -1,6 +1,6 @@
 import type { InlineKeyboardMarkup, Update } from "@grammyjs/types";
 
-import type { CommandOutcome, Reminder } from "@family-hub/contract";
+import type { CommandOutcome, TaskList } from "@family-hub/contract";
 
 import { type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, tokenOf, startWorker } from "./worker-harness.ts";
@@ -124,21 +124,26 @@ export function dataOf(message: ReturnType<typeof lastTo>, text: string): string
 }
 
 export const internet = {
-  outcome: "reminder",
-  text: "Оплатить интернет",
+  outcome: "task",
+  title: "Оплатить интернет",
+  note: null,
   date: "2026-10-16",
   time: "19:00",
+  endDate: null,
+  endTime: null,
   recurrence: { frequency: "monthly", until: null },
   visibility: "shared",
+  reminderOffsets: ["at-start"],
   recipientIds: null,
+  petId: null,
   missing: [],
   ambiguities: [],
 };
 
-export async function reminders(worker: Worker, user: TelegramUserFixture) {
-  const response = await request(worker, user, { path: "/api/reminders" });
+export async function tasks(worker: Worker, user: TelegramUserFixture) {
+  const response = await request(worker, user, { path: "/api/tasks" });
 
-  return response.json<Reminder[]>();
+  return response.json<TaskList>();
 }
 
 export async function recorded(

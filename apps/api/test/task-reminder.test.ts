@@ -6,6 +6,12 @@ import type { Task, TaskChange, TaskList } from "@family-hub/contract";
 import { type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
+async function bodyOf<Body>(response: Promise<Response>): Promise<Body> {
+  const settled = await response;
+
+  return settled.json<Body>();
+}
+
 async function startWithFamily() {
   const worker = startWorker({ now: "2026-10-01T09:00:00Z" });
   const { familyId, ownerId } = await worker.addFamily({
@@ -30,7 +36,11 @@ type Worker = Awaited<ReturnType<typeof startWithFamily>>;
 const dateOnly = { time: null, timeZone: null, endDate: null, endTime: null };
 
 async function createTask(worker: Worker, change: TaskChange): Promise<Task> {
-  const response = await request(worker, denis, { method: "POST", path: "/api/tasks", body: change });
+  const response = await request(worker, denis, {
+    method: "POST",
+    path: "/api/tasks",
+    body: change,
+  });
 
   return response.json<Task>();
 }
@@ -50,7 +60,9 @@ async function addBuick(worker: Worker): Promise<string> {
     },
   });
 
-  return (await response.json<{ id: string }>()).id;
+  const { id } = await response.json<{ id: string }>();
+
+  return id;
 }
 
 function messagesTo(worker: Worker, user: TelegramUserFixture) {
@@ -186,7 +198,7 @@ describe("«Готово»", () => {
     await tickAt(worker, "2026-10-05T06:00:00Z");
     await press(worker, asya, "✅ Готово");
 
-    const tasks = await (await request(worker, denis, { path: "/api/tasks" })).json<TaskList>();
+    const tasks = await bodyOf<TaskList>(request(worker, denis, { path: "/api/tasks" }));
 
     expect(tasks.find(({ id }) => id === task.id)?.completions).toMatchObject([
       { occurrence: "2026-10-05", by: "Ася" },

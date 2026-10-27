@@ -54,7 +54,7 @@ describe("signing in with initData", () => {
       family: { id: familyId, name: "Гущины" },
       isFamilyOwner: true,
       settings: {
-        tabBar: ["plans", "calendar"],
+        tabBar: ["tasks", "pet"],
         timeZone: null,
         canMessage: true,
         digest: { isEnabled: true, time: "09:00" },
@@ -166,14 +166,12 @@ describe("a session", () => {
       "/api/albums",
       "/api/photos",
       "/api/commands",
-      "/api/events",
       "/api/feed",
       "/api/goals",
       "/api/pets",
-      "/api/plans",
       "/api/recipes",
       "/api/recipe-tags",
-      "/api/reminders",
+      "/api/tasks",
     ];
     const responses = await Promise.all(paths.map(async (path) => worker.request(path)));
 

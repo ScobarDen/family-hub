@@ -1,7 +1,5 @@
 import { eq } from "drizzle-orm";
 
-import type { AppModule } from "@family-hub/contract";
-
 import { createDb, families, familyMembers, members, pets, type Db } from "@/common/db";
 
 import type { FakeClock } from "./fake-clock.ts";
@@ -81,7 +79,7 @@ export function createFamilyFixtures(d1: D1Database, clock: FakeClock) {
       await db.update(members).set({ canMessage: false }).where(eq(members.id, memberId));
     },
     // A tab bar saved before the two slots, which the API no longer accepts.
-    async setTabBar(memberId: string, tabBar: AppModule[]) {
+    async setTabBar(memberId: string, tabBar: string[]) {
       await db.update(members).set({ tabBar }).where(eq(members.id, memberId));
     },
     async leaveFamily(memberId: string) {

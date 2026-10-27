@@ -33,7 +33,12 @@ export type TaskRecord = {
 
 export type TaskTree = { root: TaskRecord; subtasks: TaskRecord[] };
 
-export type PetOfTask = { id: string; name: string; avatarPhotoId: string | null };
+export type PetOfTask = {
+  id: string;
+  name: string;
+  avatarPhotoId: string | null;
+  archivedAt: number | null;
+};
 
 type Viewer = { familyId: string; memberId: string };
 
@@ -176,7 +181,12 @@ async function areMembers(db: Db, familyId: string, memberIds: string[]): Promis
 
 async function petOf(db: Db, familyId: string, petId: string): Promise<PetOfTask | undefined> {
   return db
-    .select({ id: pets.id, name: pets.name, avatarPhotoId: pets.avatarPhotoId })
+    .select({
+      id: pets.id,
+      name: pets.name,
+      avatarPhotoId: pets.avatarPhotoId,
+      archivedAt: pets.archivedAt,
+    })
     .from(pets)
     .where(and(eq(pets.familyId, familyId), eq(pets.id, petId)))
     .get();

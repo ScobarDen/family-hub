@@ -109,7 +109,8 @@ function subtaskItems(tree: TaskTree, { window, line }: { window: FeedWindow; li
   });
 }
 
-// A Task's lines are open Occurrences of it and its dated Subtasks.
+// A Task's lines are open Occurrences of it and its dated Subtasks; an Archived Pet's Tasks are
+// looked after by no one, so they are left out like its Reminders.
 export async function taskItemsWithin(
   { tasks, links }: TaskFeedDependencies,
   { family, member }: Membership,
@@ -120,6 +121,11 @@ export async function taskItemsWithin(
     trees.map(async (tree) => {
       const { petId } = tree.root.row;
       const pet = petId === null ? undefined : await tasks.petOf(family.id, petId);
+
+      if (pet !== undefined && pet.archivedAt !== null) {
+        return [];
+      }
+
       const line: Line = {
         taskId: tree.root.row.id,
         subtaskId: null,

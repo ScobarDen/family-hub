@@ -1,11 +1,17 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type { FeedPage, Task, TaskChange, TaskList } from "@family-hub/contract";
+import type { FeedPage, Task, TaskChange, TaskList, TaskWhen } from "@family-hub/contract";
 
 import { type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
 const vika = { id: 333, first_name: "Вика" };
+
+async function bodyOf<Body>(response: Promise<Response>): Promise<Body> {
+  const settled = await response;
+
+  return settled.json<Body>();
+}
 
 async function startWithFamily() {
   const worker = startWorker({ now: "2026-10-04T09:00:00Z" });
@@ -20,7 +26,7 @@ async function startWithFamily() {
 
 type Worker = Awaited<ReturnType<typeof startWithFamily>>;
 
-function on(date: string, time: string | null = null): TaskChange["when"] {
+function on(date: string, time: string | null = null): TaskWhen {
   return {
     date,
     time,
@@ -58,7 +64,11 @@ async function feedOf(worker: Worker, user: TelegramUserFixture): Promise<FeedPa
 
 async function mark(
   worker: Worker,
-  { taskId, occurrence, action = "complete" }: { taskId: string; occurrence: string | null; action?: string },
+  {
+    taskId,
+    occurrence,
+    action = "complete",
+  }: { taskId: string; occurrence: string | null; action?: string },
   user = denis,
 ) {
   const response = await send(worker, user, {
@@ -171,7 +181,9 @@ describe("completing a Task", () => {
       body: { title: "Отпуск", when: on("2026-10-12") },
     });
 
-    expect((await moved.json<Task>()).completions).toHaveLength(1);
+    const movedTask = await moved.json<Task>();
+
+    expect(movedTask.completions).toHaveLength(1);
   });
 
   test("of a recurring Task completes one Occurrence at a time", async () => {
@@ -246,19 +258,19 @@ describe("Subtasks", () => {
   test("complete their Task once the last one is ticked and reopen it when one is not", async () => {
     const worker = await startWithFamily();
     const task = await createTask(worker, { title: "Собраться в отпуск" });
-    const withOne = await (
-      await send(worker, denis, {
+    const withOne = await bodyOf<Task>(
+      send(worker, denis, {
         path: `/api/tasks/${task.id}/subtasks`,
         body: { title: "Паспорта", assigneeIds: [worker.asyaId] },
-      })
-    ).json<Task>();
+      }),
+    );
     const [step] = withOne.subtasks;
     const path = `/api/tasks/${task.id}/subtasks/${step?.id ?? ""}`;
-    const done = await (await send(worker, asya, { path: `${path}/complete` })).json<Task>();
+    const done = await bodyOf<Task>(send(worker, asya, { path: `${path}/complete` }));
 
     expect(done.completions).toHaveLength(1);
 
-    const reopened = await (await send(worker, asya, { path: `${path}/reopen` })).json<Task>();
+    const reopened = await bodyOf<Task>(send(worker, asya, { path: `${path}/reopen` }));
 
     expect(reopened.completions).toEqual([]);
   });
@@ -267,12 +279,19 @@ describe("Subtasks", () => {
     const worker = await startWithFamily();
     const task = await createTask(worker, { title: "Собраться в отпуск", when: on("2026-10-10") });
 
-    await send(worker, denis, { path: `/api/tasks/${task.id}/subtasks`, body: { title: "Паспорта" } });
+    await send(worker, denis, {
+      path: `/api/tasks/${task.id}/subtasks`,
+      body: { title: "Паспорта" },
+    });
 
     const response = await send(worker, denis, {
       method: "PUT",
       path: `/api/tasks/${task.id}`,
-      body: { title: "Собраться в отпуск", when: on("2026-10-10"), recurrence: { frequency: "yearly", until: null } },
+      body: {
+        title: "Собраться в отпуск",
+        when: on("2026-10-10"),
+        recurrence: { frequency: "yearly", until: null },
+      },
     });
 
     expect(response.status).toBe(409);
