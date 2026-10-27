@@ -11,7 +11,7 @@ export const CookForm = reatomComponent(
       <Input
         type="date"
         aria-label="Когда приготовили"
-        className="h-11 min-w-0 flex-1"
+        className="min-w-0 flex-1"
         max={model.today()}
         value={model.cookDay()}
         onChange={(event) => {
