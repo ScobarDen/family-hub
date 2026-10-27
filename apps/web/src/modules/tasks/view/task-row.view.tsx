@@ -10,16 +10,6 @@ export type TaskRowProps = {
   onOpen: (row: Row) => void;
 };
 
-// Overdue reads in words as well as in red, so it does not rest on colour alone.
-// The Pet is named too, as two Pets' vaccinations would otherwise read the same.
-function subtitleOf({ when, status, petName }: Row): string | undefined {
-  const parts = [status === "overdue" ? "просрочено" : undefined, when, petName].filter(
-    (part) => part !== undefined,
-  );
-
-  return parts.length === 0 ? undefined : parts.join(" · ");
-}
-
 export function TaskRow({ row, disabled, onToggle, onOpen }: TaskRowProps) {
   return (
     <SectionItem
@@ -35,7 +25,7 @@ export function TaskRow({ row, disabled, onToggle, onOpen }: TaskRowProps) {
         />
       }
       title={row.title}
-      subtitle={subtitleOf(row)}
+      subtitle={row.subtitle}
       after={<TaskMarks row={row} />}
       onClick={() => {
         onOpen(row);

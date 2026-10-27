@@ -112,7 +112,11 @@ export function detailsOf(task: Task, occurrence: string | null, viewer: Viewer)
     occurrence,
     when: detailsWhen(task, occurrence, viewer),
     repeats: repeatsOf(task),
-    facts: joined([task.assignees.map(({ name }) => name).join(", "), task.pet?.name]),
+    facts: joined([
+      task.visibility === "private" ? "Личное" : undefined,
+      task.assignees.map(({ name }) => name).join(", "),
+      task.pet?.name,
+    ]),
     reminders:
       task.reminderOffsets.length === 0
         ? undefined

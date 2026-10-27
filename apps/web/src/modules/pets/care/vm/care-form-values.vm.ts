@@ -3,7 +3,6 @@ import { Temporal } from "temporal-polyfill";
 import {
   careEntryChange,
   careKind,
-  careKindTitles,
   repeatableCareKind,
   type CareDetails,
   type CareEntry,
@@ -13,6 +12,8 @@ import {
   type CommandPhrase,
 } from "@family-hub/contract";
 import { momentOfPhrase } from "@family-hub/recurrence";
+
+import { careKindOfTask } from "../care.lib.ts";
 
 export const emptyEntry = {
   kind: "note",
@@ -145,23 +146,15 @@ export function valuesOfDraft(
   };
 }
 
-// A Pet's Task is titled «Прививка: <vaccine>», «Обработка: <target>» or «Визит к ветеринару», as
-// the move from Due Dates and «Повторить» name them; any other title becomes a note.
+// Any Task title that names no care kind becomes a note.
 export function valuesOfTask(title: string): Partial<EntryValues> {
-  for (const kind of ["vaccination", "treatment"] as const) {
-    const prefix = `${careKindTitles[kind]}: `;
+  const care = careKindOfTask(title);
 
-    if (title.startsWith(prefix)) {
-      return { kind, name: title.slice(prefix.length) };
-    }
+  if (care === undefined) {
+    return { kind: "note", note: title };
   }
 
-  if (title.startsWith(careKindTitles.vet_visit)) {
-    return {
-      kind: "vet_visit",
-      reason: title.slice(careKindTitles.vet_visit.length).replace(/^:\s*/u, ""),
-    };
-  }
-
-  return { kind: "note", note: title };
+  return care.kind === "vet_visit"
+    ? { kind: care.kind, reason: care.subject }
+    : { kind: care.kind, name: care.subject };
 }

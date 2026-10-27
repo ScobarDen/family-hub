@@ -1,7 +1,8 @@
-import { careKindTitles, type Pet, type PetMemo } from "@family-hub/contract";
+import type { Pet, PetMemo } from "@family-hub/contract";
 
 import { formatAge, formatDate, formatDay } from "@/common/format-date";
 
+import { careKindOfTask } from "./care/index.ts";
 import { sexTitles, speciesTitles } from "./pets.config.ts";
 
 export type PetListItem = { id: string; name: string; subtitle: string };
@@ -96,7 +97,7 @@ export function toCard(pet: Pet, viewer: Viewer, tasks: PetTask[]): PetCard {
     memo: memoOf(pet.memo, viewer),
     tasks: tasks.map(toTaskRow),
     nextVisit: tasks.find(
-      ({ title, when }) => when !== undefined && title.startsWith(careKindTitles.vet_visit),
+      ({ title, when }) => when !== undefined && careKindOfTask(title)?.kind === "vet_visit",
     )?.when,
     isArchived: pet.archivedAt !== null,
     avatar: pet.avatar?.medium,

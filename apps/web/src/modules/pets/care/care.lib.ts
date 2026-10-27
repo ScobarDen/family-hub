@@ -15,6 +15,27 @@ import { formatRubles } from "@/common/format-money";
 import type { Range } from "./care.api.ts";
 import type { WeightRange } from "./care.config.ts";
 
+export type TaskCareKind = { kind: "vaccination" | "treatment" | "vet_visit"; subject: string };
+
+// A Pet's Task is titled «Прививка: <vaccine>», «Обработка: <target>» or «Визит к ветеринару», as
+// the move from Due Dates and «Повторить» name them.
+export function careKindOfTask(title: string): TaskCareKind | undefined {
+  for (const kind of ["vaccination", "treatment"] as const) {
+    const prefix = `${careKindTitles[kind]}: `;
+
+    if (title.startsWith(prefix)) {
+      return { kind, subject: title.slice(prefix.length) };
+    }
+  }
+
+  return title.startsWith(careKindTitles.vet_visit)
+    ? {
+        kind: "vet_visit",
+        subject: title.slice(careKindTitles.vet_visit.length).replace(/^:\s*/u, ""),
+      }
+    : undefined;
+}
+
 export type JournalItem = {
   id: string;
   title: string;

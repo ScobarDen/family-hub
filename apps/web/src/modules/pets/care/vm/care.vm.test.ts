@@ -285,7 +285,7 @@ describe("the entry form", () => {
     });
   });
 
-  test("asks to repeat a vaccination, but not an entry switched to a kind that does not repeat", async () => {
+  test("asks to repeat a vaccination and saves the date to repeat on", async () => {
     const { model, backend } = startCare();
 
     await loaded(model);
@@ -295,6 +295,23 @@ describe("the entry form", () => {
 
     expect(model.form.kindFields().map(({ name }) => name)).toContain("repeatOn");
 
+    model.form.save();
+    await vi.waitFor(() => {
+      expect(model.canGoBack()).toBe(false);
+    });
+
+    expect(backend.requests.find(({ request }) => request.startsWith("POST"))?.body).toMatchObject({
+      repeatOn: "2027-10-11",
+    });
+  });
+
+  test("drops the date to repeat on when the kind is switched to one that does not repeat", async () => {
+    const { model, backend } = startCare();
+
+    await loaded(model);
+    model.add("vaccination");
+    model.form.form.fields.name.set("Бешенство");
+    model.form.form.fields.repeatOn.set("2027-10-11");
     model.form.form.fields.kind.set("note");
 
     expect(model.form.kindFields().map(({ name }) => name)).not.toContain("repeatOn");
@@ -303,20 +320,10 @@ describe("the entry form", () => {
     await vi.waitFor(() => {
       expect(model.canGoBack()).toBe(false);
     });
-    model.add("vaccination");
-    model.form.form.fields.name.set("Бешенство");
-    model.form.form.fields.repeatOn.set("2027-10-11");
-    model.form.save();
-    await vi.waitFor(() => {
-      expect(model.canGoBack()).toBe(false);
-    });
 
-    expect(
-      backend.requests.filter(({ request }) => request.startsWith("POST")).map(({ body }) => body),
-    ).toEqual([
-      expect.objectContaining({ repeatOn: null }),
-      expect.objectContaining({ repeatOn: "2027-10-11" }),
-    ]);
+    expect(backend.requests.find(({ request }) => request.startsWith("POST"))?.body).toMatchObject({
+      repeatOn: null,
+    });
   });
 
   test.each([

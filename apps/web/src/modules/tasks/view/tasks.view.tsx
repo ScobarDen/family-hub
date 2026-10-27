@@ -26,11 +26,10 @@ const scopes = [
 const Switches = reatomComponent(
   ({ model }: TasksProps) => (
     <div className="flex items-center gap-2 px-4 pb-4">
-      <div role="radiogroup" aria-label="Вид" className="flex gap-1">
+      <div role="group" aria-label="Вид" className="flex gap-1">
         {views.map(({ value, title }) => (
           <Chip
             key={value}
-            role="radio"
             isSelected={model.view() === value}
             onClick={() => {
               model.showView(value);
@@ -40,11 +39,10 @@ const Switches = reatomComponent(
           </Chip>
         ))}
       </div>
-      <div role="radiogroup" aria-label="Чьи дела" className="ml-auto flex gap-1">
+      <div role="group" aria-label="Чьи дела" className="ml-auto flex gap-1">
         {scopes.map(({ value, title }) => (
           <Chip
             key={value}
-            role="radio"
             isSelected={model.scope() === value}
             onClick={() => {
               model.showScope(value);

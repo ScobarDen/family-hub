@@ -34,8 +34,7 @@ function ListItem({ row, onOpenPet, ...rowProps }: RowProps & { row: ListRow }) 
 }
 
 export const TaskList = reatomComponent(({ model, screen }: ListProps) => {
-  const { groups } = screen;
-  const isEmpty = groupTitles.every(([group]) => groups[group].length === 0);
+  const { groups, empty } = screen;
   const rowProps = {
     disabled: model.isChanging(),
     onToggle: model.toggle,
@@ -46,9 +45,9 @@ export const TaskList = reatomComponent(({ model, screen }: ListProps) => {
   return (
     <>
       <FieldError>{model.failure()}</FieldError>
-      {isEmpty && (
+      {empty !== undefined && (
         <Section>
-          <SectionItem title="Дел нет" subtitle="Нажмите «+», чтобы добавить первое" />
+          <SectionItem title={empty.title} subtitle={empty.hint} />
         </Section>
       )}
       {groupTitles.map(([group, title]) =>
@@ -65,6 +64,7 @@ export const TaskList = reatomComponent(({ model, screen }: ListProps) => {
           <SectionItem
             icon={screen.isCompletedShown ? ChevronUp : ChevronDown}
             title={`Выполненные · ${groups.completed.length}`}
+            isExpanded={screen.isCompletedShown}
             onClick={model.toggleCompleted}
           />
           {screen.isCompletedShown &&

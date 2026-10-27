@@ -14,9 +14,10 @@ export type TaskRow = {
   title: string;
   date: string | undefined;
   when: string | undefined;
+  subtitle: string | undefined;
   assignees: Person[];
+  assigneesLabel: string | undefined;
   petPicture: string | undefined;
-  petName: string | undefined;
   isRecurring: boolean;
   hasReminder: boolean;
   status: OccurrenceStatus;
@@ -57,7 +58,7 @@ function whenText(
 
 type TaskMarks = Pick<
   TaskRow,
-  "taskId" | "title" | "assignees" | "petPicture" | "petName" | "isRecurring" | "hasReminder"
+  "taskId" | "title" | "assignees" | "assigneesLabel" | "petPicture" | "isRecurring" | "hasReminder"
 >;
 
 function marksOf(task: Task): TaskMarks {
@@ -65,11 +66,27 @@ function marksOf(task: Task): TaskMarks {
     taskId: task.id,
     title: task.title,
     assignees: task.assignees,
+    assigneesLabel:
+      task.assignees.length === 0
+        ? undefined
+        : `Исполнители: ${task.assignees.map(({ name }) => name).join(", ")}`,
     petPicture: task.pet?.picture ?? undefined,
-    petName: task.pet?.name,
     isRecurring: task.recurrence !== null,
     hasReminder: task.reminderOffsets.length > 0,
   };
+}
+
+// Overdue reads in words as well as in red, so it does not rest on colour alone.
+// The Pet is named too, as two Pets' vaccinations would otherwise read the same.
+function subtitleOf(
+  task: Task,
+  { status, when }: { status: OccurrenceStatus; when: string | undefined },
+): string | undefined {
+  const present = [status === "overdue" ? "Просрочено" : undefined, when, task.pet?.name].filter(
+    (part) => part !== undefined,
+  );
+
+  return present.length === 0 ? undefined : present.join(" · ");
 }
 
 function rowOf(
@@ -78,6 +95,8 @@ function rowOf(
   viewer: Viewer,
 ): TaskRow {
   const occurrence = placed?.occurrence ?? null;
+  const when = placed === undefined ? undefined : whenText(placed, viewer);
+  const status = statusOf(task, { occurrence, date: placed?.date, today: viewer.today });
 
   return {
     kind: "task",
@@ -85,8 +104,9 @@ function rowOf(
     key: `${task.id}-${occurrence ?? "undated"}`,
     occurrence,
     date: placed?.date,
-    when: placed === undefined ? undefined : whenText(placed, viewer),
-    status: statusOf(task, { occurrence, date: placed?.date, today: viewer.today }),
+    when,
+    subtitle: subtitleOf(task, { status, when }),
+    status,
   };
 }
 

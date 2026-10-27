@@ -162,6 +162,8 @@ describe("a deep link the Mini App was launched with", () => {
         'tasks.recordOccurrence {"taskId":"0199b4d2-6c00-7abc-8def-0123456789ab","occurrence":"2026-10-05"}',
       ],
     },
+    { startParam: "rec_0199b4d2-6c00-7abc-8def-0123456789ab", places: [], opened: [] },
+    { startParam: "rec_0199b4d2-6c00-7abc-8def-0123456789ab_soon", places: [], opened: [] },
     { startParam: "cmd_draft-1", places: [], opened: ["commandSheet.openForEdit draft-1"] },
     { startParam: "inv_token-1", places: [], opened: [] },
     { startParam: "nonsense", places: [], opened: [] },

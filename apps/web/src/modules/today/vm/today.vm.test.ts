@@ -239,6 +239,23 @@ describe("«Сделать сегодня»", () => {
     });
   });
 
+  test("reopens the Subtask when the undo of its completion is tapped", async () => {
+    const { model, calls } = startToday({
+      due: [{ ...taskDue(1, "2026-10-16"), subtaskId: "sub-1" }],
+    });
+
+    await vi.waitFor(() => {
+      expect(model.rows()).toHaveLength(1);
+    });
+    model.complete("task-1-2026-10-16");
+    model.revert();
+
+    await vi.waitFor(() => {
+      expect(calls).toContain("POST /api/tasks/task-1/subtasks/sub-1/reopen");
+    });
+    expect(model.rows()).toHaveLength(1);
+  });
+
   test("reopens the Occurrence after its completion when the undo is tapped", async () => {
     const { model, calls } = startToday({ due: [taskDue(1, "2026-10-12")] });
 
@@ -279,14 +296,21 @@ describe("«Сделать сегодня»", () => {
   });
 
   test("does not complete a birthday", async () => {
-    const { model, calls } = startToday({ due: [birthday] });
+    const { model, calls } = startToday({ due: [birthday, taskDue(1, "2026-10-16")] });
 
     await vi.waitFor(() => {
-      expect(model.rows()).toHaveLength(1);
+      expect(model.rows()).toHaveLength(2);
     });
     model.complete("birthday-pet-1");
+    model.complete("task-1-2026-10-16");
 
-    expect(calls).toEqual(["GET /api/today"]);
+    await vi.waitFor(() => {
+      expect(calls).toContain('POST /api/tasks/task-1/complete {"occurrence":"2026-10-16"}');
+    });
+    expect(calls.filter((call) => call.startsWith("POST"))).toEqual([
+      'POST /api/tasks/task-1/complete {"occurrence":"2026-10-16"}',
+    ]);
+    expect(model.rows().map(({ title }) => title)).toEqual(["День рождения Бьюика"]);
   });
 });
 

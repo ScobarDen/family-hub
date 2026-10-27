@@ -9,12 +9,10 @@ import {
   taskChange,
   taskNoteMaxLength,
   taskTitleMaxLength,
-  type Recurrence,
   type ReminderOffset,
   type Task,
   type TaskChange,
   type TaskDraft,
-  type TaskWhen,
 } from "@family-hub/contract";
 
 import { reatomEditableRecord, type DraftOpening } from "@/common/form";
@@ -22,6 +20,13 @@ import type { AvatarMember, Choice } from "@/common/ui";
 
 import type { TasksApi } from "../tasks.api.ts";
 import type { TasksModel } from "../tasks.model.ts";
+import {
+  emptyTask,
+  orNull,
+  valuesOf,
+  valuesOfDraft,
+  type TaskValues,
+} from "./task-form-values.vm.ts";
 
 type TaskFormDependencies = {
   api: TasksApi;
@@ -33,23 +38,6 @@ type TaskFormDependencies = {
 };
 
 export type TaskDraftOpening = DraftOpening<TaskDraft>;
-
-const emptyTask = {
-  title: "",
-  date: "",
-  time: "",
-  endDate: "",
-  endTime: "",
-  frequency: "",
-  until: "",
-  recipients: "default",
-  visibility: "shared",
-  petId: "",
-  albumId: "",
-  note: "",
-};
-
-type TaskValues = typeof emptyTask;
 
 const schema = z
   .object({
@@ -76,10 +64,6 @@ const schema = z
 type People = { assigneeIds: Atom<string[]>; recipientIds: Atom<string[]> };
 
 type Picks = People & { offsets: Atom<ReminderOffset[]> };
-
-function orNull(text: string): string | null {
-  return text === "" ? null : text;
-}
 
 function whenOf(values: TaskValues, timeZone: string): TaskChange["when"] {
   if (values.date === "") {
@@ -120,56 +104,6 @@ function changeOf(values: TaskValues, { picks, timeZone }: { picks: Picks; timeZ
     petId: orNull(values.petId),
     albumId: orNull(values.albumId),
   });
-}
-
-function orEmpty(text: string | null): string {
-  return text ?? "";
-}
-
-function whenValuesOf(when: TaskWhen | null) {
-  return when === null
-    ? { date: "", time: "", endDate: "", endTime: "" }
-    : {
-        date: when.date,
-        time: orEmpty(when.time),
-        endDate: orEmpty(when.endDate),
-        endTime: orEmpty(when.endTime),
-      };
-}
-
-function recurrenceValuesOf(recurrence: Recurrence | null) {
-  return recurrence === null
-    ? { frequency: "", until: "" }
-    : { frequency: recurrence.frequency, until: orEmpty(recurrence.until) };
-}
-
-function valuesOf(task: Task): TaskValues {
-  return {
-    ...whenValuesOf(task.when),
-    ...recurrenceValuesOf(task.recurrence),
-    title: task.title,
-    recipients: Array.isArray(task.recipients) ? "members" : task.recipients,
-    visibility: task.visibility,
-    petId: orEmpty(task.pet?.id ?? null),
-    albumId: orEmpty(task.album?.id ?? null),
-    note: orEmpty(task.note),
-  };
-}
-
-function valuesOfDraft(draft: TaskDraft): TaskValues {
-  return {
-    ...emptyTask,
-    ...recurrenceValuesOf(draft.recurrence),
-    title: orEmpty(draft.title),
-    date: orEmpty(draft.date),
-    time: orEmpty(draft.time),
-    endDate: orEmpty(draft.endDate),
-    endTime: orEmpty(draft.endTime),
-    recipients: draft.recipientIds === null ? "default" : "members",
-    visibility: draft.visibility,
-    petId: orEmpty(draft.petId),
-    note: orEmpty(draft.note),
-  };
 }
 
 // A timed Task keeps the zone it was set in; a new one takes the zone of whoever creates it, or of
@@ -262,18 +196,29 @@ function chipTitleOf(offset: ReminderOffset): string {
 
 // No date, no Reminders; a whole day offers only the day-sized offsets.
 function reatomOffsets({ form }: TaskRecord, chosen: Atom<ReminderOffset[]>) {
-  return {
-    offsets: computed((): OffsetChoice[] => {
-      const isTimed = form.fields.time() !== "";
+  const offsets = computed((): OffsetChoice[] => {
+    const isTimed = form.fields.time() !== "";
 
-      return reminderOffset.options
-        .filter((offset) => isTimed || dateOnlyOffsets.includes(offset))
-        .map((offset) => ({
-          offset,
-          title: chipTitleOf(offset),
-          isChosen: chosen().includes(offset),
-        }));
-    }, "tasks.taskForm.offsets"),
+    return reminderOffset.options
+      .filter((offset) => isTimed || dateOnlyOffsets.includes(offset))
+      .map((offset) => ({
+        offset,
+        title: chipTitleOf(offset),
+        isChosen: chosen().includes(offset),
+      }));
+  }, "tasks.taskForm.offsets");
+  const hasReminders = computed(
+    () => offsets().some(({ isChosen }) => isChosen),
+    "tasks.taskForm.hasReminders",
+  );
+
+  return {
+    offsets,
+    hasReminders,
+    isPickingRecipients: computed(
+      () => hasReminders() && form.fields.recipients() === "members",
+      "tasks.taskForm.isPickingRecipients",
+    ),
     toggleOffset: action((offset: ReminderOffset) => {
       chosen.set(toggled(chosen(), offset, reminderMaxCount));
     }, "tasks.taskForm.toggleOffset"),

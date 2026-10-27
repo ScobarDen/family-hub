@@ -21,7 +21,7 @@ import type { PersonChoice, TaskFormModel } from "../vm/task-form.vm.ts";
 const frequencies: Choice[] = [{ value: "", title: "Не повторять" }, ...repeatChoices];
 
 const recipientModes: Choice[] = [
-  { value: "default", title: "Исполнителям или мне" },
+  { value: "default", title: "Исполнителям (или мне, если их нет)" },
   { value: "everyone", title: "Всем" },
   { value: "members", title: "Выбрать" },
 ];
@@ -56,7 +56,7 @@ const TaskWhen = reatomComponent(({ model }: { model: TaskFormModel }) => {
       {model.hasDate() && (
         <>
           <TextField field={fields.time} id="task-time" label="Время" type="time" />
-          <TextField field={fields.endDate} id="task-end-date" label="Окончание" type="date" />
+          <TextField field={fields.endDate} id="task-end-date" label="Дата окончания" type="date" />
           {model.isTimed() && (
             <TextField
               field={fields.endTime}
@@ -100,10 +100,10 @@ const TaskSchedule = reatomComponent(({ model }: { model: TaskFormModel }) => {
           </Chip>
         ))}
       </ChipGroup>
-      {model.offsets().some(({ isChosen }) => isChosen) && (
+      {model.hasReminders() && (
         <ChoiceField field={fields.recipients} label="Кому напомнить" choices={recipientModes} />
       )}
-      {fields.recipients() === "members" && (
+      {model.isPickingRecipients() && (
         <PeopleChips
           label="Получатели"
           people={model.recipientChoices()}

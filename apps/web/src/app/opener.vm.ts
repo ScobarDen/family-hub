@@ -2,23 +2,25 @@ import { action, noop, take, throwAbort, withAbort, wrap } from "@reatom/core";
 
 import {
   parseDeepLink,
+  parseRecordLink,
   type AppModule,
   type CareEntryDraft,
   type DeepLink,
   type MovementKind,
-  type TaskDraft,
+  type RecordLink,
 } from "@family-hub/contract";
 
 import type { DraftOpening } from "@/common/form";
 import type { Telegram } from "@/common/telegram";
 import type { OpenedDraft } from "@/modules/command";
+import type { TaskDraftOpening } from "@/modules/tasks";
 
 import type { Place } from "./app.route.ts";
 
 type TargetFields = {
   task: { taskId: string };
   "task-for-pet": { petId: string };
-  record: { taskId: string; occurrence: string | null };
+  record: RecordLink;
   "care-entry-for-pet": { petId: string; title: string };
   pet: { petId: string };
   "new-pet": object;
@@ -58,8 +60,8 @@ type OpenerDependencies = {
     open: Open;
     add: () => void;
     addForPet: Open;
-    openDraft: (opening: DraftOpening<TaskDraft>) => void;
-    recordOccurrence: (target: { taskId: string; occurrence: string | null }) => void;
+    openDraft: (opening: TaskDraftOpening) => void;
+    recordOccurrence: (target: RecordLink) => void;
   };
   care: {
     openEntry: Open;
@@ -119,13 +121,10 @@ const linkTargets: Record<DeepLink["kind"], (id: string) => OpenTarget | undefin
   cmd: (draftId) => ({ kind: "draft", draftId }),
 };
 
-// «📝 Записать» names the Task and the Occurrence: `<task>_<YYYY-MM-DD>`.
 function recordTargetOf(id: string): OpenTarget | undefined {
-  const separator = id.lastIndexOf("_");
+  const link = parseRecordLink(id);
 
-  return separator < 0
-    ? undefined
-    : { kind: "record", taskId: id.slice(0, separator), occurrence: id.slice(separator + 1) };
+  return link === undefined ? undefined : { kind: "record", ...link };
 }
 
 function targetOfLink(startParameter: string | undefined): OpenTarget | undefined {

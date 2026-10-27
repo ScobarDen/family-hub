@@ -12,20 +12,11 @@ import {
 
 import type { Pet, Task } from "@family-hub/contract";
 
-import { formatNearDate, type Viewer } from "@/common/format-date";
+import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
 import { detached } from "@/common/state";
 import type { Dialogs } from "@/common/telegram";
 
-import {
-  agendaRowsOf,
-  itemsIn,
-  monthGrid,
-  monthRangeOf,
-  monthTitle,
-  shiftMonth,
-  type CalendarItem,
-} from "../calendar.lib.ts";
 import { detailsOf, type TaskDetails } from "../task-details.lib.ts";
 import {
   birthdayRowsOf,
@@ -38,6 +29,7 @@ import {
 } from "../task-rows.lib.ts";
 import type { TaskOccurrence, TasksApi } from "../tasks.api.ts";
 import { reatomTasks, type SharedLists, type TasksModel } from "../tasks.model.ts";
+import { reatomCalendar } from "./calendar.vm.ts";
 import { reatomSubtaskForm } from "./subtask-form.vm.ts";
 import { reatomTaskActions, type CareRecord } from "./task-actions.vm.ts";
 import { reatomTaskForm, type TaskDraftOpening } from "./task-form.vm.ts";
@@ -45,11 +37,14 @@ import { reatomTaskForm, type TaskDraftOpening } from "./task-form.vm.ts";
 export type TasksScreen =
   | { kind: "loading" }
   | { kind: "failed" }
-  | { kind: "list"; groups: TaskGroups; isCompletedShown: boolean }
+  | { kind: "list"; groups: TaskGroups; empty: EmptyList | undefined; isCompletedShown: boolean }
   | { kind: "calendar" }
   | { kind: "task"; task: TaskDetails }
   | { kind: "task-form"; isCreating: boolean }
   | { kind: "subtask-form"; isCreating: boolean };
+
+// What the list says when nothing is left to do: «add the first one» only to a Family with none.
+export type EmptyList = { title: string; hint: string | undefined };
 
 type TasksDependencies = SharedLists &
   LiveVersion & {
@@ -133,21 +128,46 @@ function editingScreenOf(
     : undefined;
 }
 
+function emptyOf(
+  { overdue, today, upcoming, undated }: TaskGroups,
+  { hasFamilyTasks, scope }: { hasFamilyTasks: boolean; scope: "mine" | "all" },
+): EmptyList | undefined {
+  if ([overdue, today, upcoming, undated].some((group) => group.length > 0)) {
+    return undefined;
+  }
+
+  if (!hasFamilyTasks) {
+    return { title: "Дел нет", hint: "Нажмите «Дело», чтобы добавить первое" };
+  }
+
+  return scope === "mine"
+    ? { title: "Ваших дел нет", hint: "Дела всей семьи — во вкладке «Все»" }
+    : { title: "Открытых дел нет", hint: undefined };
+}
+
 function browsingScreenOf(
   navigation: Navigation,
-  { tasks, pets }: { tasks: Task[]; pets: Pet[] },
+  { tasks, pets, family }: { tasks: Task[]; pets: Pet[]; family: Task[] | undefined },
   viewer: Viewer,
 ): TasksScreen {
-  return navigation.view() === "calendar"
-    ? { kind: "calendar" }
-    : {
-        kind: "list",
-        groups: groupsOf(
-          [...tasks.flatMap((each) => rowsOf(each, viewer)), ...birthdayRowsOf(pets, viewer.today)],
-          viewer.today,
-        ),
-        isCompletedShown: navigation.isCompletedShown(),
-      };
+  if (navigation.view() === "calendar") {
+    return { kind: "calendar" };
+  }
+
+  const groups = groupsOf(
+    [...tasks.flatMap((each) => rowsOf(each, viewer)), ...birthdayRowsOf(pets, viewer.today)],
+    viewer.today,
+  );
+
+  return {
+    kind: "list",
+    groups,
+    empty: emptyOf(groups, {
+      hasFamilyTasks: (family ?? []).length > 0,
+      scope: navigation.scope(),
+    }),
+    isCompletedShown: navigation.isCompletedShown(),
+  };
 }
 
 function reatomScreen(
@@ -179,69 +199,17 @@ function reatomScreen(
     }
 
     return task === undefined
-      ? browsingScreenOf(navigation, { tasks, pets: dependencies.pets.data() ?? [] }, viewer)
+      ? browsingScreenOf(
+          navigation,
+          {
+            tasks,
+            pets: dependencies.pets.data() ?? [],
+            family: dependencies.tasks.list.data(),
+          },
+          viewer,
+        )
       : { kind: "task", task: detailsOf(task, navigation.opened()?.occurrence ?? null, viewer) };
   }, "tasks.screen");
-}
-
-function reatomCalendarMoves({ onOpenPet }: TasksDependencies, navigation: Navigation) {
-  const { month, selected } = navigation;
-
-  return {
-    previousMonth: action(() => {
-      month.set(shiftMonth(month(), -1));
-    }, "tasks.previousMonth"),
-    nextMonth: action(() => {
-      month.set(shiftMonth(month(), 1));
-    }, "tasks.nextMonth"),
-    select: action((date: string) => {
-      selected.set(date);
-    }, "tasks.select"),
-    openPet: action((petId: string) => {
-      onOpenPet(petId);
-    }, "tasks.openPet"),
-    openItem: action((item: CalendarItem) => {
-      if (item.kind === "birthday") {
-        onOpenPet(item.petId);
-      } else {
-        navigation.opened.set({ taskId: item.taskId, occurrence: item.occurrence });
-      }
-    }, "tasks.openItem"),
-  };
-}
-
-function reatomCalendarView(
-  dependencies: TasksDependencies,
-  navigation: Navigation,
-  shown: () => Task[] | undefined,
-) {
-  const { month, selected } = navigation;
-  const monthItems = computed(() => {
-    const { today, timeZone } = dependencies.viewer();
-
-    return itemsIn(
-      { tasks: shown() ?? [], pets: dependencies.pets.data() ?? [] },
-      { range: monthRangeOf(month()), timeZone, today },
-    );
-  }, "tasks.monthItems");
-
-  return {
-    monthTitle: computed(() => monthTitle(month()), "tasks.monthTitle"),
-    grid: computed(
-      () => monthGrid(month(), { today: dependencies.viewer().today, items: monthItems() }),
-      "tasks.grid",
-    ),
-    selected,
-    dayTitle: computed(
-      () => formatNearDate(selected(), dependencies.viewer().today),
-      "tasks.dayTitle",
-    ),
-    dayRows: computed(
-      () => agendaRowsOf(monthItems().filter(({ date }) => date === selected())),
-      "tasks.dayRows",
-    ),
-    ...reatomCalendarMoves(dependencies, navigation),
-  };
 }
 
 // A deep link or another module names the Task, not an Occurrence, and may come before the list.
@@ -400,7 +368,7 @@ export function reatomTasksScreen(input: TasksDependencies) {
     ),
     ...forms,
     ...actions,
-    ...reatomCalendarView(input, navigation, shown),
+    ...reatomCalendar(input, { ...navigation, shown }),
     ...reatomBrowsing(navigation, input, tasks),
     ...reatomAdding(navigation, forms),
     ...reatomEditing(navigation, { forms, openedTask }),
