@@ -9,10 +9,17 @@ export const PetTab = reatomComponent(({ model: { pets, care } }: { model: PetTa
     return <Care model={care} />;
   }
 
+  const screen = pets.screen();
+
   return (
     <Pets
       model={pets}
-      summary={<CareSummary model={care} />}
+      summary={
+        <CareSummary
+          model={care}
+          nextVisit={screen.kind === "card" ? screen.card.nextVisit : undefined}
+        />
+      }
       onAddEntry={() => {
         care.add("note");
       }}

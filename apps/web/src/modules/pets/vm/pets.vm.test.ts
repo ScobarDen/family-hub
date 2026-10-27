@@ -118,6 +118,13 @@ const buickTasks = [
     when: "20 октября",
     isOverdue: false,
   },
+  {
+    key: "task-4-2026-11-02",
+    taskId: "task-4",
+    title: "Визит к ветеринару: осмотр",
+    when: "2 ноября",
+    isOverdue: false,
+  },
   { key: "task-3", taskId: "task-3", title: "К ветеринару", when: undefined, isOverdue: false },
 ];
 
@@ -226,6 +233,13 @@ describe("the pet tab", () => {
             isOverdue: false,
           },
           {
+            key: "task-4-2026-11-02",
+            taskId: "task-4",
+            title: "Визит к ветеринару: осмотр",
+            subtitle: "2 ноября",
+            isOverdue: false,
+          },
+          {
             key: "task-3",
             taskId: "task-3",
             title: "К ветеринару",
@@ -233,6 +247,7 @@ describe("the pet tab", () => {
             isOverdue: false,
           },
         ],
+        nextVisit: "2 ноября",
         isArchived: false,
       },
     });

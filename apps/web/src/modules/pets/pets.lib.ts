@@ -1,4 +1,4 @@
-import type { Pet, PetMemo } from "@family-hub/contract";
+import { careKindTitles, type Pet, type PetMemo } from "@family-hub/contract";
 
 import { formatAge, formatDate, formatDay } from "@/common/format-date";
 
@@ -22,6 +22,8 @@ export type PetCard = {
   facts: PetFact[];
   memo: PetMemoView;
   tasks: PetTaskRow[];
+  // The next open vet visit among the Pet's Tasks, as «Повторить» and the old Due Dates titled it.
+  nextVisit: string | undefined;
   isArchived: boolean;
   avatar: string | undefined;
 };
@@ -93,6 +95,9 @@ export function toCard(pet: Pet, viewer: Viewer, tasks: PetTask[]): PetCard {
     facts: factsOf(pet),
     memo: memoOf(pet.memo, viewer),
     tasks: tasks.map(toTaskRow),
+    nextVisit: tasks.find(
+      ({ title, when }) => when !== undefined && title.startsWith(careKindTitles.vet_visit),
+    )?.when,
     isArchived: pet.archivedAt !== null,
     avatar: pet.avatar?.medium,
   };
