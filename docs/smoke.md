@@ -89,6 +89,14 @@ With VoiceOver on iOS and TalkBack on Android.
 - [ ] A Task's card shows one failure bar when a change is rolled back, and it is read once.
 - [ ] A field error and a form's failure are read politely after the current speech, not cutting it off.
 
+### Overlays
+
+With a keyboard in Telegram Desktop or the browser, then with VoiceOver and TalkBack.
+
+- [ ] Opening a photo from a thumb puts focus on «Закрыть»; Tab cycles only through the viewer's bar and the step buttons, never onto the screen behind; ArrowLeft and ArrowRight step through the photos; Escape closes the viewer and focus lands back on that thumb. The screen reader announces a dialog «Фото».
+- [ ] A refused photo deletion shows its failure bar over the open viewer, read once; «Скрыть» there dismisses it.
+- [ ] The Command Sheet opens as a dialog «Команда» with focus on «Закрыть»; Tab stays inside it; Escape closes it like «×» (a pending draft is dropped) and focus returns to the microphone.
+
 ### Date and time fields
 
 Each item on iOS and Android, in the light and the dark theme.

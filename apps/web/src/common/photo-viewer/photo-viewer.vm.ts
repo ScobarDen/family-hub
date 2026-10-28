@@ -143,6 +143,9 @@ export function reatomPhotoViewer(dependencies: PhotoViewerDependencies) {
     isRemoving: computed(() => !remove.ready(), "photoViewer.isRemoving"),
     canShare: computed(() => dependencies.sharing?.isAvailable() ?? false, "photoViewer.canShare"),
     isSharing: computed(() => !share.ready(), "photoViewer.isSharing"),
+    // The modal viewer makes the module's own failure bar inert and covers it, so it shows its own.
+    failure: dependencies.failure.failure,
+    dismissFailure: dependencies.failure.dismiss,
 
     open: action((photos: Photo[], photoId: string) => {
       opened.set({

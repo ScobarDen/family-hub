@@ -15,6 +15,7 @@ export { IconBadge } from "./icon-badge.view.tsx";
 export { Input } from "./input.view.tsx";
 export { Label } from "./label.view.tsx";
 export { LoadState } from "./load-state.view.tsx";
+export { ModalDialog } from "./modal-dialog.view.tsx";
 export { Notice } from "./notice.view.tsx";
 export { PersonAvatar, type AvatarMember } from "./person-avatar.view.tsx";
 export { PrimaryButton, primaryActionClass } from "./primary-button.view.tsx";

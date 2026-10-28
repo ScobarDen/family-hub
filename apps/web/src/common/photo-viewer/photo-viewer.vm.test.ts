@@ -121,3 +121,21 @@ test.each([
     expect(felt).toEqual(["warning", "error"]);
   },
 );
+
+test("shows the module's failure over the open viewer until it is dismissed", async () => {
+  const { model, failure } = startViewer({
+    deletePhoto: async () => {
+      throw new HttpError(500);
+    },
+  });
+
+  model.open(photos, "photo-1");
+  model.remove();
+
+  await vi.waitFor(() => {
+    expect(model.failure()).toBe("Не получилось удалить фото. Попробуйте ещё раз.");
+  });
+  model.dismissFailure();
+  expect(model.failure()).toBeUndefined();
+  expect(failure()).toBeUndefined();
+});
