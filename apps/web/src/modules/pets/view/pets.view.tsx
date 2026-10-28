@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { LoadState, Revealed, SkeletonSection } from "@/common/ui";
+import { FormDrawer, LoadState, Revealed, SkeletonSection } from "@/common/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 import { PetCard } from "./pet-card.view.tsx";
@@ -27,18 +27,6 @@ function contentOf(props: PetsProps, screen: PetsScreen): ReactNode {
     return <PetCard {...props} screen={screen} />;
   }
 
-  if (screen.kind === "profile-form") {
-    return <PetProfileForm model={model.profileForm} onCancel={model.back} />;
-  }
-
-  if (screen.kind === "memo-form") {
-    return <PetMemoForm model={model.memoForm} onCancel={model.back} />;
-  }
-
-  if (screen.kind === "delete-form") {
-    return <PetDeleteForm model={model} />;
-  }
-
   if (screen.kind === "empty" || screen.kind === "list") {
     return <PetList model={model} screen={screen} />;
   }
@@ -50,8 +38,32 @@ function contentOf(props: PetsProps, screen: PetsScreen): ReactNode {
   return <LoadState failure="Не получилось загрузить питомцев." onRetry={model.retry} />;
 }
 
+const PetForms = reatomComponent(({ model }: { model: PetsScreenModel }) => {
+  const openForm = model.openForm();
+  const titles = model.formTitles();
+
+  return (
+    <>
+      <FormDrawer open={openForm === "profile"} title={titles.profile} onClose={model.back}>
+        <PetProfileForm model={model.profileForm} onCancel={model.back} />
+      </FormDrawer>
+      <FormDrawer open={openForm === "memo"} title={titles.memo} onClose={model.back}>
+        <PetMemoForm model={model.memoForm} onCancel={model.back} />
+      </FormDrawer>
+      <FormDrawer open={openForm === "delete"} title={titles.delete} onClose={model.back}>
+        <PetDeleteForm model={model} />
+      </FormDrawer>
+    </>
+  );
+}, "PetForms");
+
 export const Pets = reatomComponent((props: PetsProps) => {
   const screen = props.model.screen();
 
-  return <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(props, screen)}</Revealed>;
+  return (
+    <>
+      <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(props, screen)}</Revealed>
+      <PetForms model={props.model} />
+    </>
+  );
 }, "Pets");

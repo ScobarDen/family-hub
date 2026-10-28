@@ -8,8 +8,8 @@ import type { PetTabModel } from "../vm/pet-tab.vm.ts";
 import { Pets } from "./pets.view.tsx";
 
 function contentOf({ pets, care, nextVisit }: PetTabModel): ReactNode {
-  if (care.canGoBack()) {
-    return <Care model={care} />;
+  if (care.screen().kind === "expenses") {
+    return null;
   }
 
   return (
@@ -30,6 +30,7 @@ export const PetTab = reatomComponent(
   ({ model }: { model: PetTabModel }) => (
     <>
       {contentOf(model)}
+      <Care model={model.care} />
       <FailureBar failure={model.care.failure()} onDismiss={model.care.dismissFailure} />
     </>
   ),

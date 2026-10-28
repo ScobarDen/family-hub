@@ -180,12 +180,23 @@
   }
 }
 
+/* Telegram's push: the new screen slides in from the right over the old one, which drifts left and
+   dims; Back runs it in reverse. Snapshots get the page colour, or the screen behind shows through; the
+   tab bar is a group of its own, so it stays above the sliding page. */
 @media (prefers-reduced-motion: no-preference) {
+  ::view-transition-group(.slide-forward),
+  ::view-transition-group(.slide-back) {
+    animation-duration: 350ms;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
   ::view-transition-old(.slide-forward),
   ::view-transition-new(.slide-forward),
   ::view-transition-old(.slide-back),
   ::view-transition-new(.slide-back) {
-    animation: 300ms cubic-bezier(0.2, 0, 0, 1) both;
+    background: var(--secondary);
+    animation: 350ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    mix-blend-mode: normal;
   }
 
   ::view-transition-old(.slide-forward) {
@@ -193,11 +204,13 @@
   }
 
   ::view-transition-new(.slide-forward) {
+    box-shadow: -0.5rem 0 1.5rem rgb(0 0 0 / 0.12);
     animation-name: screen-from-edge;
   }
 
   ::view-transition-old(.slide-back) {
     z-index: 1;
+    box-shadow: -0.5rem 0 1.5rem rgb(0 0 0 / 0.12);
     animation-name: screen-to-edge;
   }
 
@@ -209,6 +222,24 @@
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*) {
     animation: none;
+  }
+}
+
+@theme {
+  --animate-tab-pop: tab-pop 420ms cubic-bezier(0.3, 1.6, 0.5, 1);
+
+  @keyframes tab-pop {
+    0% {
+      scale: 1;
+    }
+
+    35% {
+      scale: 0.8;
+    }
+
+    100% {
+      scale: 1;
+    }
   }
 }
 
@@ -226,15 +257,15 @@
 
 @keyframes screen-from-behind {
   from {
-    opacity: 0;
-    translate: -30% 0;
+    translate: -25% 0;
+    filter: brightness(0.9);
   }
 }
 
 @keyframes screen-to-behind {
   to {
-    opacity: 0;
-    translate: -30% 0;
+    translate: -25% 0;
+    filter: brightness(0.9);
   }
 }
 

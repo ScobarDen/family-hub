@@ -14,6 +14,7 @@ import {
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
 import type { DeviceCache } from "@/common/device-cache";
+import { reatomFormBack } from "@/common/form";
 import { formatCount } from "@/common/format-count";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
@@ -83,7 +84,6 @@ export type RecipesScreen =
       empty: string | undefined;
     }
   | { kind: "recipe"; recipe: RecipeDetails; checked: number[] }
-  | { kind: "form"; isCreating: boolean; tags: RecipeTag[] }
   | { kind: "tags"; tags: RecipeTag[] };
 
 type RecipesDependencies = LiveVersion & {
@@ -138,25 +138,20 @@ function reatomScreen({
   data,
   navigation,
   opened,
-  form,
   today,
   timeZone,
 }: {
   data: RecipesData;
   navigation: Navigation;
   opened: Opened;
-  form: { isCreating: () => boolean };
   today: () => string;
   timeZone: () => string;
 }) {
   return computed((): RecipesScreen => {
     const tags = data.tags.data() ?? [];
-    const editing = navigation.editing();
 
-    if (editing !== undefined) {
-      return editing === "tags"
-        ? { kind: "tags", tags }
-        : { kind: "form", isCreating: form.isCreating(), tags };
+    if (navigation.editing() === "tags") {
+      return { kind: "tags", tags };
     }
 
     const recipe = opened.data();
@@ -330,27 +325,47 @@ function reatomMoves({
     openTags: action(() => {
       navigation.editing.set("tags");
     }, "recipes.openTags"),
-    back: action(() => {
+  };
+}
+
+function reatomBack(navigation: Navigation, telegram: RecipesDependencies["telegram"]) {
+  return reatomFormBack({
+    name: "recipes.back",
+    telegram,
+    isFormOpen: () => navigation.editing() === "recipe",
+    back: () => {
       if (navigation.editing() === undefined) {
         navigation.openedId.set(undefined);
       } else {
         navigation.editing.set(undefined);
       }
-    }, "recipes.back"),
-  };
+    },
+  });
 }
 
 // Which screen is shown, apart from the data it shows, so a renamed Recipe keeps focus where it is.
-function reatomScreenKey(navigation: Navigation, form: { isCreating: () => boolean }) {
+function reatomScreenKey(navigation: Navigation) {
   return computed(() => {
     const editing = navigation.editing();
 
-    if (editing === "recipe") {
-      return form.isCreating() ? "new" : "edit";
-    }
-
-    return editing ?? navigation.openedId() ?? "list";
+    return editing === "tags" ? editing : (navigation.openedId() ?? "list");
   }, "recipes.screenKey");
+}
+
+// The Recipe form opens over the screen it came from, which stays shown under it.
+function reatomFormState(
+  { navigation, data }: { navigation: Navigation; data: RecipesData },
+  form: { isCreating: () => boolean },
+) {
+  return {
+    canGoBack: computed(
+      () => navigation.editing() !== undefined || navigation.openedId() !== undefined,
+      "recipes.canGoBack",
+    ),
+    isFormOpen: computed(() => navigation.editing() === "recipe", "recipes.isFormOpen"),
+    formTitle: computed(() => (form.isCreating() ? "Новый рецепт" : "Рецепт"), "recipes.formTitle"),
+    formTags: computed(() => data.tags.data() ?? [], "recipes.formTags"),
+  };
 }
 
 export function reatomRecipesScreen(dependencies: RecipesDependencies) {
@@ -371,18 +386,17 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
       data.reload();
     },
   });
-  const screen = reatomScreen({ ...dependencies, data, navigation, opened, form });
+  const screen = reatomScreen({ ...dependencies, data, navigation, opened });
   const failure = reatomRollbackFailure("recipes.failure", dependencies.telegram.haptics);
-  const screenKey = reatomScreenKey(navigation, form);
 
   return {
     screen,
     form,
     photoHint: readOnly(dependencies.photoHint),
     title: computed(() => titleOf(screen()), "recipes.title"),
-    screenKey,
+    screenKey: reatomScreenKey(navigation),
     retry: data.reload,
-    canGoBack: computed(() => screenKey() !== "list", "recipes.canGoBack"),
+    ...reatomFormState({ navigation, data }, form),
     viewer: reatomPhotoViewer({ ...dependencies, onDeleted: data.reload, failure }),
     ...reatomFilters(data, dependencies.telegram.haptics),
     failure: failure.failure,
@@ -391,16 +405,13 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     ...reatomTagEditing(dependencies, { data, failure }),
     ...reatomRecipeCooks(dependencies, { data, opened, failure }),
     ...reatomMoves({ navigation, opened, form, slide: dependencies.slide ?? instantly }),
+    back: reatomBack(navigation, dependencies.telegram),
   };
 }
 
 function titleOf(screen: RecipesScreen): string {
   if (screen.kind === "recipe") {
     return screen.recipe.title;
-  }
-
-  if (screen.kind === "form") {
-    return screen.isCreating ? "Новый рецепт" : "Рецепт";
   }
 
   return screen.kind === "tags" ? "Теги" : "Рецепты";

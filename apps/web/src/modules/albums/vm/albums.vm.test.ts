@@ -240,6 +240,23 @@ describe("opening an Album", () => {
 
     expect(started.slides).toEqual(["forward"]);
   });
+  test("keeps it under its form, and Back closes only the form", async () => {
+    const started = startAlbums({ albums: [albumOf("album-1")] });
+    const { model } = started;
+
+    await openAlbum(started, "album-1");
+    model.edit();
+
+    expect([model.screen().kind, model.isFormOpen(), model.formTitle()]).toEqual([
+      "album",
+      true,
+      "Альбом",
+    ]);
+
+    model.back();
+
+    expect([model.screen().kind, model.isFormOpen()]).toEqual(["album", false]);
+  });
 });
 
 describe("deleting an Album", () => {

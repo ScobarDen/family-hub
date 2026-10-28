@@ -18,7 +18,9 @@ export type HomeScreen = {
 
 export type Fullscreen = { requestFullscreen: () => void; exitFullscreen: () => void };
 
+// Enabled while a form on screen holds unsaved input, which closing the form would lose too.
 export type ClosingConfirmation = {
+  isClosingConfirmationEnabled: () => boolean;
   enableClosingConfirmation: () => void;
   disableClosingConfirmation: () => void;
 };

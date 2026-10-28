@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
 import {
   FailureBar,
+  FormDrawer,
   LoadState,
   Revealed,
   SkeletonPhotoGrid,
@@ -49,10 +50,6 @@ function contentOf(model: AlbumsScreenModel, screen: AlbumsScreen): ReactNode {
     );
   }
 
-  if (screen.kind === "form") {
-    return <AlbumForm model={model.form} onCancel={model.back} />;
-  }
-
   if (screen.kind === "loading") {
     return (
       <SkeletonSectionLayout tabs={1}>
@@ -71,6 +68,9 @@ export const Albums = reatomComponent(({ model }: AlbumsProps) => {
   return (
     <>
       <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(model, screen)}</Revealed>
+      <FormDrawer open={model.isFormOpen()} title={model.formTitle()} onClose={model.back}>
+        <AlbumForm model={model.form} onCancel={model.back} />
+      </FormDrawer>
       <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
     </>
   );

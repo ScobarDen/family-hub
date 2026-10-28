@@ -226,7 +226,6 @@ const pet = reatomPetTab({
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
-  slide: slideScreens,
 });
 const commandSheet = reatomCommandSheet({
   api: commandApi,
@@ -282,6 +281,11 @@ const todayHub = reatomToday({
     navigation.openModule("feed");
   },
 });
+const invites = reatomInvites({
+  api: createInvitesApi(httpClient),
+  telegram,
+  viewer,
+});
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,
   slots: tabBarModules.modules,
@@ -297,6 +301,7 @@ const navigation = reatomNavigation({
     goals,
     albums,
     recipes,
+    profile: invites,
   },
 });
 const opener = reatomOpener({
@@ -376,11 +381,7 @@ const home = {
     },
     onLeft: session.signIn,
   }),
-  invites: reatomInvites({
-    api: createInvitesApi(httpClient),
-    telegram,
-    viewer,
-  }),
+  invites,
   pet,
   tasks,
   photoStorage,

@@ -1,11 +1,11 @@
-import { action, computed, withAsync, withAsyncData, wrap } from "@reatom/core";
+import { action, atom, computed, withAsync, withAsyncData, wrap } from "@reatom/core";
 
 import type { Invite, InviteCreated } from "@family-hub/contract";
 
 import { formatDayTime, type Viewer } from "@/common/format-date";
 import { withoutId } from "@/common/records";
 import { detached, reatomFailure } from "@/common/state";
-import { type Dialogs, type Haptics, isConfirmed } from "@/common/telegram";
+import type { Haptics } from "@/common/telegram";
 
 import type { InvitesApi } from "../invites.api.ts";
 
@@ -17,7 +17,6 @@ type InvitesDependencies = {
     canShareMessage: boolean;
     shareMessage: (preparedMessageId: string) => Promise<boolean>;
     openTelegramLink: (url: string) => void;
-    showPopup: Dialogs["showPopup"];
     haptics: Pick<Haptics, "error" | "warning">;
   };
   viewer: () => Viewer;
@@ -64,20 +63,8 @@ function reatomCreate({ api, telegram, list }: Sources) {
   }, "invites.create").extend(withAsync());
 }
 
-function reatomRevoke({ api, telegram, list }: Sources) {
+function reatomRevoke({ api, list }: Sources) {
   return action(async (inviteId: string) => {
-    const isSure = await wrap(
-      isConfirmed(telegram, {
-        title: "Отозвать приглашение?",
-        message: "Ссылка перестанет работать. Чтобы позвать снова, понадобится новое приглашение.",
-        button: "Отозвать",
-      }),
-    );
-
-    if (!isSure) {
-      return;
-    }
-
     const revoked = list.data()?.find((invite) => invite.id === inviteId);
 
     list.data.set(withoutId(list.data() ?? [], inviteId));
@@ -123,7 +110,44 @@ export function reatomInvites(dependencies: InvitesDependencies) {
     failure: computed(() => createFailure() ?? revokeFailure(), "invites.failure"),
 
     invite: detached(create, "invites.invite"),
-    revoke: detached(revoke, "invites.revokeOne"),
+    ...reatomRevokeConfirmation(dependencies, detached(revoke, "invites.revokeOne")),
+  };
+}
+
+// The sent link stops working for good, so «Отозвать» asks first.
+function reatomRevokeConfirmation(
+  { telegram }: InvitesDependencies,
+  revoke: (inviteId: string) => void,
+) {
+  const confirming = atom<string | undefined>(undefined, "invites.confirmingRevoke");
+  const isConfirmingRevoke = computed(
+    () => confirming() !== undefined,
+    "invites.isConfirmingRevoke",
+  );
+  const cancelRevoke = action(() => {
+    confirming.set(undefined);
+  }, "invites.cancelRevoke");
+
+  return {
+    isConfirmingRevoke,
+    // Telegram Back on the Profile closes the drawer first, so leaving it leaves no stale question.
+    canGoBack: isConfirmingRevoke,
+    isFormOpen: isConfirmingRevoke,
+    back: cancelRevoke,
+    revoke: action((inviteId: string) => {
+      telegram.haptics.warning();
+      confirming.set(inviteId);
+    }, "invites.askRevoke"),
+    cancelRevoke,
+    confirmRevoke: action(() => {
+      const inviteId = confirming();
+
+      confirming.set(undefined);
+
+      if (inviteId !== undefined) {
+        revoke(inviteId);
+      }
+    }, "invites.confirmRevoke"),
   };
 }
 

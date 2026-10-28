@@ -119,6 +119,7 @@ describe("the tab stacks", () => {
       nestedBack: {
         goals: {
           canGoBack: () => isFormOpen,
+          isFormOpen: () => isFormOpen,
           back: () => {
             isFormOpen = false;
           },
@@ -135,12 +136,41 @@ describe("the tab stacks", () => {
 
     expect(navigation.screen()).toEqual({ kind: "today" });
   });
+
+  test("close the Profile's drawer before leaving the Profile", () => {
+    const button = { isAvailable: true, follow: () => noop };
+    let isDrawerOpen = true;
+    const navigation = reatomNavigation({
+      base: "/family-hub/",
+      slots: () => ["tasks", "recipes"],
+      isSignedIn: () => true,
+      telegram: { backButton: button, settingsButton: button },
+      nestedBack: {
+        profile: {
+          canGoBack: () => isDrawerOpen,
+          isFormOpen: () => isDrawerOpen,
+          back: () => {
+            isDrawerOpen = false;
+          },
+        },
+      },
+    });
+
+    navigation.openProfile();
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "profile" });
+
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "today" });
+  });
 });
 
 function startSliding() {
   const button = { isAvailable: true, follow: () => noop };
   const slides: string[] = [];
-  let isFormOpen = false;
+  let nested: "none" | "form" | "record" = "none";
   const navigation = reatomNavigation({
     base: "/family-hub/",
     slots: () => ["tasks", "recipes"],
@@ -148,9 +178,10 @@ function startSliding() {
     telegram: { backButton: button, settingsButton: button },
     nestedBack: {
       goals: {
-        canGoBack: () => isFormOpen,
+        canGoBack: () => nested !== "none",
+        isFormOpen: () => nested === "form",
         back: () => {
-          isFormOpen = false;
+          nested = "none";
         },
       },
     },
@@ -166,7 +197,10 @@ function startSliding() {
     navigation,
     slides,
     openForm: () => {
-      isFormOpen = true;
+      nested = "form";
+    },
+    openRecord: () => {
+      nested = "record";
     },
   };
 }
@@ -182,22 +216,51 @@ describe("screen transitions", () => {
     expect(navigation.screen()).toEqual({ kind: "today" });
   });
 
-  test("slide Back inside a module too", () => {
+  test("close a form over a module without sliding the screen under it", () => {
     const { navigation, slides, openForm } = startSliding();
 
     navigation.openModule("goals");
     openForm();
     navigation.back();
 
+    expect(slides).toEqual(["forward"]);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+    expect(navigation.canGoBack()).toBe(true);
+  });
+
+  test("slide Back from a record to its module's list", () => {
+    const { navigation, slides, openRecord } = startSliding();
+
+    navigation.openModule("goals");
+    openRecord();
+    navigation.back();
+
     expect(slides).toEqual(["forward", "back"]);
     expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
   });
 
-  test("swap tabs and launch links at once", () => {
+  test("slide forward to a slot's own tab when its section is opened from elsewhere", () => {
+    const { navigation, slides } = startSliding();
+
+    navigation.openModule("tasks");
+
+    expect(slides).toEqual(["forward"]);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "tasks" });
+  });
+
+  test("slide a tab switch forward unless the tab's root is already on screen", () => {
     const { navigation, slides } = startSliding();
 
     navigation.openTab("recipes");
-    navigation.openModule("tasks");
+    navigation.openTab("recipes");
+
+    expect(slides).toEqual(["forward"]);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "recipes" });
+  });
+
+  test("swap a launch link at once", () => {
+    const { navigation, slides } = startSliding();
+
     navigation.launch({ module: "goals" });
 
     expect(slides).toEqual([]);

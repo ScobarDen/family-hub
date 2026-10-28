@@ -16,17 +16,17 @@ export type Screen =
   | { kind: "profile" }
   | { kind: "module"; module: AppModule; petId?: string };
 
-type NestedBack = { canGoBack: () => boolean; back: () => void };
+type NestedBack = { canGoBack: () => boolean; isFormOpen: () => boolean; back: () => void };
 
 type NavigationDependencies = {
   base: string;
   slots: () => SlotModule[];
   isSignedIn: () => boolean;
   telegram: Pick<Telegram, "backButton" | "settingsButton">;
-  // Screens inside a module (a form, a Task's card) step back before the app does.
-  nestedBack?: Partial<Record<AppModule, NestedBack>>;
+  // Screens inside a module or the Profile (a form, a Task's card) step back before the app does.
+  nestedBack?: Partial<Record<AppModule | "profile", NestedBack>>;
   onTodayShown?: () => void;
-  // A pushed screen and Back slide; a tab switch and a launch swap at once.
+  // A pushed screen, a tab switch and Back slide; a launch swaps at once.
   slide?: Slide;
 };
 
@@ -168,11 +168,7 @@ function reatomStack(
         });
       }
     }, "navigation.push"),
-    openTab: action((next: TabId) => {
-      tab.set(next);
-      trail.set([]);
-      go(rootOf(next));
-    }, "navigation.openTab"),
+    openTab: reatomOpenTab(go, { tab, trail, screen, slide }),
     // A launch link opens on top of the hub, whatever the slots are.
     launch: action((place: Place | undefined) => {
       tab.set("today");
@@ -181,6 +177,32 @@ function reatomStack(
     }, "navigation.launch"),
     pop: reatomPop(go, { trail, activeTab, slide }),
   };
+}
+
+function reatomOpenTab(
+  go: (screen: Screen) => void,
+  {
+    tab,
+    trail,
+    screen,
+    slide,
+  }: { tab: Atom<TabId | undefined>; trail: Atom<Screen[]>; screen: () => Screen; slide: Slide },
+) {
+  return action((next: TabId) => {
+    const root = rootOf(next);
+
+    function open() {
+      tab.set(next);
+      trail.set([]);
+      go(root);
+    }
+
+    if (isSameScreen(screen(), root)) {
+      open();
+    } else {
+      slide("forward", open);
+    }
+  }, "navigation.openTab");
 }
 
 function reatomPop(
@@ -251,11 +273,22 @@ function reatomShown(screen: () => Screen) {
   };
 }
 
+function nestedOf(
+  screen: Screen,
+  nestedBack: NavigationDependencies["nestedBack"],
+): NestedBack | undefined {
+  if (screen.kind === "module") {
+    return nestedBack?.[screen.module];
+  }
+
+  return screen.kind === "profile" ? nestedBack?.profile : undefined;
+}
+
 function nestedBackOf(
   screen: Screen,
   nestedBack: NavigationDependencies["nestedBack"],
 ): NestedBack | undefined {
-  const nested = screen.kind === "module" ? nestedBack?.[screen.module] : undefined;
+  const nested = nestedOf(screen, nestedBack);
 
   return nested?.canGoBack() === true ? nested : undefined;
 }
@@ -277,6 +310,9 @@ function reatomBack(
 
     if (nested === undefined) {
       stack.pop();
+    } else if (nested.isFormOpen()) {
+      // The form slides down over a screen that stays put, as a swipe or «Отмена» closes it.
+      nested.back();
     } else {
       slide("back", nested.back);
     }

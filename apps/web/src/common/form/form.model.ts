@@ -14,7 +14,13 @@ import {
 
 import type { CommandPhrase } from "@family-hub/contract";
 
-import type { ClosingConfirmation, Haptics } from "@/common/telegram";
+import { detached } from "@/common/state";
+import {
+  isConfirmed,
+  type ClosingConfirmation,
+  type Dialogs,
+  type Haptics,
+} from "@/common/telegram";
 
 type Fillable<Values> = {
   init: (values: Values) => void;
@@ -183,6 +189,42 @@ function confirmingClosing(
       telegram.disableClosingConfirmation();
     };
   };
+}
+
+type Discarding = Pick<ClosingConfirmation, "isClosingConfirmationEnabled"> &
+  Pick<Dialogs, "showPopup"> & { haptics: Pick<Haptics, "warning"> };
+
+// A swipe, the overlay, Escape, «Отмена» and Telegram Back all close a form through its module's
+// back, so closing one that holds unsaved input asks there once for all of them.
+export function reatomFormBack({
+  name,
+  telegram,
+  isFormOpen,
+  back,
+}: {
+  name: string;
+  telegram: Discarding;
+  isFormOpen: () => boolean;
+  back: () => void;
+}) {
+  return detached(async () => {
+    const isUnsaved = isFormOpen() && telegram.isClosingConfirmationEnabled();
+
+    if (
+      isUnsaved &&
+      !(await wrap(
+        isConfirmed(telegram, {
+          title: "Отменить изменения?",
+          message: "Введённое в форме не сохранится.",
+          button: "Не сохранять",
+        }),
+      ))
+    ) {
+      return;
+    }
+
+    back();
+  }, name);
 }
 
 export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(

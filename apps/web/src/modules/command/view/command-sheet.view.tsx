@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { LoaderCircle, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { Button, FieldError, LiveRegion, ModalDialog } from "@/common/ui";
+import { Button, Drawer, DrawerContent, DrawerTitle, FieldError, LiveRegion } from "@/common/ui";
 
 import type { CommandSheet as SheetState, CommandSheetModel } from "../vm/command-sheet.vm.ts";
 import { DraftPreviewBlock } from "./draft-preview.view.tsx";
@@ -58,18 +58,9 @@ export const CommandSheet = reatomComponent(({ model }: CommandSheetProps) => {
   }
 
   return (
-    <ModalDialog
-      isOpen={isOpen}
-      onClose={model.close}
-      aria-label="Команда"
-      inert={!isOpen}
-      data-open={isOpen || undefined}
-      className="items-end bg-black/40 transition-[opacity,display,overlay] transition-discrete duration-150 ease-out not-data-open:opacity-0 data-open:flex data-open:duration-300 starting:opacity-0"
-    >
-      <div
-        data-open={isOpen || undefined}
-        className="relative mx-auto flex w-full max-w-lg flex-col gap-4 rounded-t-2xl bg-background p-4 pr-12 pb-[calc(var(--safe-area-bottom)+1rem)] transition-[translate] duration-150 ease-out data-open:duration-300 motion-safe:not-data-open:translate-y-3 motion-safe:starting:translate-y-full"
-      >
+    <Drawer open={isOpen} onClose={model.close}>
+      <DrawerContent keepMounted>
+        <DrawerTitle className="sr-only">Команда</DrawerTitle>
         <Button
           variant="ghost"
           size="icon"
@@ -79,8 +70,10 @@ export const CommandSheet = reatomComponent(({ model }: CommandSheetProps) => {
         >
           <X className="size-5" />
         </Button>
-        <LiveRegion className="flex flex-col gap-4">{contentOf(model, shown)}</LiveRegion>
-      </div>
-    </ModalDialog>
+        <LiveRegion className="flex flex-col gap-4 px-4 pt-2 pr-12 pb-4">
+          {contentOf(model, shown)}
+        </LiveRegion>
+      </DrawerContent>
+    </Drawer>
   );
 }, "CommandSheet");

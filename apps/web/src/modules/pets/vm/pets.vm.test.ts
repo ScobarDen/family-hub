@@ -207,7 +207,7 @@ async function loaded(model: Model) {
 
 async function saved(model: Model) {
   await vi.waitFor(() => {
-    expect(model.screen().kind).toBe("card");
+    expect([model.screen().kind, model.openForm()]).toEqual(["card", undefined]);
   });
 }
 
@@ -414,7 +414,7 @@ describe("adding a Pet", () => {
     await vi.waitFor(() => {
       expect(model.profileForm.failure()).toBe("Не получилось сохранить. Попробуйте ещё раз.");
     });
-    expect(model.screen().kind).toBe("profile-form");
+    expect([model.screen().kind, model.openForm()]).toEqual(["empty", "profile"]);
   });
 });
 
@@ -496,7 +496,7 @@ describe("the Pet Memo", () => {
 
     model.back();
 
-    expect(model.screen().kind).toBe("card");
+    expect([model.screen().kind, model.openForm()]).toEqual(["card", undefined]);
     expect(backend.requests).toHaveLength(1);
   });
 });

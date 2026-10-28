@@ -143,6 +143,9 @@ export function fakeWindow({
     },
     requestFullscreen: record("requestFullscreen"),
     exitFullscreen: record("exitFullscreen"),
+    isClosingConfirmationEnabled: () =>
+      calls.findLast((call) => call.endsWith("ClosingConfirmation")) ===
+      "enableClosingConfirmation",
     enableClosingConfirmation: record("enableClosingConfirmation"),
     disableClosingConfirmation: record("disableClosingConfirmation"),
   };

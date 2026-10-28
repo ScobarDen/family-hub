@@ -257,6 +257,22 @@ describe("opening a Recipe", () => {
 
     expect(slides).toEqual(["forward"]);
   });
+  test("keeps it under its form, and Back closes only the form", async () => {
+    const { model } = startRecipes();
+
+    await openLasagna(model);
+    model.edit();
+
+    expect([model.screen().kind, model.isFormOpen(), model.formTitle()]).toEqual([
+      "recipe",
+      true,
+      "Рецепт",
+    ]);
+
+    model.back();
+
+    expect([model.screen().kind, model.isFormOpen()]).toEqual(["recipe", false]);
+  });
 });
 
 describe("sharing a Recipe", () => {

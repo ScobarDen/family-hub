@@ -39,18 +39,17 @@ export function reatomPetTab({ careApi, ...dependencies }: PetTabDependencies) {
     pets,
     care,
     title: computed(() => care.title() ?? pets.title(), "petTab.title"),
-    screenKey: computed(() => {
-      const screen = care.screen();
-      const careKey = screen.kind === "form" && !screen.isCreating ? "edit" : screen.kind;
-
-      return `${pets.screenKey()}:${careKey}`;
-    }, "petTab.screenKey"),
+    screenKey: computed(() => `${pets.screenKey()}:${care.screen().kind}`, "petTab.screenKey"),
     nextVisit: computed(() => {
       const screen = pets.screen();
 
       return screen.kind === "card" ? screen.card.nextVisit : undefined;
     }, "petTab.nextVisit"),
     canGoBack: computed(() => care.canGoBack() || pets.canGoBack(), "petTab.canGoBack"),
+    isFormOpen: computed(
+      () => (care.canGoBack() ? care.isFormOpen() : pets.isFormOpen()),
+      "petTab.isFormOpen",
+    ),
     back: action(() => {
       if (care.canGoBack()) {
         care.back();

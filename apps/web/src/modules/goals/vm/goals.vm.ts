@@ -19,11 +19,13 @@ import type {
 } from "@family-hub/contract";
 
 import type { DeviceCache } from "@/common/device-cache";
+import { reatomFormBack } from "@/common/form";
 import { formatRubles } from "@/common/format-money";
 import type { LiveVersion } from "@/common/live-updates";
 import {
   detached,
   instantly,
+  readOnly,
   reatomOptimistic,
   reatomRollbackFailure,
   type RollbackFailure,
@@ -53,9 +55,9 @@ export type GoalsScreen =
   | { kind: "loading" }
   | { kind: "failed" }
   | ({ kind: "list"; total: string } & GoalSections)
-  | { kind: "goal"; goal: GoalDetails; isCelebrating: boolean }
-  | { kind: "goal-form"; isCreating: boolean }
-  | { kind: "movement-form"; isCreating: boolean; isWithdrawal: boolean };
+  | { kind: "goal"; goal: GoalDetails; isCelebrating: boolean };
+
+type GoalFormKind = "goal" | "movement";
 
 type GoalsDependencies = {
   api: GoalsApi;
@@ -68,7 +70,7 @@ type GoalsDependencies = {
 };
 
 type Navigation = {
-  editing: Atom<"goal" | "movement" | undefined>;
+  editing: Atom<GoalFormKind | undefined>;
   openedGoalId: Atom<string | undefined>;
   isCelebrating: BooleanAtom;
 };
@@ -138,23 +140,9 @@ type Forms = ReturnType<typeof reatomForms>;
 function reatomScreen(
   dependencies: GoalsDependencies,
   navigation: Navigation,
-  { openedGoal, goalForm, movementForm }: Forms & { openedGoal: () => Goal | undefined },
+  openedGoal: () => Goal | undefined,
 ) {
   return computed((): GoalsScreen => {
-    const current = navigation.editing();
-
-    if (current === "goal") {
-      return { kind: "goal-form", isCreating: goalForm.isCreating() };
-    }
-
-    if (current === "movement") {
-      return {
-        kind: "movement-form",
-        isCreating: movementForm.isCreating(),
-        isWithdrawal: movementForm.form.fields.kind() === "withdrawal",
-      };
-    }
-
     const list = dependencies.goals.list.data();
     const goal = openedGoal();
 
@@ -215,7 +203,10 @@ function reatomRemoval(
   );
 }
 
-function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation, slide: Slide) {
+function reatomBrowsing(
+  { editing, openedGoalId, isCelebrating }: Navigation,
+  { slide, telegram }: { slide: Slide; telegram: GoalsDependencies["telegram"] },
+) {
   return {
     open: action((goalId: string) => {
       slide("forward", () => {
@@ -223,15 +214,20 @@ function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation, sl
         isCelebrating.setFalse();
       });
     }, "goals.open"),
-    back: action(() => {
-      if (editing() === undefined) {
-        openedGoalId.set(undefined);
-      } else {
-        editing.set(undefined);
-      }
+    back: reatomFormBack({
+      name: "goals.back",
+      telegram,
+      isFormOpen: () => editing() !== undefined,
+      back: () => {
+        if (editing() === undefined) {
+          openedGoalId.set(undefined);
+        } else {
+          editing.set(undefined);
+        }
 
-      isCelebrating.setFalse();
-    }, "goals.back"),
+        isCelebrating.setFalse();
+      },
+    }),
   };
 }
 
@@ -272,31 +268,27 @@ function reatomEditing(
 }
 
 function titleOf(screen: GoalsScreen): string {
-  if (screen.kind === "goal") {
-    return screen.goal.title;
-  }
+  return screen.kind === "goal" ? screen.goal.title : "Цели";
+}
 
-  if (screen.kind === "goal-form") {
-    return screen.isCreating ? "Новая цель" : "Цель";
-  }
-
-  if (screen.kind === "movement-form") {
-    return screen.isWithdrawal ? "Снятие" : "Пополнение";
-  }
-
-  return "Цели";
+// A form opens over the screen it came from, which stays shown under it.
+function reatomOpenForm({ editing }: Navigation, { goalForm, movementForm }: Forms) {
+  return {
+    openForm: readOnly(editing),
+    isFormOpen: computed(() => editing() !== undefined, "goals.isFormOpen"),
+    formTitles: computed(
+      (): Record<GoalFormKind, string> => ({
+        goal: goalForm.isCreating() ? "Новая цель" : "Цель",
+        movement: movementForm.form.fields.kind() === "withdrawal" ? "Снятие" : "Пополнение",
+      }),
+      "goals.formTitles",
+    ),
+  };
 }
 
 // Which screen is shown, apart from the data it shows, so a renamed Goal keeps focus where it is.
-function reatomScreenKey({ editing, openedGoalId }: Navigation, { goalForm, movementForm }: Forms) {
-  return computed(() => {
-    const current = editing();
-    const isCreating = current === "goal" ? goalForm.isCreating() : movementForm.isCreating();
-
-    return current === undefined
-      ? (openedGoalId() ?? "list")
-      : `${current}:${isCreating ? "new" : "edit"}`;
-  }, "goals.screenKey");
+function reatomScreenKey({ openedGoalId }: Navigation) {
+  return computed(() => openedGoalId() ?? "list", "goals.screenKey");
 }
 
 type GoalsInput = Omit<GoalsDependencies, "goals"> &
@@ -319,7 +311,7 @@ function reatomOpenedGoalState({ goals }: GoalsDependencies, openedGoal: () => G
 export function reatomGoalsScreen(input: GoalsInput) {
   const dependencies: GoalsDependencies = { ...input, goals: reatomGoals(input) };
   const navigation: Navigation = {
-    editing: atom<"goal" | "movement" | undefined>(undefined, "goals.editing"),
+    editing: atom<GoalFormKind | undefined>(undefined, "goals.editing"),
     openedGoalId: atom<string | undefined>(undefined, "goals.openedGoalId"),
     isCelebrating: reatomBoolean(false, "goals.isCelebrating"),
   };
@@ -329,14 +321,15 @@ export function reatomGoalsScreen(input: GoalsInput) {
   );
   const failure = reatomRollbackFailure("goals.failure", dependencies.telegram.haptics);
   const forms = reatomForms(dependencies, navigation, failure);
-  const screen = reatomScreen(dependencies, navigation, { ...forms, openedGoal });
+  const screen = reatomScreen(dependencies, navigation, openedGoal);
   const complete = reatomCompletion(dependencies, openedGoal);
   const removeMovement = reatomRemoval(dependencies, { openedGoal, failure });
 
   return {
     screen,
     title: computed(() => titleOf(screen()), "goals.title"),
-    screenKey: reatomScreenKey(navigation, forms),
+    screenKey: reatomScreenKey(navigation),
+    ...reatomOpenForm(navigation, forms),
     retry: dependencies.goals.reload,
     canGoBack: computed(
       () => navigation.editing() !== undefined || openedGoal() !== undefined,
@@ -349,7 +342,10 @@ export function reatomGoalsScreen(input: GoalsInput) {
     complete: detached(complete, "goals.completeGoal"),
     removeMovement: detached(removeMovement, "goals.removeOneMovement"),
     ...forms,
-    ...reatomBrowsing(navigation, dependencies.slide ?? instantly),
+    ...reatomBrowsing(navigation, {
+      slide: dependencies.slide ?? instantly,
+      telegram: dependencies.telegram,
+    }),
     ...reatomEditing(navigation, { ...forms, openedGoal }),
   };
 }

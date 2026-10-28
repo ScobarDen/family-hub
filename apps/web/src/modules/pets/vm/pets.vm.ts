@@ -2,11 +2,15 @@ import { action, atom, computed, reatomBoolean } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
+import { reatomFormBack } from "@/common/form";
+import { readOnly } from "@/common/state";
+
 import { reatomPetArchive } from "./pet-archive.vm.ts";
 import { reatomPetAvatar } from "./pet-avatar.vm.ts";
 import { reatomPetMemoForm } from "./pet-memo-form.vm.ts";
 import { reatomPetProfileForm } from "./pet-profile-form.vm.ts";
 import {
+  reatomFormTitles,
   reatomScreen,
   titleOf,
   type Editing,
@@ -94,7 +98,7 @@ function reatomEditing(
 // Stepping back from a Pet's card is the app's: its address is on the tab's stack. The card
 // already shown, like the only Pet's, gets no second place on it.
 function reatomBrowsing(
-  { route }: PetsDependencies,
+  { route, telegram }: PetsDependencies,
   { editing, isListShown }: Navigation,
   openedPet: () => Pet | undefined,
 ) {
@@ -119,13 +123,19 @@ function reatomBrowsing(
       }
     }, "pets.showChoice"),
     canGoBack: computed(() => editing() !== undefined || isListShown(), "pets.canGoBack"),
-    back: action(() => {
-      if (editing() === undefined) {
-        isListShown.setFalse();
-      } else {
-        editing.set(undefined);
-      }
-    }, "pets.back"),
+    isFormOpen: computed(() => editing() !== undefined, "pets.isFormOpen"),
+    back: reatomFormBack({
+      name: "pets.back",
+      telegram,
+      isFormOpen: () => editing() !== undefined,
+      back: () => {
+        if (editing() === undefined) {
+          isListShown.setFalse();
+        } else {
+          editing.set(undefined);
+        }
+      },
+    }),
   };
 }
 
@@ -141,21 +151,8 @@ function reatomLinks(dependencies: PetsDependencies) {
 }
 
 // Which screen is shown, apart from the data it shows, so a renamed Pet keeps focus where it is.
-function reatomScreenKey(
-  { route }: PetsDependencies,
-  { editing }: Navigation,
-  { openedPet, isCreating }: { openedPet: () => Pet | undefined; isCreating: () => boolean },
-) {
-  return computed(() => {
-    const current = editing();
-    const pet = route.petId() ?? openedPet()?.id ?? "list";
-
-    if (current === "profile") {
-      return isCreating() ? "new" : `${pet}:profile`;
-    }
-
-    return current === undefined ? pet : `${pet}:${current}`;
-  }, "pets.screenKey");
+function reatomScreenKey({ route }: PetsDependencies, openedPet: () => Pet | undefined) {
+  return computed(() => route.petId() ?? openedPet()?.id ?? "list", "pets.screenKey");
 }
 
 export function reatomPetsScreen(dependencies: PetsDependencies) {
@@ -177,13 +174,15 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
       }
     },
   });
-  const shown = { openedPet, isCreating: forms.profileForm.isCreating };
-  const screen = reatomScreen(dependencies, navigation, shown);
+  const screen = reatomScreen(dependencies, openedPet);
 
   return {
     screen,
     title: computed(() => titleOf(screen()), "pets.title"),
-    screenKey: reatomScreenKey(dependencies, navigation, shown),
+    screenKey: reatomScreenKey(dependencies, openedPet),
+    // A form opens over the screen it came from, which stays shown under it.
+    openForm: readOnly(navigation.editing),
+    formTitles: reatomFormTitles(forms.profileForm.isCreating),
     retry: dependencies.pets.reload,
     openedPetId: computed(() => openedPet()?.id, "pets.openedPetId"),
     isOpenedPetArchived: computed(
