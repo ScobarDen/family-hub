@@ -85,6 +85,15 @@ On iOS and Android at 320px wide, in the light and the dark theme.
 - [ ] Every tab shows its title under the icon; «Сегодня» and «Разделы» fit whole beside the microphone, and the screen reader reads each tab by that title, the open one as current.
 - [ ] With the screen in greyscale (Accessibility → Colour filters), the open tab still stands out by the pill behind its icon and its bolder title.
 
+### Narrow screens
+
+On iOS and Android at 320px wide, with a Pet, an Album and a Recipe tag each named with 40 characters (one of them a single word with no spaces).
+
+- [ ] The Task form (with a Pet and an Album to choose), the Recipes filters, the Recipe tag picker and the Contribution form never scroll sideways; a long chip wraps onto two or more lines inside the screen and is no lower than the short chips beside it.
+- [ ] «Кому напомнить» offers «Исполнителям», «Всем», «Выбрать» with the hint «Если исполнителей нет, напомню вам» under them, read by the screen reader with the group.
+- [ ] On Tasks, «Список · Календарь» and «Все · Мои» stay whole on screen; «Все · Мои» moves to a second row on the right when they do not fit on one.
+- [ ] A Pet's card with month spending of «12 345 ₽» shows the figures in two columns, never splitting a number across lines; at 375px wide they are three columns again.
+
 ### Announcements
 
 With VoiceOver on iOS and TalkBack on Android.

@@ -25,7 +25,7 @@ const scopes = [
 
 const Switches = reatomComponent(
   ({ model }: TasksProps) => (
-    <div className="flex items-center gap-2 px-4 pb-4">
+    <div className="flex flex-wrap items-center gap-2 px-4 pb-4">
       <div role="group" aria-label="Вид" className="flex gap-1">
         {views.map(({ value, title }) => (
           <Chip

@@ -21,7 +21,7 @@ const WeightBlock = reatomComponent(({ model }: { model: CareModel }) => {
         {ranges.map((range) => (
           <Chip
             key={range}
-            className="h-7 px-3 text-[0.8125rem]"
+            className="min-h-7 px-3 py-1 text-[0.8125rem]"
             isSelected={range === weight.range}
             onClick={() => {
               model.chooseWeightRange(range);

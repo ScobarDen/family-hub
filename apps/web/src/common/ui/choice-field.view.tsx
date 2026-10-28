@@ -10,16 +10,17 @@ export type Choice = { value: string; title: string; member?: AvatarMember };
 type ChoiceFieldProps = {
   field: FieldAtom<string, string>;
   label: string;
+  hint?: string;
   choices: Choice[];
   onChoose?: (value: string) => void;
 };
 
 export const ChoiceField = reatomComponent(
-  ({ field, label, choices, onChoose }: ChoiceFieldProps) => {
+  ({ field, label, hint, choices, onChoose }: ChoiceFieldProps) => {
     const selected = field();
 
     return (
-      <ChipGroup label={label} role="radiogroup">
+      <ChipGroup label={label} hint={hint} role="radiogroup">
         {choices.map(({ value, title, member }) => (
           <Chip
             key={value}

@@ -22,7 +22,7 @@ import type { PersonChoice, TaskFormModel } from "../vm/task-form.vm.ts";
 const frequencies: Choice[] = [{ value: "", title: "Не повторять" }, ...repeatChoices];
 
 const recipientModes: Choice[] = [
-  { value: "default", title: "Исполнителям (или мне, если их нет)" },
+  { value: "default", title: "Исполнителям" },
   { value: "everyone", title: "Всем" },
   { value: "members", title: "Выбрать" },
 ];
@@ -94,6 +94,16 @@ const TaskSchedule = reatomComponent(({ model }: { model: TaskFormModel }) => {
       {model.isRecurring() && (
         <PickerField field={fields.until} id="task-until" label="Повторять до" isOptional />
       )}
+      <TaskReminders model={model} />
+    </>
+  );
+}, "TaskSchedule");
+
+const TaskReminders = reatomComponent(({ model }: { model: TaskFormModel }) => {
+  const { fields } = model.form;
+
+  return (
+    <>
       <ChipGroup label="Напомнить">
         {model.offsets().map((choice) => (
           <Chip
@@ -108,7 +118,12 @@ const TaskSchedule = reatomComponent(({ model }: { model: TaskFormModel }) => {
         ))}
       </ChipGroup>
       {model.hasReminders() && (
-        <ChoiceField field={fields.recipients} label="Кому напомнить" choices={recipientModes} />
+        <ChoiceField
+          field={fields.recipients}
+          label="Кому напомнить"
+          hint="Если исполнителей нет, напомню вам"
+          choices={recipientModes}
+        />
       )}
       {model.isPickingRecipients() && (
         <PeopleChips
@@ -119,7 +134,7 @@ const TaskSchedule = reatomComponent(({ model }: { model: TaskFormModel }) => {
       )}
     </>
   );
-}, "TaskSchedule");
+}, "TaskReminders");
 
 const TaskMore = reatomComponent(({ model }: { model: TaskFormModel }) => {
   const { fields } = model.form;
