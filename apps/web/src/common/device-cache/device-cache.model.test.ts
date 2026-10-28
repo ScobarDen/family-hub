@@ -164,6 +164,24 @@ describe("device cache", () => {
     expect(list.data()).toBeUndefined();
   });
 
+  test("tells when the first screen's keys are read", async () => {
+    const device = fakeDeviceStorage();
+
+    await launchLoaded(device);
+    context.reset();
+    const cache = reatomDeviceCache(device.deviceStorage);
+    const list = computed(async () => wrap(new Promise<string[]>(noop)), "test.list").extend(
+      withAsyncData(),
+    );
+
+    list.data.extend(
+      cache.withDeviceCache({ key: "chores", schema: z.array(z.string()), version: 1 }),
+    );
+    await cache.whenRead([list.data]);
+
+    expect(list.data()).toEqual(chores);
+  });
+
   test("ignores a failed write", async () => {
     const device = fakeDeviceStorage({ isWriteFailing: true });
     const { list } = launch(device, { load: async () => Promise.resolve(chores) });

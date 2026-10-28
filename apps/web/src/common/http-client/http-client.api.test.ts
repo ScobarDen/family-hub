@@ -111,3 +111,48 @@ describe("renewing the session token when the app comes back on screen", () => {
     });
   });
 });
+
+function startHeldClient() {
+  const requests: Array<{ path: string; authorization: string | null }> = [];
+  const client = createHttpClient({
+    baseUrl: "https://api.family-hub.test",
+    fetch: async (url, init) => {
+      requests.push({
+        path: url.pathname,
+        authorization: new Headers(init.headers).get("authorization"),
+      });
+
+      return Response.json({});
+    },
+    holdUntilSignedIn: true,
+  });
+
+  return { client, requests };
+}
+
+describe("a request made before sign-in", () => {
+  test("waits for the session token instead of losing the session", async () => {
+    const { client, requests } = startHeldClient();
+    const loaded = client.request("/api/today", { schema: z.unknown() });
+
+    await Promise.resolve();
+    expect(requests).toEqual([]);
+    client.token.set("signed-in");
+    await loaded;
+
+    expect(requests).toEqual([{ path: "/api/today", authorization: "Bearer signed-in" }]);
+    expect(client.isSessionLost()).toBe(false);
+  });
+
+  test("goes at once when it signs in with initData itself", async () => {
+    const { client, requests } = startHeldClient();
+
+    await client.request("/api/session", {
+      method: "POST",
+      schema: z.unknown(),
+      withoutSession: true,
+    });
+
+    expect(requests).toEqual([{ path: "/api/session", authorization: null }]);
+  });
+});

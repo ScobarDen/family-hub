@@ -16,6 +16,7 @@ const settingsButtonVersion = "7.0";
 const hapticsVersion = "6.1";
 const verticalSwipesVersion = "7.7";
 const deviceStorageVersion = "9.0";
+const readyAfterMs = 300;
 
 type PlatformLook = "ios" | "android";
 
@@ -143,6 +144,23 @@ function reatomButton(
   };
 }
 
+// Telegram's own placeholder covers reading the first screen from the device, but not for long.
+function reatomLaunch(webApp: TelegramWebApp) {
+  function ready() {
+    webApp.ready();
+  }
+
+  return action((firstScreen: Promise<unknown>) => {
+    webApp.expand();
+    Promise.race([
+      firstScreen,
+      new Promise((resolve) => {
+        setTimeout(resolve, readyAfterMs);
+      }),
+    ]).then(ready, ready);
+  }, "telegram.launch");
+}
+
 function lookOf(platform: string): PlatformLook {
   return platform === "ios" || platform === "macos" ? "ios" : "android";
 }
@@ -170,10 +188,7 @@ export function reatomTelegram(webApp: TelegramWebApp) {
       version: settingsButtonVersion,
       name: "telegram.settingsButton",
     }),
-    launch: action(() => {
-      webApp.ready();
-      webApp.expand();
-    }, "telegram.launch"),
+    launch: reatomLaunch(webApp),
     ...reatomInteractions(webApp),
     // Colours themselves arrive as --tg-theme-* variables; only Tailwind's dark: variant needs the class.
     followColorScheme: (element: HTMLElement) =>

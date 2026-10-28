@@ -11,17 +11,17 @@ export function createSessionApi(client: HttpClient) {
         client.request("/api/session", {
           method: "POST",
           body: { initData },
+          withoutSession: true,
           schema: sessionResponse,
         }),
       );
 
-      if (session.status === "stranger") {
-        return session;
-      }
-
-      client.token.set(session.token);
-
-      return { status: session.status, member: currentMember.parse(session) };
+      return session.status === "stranger"
+        ? session
+        : { status: session.status, member: currentMember.parse(session), token: session.token };
+    },
+    startSession: (token: string) => {
+      client.token.set(token);
     },
     isSessionLost: client.isSessionLost,
   };

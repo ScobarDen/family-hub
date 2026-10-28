@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Temporal } from "temporal-polyfill";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { deviceTimeZone, today as todayIn } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { openLiveSocket, reatomLiveUpdates } from "@/common/live-updates";
@@ -53,11 +54,14 @@ const httpClient = createHttpClient({
   baseUrl: import.meta.env.VITE_API_URL ?? window.location.origin,
   fetch: async (input, init) => fetch(input, init),
   page: document,
+  holdUntilSignedIn: true,
 });
+const deviceCache = reatomDeviceCache(telegram.deviceStorage);
 const session = reatomSession({
   api: createSessionApi(httpClient),
   telegram,
   isJoiningFamily: () => joinFamily.isOpen(),
+  deviceCache,
 });
 const joinFamily = reatomJoinFamily({
   api: createJoinFamilyApi(httpClient),
@@ -245,6 +249,7 @@ const feed = reatomFeed({
 });
 const todayHub = reatomToday({
   api: createTodayApi(httpClient),
+  deviceCache,
   liveVersion: live.all,
   today,
   onOpen: (target) => {
@@ -276,7 +281,7 @@ const navigation = reatomNavigation({
 const opener = reatomOpener({
   telegram,
   navigation,
-  isSignedIn: () => session.member() !== undefined,
+  isSignedIn: session.isSignedIn,
   pets: pet.pets,
   tasks,
   care: {
@@ -351,7 +356,7 @@ const home = {
   commandSheet,
 };
 
-telegram.launch();
+telegram.launch(deviceCache.whenRead([session.member, todayHub.header]));
 telegram.followColorScheme(document.documentElement);
 telegram.followPlatform(document.documentElement);
 navigation.start();

@@ -3,14 +3,17 @@ import {
   atom,
   computed,
   noop,
+  peek,
   withAsync,
   withAsyncData,
   wrap,
   type Atom,
 } from "@reatom/core";
+import { z } from "zod";
 
-import type { FeedUpcoming, SlotModule, Today } from "@family-hub/contract";
+import { today, type FeedUpcoming, type SlotModule, type Today } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
 import { detached, readOnly } from "@/common/state";
 
@@ -25,6 +28,7 @@ export type TodayTarget =
 
 export type TodayDependencies = LiveVersion & {
   api: TodayApi;
+  deviceCache: Pick<DeviceCache, "withDeviceCache">;
   today: () => string;
   onOpen: (target: TodayTarget) => void;
   onOpenSection: (module: SlotModule) => void;
@@ -44,7 +48,12 @@ type Completing = {
   done: Promise<void>;
 };
 
-type Loaded = { data: () => Today | undefined };
+// The date the Member's day was computed for, so a cached Today from another day is told apart.
+type TodayOn = Today & { date: string };
+
+const todayOn = today.extend({ date: z.string() });
+
+type Loaded = { data: () => TodayOn | undefined };
 
 function targetOf(item: FeedUpcoming): TodayTarget {
   return item.kind === "task"
@@ -65,14 +74,22 @@ function petTargetOf(pet: Today["tiles"]["pet"] | undefined): TodayTarget | unde
   return pet.activeCount === 0 ? { kind: "new-pet" } : undefined;
 }
 
-function reatomData(api: TodayApi, liveVersion: LiveVersion["liveVersion"]) {
+function reatomData({
+  api,
+  liveVersion,
+  deviceCache,
+  today: dateOfToday,
+}: Pick<TodayDependencies, "api" | "liveVersion" | "deviceCache" | "today">) {
   const version = atom(0, "today.version");
-  const data = computed(async () => {
+  const data = computed(async (): Promise<TodayOn> => {
     version();
     liveVersion?.();
+    const date = peek(dateOfToday);
 
-    return wrap(api.load());
+    return { ...(await wrap(api.load())), date };
   }, "today.data").extend(withAsyncData());
+
+  data.data.extend(deviceCache.withDeviceCache({ key: "today", schema: todayOn, version: 1 }));
 
   return {
     data,
@@ -206,8 +223,17 @@ function reatomCompletion(
 type Completion = ReturnType<typeof reatomCompletion>;
 
 function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion: Completion) {
+  // Yesterday's rows under today's heading would complete the wrong Occurrence.
+  const isDueOutdated = computed(() => {
+    const loaded = data.data();
+
+    return loaded !== undefined && loaded.date !== dependencies.today();
+  }, "today.isDueOutdated");
   const due = computed(
-    () => (data.data()?.due ?? []).filter(({ key }) => !completion.hidden().includes(key)),
+    () =>
+      isDueOutdated()
+        ? []
+        : (data.data()?.due ?? []).filter(({ key }) => !completion.hidden().includes(key)),
     "today.due",
   );
   const tiles = computed((): Tile[] => {
@@ -217,8 +243,9 @@ function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion:
   }, "today.tiles");
 
   return {
+    isDueOutdated,
     header: computed(
-      () => (data.data() === undefined ? undefined : headerOf(due().length)),
+      () => (data.data() === undefined || isDueOutdated() ? undefined : headerOf(due().length)),
       "today.header",
     ),
     rows: computed(
@@ -281,7 +308,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
 }
 
 export function reatomToday(dependencies: TodayDependencies) {
-  const { data, reload } = reatomData(dependencies.api, dependencies.liveVersion);
+  const { data, reload } = reatomData(dependencies);
   const completion = reatomCompletion(dependencies, reload);
 
   return {

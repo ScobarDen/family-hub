@@ -1,10 +1,12 @@
-import { atom, context, noop } from "@reatom/core";
+import { atom, computed, context, noop, withAsyncData, wrap } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { z } from "zod";
 
 import type { CurrentMember, SessionResponse } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
 
 import { createSessionApi } from "../session.api.ts";
 import { reatomSession } from "./session.vm.ts";
@@ -28,7 +30,7 @@ const signedIn: SessionResponse = { status: "member", token, ...denis };
 
 const silence = Symbol("silence");
 
-type Reply = SessionResponse | number | Error | typeof silence;
+type Reply = SessionResponse | string[] | number | Error | typeof silence;
 
 async function respond(reply: Reply, signal: AbortSignal | null | undefined): Promise<Response> {
   if (reply === silence) {
@@ -66,11 +68,12 @@ function fakeBackend(replies: { session: Reply; later?: Reply }) {
   return { fetch, requests };
 }
 
-function fakeTelegram(launchInitData = initData) {
+function fakeTelegram(launchInitData = initData, startParameter?: string) {
   const alerts: string[] = [];
 
   return {
     initData: launchInitData,
+    startParam: startParameter,
     showAlert(message: string) {
       alerts.push(message);
     },
@@ -81,17 +84,22 @@ function fakeTelegram(launchInitData = initData) {
 function startSession(
   backend: ReturnType<typeof fakeBackend>,
   telegram = fakeTelegram(),
-  isJoiningFamily = atom(false, "test.isJoiningFamily"),
+  {
+    isJoiningFamily = atom(false, "test.isJoiningFamily"),
+    device = fakeDeviceStorage(),
+  }: { isJoiningFamily?: () => boolean; device?: FakeDeviceStorage } = {},
 ) {
   const client = createHttpClient({
     baseUrl: "https://api.family-hub.test",
     fetch: backend.fetch,
     timeoutMs: 50,
+    holdUntilSignedIn: true,
   });
+  const deviceCache = reatomDeviceCache(device.deviceStorage);
 
   return Object.assign(
-    reatomSession({ api: createSessionApi(client), telegram, isJoiningFamily }),
-    { client },
+    reatomSession({ api: createSessionApi(client), telegram, isJoiningFamily, deviceCache }),
+    { client, deviceCache },
   );
 }
 
@@ -287,7 +295,7 @@ describe("opening the app from an Invite", () => {
     const session = startSession(
       fakeBackend({ session: { status: "stranger", familyRequest: "none" } }),
       fakeTelegram(),
-      atom(true, "test.isJoiningFamily"),
+      { isJoiningFamily: atom(true, "test.isJoiningFamily") },
     );
 
     await vi.waitFor(() => {
@@ -296,11 +304,9 @@ describe("opening the app from an Invite", () => {
   });
 
   test("shows the invitation while signing in is still going", () => {
-    const session = startSession(
-      fakeBackend({ session: silence }),
-      fakeTelegram(),
-      atom(true, "test.isJoiningFamily"),
-    );
+    const session = startSession(fakeBackend({ session: silence }), fakeTelegram(), {
+      isJoiningFamily: atom(true, "test.isJoiningFamily"),
+    });
 
     session.signIn();
 
@@ -308,11 +314,9 @@ describe("opening the app from an Invite", () => {
   });
 
   test("still asks to restart the app when the session is lost", async () => {
-    const session = startSession(
-      fakeBackend({ session: 401 }),
-      fakeTelegram(),
-      atom(true, "test.isJoiningFamily"),
-    );
+    const session = startSession(fakeBackend({ session: 401 }), fakeTelegram(), {
+      isJoiningFamily: atom(true, "test.isJoiningFamily"),
+    });
 
     session.signIn();
 
@@ -324,7 +328,7 @@ describe("opening the app from an Invite", () => {
   test("signs in again once the person has joined, without flashing the stranger screen", async () => {
     const replies: { session: Reply } = { session: { status: "stranger", familyRequest: "none" } };
     const isJoiningFamily = atom(true, "test.isJoiningFamily");
-    const session = startSession(fakeBackend(replies), fakeTelegram(), isJoiningFamily);
+    const session = startSession(fakeBackend(replies), fakeTelegram(), { isJoiningFamily });
 
     await signIn(session);
     replies.session = signedIn;
@@ -337,3 +341,145 @@ describe("opening the app from an Invite", () => {
     });
   });
 });
+
+const relative: CurrentMember = {
+  ...denis,
+  member: { id: "member-2", name: "Ася" },
+};
+
+async function signedInBefore(member: CurrentMember = denis) {
+  const device = fakeDeviceStorage();
+
+  await signIn(
+    startSession(fakeBackend({ session: { status: "member", token, ...member } }), undefined, {
+      device,
+    }),
+  );
+  await settle();
+
+  return device;
+}
+
+function relaunch(
+  device: FakeDeviceStorage,
+  { session = silence, startParam }: { session?: Reply; startParam?: string } = {},
+) {
+  context.reset();
+  const backend = fakeBackend({ session, later: ["Погулять с Бьюиком"] });
+  const relaunched = startSession(backend, fakeTelegram(initData, startParam), { device });
+
+  relaunched.signIn();
+
+  return Object.assign(relaunched, { backend });
+}
+
+async function shownAfterRead(session: ReturnType<typeof relaunch>) {
+  await session.deviceCache.whenRead([session.member]);
+
+  return session.screen();
+}
+
+describe("launching from the device cache", () => {
+  test("shows the cached Member's shell while signing in", async () => {
+    const device = await signedInBefore();
+    const session = relaunch(device);
+
+    expect(await shownAfterRead(session)).toEqual({
+      kind: "member",
+      memberName: "Денис",
+      familyName: "Гущины",
+    });
+    expect(session.member()?.settings.tabBar).toEqual(["goals", "pet"]);
+    expect(session.isSignedIn()).toBe(false);
+  });
+
+  test("signs in without a shell on the first launch", async () => {
+    const session = relaunch(fakeDeviceStorage());
+
+    expect(await shownAfterRead(session)).toEqual({ kind: "signing-in" });
+  });
+
+  test("forgets the cache when sign-in returns another Member", async () => {
+    const device = await signedInBefore();
+
+    await signIn(relaunch(device, { session: { status: "member", token, ...relative } }));
+    await settle();
+
+    expect(await shownAfterRead(relaunch(device))).toMatchObject({ memberName: "Ася" });
+  });
+
+  test("forgets the cache when sign-in returns another Family", async () => {
+    const device = await signedInBefore();
+
+    await signIn(
+      relaunch(device, {
+        session: { status: "member", token, ...denis, family: { id: "family-2", name: "Ивановы" } },
+      }),
+    );
+    await settle();
+
+    expect(await shownAfterRead(relaunch(device))).toMatchObject({ familyName: "Ивановы" });
+  });
+
+  test("forgets the cache when sign-in returns a stranger", async () => {
+    const device = await signedInBefore();
+
+    await signIn(relaunch(device, { session: { status: "stranger", familyRequest: "none" } }));
+    await settle();
+
+    expect(await shownAfterRead(relaunch(device))).toEqual({ kind: "signing-in" });
+  });
+
+  test("keeps the cache when sign-in gets 401", async () => {
+    const device = await signedInBefore();
+
+    await signIn(relaunch(device, { session: 401 }));
+    await settle();
+
+    expect(await shownAfterRead(relaunch(device))).toMatchObject({ kind: "member" });
+  });
+
+  test("keeps data loaded right after signing in to another Family", async () => {
+    const device = await signedInBefore();
+    const session = relaunch(device, {
+      session: { status: "member", token, ...denis, family: { id: "family-2", name: "Ивановы" } },
+    });
+    const chores = cachedChores(session);
+
+    await vi.waitFor(() => {
+      expect(chores.data()).toEqual(["Погулять с Бьюиком"]);
+    });
+    await settle();
+
+    expect(session.backend.requests).toEqual(["/api/session", "/api/chores"]);
+    expect(device.items.get("chores")).toContain("Погулять с Бьюиком");
+  });
+
+  test("opens an Invite without the cached shell", async () => {
+    const device = await signedInBefore();
+    const session = relaunch(device, { startParam: "inv_Abcdefghijklmnopqrstuv" });
+
+    expect(await shownAfterRead(session)).toEqual({ kind: "signing-in" });
+    expect(session.member()).toBeUndefined();
+  });
+});
+
+function cachedChores(session: ReturnType<typeof startSession>) {
+  const chores = computed(
+    async () => wrap(session.client.request("/api/chores", { schema: z.array(z.string()) })),
+    "test.chores",
+  ).extend(withAsyncData());
+
+  chores.data.extend(
+    session.deviceCache.withDeviceCache({ key: "chores", schema: z.array(z.string()), version: 1 }),
+  );
+  chores.data.subscribe(noop);
+
+  return chores;
+}
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}

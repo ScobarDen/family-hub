@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { ChevronRight } from "lucide-react";
 
 import { sectionIcons } from "@/common/sections";
-import { CheckButton, Section, SectionItem } from "@/common/ui";
+import { CheckButton, Section, SectionItem, Skeleton } from "@/common/ui";
 
 import type { DueRow } from "../today.lib.ts";
 import type { TodayModel } from "../vm/today.vm.ts";
@@ -47,6 +47,17 @@ function DueItem({ row, model }: RowProps) {
 export const DueBlock = reatomComponent(({ model }: { model: TodayModel }) => {
   const rows = model.rows();
   const more = model.more();
+
+  if (model.isDueOutdated()) {
+    return (
+      <Section title="Сделать сегодня">
+        <div aria-busy className="flex flex-col gap-3 p-4">
+          <Skeleton className="h-5 w-3/4" />
+          <Skeleton className="h-5 w-1/2" />
+        </div>
+      </Section>
+    );
+  }
 
   if (rows.length === 0) {
     return null;

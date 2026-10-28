@@ -65,12 +65,19 @@ type Device = ReturnType<typeof reatomDeviceStorage>;
 // Showing a cached value writes it back through the atom; skipping that keeps the 30 days counted from the load.
 function reatomCachePersist(device: Device | undefined) {
   const shown = new Map<string, unknown>();
+  const reads: Array<Promise<unknown>> = [];
 
   async function read({
     key,
     contract,
   }: { key: string } & Contract): Promise<PersistRecord | null> {
-    const record = await device?.read(key);
+    const reading = device?.read(key);
+
+    if (reading !== undefined) {
+      reads.push(reading);
+    }
+
+    const record = await reading;
 
     if (!isPersistRecord(record)) {
       return null;
@@ -87,7 +94,7 @@ function reatomCachePersist(device: Device | undefined) {
     return { ...record, data: parsed.data };
   }
 
-  return reatomPersist<unknown, Contract>({
+  const withPersist = reatomPersist<unknown, Contract>({
     name: "deviceCache",
     get: read,
     set: async ({ key }, record) => {
@@ -96,11 +103,29 @@ function reatomCachePersist(device: Device | undefined) {
       }
     },
   });
+
+  return { withPersist, reads };
+}
+
+// Reading an atom starts its key's read; Reatom applies the value a few promise turns later.
+function reatomWhenRead(reads: Array<Promise<unknown>>) {
+  return action(async (atoms: Array<() => unknown>) => {
+    for (const read of atoms) {
+      read();
+    }
+
+    await wrap(Promise.all(reads));
+    await wrap(
+      new Promise((resolve) => {
+        setTimeout(resolve, 0);
+      }),
+    );
+  }, "deviceCache.whenRead");
 }
 
 export function reatomDeviceCache(storage: DeviceStorage | undefined) {
   const device = storage === undefined ? undefined : reatomDeviceStorage(storage);
-  const withPersist = reatomCachePersist(device);
+  const { withPersist, reads } = reatomCachePersist(device);
 
   const clear = action(async () => {
     withPersist.storageAtom().cache.clear();
@@ -141,7 +166,7 @@ export function reatomDeviceCache(storage: DeviceStorage | undefined) {
     });
   }
 
-  return { withDeviceCache, keepFor, clear };
+  return { withDeviceCache, keepFor, clear, whenRead: reatomWhenRead(reads) };
 }
 
 export type DeviceCache = ReturnType<typeof reatomDeviceCache>;

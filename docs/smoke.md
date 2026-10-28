@@ -69,6 +69,16 @@ Each item on iOS, Android and Telegram Desktop.
 - [ ] With the microphone refused in the system settings, the button opens the bot chat and says to send a voice message there.
 - [ ] «Изменить» in the sheet opens the Reminder form filled from the draft; «×» closes the sheet.
 
+### Launch from the device cache
+
+Each item on iOS and Android; Telegram Desktop and Web keep no cache between launches.
+
+- [ ] The first launch shows Telegram's placeholder, then a skeleton of the screen while signing in, never «Входим…».
+- [ ] A second launch shows the tab bar and Today with content straight after Telegram's placeholder, with no «Входим…» and no skeleton; fresh data replaces it without the layout jumping.
+- [ ] A launch the next day shows «Сделать сегодня» as a skeleton until the new Today arrives, while «Впереди» and the tiles show at once.
+- [ ] Opening an Invite link into another Family goes straight to the invitation, without the old Family's shell.
+- [ ] After leaving the Family (or being removed), the next launch shows the stranger screen without the old Family's data.
+
 Items for features that are not built yet are skipped until they land.
 
 ## After a production deploy

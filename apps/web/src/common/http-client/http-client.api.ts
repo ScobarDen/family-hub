@@ -44,6 +44,10 @@ async function errorCodeOf(response: Response): Promise<ErrorCode | undefined> {
   return apiError.safeParse(body).data?.code;
 }
 
+async function httpErrorOf(response: Response): Promise<HttpError> {
+  return new HttpError(response.status, await wrap(errorCodeOf(response)), retryAfterOf(response));
+}
+
 type Fetch = (input: URL, init: RequestInit) => Promise<Response>;
 
 type Page = EventTarget & { readonly visibilityState: DocumentVisibilityState };
@@ -55,12 +59,16 @@ type HttpClientOptions = {
   // The token renews when this page comes back on screen.
   page?: Page;
   now?: () => number;
+  // Screens drawn from the device cache start loading before sign-in answers.
+  holdUntilSignedIn?: boolean;
 };
 
 type RequestOptions<Schema extends z.ZodType> = {
   schema: Schema;
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
+  // Signs in with initData in the body: sign-in itself, an Invite and a Family Request.
+  withoutSession?: boolean;
 };
 
 function isRaw(body: unknown): body is FormData | Blob {
@@ -103,15 +111,24 @@ async function fetchUntilAborted(
   }
 }
 
-function reatomSessionToken(now: () => number) {
+function reatomSessionToken({ now, isHeld }: { now: () => number; isHeld: boolean }) {
+  let signIn = noop;
+  const signedIn = new Promise<void>((resolve) => {
+    signIn = resolve;
+  });
   const issuedAt = atom(0, "httpClient.tokenIssuedAt");
   const token = atom<string | undefined>(undefined, "httpClient.token").extend(
     withChangeHook(() => {
       issuedAt.set(now());
+      signIn();
     }),
   );
 
-  return { token, isStale: () => token() !== undefined && now() - issuedAt() >= renewAfterMs };
+  return {
+    token,
+    signingIn: () => (isHeld && token() === undefined ? signedIn : undefined),
+    isStale: () => token() !== undefined && now() - issuedAt() >= renewAfterMs,
+  };
 }
 
 type Renewal = {
@@ -142,13 +159,19 @@ function renewOnReturn({ page, session, request }: Renewal): void {
 
 export function createHttpClient(options: HttpClientOptions) {
   const { baseUrl, fetch, timeoutMs = defaultTimeoutMs, page, now = Date.now } = options;
-  const session = reatomSessionToken(now);
+  const session = reatomSessionToken({ now, isHeld: options.holdUntilSignedIn === true });
   const isSessionLost = reatomBoolean(false, "httpClient.isSessionLost");
 
   async function request<Schema extends z.ZodType>(
     path: string,
-    { schema, method = "GET", body }: RequestOptions<Schema>,
+    { schema, method = "GET", body, withoutSession }: RequestOptions<Schema>,
   ): Promise<z.infer<Schema>> {
+    const signingIn = withoutSession === true ? undefined : session.signingIn();
+
+    if (signingIn !== undefined) {
+      await wrap(signingIn);
+    }
+
     const response = await wrap(
       fetchUntilAborted(fetch, {
         url: new URL(path, baseUrl),
@@ -166,11 +189,7 @@ export function createHttpClient(options: HttpClientOptions) {
     }
 
     if (!response.ok) {
-      throw new HttpError(
-        response.status,
-        await wrap(errorCodeOf(response)),
-        retryAfterOf(response),
-      );
+      throw await wrap(httpErrorOf(response));
     }
 
     return schema.parse(await wrap(response.json()));

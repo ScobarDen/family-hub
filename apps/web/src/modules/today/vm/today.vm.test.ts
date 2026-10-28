@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { FeedUpcoming, Task, Today } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
 
 import { createTodayApi } from "../today.api.ts";
 import { reatomToday, type TodayTarget } from "./today.vm.ts";
@@ -70,7 +72,17 @@ function answerOf(
   return Response.json(path === "/api/today" ? payload : chore);
 }
 
-function startToday(answer: Partial<Today> = {}, { failing }: { failing?: string } = {}) {
+type Launch = {
+  failing?: string;
+  device?: FakeDeviceStorage;
+  today?: string;
+  isOffline?: boolean;
+};
+
+function startToday(
+  answer: Partial<Today> = {},
+  { failing, device = fakeDeviceStorage(), today = "2026-10-16", isOffline = false }: Launch = {},
+) {
   const calls: string[] = [];
   const payload: Today = { due: [], next: [], tiles: quiet, ...answer };
   const client = createHttpClient({
@@ -84,13 +96,14 @@ function startToday(answer: Partial<Today> = {}, { failing }: { failing?: string
           .join(" "),
       );
 
-      return answerOf(path, { payload, failing });
+      return isOffline ? new Promise<Response>(noop) : answerOf(path, { payload, failing });
     },
   });
   const opened: Array<TodayTarget | string> = [];
   const model = reatomToday({
     api: createTodayApi(client),
-    today: () => "2026-10-16",
+    deviceCache: reatomDeviceCache(device.deviceStorage),
+    today: () => today,
     onOpen: (target) => {
       opened.push(target);
     },
@@ -424,3 +437,61 @@ describe("the section tiles", () => {
     expect(opened).toEqual([target]);
   });
 });
+
+describe("launching from the device cache", () => {
+  const due = [taskDue(1, "2026-10-15")];
+  const next = [taskDue(2, "2026-10-20")];
+
+  async function loadedOn(today: string) {
+    const device = fakeDeviceStorage();
+    const { model } = startToday({ due, next }, { device, today });
+
+    await vi.waitFor(() => {
+      expect(model.rows()).toHaveLength(1);
+    });
+    await settle();
+    context.reset();
+
+    return device;
+  }
+
+  test("shows the Today of the last launch while the new one loads", async () => {
+    const device = await loadedOn("2026-10-16");
+    const { model } = startToday({}, { device, isOffline: true });
+
+    await vi.waitFor(() => {
+      expect(model.rows()).toHaveLength(1);
+    });
+    expect(model.isDueOutdated()).toBe(false);
+    expect(model.header()).toBe("1 дело");
+  });
+
+  test("hides yesterday's «Сделать сегодня» but keeps «Впереди» and the tiles", async () => {
+    const device = await loadedOn("2026-10-15");
+    const { model } = startToday({}, { device, isOffline: true });
+
+    await vi.waitFor(() => {
+      expect(model.next()).toHaveLength(1);
+    });
+    expect(model.isDueOutdated()).toBe(true);
+    expect(model.rows()).toEqual([]);
+    expect(model.header()).toBeUndefined();
+    expect(model.tiles()).toHaveLength(5);
+  });
+
+  test("shows «Сделать сегодня» again once today's Today arrives", async () => {
+    const device = await loadedOn("2026-10-15");
+    const { model } = startToday({ due: [taskDue(3, "2026-10-16")] }, { device });
+
+    await vi.waitFor(() => {
+      expect(model.rows().map(({ title }) => title)).toEqual(["Дело 3"]);
+    });
+    expect(model.isDueOutdated()).toBe(false);
+  });
+});
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}
