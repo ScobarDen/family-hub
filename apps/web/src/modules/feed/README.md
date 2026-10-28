@@ -7,5 +7,6 @@ An Occurrence is ticked off right here (`POST /api/tasks/:id/complete` with its 
 ## Injected
 
 - `api` — `createFeedApi(httpClient)`: the Feed's pages and completing a Task Occurrence or a Subtask.
+- `deviceCache` — `common/device-cache`: the first page of the last launch shows at once; older pages load as before.
 - `today`, `timeZone` — the viewer's date and zone for «Сегодня» and «Вчера»; the Member's own zone, the device's until it is known.
 - `onOpen` — opens a Task (`{ kind: "task", taskId }`), a Pet's card, a Care Entry's form over its Pet's card, a Savings Goal, an Album or a Recipe; the app's opener switches tabs.

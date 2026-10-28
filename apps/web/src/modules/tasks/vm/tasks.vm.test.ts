@@ -1,9 +1,12 @@
-import { context } from "@reatom/core";
+import { context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+
+import { fakeDeviceStorage } from "@/common/telegram";
 
 import {
   cleaning,
   fakeBackend,
+  food,
   groups,
   loaded,
   settled,
@@ -150,3 +153,62 @@ describe("a Task's Album", () => {
     expect(openedAlbums).toEqual(["album-1"]);
   });
 });
+
+async function loadedBefore() {
+  const device = fakeDeviceStorage();
+
+  await loaded(startTasks(fakeBackend([vaccination]), { device }).model);
+  await settle();
+  context.reset();
+
+  return device;
+}
+
+describe("launching from the device cache", () => {
+  test("shows the Tasks of the last launch until the fresh ones arrive", async () => {
+    const device = await loadedBefore();
+    let answer = noop;
+    const { model } = startTasks(
+      fakeBackend([food], {
+        answered: new Promise((resolve) => {
+          answer = resolve;
+        }),
+      }),
+      { device },
+    );
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({
+        groups: { overdue: [{ title: "Прививка Бьюику" }] },
+      });
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({
+        groups: { overdue: [], today: [{ title: "Купить корм" }] },
+      });
+    });
+  });
+
+  test("keeps the cached Tasks when the refresh fails", async () => {
+    const device = await loadedBefore();
+    const { model, backend } = startTasks(fakeBackend([], { failing: "GET /api/tasks" }), {
+      device,
+    });
+
+    await vi.waitFor(() => {
+      expect(backend.sent).toContainEqual({ request: "GET /api/tasks", body: undefined });
+    });
+    await settle();
+
+    expect(model.screen()).toMatchObject({
+      groups: { overdue: [{ title: "Прививка Бьюику" }] },
+    });
+  });
+});
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}

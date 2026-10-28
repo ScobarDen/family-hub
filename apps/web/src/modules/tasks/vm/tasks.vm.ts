@@ -12,6 +12,7 @@ import {
 
 import type { Pet, Task } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
 import { detached } from "@/common/state";
@@ -49,6 +50,7 @@ export type EmptyList = { title: string; hint: string | undefined };
 type TasksDependencies = SharedLists &
   LiveVersion & {
     api: TasksApi;
+    deviceCache: Pick<DeviceCache, "withDeviceCache">;
     telegram: Pick<Dialogs, "showPopup">;
     self: () => string | undefined;
     viewer: () => Viewer;
@@ -186,16 +188,14 @@ function reatomScreen(
       return editing;
     }
 
-    if (dependencies.tasks.list.error() !== undefined) {
-      return { kind: "failed" };
-    }
-
     const tasks = shown();
     const task = openedTask();
     const viewer = dependencies.viewer();
 
     if (tasks === undefined) {
-      return { kind: "loading" };
+      return dependencies.tasks.list.error() === undefined
+        ? { kind: "loading" }
+        : { kind: "failed" };
     }
 
     return task === undefined

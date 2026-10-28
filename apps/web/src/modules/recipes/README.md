@@ -9,6 +9,7 @@ The Recipe form is a `reatomEditableRecord` from `common/form`, which owns creat
 ## Injected
 
 - `api` — `createRecipesApi(httpClient)`: Recipes, their tags, favourites and photos.
+- `deviceCache` — `common/device-cache`: the Recipe cards (without «как готовить», which the Recipe's own screen loads) and the tag chips of the last launch show at once. Only the whole book in its usual order is kept, never a search, a chip, «⭐» or another sort.
 - `telegram` — `showPopup` from `common/telegram` for the confirmations.
 - `preparePhoto` — `preparePhoto` from `common/photo`.
 - `photoHint` — from `photo-storage`: why photos cannot be added now.

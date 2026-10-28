@@ -12,7 +12,9 @@ import {
   type Task,
 } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
 
 import type { TaskRow } from "../task-rows.lib.ts";
 import { createTasksApi } from "../tasks.api.ts";
@@ -198,7 +200,7 @@ function subtaskRoutes(save: Save): Record<string, Route> {
 
 export function fakeBackend(
   initial: Task[] = [vaccination, food, repair, vacation, passport],
-  { failing }: { failing?: string } = {},
+  { failing, answered = Promise.resolve() }: { failing?: string; answered?: Promise<void> } = {},
 ) {
   let tasks = initial;
   const sent: Sent[] = [];
@@ -224,6 +226,10 @@ export function fakeBackend(
     const route = routes[pattern];
 
     sent.push({ request, body });
+
+    if (pattern === "GET /api/tasks") {
+      await answered;
+    }
 
     if (failing === pattern) {
       return Response.json({ code: "INTERNAL", message: "" }, { status: serverError });
@@ -251,7 +257,11 @@ type TelegramFake = ReturnType<typeof fakeTelegram>;
 
 export function startTasks(
   backend = fakeBackend(),
-  { telegram = fakeTelegram(), pets = [buick] }: { telegram?: TelegramFake; pets?: Pet[] } = {},
+  {
+    telegram = fakeTelegram(),
+    pets = [buick],
+    device = fakeDeviceStorage(),
+  }: { telegram?: TelegramFake; pets?: Pet[]; device?: FakeDeviceStorage } = {},
 ) {
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const recorded: CareRecord[] = [];
@@ -259,6 +269,7 @@ export function startTasks(
   const openedAlbums: string[] = [];
   const model = reatomTasksScreen({
     api: createTasksApi(client),
+    deviceCache: reatomDeviceCache(device.deviceStorage),
     members: { data: atom(members) },
     pets: { data: atom(pets) },
     telegram,

@@ -1,7 +1,8 @@
 import { action, atom, computed, withAbort, withAsync, withAsyncData, wrap } from "@reatom/core";
 
-import type { FeedActivity } from "@family-hub/contract";
+import { feedPage, type FeedActivity } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
@@ -26,6 +27,7 @@ export type FeedTarget =
 
 export type FeedDependencies = LiveVersion & {
   api: FeedApi;
+  deviceCache: Pick<DeviceCache, "withDeviceCache">;
   today: () => string;
   timeZone: () => string;
   onOpen: (target: FeedTarget) => void;
@@ -69,7 +71,11 @@ function targetOf(item: FeedItem): FeedTarget | undefined {
 
 type OlderPages = { live: number | undefined; activity: FeedActivity[]; next: string | null };
 
-function reatomPages(api: FeedApi, liveVersion: LiveVersion["liveVersion"]) {
+function reatomPages({
+  api,
+  liveVersion,
+  deviceCache,
+}: Pick<FeedDependencies, "api" | "liveVersion" | "deviceCache">) {
   const version = atom(0, "feed.version");
   const first = computed(async () => {
     version();
@@ -77,6 +83,8 @@ function reatomPages(api: FeedApi, liveVersion: LiveVersion["liveVersion"]) {
 
     return wrap(api.page());
   }, "feed.first").extend(withAsyncData());
+
+  first.data.extend(deviceCache.withDeviceCache({ key: "feed", schema: feedPage, version: 1 }));
   // Older pages hang off the first one's cursor, so a first page refetched for another Member's
   // change drops them as well.
   const loaded = atom<OlderPages | undefined>(undefined, "feed.loaded");
@@ -176,7 +184,7 @@ function reatomTaps(dependencies: FeedDependencies, pages: Pages) {
 }
 
 export function reatomFeed(dependencies: FeedDependencies) {
-  const pages = reatomPages(dependencies.api, dependencies.liveVersion);
+  const pages = reatomPages(dependencies);
   const filter = atom<FeedFilter>("all", "feed.filter");
   const complete = reatomCompletion(dependencies.api, pages);
 

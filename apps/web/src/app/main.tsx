@@ -40,6 +40,7 @@ import { createTodayApi, reatomToday } from "@/modules/today";
 
 import { reatomNavigation } from "./app.route.ts";
 import { reatomOpener } from "./opener.vm.ts";
+import { reatomPrefetch } from "./prefetch.vm.ts";
 import { App } from "./view/app.view.tsx";
 
 const root = document.getElementById("root");
@@ -118,7 +119,11 @@ const familyApi = createFamilyApi(httpClient);
 // One query each for the Family's Members and Pets, so every picker sees the same list.
 const members = reatomFamilyMembers(familyApi);
 const petsApi = createPetsApi(httpClient);
-const petsModel = reatomPets({ api: petsApi, liveVersion: () => live.versionOf("pet") });
+const petsModel = reatomPets({
+  api: petsApi,
+  liveVersion: () => live.versionOf("pet"),
+  deviceCache,
+});
 
 const tabBarModules = reatomTabBarModules({
   api: createTabBarApi(httpClient),
@@ -131,6 +136,7 @@ const photoStorage = reatomPhotoStorage({
 const albums = reatomAlbumsScreen({
   api: createAlbumsApi(httpClient),
   liveVersion: () => live.versionOf("albums"),
+  deviceCache,
   telegram,
   viewer,
   preparePhoto: prepare,
@@ -144,6 +150,7 @@ const albums = reatomAlbumsScreen({
 const recipes = reatomRecipesScreen({
   api: createRecipesApi(httpClient),
   liveVersion: () => live.versionOf("recipes"),
+  deviceCache,
   telegram,
   today,
   timeZone: zone,
@@ -153,6 +160,7 @@ const recipes = reatomRecipesScreen({
 const tasks = reatomTasksScreen({
   api: createTasksApi(httpClient),
   liveVersion: () => live.versionOf("tasks"),
+  deviceCache,
   members,
   pets: petsModel.list,
   telegram,
@@ -174,6 +182,7 @@ const tasks = reatomTasksScreen({
 const goals = reatomGoalsScreen({
   api: createGoalsApi(httpClient),
   liveVersion: () => live.versionOf("goals"),
+  deviceCache,
   members,
   telegram,
   self,
@@ -240,6 +249,7 @@ const microphone = reatomMicrophone({
 const feed = reatomFeed({
   api: createFeedApi(httpClient),
   liveVersion: live.all,
+  deviceCache,
   today,
   timeZone: zone,
   onOpen: (target) => {
@@ -294,6 +304,18 @@ const opener = reatomOpener({
   albums,
   recipes,
   commandSheet,
+});
+const prefetch = reatomPrefetch({
+  isSignedIn: session.isSignedIn,
+  slots: tabBarModules.modules,
+  today: todayHub.tiles,
+  screens: {
+    tasks: tasks.screen,
+    pet: pet.pets.screen,
+    goals: goals.screen,
+    albums: albums.screen,
+    recipes: recipes.screen,
+  },
 });
 const home = {
   session,
@@ -364,6 +386,7 @@ opener.launch();
 
 timeZone.keepFollowingDevice();
 session.signIn();
+prefetch().catch(noop);
 joinFamily.load();
 live.start();
 

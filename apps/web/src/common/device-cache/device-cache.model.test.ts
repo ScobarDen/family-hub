@@ -10,7 +10,12 @@ const chores = ["Погулять с Бьюиком", "Купить корм"];
 const denis = { memberId: "member-1", familyId: "family-1" };
 const day = 86_400_000;
 
-type ListOptions = { load?: () => Promise<unknown>; version?: number; schema?: z.ZodType };
+type ListOptions = {
+  load?: () => Promise<unknown>;
+  version?: number;
+  schema?: z.ZodType;
+  cachedPart?: (chores: unknown) => unknown;
+};
 
 function cachedList(
   cache: DeviceCache,
@@ -18,11 +23,12 @@ function cachedList(
     load = async () => new Promise<string[]>(noop),
     version = 1,
     schema = z.array(z.string()),
+    cachedPart,
   }: ListOptions = {},
 ) {
   const list = computed(async () => wrap(load()), "test.list").extend(withAsyncData());
 
-  list.data.extend(cache.withDeviceCache({ key: "chores", schema, version }));
+  list.data.extend(cache.withDeviceCache({ key: "chores", schema, version, cachedPart }));
   list.data.subscribe();
 
   return list;
@@ -180,6 +186,44 @@ describe("device cache", () => {
     await cache.whenRead([list.data]);
 
     expect(list.data()).toEqual(chores);
+  });
+
+  test("keeps only the part the module chooses", async () => {
+    const device = fakeDeviceStorage();
+    const { list } = launch(device, {
+      load: async () => Promise.resolve(chores),
+      cachedPart: (loaded) => z.array(z.string()).parse(loaded).slice(0, 1),
+    });
+
+    await vi.waitFor(() => {
+      expect(list.data()).toEqual(chores);
+    });
+    await settle();
+    const relaunched = relaunch(device);
+
+    await vi.waitFor(() => {
+      expect(relaunched.list.data()).toEqual(["Погулять с Бьюиком"]);
+    });
+  });
+
+  test("keeps the earlier copy when the module skips one", async () => {
+    const device = fakeDeviceStorage();
+
+    await launchLoaded(device);
+    const skipped = relaunch(device, {
+      load: async () => Promise.resolve(["Сварить борщ"]),
+      cachedPart: noop,
+    });
+
+    await vi.waitFor(() => {
+      expect(skipped.list.data()).toEqual(["Сварить борщ"]);
+    });
+    await settle();
+    const { list } = relaunch(device);
+
+    await vi.waitFor(() => {
+      expect(list.data()).toEqual(chores);
+    });
   });
 
   test("ignores a failed write", async () => {

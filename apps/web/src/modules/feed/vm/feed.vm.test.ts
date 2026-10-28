@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { FeedPage, FeedUpcoming, Photo, Task } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
 
 import { createFeedApi } from "../feed.api.ts";
 import { reatomFeed, type FeedTarget } from "./feed.vm.ts";
@@ -129,7 +131,13 @@ const wallpaperTask: Task = {
   subtasks: [],
 };
 
-function startFeed() {
+type Launch = { device?: FakeDeviceStorage; page?: FeedPage; answered?: Promise<void> };
+
+function startFeed({
+  device = fakeDeviceStorage(),
+  page = firstPage,
+  answered = Promise.resolve(),
+}: Launch = {}) {
   const requests: string[] = [];
   const opened: FeedTarget[] = [];
 
@@ -144,7 +152,13 @@ function startFeed() {
       return Response.json(olderPage);
     }
 
-    return Response.json(url.pathname === "/api/feed" ? firstPage : wallpaperTask);
+    if (url.pathname === "/api/feed") {
+      await answered;
+
+      return Response.json(page);
+    }
+
+    return Response.json(wallpaperTask);
   }
 
   const model = reatomFeed({
@@ -155,6 +169,7 @@ function startFeed() {
       opened.push(target);
     },
     telegram: { showPopup: async () => noChoice, showAlert: noop },
+    deviceCache: reatomDeviceCache(device.deviceStorage),
   });
 
   model.blocks.subscribe(noop);
@@ -339,3 +354,38 @@ describe("an Activity with photos", () => {
     expect(model.blocks()).toEqual([]);
   });
 });
+
+describe("launching from the device cache", () => {
+  test("shows the first page of the last launch until the fresh one arrives", async () => {
+    const device = fakeDeviceStorage();
+    const first = startFeed({ device });
+
+    await loaded(first.model);
+    const before = shape(first.model);
+
+    await settle();
+    context.reset();
+    let answer = noop;
+    const { model } = startFeed({
+      device,
+      page: olderPage,
+      answered: new Promise((resolve) => {
+        answer = resolve;
+      }),
+    });
+
+    await vi.waitFor(() => {
+      expect(shape(model)).toEqual(before);
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(shape(model)).not.toEqual(before);
+    });
+  });
+});
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}

@@ -3,10 +3,13 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { movementChange, type Goal } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
 import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
 
 import { createGoalsApi } from "../goals.api.ts";
+import { totalOf } from "../goals.model.ts";
 import { reatomGoalsScreen } from "./goals.vm.ts";
 
 const turkey: Goal = {
@@ -44,7 +47,19 @@ const camera: Goal = {
   completed: { at: 0, by: "Ася", outcome: "cancelled" },
 };
 
-function startGoals({ choices = [] as string[] } = {}) {
+type Launch = {
+  choices?: string[];
+  device?: FakeDeviceStorage;
+  goals?: Goal[];
+  answered?: Promise<void>;
+};
+
+function startGoals({
+  choices = [],
+  device = fakeDeviceStorage(),
+  goals = [turkey, sofa, camera],
+  answered = Promise.resolve(),
+}: Launch = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
   const pending = [...choices];
 
@@ -55,7 +70,9 @@ function startGoals({ choices = [] as string[] } = {}) {
     requests.push({ request, body });
 
     if (request === "GET /api/goals") {
-      return Response.json({ goals: [turkey, sofa, camera], totalSaved: 70_000 });
+      await answered;
+
+      return Response.json({ goals, totalSaved: totalOf(goals) });
     }
 
     if (request === "GET /api/family/members") {
@@ -81,6 +98,7 @@ function startGoals({ choices = [] as string[] } = {}) {
     self: () => "member-1",
     today: () => "2026-10-14",
     timeZone: () => "Europe/Moscow",
+    deviceCache: reatomDeviceCache(device.deviceStorage),
   });
 
   model.screen.subscribe(noop);
@@ -178,3 +196,35 @@ describe("closing a Goal", () => {
     });
   });
 });
+
+describe("launching from the device cache", () => {
+  test("shows the Goals of the last launch until the fresh ones arrive", async () => {
+    const device = fakeDeviceStorage();
+
+    await loaded(startGoals({ device }).model);
+    await settle();
+    context.reset();
+    let answer = noop;
+    const { model } = startGoals({
+      device,
+      goals: [sofa],
+      answered: new Promise((resolve) => {
+        answer = resolve;
+      }),
+    });
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ active: [{ title: "Отпуск в Турции" }] });
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ active: [], achieved: [{ title: "Диван" }] });
+    });
+  });
+});
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}

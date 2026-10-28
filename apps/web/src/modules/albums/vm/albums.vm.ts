@@ -12,6 +12,7 @@ import {
 
 import type { AlbumSummary, Photo } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import { formatCount } from "@/common/format-count";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
@@ -46,6 +47,7 @@ export type AlbumsScreen =
 
 type AlbumsDependencies = LiveVersion & {
   api: AlbumsApi;
+  deviceCache: Pick<DeviceCache, "withDeviceCache">;
   telegram: Dialogs;
   viewer: () => Viewer;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
@@ -190,6 +192,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
     api: dependencies.api,
     openedId: navigation.openedId,
     liveVersion: dependencies.liveVersion,
+    deviceCache: dependencies.deviceCache,
   });
   const parts = reatomParts(dependencies, { data, navigation });
   const screen = reatomScreen(dependencies, { data, navigation, form: parts.form });

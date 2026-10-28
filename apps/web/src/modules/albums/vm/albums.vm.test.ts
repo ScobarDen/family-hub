@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { Album, Photo } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
 
 import { createAlbumsApi } from "../albums.api.ts";
 import { reatomAlbumsScreen } from "./albums.vm.ts";
@@ -37,10 +39,29 @@ function albumOf(id: string): Album {
 
 type Answer = "ok" | "429" | "broken";
 
+function answerOf(answer: Answer, ok: () => unknown): Response {
+  if (answer === "429") {
+    return Response.json({}, { status: 429, headers: { "retry-after": "7" } });
+  }
+
+  return answer === "broken" ? Response.json({}, { status: 502 }) : Response.json(ok());
+}
+
+type Launch = {
+  uploads?: Answer[];
+  additions?: Answer[];
+  device?: FakeDeviceStorage;
+  albums?: Album[];
+  answered?: Promise<void>;
+};
+
 function startAlbums({
   uploads = [],
   additions: additionAnswers = [],
-}: { uploads?: Answer[]; additions?: Answer[] } = {}) {
+  device = fakeDeviceStorage(),
+  albums = [],
+  answered = Promise.resolve(),
+}: Launch = {}) {
   const requests: string[] = [];
   const waits: number[] = [];
   const pendingUploads = [...uploads];
@@ -48,14 +69,6 @@ function startAlbums({
   let uploadCount = 0;
   let release: () => void = noop;
   let gate: Promise<void> = Promise.resolve();
-
-  function answerOf(answer: Answer, ok: () => unknown): Response {
-    if (answer === "429") {
-      return Response.json({}, { status: 429, headers: { "retry-after": "7" } });
-    }
-
-    return answer === "broken" ? Response.json({}, { status: 502 }) : Response.json(ok());
-  }
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
     const request = `${init.method ?? "GET"} ${url.pathname}`;
@@ -76,9 +89,13 @@ function startAlbums({
       return answerOf(pendingAdditions.shift() ?? "ok", () => albumOf("album-1"));
     }
 
-    return Response.json(
-      url.pathname === "/api/albums" ? [] : albumOf(url.pathname.split("/")[3] ?? ""),
-    );
+    if (url.pathname === "/api/albums") {
+      await answered;
+
+      return Response.json(albums);
+    }
+
+    return Response.json(albumOf(url.pathname.split("/")[3] ?? ""));
   }
 
   const model = reatomAlbumsScreen({
@@ -92,6 +109,7 @@ function startAlbums({
     photoHint: noop,
     canSetUpPhotos: () => false,
     onSetUpPhotos: noop,
+    deviceCache: reatomDeviceCache(device.deviceStorage),
   });
 
   model.screen.subscribe(noop);
@@ -267,3 +285,44 @@ describe("a batch of photos", () => {
     expect(started.model.batch.progress()).toBe("0 / 50");
   });
 });
+
+function titles(model: ReturnType<typeof startAlbums>["model"]) {
+  const screen = model.screen();
+
+  return screen.kind === "list" ? screen.albums.map(({ title }) => title) : [];
+}
+
+describe("launching from the device cache", () => {
+  test("shows the Albums of the last launch until the fresh ones arrive", async () => {
+    const device = fakeDeviceStorage();
+    const first = startAlbums({ device, albums: [albumOf("1"), albumOf("2")] });
+
+    await vi.waitFor(() => {
+      expect(titles(first.model)).toHaveLength(2);
+    });
+    await settle();
+    context.reset();
+    let answer = noop;
+    const { model } = startAlbums({
+      device,
+      albums: [albumOf("3")],
+      answered: new Promise((resolve) => {
+        answer = resolve;
+      }),
+    });
+
+    await vi.waitFor(() => {
+      expect(titles(model)).toEqual(["Альбом 1", "Альбом 2"]);
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(titles(model)).toEqual(["Альбом 3"]);
+    });
+  });
+});
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}

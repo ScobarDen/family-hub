@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { recipeChange, type Recipe } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
 
 import { createRecipesApi } from "../recipes.api.ts";
 import { reatomRecipesScreen } from "./recipes.vm.ts";
@@ -41,10 +43,21 @@ function replyOf(url: URL, method: string, body: unknown): unknown {
   return url.searchParams.has("q") ? [lasagna] : [borscht, lasagna];
 }
 
+type Launch = {
+  failing?: string;
+  popup?: string;
+  device?: FakeDeviceStorage;
+  book?: Recipe[];
+  answered?: Promise<void>;
+};
+
 function startRecipes({
   failing = "",
   popup = "confirm",
-}: { failing?: string; popup?: string } = {}) {
+  device = fakeDeviceStorage(),
+  book = [borscht, lasagna],
+  answered = Promise.resolve(),
+}: Launch = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
   const alerts: string[] = [];
 
@@ -56,6 +69,12 @@ function startRecipes({
 
     if (request === failing) {
       return Response.json({}, { status: 500 });
+    }
+
+    if (request === "GET /api/recipes") {
+      await answered;
+
+      return Response.json(book);
     }
 
     return Response.json(replyOf(url, init.method ?? "GET", body));
@@ -73,6 +92,7 @@ function startRecipes({
     photoHint: () => "Загрузка фото выключена",
     today: () => "2026-10-21",
     timeZone: () => "Europe/Moscow",
+    deviceCache: reatomDeviceCache(device.deviceStorage),
   });
 
   model.screen.subscribe(noop);
@@ -271,3 +291,68 @@ describe("cooking a Recipe", () => {
     },
   );
 });
+
+function relaunch(device: FakeDeviceStorage) {
+  context.reset();
+  let answer = noop;
+  const { model } = startRecipes({
+    device,
+    book: [borscht],
+    answered: new Promise((resolve) => {
+      answer = resolve;
+    }),
+  });
+
+  return { model, answer };
+}
+
+describe("launching from the device cache", () => {
+  test("shows the Recipe cards of the last launch until the fresh ones arrive", async () => {
+    const device = fakeDeviceStorage();
+
+    await listed(startRecipes({ device }).model);
+    await settle();
+    const { model, answer } = relaunch(device);
+
+    await vi.waitFor(() => {
+      expect(titles(model)).toEqual(["Борщ", "Лазанья"]);
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(titles(model)).toEqual(["Борщ"]);
+    });
+  });
+
+  test("keeps the cards without their cooking steps", async () => {
+    const device = fakeDeviceStorage();
+
+    await listed(startRecipes({ device }).model);
+    await settle();
+
+    expect(device.items.get("recipes")).toContain("Лазанья");
+    expect(device.items.get("recipes")).not.toContain(lasagna.method);
+  });
+
+  test("keeps the whole book rather than a search", async () => {
+    const device = fakeDeviceStorage();
+    const { model } = startRecipes({ device });
+
+    await listed(model);
+    model.search("лаз");
+    await vi.waitFor(() => {
+      expect(titles(model)).toEqual(["Лазанья"]);
+    });
+    await settle();
+    const relaunched = relaunch(device);
+
+    await vi.waitFor(() => {
+      expect(titles(relaunched.model)).toEqual(["Борщ", "Лазанья"]);
+    });
+  });
+});
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 0);
+  });
+}

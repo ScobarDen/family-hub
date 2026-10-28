@@ -1,7 +1,8 @@
 import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
 
-import type { FamilyMember, Goal } from "@family-hub/contract";
+import { goalList, type FamilyMember, type Goal } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
 import { upserted } from "@/common/records";
 
@@ -11,9 +12,11 @@ export function reatomGoals({
   api,
   members,
   liveVersion,
+  deviceCache,
 }: {
   api: GoalsApi;
   members: { data: () => FamilyMember[] | undefined };
+  deviceCache: Pick<DeviceCache, "withDeviceCache">;
 } & LiveVersion) {
   const version = atom(0, "goals.version");
   const list = computed(async () => {
@@ -22,6 +25,8 @@ export function reatomGoals({
 
     return wrap(api.list());
   }, "goals.list").extend(withAsyncData());
+
+  list.data.extend(deviceCache.withDeviceCache({ key: "goals", schema: goalList, version: 1 }));
 
   return {
     list,

@@ -9,6 +9,7 @@ The Goal and movement forms are `reatomEditableRecord`s from `common/form`: they
 ## Injected
 
 - `api` — `createGoalsApi(httpClient)`: the Goals the session Member may see with the total, creating, changing and closing a Goal, and its movements.
+- `deviceCache` — `common/device-cache`: the Goals and the total of the last launch show at once.
 - `members` — the Family's shared Members query from `app/main.tsx`. `reatomGoalsScreen` builds `reatomGoals` over it: the list (`withAsyncData`, loaded when the tab subscribes); a saved Goal replaces its old copy and recounts the total.
 - `telegram` — `showPopup` from `common/telegram` for the confirmations.
 - `self` — the session Member's id: a Private Goal takes only its owner's money.

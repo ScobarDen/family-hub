@@ -9,6 +9,7 @@ One tap on the circle completes an Occurrence and shows the undo bar: «Отме
 ## Injected
 
 - `api` — `createTasksApi(httpClient)`: the Tasks the session Member may see, the Albums to link, saving and deleting a Task, completing, reopening and skipping an Occurrence, and Subtasks.
+- `deviceCache` — `common/device-cache`: the whole list of the last launch shows at once and stays on screen through a failed refresh.
 - `members`, `pets` — the Family's shared queries from `app/main.tsx`, so every picker shows the same Members and Pets; `reatomTasksScreen` builds `reatomTasks` over them (`withAsyncData`, loaded when the tab subscribes; a saved Task replaces its old copy, and a refetch already under way starts over so it cannot bring the old copy back).
 - `liveVersion` — the module's version from `common/live-updates`: another Member's change refetches the list.
 - `telegram` — `showPopup` from `common/telegram` for the confirmations.

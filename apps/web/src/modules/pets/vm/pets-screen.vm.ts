@@ -95,12 +95,10 @@ export function reatomScreen(
       return editingScreens[current];
     }
 
-    if (dependencies.pets.list.error() !== undefined) {
-      return { kind: "failed" };
-    }
-
     if (dependencies.pets.list.data() === undefined) {
-      return { kind: "loading" };
+      return dependencies.pets.list.error() === undefined
+        ? { kind: "loading" }
+        : { kind: "failed" };
     }
 
     const pet = openedPet();

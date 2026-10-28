@@ -12,6 +12,7 @@ import {
 
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import { formatCount } from "@/common/format-count";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
@@ -69,6 +70,7 @@ export type RecipesScreen =
 
 type RecipesDependencies = LiveVersion & {
   api: RecipesApi;
+  deviceCache: Pick<DeviceCache, "withDeviceCache">;
   telegram: Dialogs;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;

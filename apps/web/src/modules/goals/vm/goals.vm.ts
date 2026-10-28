@@ -11,6 +11,7 @@ import {
 
 import type { FamilyMember, Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import { formatRubles } from "@/common/format-money";
 import type { LiveVersion } from "@/common/live-updates";
 import { detached } from "@/common/state";
@@ -227,7 +228,10 @@ function titleOf(screen: GoalsScreen): string {
 }
 
 type GoalsInput = Omit<GoalsDependencies, "goals"> &
-  LiveVersion & { members: { data: () => FamilyMember[] | undefined } };
+  LiveVersion & {
+    members: { data: () => FamilyMember[] | undefined };
+    deviceCache: Pick<DeviceCache, "withDeviceCache">;
+  };
 
 export function reatomGoalsScreen(input: GoalsInput) {
   const dependencies: GoalsDependencies = { ...input, goals: reatomGoals(input) };

@@ -7,6 +7,7 @@ The «Альбомы» tab: the Family's Albums, always Shared, and each Pet's a
 ## Injected
 
 - `api` — `createAlbumsApi(httpClient)`: the Albums with their photos, «Все фото», creating, editing and deleting an Album, adding photos to it, uploading and deleting a photo.
+- `deviceCache` — `common/device-cache`: the list of Albums of the last launch shows at once; an opened Album and «Все фото» load when opened.
 - `telegram` — `showPopup` from `common/telegram` for the confirmations.
 - `timeZone` — the zone an Album's date span is shown in; the Member's own zone, the device's until it is known.
 - `preparePhoto` — `preparePhoto` from `common/photo`: Exif date, then 2560 px JPEG.

@@ -98,7 +98,7 @@ function reatomCachePersist(device: Device | undefined) {
     name: "deviceCache",
     get: read,
     set: async ({ key }, record) => {
-      if (shown.get(key) !== record.data) {
+      if (record.data !== undefined && shown.get(key) !== record.data) {
         await device?.write(key, record);
       }
     },
@@ -121,6 +121,29 @@ function reatomWhenRead(reads: Array<Promise<unknown>>) {
       }),
     );
   }, "deviceCache.whenRead");
+}
+
+function reatomWithDeviceCache(withPersist: ReturnType<typeof reatomCachePersist>["withPersist"]) {
+  return function withDeviceCache<Target extends AtomLike>({
+    key,
+    schema,
+    version,
+    cachedPart = (state) => state,
+  }: {
+    key: string;
+    schema: z.ZodType<AtomState<Target>>;
+    version: number;
+    // undefined leaves the copy already on the device.
+    cachedPart?: (state: AtomState<Target>) => AtomState<Target> | undefined;
+  }): Ext<Target> {
+    return withPersist<Target, AtomState<Target> | undefined>({
+      key,
+      contract: schema,
+      version,
+      time: keptForMs,
+      toSnapshot: cachedPart,
+    });
+  };
 }
 
 export function reatomDeviceCache(storage: DeviceStorage | undefined) {
@@ -147,26 +170,12 @@ export function reatomDeviceCache(storage: DeviceStorage | undefined) {
     await wrap(device?.write(ownerKey, owner));
   }, "deviceCache.keepFor");
 
-  function withDeviceCache<Target extends AtomLike>({
-    key,
-    schema,
-    version,
-  }: {
-    key: string;
-    schema: z.ZodType<AtomState<Target>>;
-    version: number;
-  }): Ext<Target> {
-    return withPersist<Target, AtomState<Target>>({
-      key,
-      contract: schema,
-      version,
-      time: keptForMs,
-      toSnapshot: (state) => state,
-      fromSnapshot: (snapshot) => snapshot,
-    });
-  }
-
-  return { withDeviceCache, keepFor, clear, whenRead: reatomWhenRead(reads) };
+  return {
+    withDeviceCache: reatomWithDeviceCache(withPersist),
+    keepFor,
+    clear,
+    whenRead: reatomWhenRead(reads),
+  };
 }
 
 export type DeviceCache = ReturnType<typeof reatomDeviceCache>;
