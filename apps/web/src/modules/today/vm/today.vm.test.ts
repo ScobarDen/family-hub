@@ -461,7 +461,8 @@ describe("the section tiles", () => {
     await vi.waitFor(() => {
       expect(model.tiles()[1]).toMatchObject({
         title: "Бьюик",
-        value: "4\u00A0года 5\u00A0мес.",
+        value: "4\u00A0г 5\u00A0м",
+        valueLabel: "4 года 5 месяцев",
         picture: "https://api.family-hub.test/photos/avatar/thumb",
       });
     });

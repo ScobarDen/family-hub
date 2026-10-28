@@ -4,6 +4,7 @@ export {
   formatDate,
   formatDay,
   formatDayTime,
+  formatFullAge,
   formatNearDate,
   formatPickedValue,
   formatShortAge,

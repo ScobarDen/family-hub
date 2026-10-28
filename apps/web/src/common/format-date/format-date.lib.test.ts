@@ -5,6 +5,7 @@ import {
   formatDate,
   formatDay,
   formatDayTime,
+  formatFullAge,
   formatNearDate,
   formatPickedValue,
   formatShortAge,
@@ -51,12 +52,18 @@ test.each([
 });
 
 test.each([
-  ["2023-08-01", "3\u00A0года 2\u00A0мес."],
-  ["2016-10-11", "10\u00A0лет"],
-  ["2026-05-11", "5\u00A0мес."],
-  ["2026-10-01", "меньше месяца"],
+  ["2025-09-11", "1\u00A0г 1\u00A0м"],
+  ["2023-08-01", "3\u00A0г 2\u00A0м"],
+  ["2014-09-01", "12\u00A0л 1\u00A0м"],
+  ["2016-10-11", "10\u00A0л"],
+  ["2026-05-11", "5\u00A0м"],
+  ["2026-10-01", "0\u00A0м"],
 ])("tells the age in years and months on a tile for someone born on %s", (birthDate, age) => {
   expect(formatShortAge(birthDate, "2026-10-11")).toBe(age);
+});
+
+test("says the tile's age in full words", () => {
+  expect(formatFullAge("2025-09-11", "2026-10-11")).toBe("1 год 1 месяц");
 });
 
 test("counts a year only once the birthday has come", () => {

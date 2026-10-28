@@ -10,7 +10,7 @@ import type { TodayModel } from "../vm/today.vm.ts";
 export const Tiles = reatomComponent(
   ({ model }: { model: TodayModel }) => (
     <section aria-label="Разделы" className="grid grid-cols-3 gap-2 px-4 pb-7">
-      {model.tiles().map(({ module, title, value, isAlert, picture }) => {
+      {model.tiles().map(({ module, title, value, valueLabel, isAlert, picture }) => {
         const Icon = sectionIcons[module];
         const icon = (
           <Icon className={cn("size-5", sectionColors[module])} strokeWidth={1.75} aria-hidden />
@@ -29,8 +29,9 @@ export const Tiles = reatomComponent(
             <span className="w-full text-footnote font-medium break-words hyphens-auto">
               {title}
             </span>
+            {valueLabel !== undefined && <span className="sr-only">{valueLabel}</span>}
             <span
-              aria-hidden={value === undefined}
+              aria-hidden={value === undefined || valueLabel !== undefined}
               className={cn(
                 "text-value leading-none font-semibold",
                 isAlert ? "text-destructive-text" : value === undefined && "text-muted-foreground",
