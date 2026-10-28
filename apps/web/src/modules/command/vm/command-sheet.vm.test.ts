@@ -13,7 +13,7 @@ import {
 } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
-import { fakeBottomButton } from "@/common/telegram";
+import { fakeBottomButton, fakeHaptics } from "@/common/telegram";
 
 import { createCommandApi } from "../command.api.ts";
 import {
@@ -133,13 +133,18 @@ function sheetOver(
   {
     onEdit = noop,
     onCreated = noop,
-    telegram = { mainButton: fakeBottomButton(), secondaryButton: fakeBottomButton() },
+    telegram = {
+      mainButton: fakeBottomButton(),
+      secondaryButton: fakeBottomButton(),
+      haptics: fakeHaptics(),
+    },
   }: {
     onEdit?: (opened: OpenedDraft) => void;
     onCreated?: (created: DraftCreated) => void;
     telegram?: {
       mainButton: ReturnType<typeof fakeBottomButton>;
       secondaryButton: ReturnType<typeof fakeBottomButton>;
+      haptics: ReturnType<typeof fakeHaptics>;
     };
   } = {},
 ) {
@@ -157,7 +162,11 @@ function startSheet(draft: TaskDraft = internet) {
   const backend = fakeBackend({ status: "draft", draftId: "draft-1", phrase, heard, draft });
   const edited: OpenedDraft[] = [];
   const created: DraftCreated[] = [];
-  const telegram = { mainButton: fakeBottomButton(), secondaryButton: fakeBottomButton() };
+  const telegram = {
+    mainButton: fakeBottomButton(),
+    secondaryButton: fakeBottomButton(),
+    haptics: fakeHaptics(),
+  };
   const model = sheetOver(backend, {
     onEdit: (opened) => {
       edited.push(opened);
@@ -170,7 +179,7 @@ function startSheet(draft: TaskDraft = internet) {
 
   model.start();
 
-  return { model, backend, edited, created, ...telegram };
+  return { model, backend, edited, created, ...telegram, felt: telegram.haptics.felt };
 }
 
 async function sent(model: ReturnType<typeof reatomCommandSheet>) {
@@ -209,7 +218,7 @@ describe("the preview sheet", () => {
   });
 
   test("brings the draft back with the reason the server refused", async () => {
-    const { model, backend, created, mainButton } = startSheet();
+    const { model, backend, created, mainButton, felt } = startSheet();
 
     await sent(model);
     backend.refuseCreate("RECIPIENTS_NOT_ALLOWED");
@@ -226,6 +235,7 @@ describe("the preview sheet", () => {
       });
     });
     expect(created).toEqual([]);
+    expect(felt).toEqual(["error"]);
     expect(mainButton.states.at(-1)).toEqual({ text: "Создать", isInProgress: false });
   });
 
@@ -297,7 +307,11 @@ describe("the preview sheet", () => {
     });
     const mainButton = fakeBottomButton({ isAvailable: false });
     const model = sheetOver(backend, {
-      telegram: { mainButton, secondaryButton: fakeBottomButton({ isAvailable: false }) },
+      telegram: {
+        mainButton,
+        secondaryButton: fakeBottomButton({ isAvailable: false }),
+        haptics: fakeHaptics(),
+      },
     });
 
     model.start();
@@ -307,8 +321,8 @@ describe("the preview sheet", () => {
     expect(mainButton.states).toEqual([]);
   });
 
-  test("tells the app what was created", async () => {
-    const { model, created } = startSheet();
+  test("tells the app what was created, with a success pulse", async () => {
+    const { model, created, felt } = startSheet();
 
     await sent(model);
     model.create();
@@ -317,6 +331,7 @@ describe("the preview sheet", () => {
       expect(created).toEqual([{ kind: "task", id: "task-1" }]);
     });
     expect(model.sheet().kind).toBe("created");
+    expect(felt).toEqual(["success"]);
   });
 
   test("offers no «Создать» to an incomplete draft and asks which Member was meant", async () => {

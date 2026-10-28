@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { ApiError, FamilyMemberList } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { fakeHaptics } from "@/common/telegram";
 import type { PopupParams } from "@/common/telegram";
 
 import { createFamilyApi } from "../family.api.ts";
@@ -59,6 +60,7 @@ function fakeTelegram(choices: string[] = []) {
 
       return pending.shift();
     },
+    haptics: fakeHaptics(),
     calls,
   };
 }

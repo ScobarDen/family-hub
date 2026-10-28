@@ -16,7 +16,7 @@ import type { LiveVersion } from "@/common/live-updates";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { rolledBack } from "@/common/records";
 import { detached, reatomOptimistic, reatomRollbackFailure, readOnly } from "@/common/state";
-import type { Dialogs } from "@/common/telegram";
+import type { Dialogs, Haptics } from "@/common/telegram";
 
 import type { FeedApi } from "../feed.api.ts";
 import {
@@ -41,7 +41,7 @@ export type FeedDependencies = LiveVersion & {
   today: () => string;
   timeZone: () => string;
   onOpen: (target: FeedTarget) => void;
-  telegram: Dialogs;
+  telegram: Dialogs & { haptics: Haptics };
 };
 
 export const feedFilters: Array<{ value: FeedFilter; title: string }> = [
@@ -175,15 +175,16 @@ function finder({ first, older }: Pages) {
 }
 
 // A completed step leaves what is ahead at once; its Activity line comes with the next load.
-function reatomCompletion(api: FeedApi, pages: Pages) {
+function reatomCompletion({ api, telegram }: FeedDependencies, pages: Pages) {
   const find = finder(pages);
-  const failure = reatomRollbackFailure("feed.failure");
+  const failure = reatomRollbackFailure("feed.failure", telegram.haptics);
   const complete = reatomOptimistic(
     async (key: string) => {
       const item = find(key);
       const page = pages.first.data();
 
       if (item?.kind === "task" && "occurrence" in item && page !== undefined) {
+        telegram.haptics.success();
         pages.first.data.set({
           ...page,
           overdue: page.overdue.filter((other) => other.key !== key),
@@ -238,7 +239,7 @@ function reatomTaps(dependencies: FeedDependencies, pages: Pages) {
 export function reatomFeed(dependencies: FeedDependencies) {
   const pages = reatomPages(dependencies);
   const filter = atom<FeedFilter>("all", "feed.filter");
-  const { complete, failure } = reatomCompletion(dependencies.api, pages);
+  const { complete, failure } = reatomCompletion(dependencies, pages);
 
   return {
     filter: readOnly(filter),
@@ -260,6 +261,7 @@ export function reatomFeed(dependencies: FeedDependencies) {
     dismissFailure: failure.dismiss,
 
     choose: action((chosen: FeedFilter) => {
+      dependencies.telegram.haptics.select();
       filter.set(chosen);
     }, "feed.choose"),
     reload: pages.reload,

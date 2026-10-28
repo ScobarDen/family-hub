@@ -18,7 +18,7 @@ import {
 
 import { HttpError } from "@/common/http-client";
 import { detached } from "@/common/state";
-import type { Telegram } from "@/common/telegram";
+import type { Haptics, Telegram } from "@/common/telegram";
 
 import type { CommandApi } from "../command.api.ts";
 
@@ -28,7 +28,9 @@ type CommandSheetDependencies = {
   api: Pick<CommandApi, "send" | "open" | "create" | "pick" | "dismiss">;
   members: { data: () => FamilyMember[] | undefined };
   pets: { data: () => Pet[] | undefined };
-  telegram: Pick<Telegram, "mainButton" | "secondaryButton">;
+  telegram: Pick<Telegram, "mainButton" | "secondaryButton"> & {
+    haptics: Pick<Haptics, "success" | "error" | "select">;
+  };
   // «Изменить» hands the draft to the module whose form creates that kind of record.
   onEdit: (opened: OpenedDraft) => void;
   onCreated: (created: DraftCreated) => void;
@@ -83,7 +85,7 @@ function failure(message: string): Phase {
   return { kind: "outcome", outcome: { status: "unrecognized", heard: null, message } };
 }
 
-function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseAtom) {
+function reatomRequests({ api, telegram, onEdit }: CommandSheetDependencies, phase: PhaseAtom) {
   const send = action(async (recording: Blob) => {
     phase.set({ kind: "sending" });
 
@@ -94,6 +96,7 @@ function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseA
         throw error;
       }
 
+      telegram.haptics.error();
       phase.set(failure(sendFailedText));
     }
   }, "commandSheet.send").extend(withAbort());
@@ -118,9 +121,9 @@ function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseA
   };
 }
 
-function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: PhaseAtom) {
-  // A refusal brings the draft back with a word on what to do; a closed sheet stays closed.
-  const create = action(async () => {
+// A refusal brings the draft back with a word on what to do; a closed sheet stays closed.
+function reatomCreate({ api, telegram, onCreated }: CommandSheetDependencies, phase: PhaseAtom) {
+  return action(async () => {
     const before = phase();
     const opened = draftOf(before);
 
@@ -139,14 +142,21 @@ function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: Ph
         phase.set({ kind: "created" });
       }
 
+      telegram.haptics.success();
       onCreated(created);
     } catch (error) {
+      telegram.haptics.error();
+
       if (phase() === creating) {
         phase.set({ ...before, error: refusalTextOf(error) });
       }
     }
   }, "commandSheet.create");
+}
 
+function reatomDecisions(dependencies: CommandSheetDependencies, phase: PhaseAtom) {
+  const { api, telegram } = dependencies;
+  const create = reatomCreate(dependencies, phase);
   const pick = action(async (index: number) => {
     const before = phase();
     const opened = draftOf(before);
@@ -155,11 +165,14 @@ function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: Ph
       return;
     }
 
+    telegram.haptics.select();
+
     try {
       const outcome = await wrap(api.pick(opened.draftId, index));
 
       phase.set({ kind: "outcome", outcome: { ...outcome, heard: opened.heard } });
     } catch {
+      telegram.haptics.error();
       phase.set({ ...before, error: pickFailedText });
     }
   }, "commandSheet.pick");

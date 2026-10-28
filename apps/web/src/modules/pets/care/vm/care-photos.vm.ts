@@ -6,7 +6,7 @@ import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoAttachments } from "@/common/photo-attachments";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { readOnly } from "@/common/state";
-import type { Dialogs } from "@/common/telegram";
+import type { Dialogs, Haptics } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import { petPhotosOf } from "../care.lib.ts";
@@ -14,7 +14,7 @@ import type { CareData } from "../care.model.ts";
 
 type CarePhotosDependencies = {
   api: CareApi;
-  telegram: Dialogs;
+  telegram: Dialogs & { haptics: Haptics };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   onMakeAvatar: (photoId: string) => void;
@@ -26,6 +26,7 @@ export function reatomCarePhotos(dependencies: CarePhotosDependencies, data: Car
     attachments: reatomPhotoAttachments({
       max: careEntryPhotoMax,
       ...dependencies,
+      haptics: dependencies.telegram.haptics,
       canUploadPhotos: () => dependencies.photoHint() === undefined && !dependencies.isReadOnly(),
     }),
     viewer: reatomPhotoViewer({

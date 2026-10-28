@@ -12,6 +12,7 @@ import {
 
 import { reatomEditableRecord, type DraftOpening } from "@/common/form";
 import type { PhotoAttachmentsModel } from "@/common/photo-attachments";
+import type { Haptics } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import { kindFields } from "../care.config.ts";
@@ -31,6 +32,7 @@ type CareFormDependencies = {
   now: () => string;
   timeZone: () => string;
   photos: PhotoAttachmentsModel;
+  haptics: Pick<Haptics, "success" | "error">;
   onSaved: () => void;
   // An entry saved from a Command Draft settles that draft.
   onDraftSaved: (draftId: string) => void;
@@ -120,6 +122,7 @@ function reatomCareRecord(dependencies: CareFormDependencies) {
     name: "care.record",
     form: (onSubmit) => reatomForm(emptyEntry, { name: "care.form", schema, onSubmit }),
     failureMessage: "Не получилось сохранить запись. Попробуйте ещё раз.",
+    haptics: dependencies.haptics,
     valuesOf: (entry: CareEntry) => valuesOf(entry, timeZone()),
     valuesOfDraft: (draft: CareEntryDraft, phrase) =>
       valuesOfDraft(draft, { phrase, timeZone: timeZone() }),

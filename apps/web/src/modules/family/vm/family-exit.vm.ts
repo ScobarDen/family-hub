@@ -23,6 +23,7 @@ async function leaveAfterConfirmation({ api, telegram, self, onLeft, failure }: 
     await wrap(api.leave());
     onLeft();
   } catch {
+    telegram.haptics.error();
     failure.set("Не получилось выйти из семьи. Попробуйте ещё раз.");
   }
 }

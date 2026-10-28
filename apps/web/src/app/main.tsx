@@ -83,6 +83,7 @@ const timeZone = reatomTimeZone({
   saved: () => session.member()?.settings.timeZone,
   deviceZone: deviceTimeZone(),
   zones: Intl.supportedValuesOf("timeZone"),
+  haptics: telegram.haptics,
 });
 
 // The zone picked in the Profile wins; the device's is the fallback until the settings arrive.
@@ -263,6 +264,7 @@ const todayHub = reatomToday({
   deviceCache,
   liveVersion: live.all,
   today,
+  telegram,
   onOpen: (target) => {
     opener.open(target);
   },
@@ -325,13 +327,14 @@ const home = {
     modules: tabBarModules,
     activeTab: navigation.activeTab,
     onOpen: navigation.openTab,
+    telegram,
     titles: () => {
       const petTitle = petsModel.tabTitle();
 
       return petTitle === undefined ? {} : { pet: petTitle };
     },
   }),
-  tabBarMenu: reatomTabBarMenu({ modules: tabBarModules }),
+  tabBarMenu: reatomTabBarMenu({ modules: tabBarModules, telegram }),
   today: todayHub,
   sections: reatomSections({
     modules: tabBarModules,
@@ -351,6 +354,7 @@ const home = {
   digest: reatomDigest({
     api: memberSettingsApi,
     saved: () => session.member()?.settings.digest,
+    haptics: telegram.haptics,
   }),
   family: reatomFamily({
     api: familyApi,

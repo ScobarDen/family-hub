@@ -4,7 +4,7 @@ import type { Task } from "@family-hub/contract";
 
 import { withoutId } from "@/common/records";
 import { reatomOptimistic, reatomRollbackFailure } from "@/common/state";
-import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
+import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
 
 import {
   completionOf,
@@ -22,7 +22,7 @@ export type Undo = TaskOccurrence & { title: string; petId: string | undefined }
 export type TaskActionsDependencies = {
   api: TasksApi;
   tasks: Pick<TasksModel, "keep" | "drop" | "list" | "loaded">;
-  telegram: Pick<Dialogs, "showPopup">;
+  telegram: Pick<Dialogs, "showPopup"> & { haptics: Haptics };
   opened: () => TaskOccurrence | undefined;
   onClosed: () => void;
   onRecord: (record: CareRecord) => void;
@@ -61,8 +61,8 @@ async function isSure(dependencies: TaskActionsDependencies, kind: keyof typeof 
   return wrap(isConfirmed(dependencies.telegram, confirmations[kind]));
 }
 
-function reatomChange() {
-  const failure = reatomRollbackFailure("tasks.failure");
+function reatomChange({ telegram }: TaskActionsDependencies) {
+  const failure = reatomRollbackFailure("tasks.failure", telegram.haptics);
 
   return {
     failure,
@@ -77,6 +77,14 @@ function reatomChange() {
 type Change = ReturnType<typeof reatomChange>["change"];
 
 type UndoAtom = Atom<Undo | undefined>;
+
+function feelCompletion({ telegram }: TaskActionsDependencies, isCompleted: boolean): void {
+  if (isCompleted) {
+    telegram.haptics.success();
+  } else {
+    telegram.haptics.select();
+  }
+}
 
 // One tap completes; the undo bar takes it back, and a tap on a Completed one reopens it.
 async function toggleCompletion(
@@ -93,6 +101,7 @@ async function toggleCompletion(
   const isCompleted = completionOf(task, target.occurrence) !== undefined;
 
   dependencies.tasks.keep(withCompletion(task, target.occurrence, !isCompleted));
+  feelCompletion(dependencies, !isCompleted);
 
   if (isCompleted) {
     undo.set(undefined);
@@ -143,6 +152,7 @@ function reatomUndoBar(dependencies: TaskActionsDependencies, change: Change, un
       if (target !== undefined && task !== undefined) {
         change(async () => {
           dependencies.tasks.keep(withCompletion(task, target.occurrence, false));
+          dependencies.telegram.haptics.select();
           await wrap(keep(dependencies, dependencies.api.reopen(target)));
         }).catch(noop);
       }
@@ -174,6 +184,7 @@ function reatomOccurrenceChanges(dependencies: TaskActionsDependencies, change: 
           (await wrap(isSure(dependencies, "skip")))
         ) {
           dependencies.tasks.keep(withSkipped(task, occurrence));
+          dependencies.telegram.haptics.select();
           dependencies.onClosed();
           await wrap(keep(dependencies, dependencies.api.skip(taskId, occurrence)));
         }
@@ -204,6 +215,7 @@ function reatomSubtaskChanges(dependencies: TaskActionsDependencies, change: Cha
         }
 
         dependencies.tasks.keep(withSubtaskCompletion(task, subtaskId, subtask.completed === null));
+        feelCompletion(dependencies, subtask.completed === null);
         await wrap(
           keep(
             dependencies,
@@ -247,7 +259,7 @@ async function recordOccurrence(
 }
 
 export function reatomTaskActions(dependencies: TaskActionsDependencies) {
-  const { change, failure } = reatomChange();
+  const { change, failure } = reatomChange(dependencies);
   const undo = atom<Undo | undefined>(undefined, "tasks.undo");
 
   return {

@@ -11,6 +11,7 @@ import {
 } from "@family-hub/contract";
 
 import { reatomEditableRecord } from "@/common/form";
+import type { Haptics } from "@/common/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -19,6 +20,7 @@ type ProfileFormDependencies = {
   api: PetsApi;
   pets: Pick<PetsModel, "keep">;
   today: () => string;
+  haptics: Pick<Haptics, "success" | "error">;
   onSaved: (pet: Pet) => void;
 };
 
@@ -72,12 +74,19 @@ function profileOf(values: ProfileValues): PetProfile {
   });
 }
 
-export function reatomPetProfileForm({ api, pets, today, onSaved }: ProfileFormDependencies) {
+export function reatomPetProfileForm({
+  api,
+  pets,
+  today,
+  haptics,
+  onSaved,
+}: ProfileFormDependencies) {
   const record = reatomEditableRecord({
     name: "pets.profileRecord",
     form: (onSubmit) =>
       reatomForm(emptyProfile, { name: "pets.profileForm", schema: schemaFor(today), onSubmit }),
     failureMessage: "Не получилось сохранить. Попробуйте ещё раз.",
+    haptics,
     valuesOf,
     create: async (values) => api.create(profileOf(values)),
     update: async (pet: Pet, values) => api.saveProfile(pet.id, profileOf(values)),

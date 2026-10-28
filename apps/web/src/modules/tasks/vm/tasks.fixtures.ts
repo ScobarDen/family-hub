@@ -14,7 +14,7 @@ import {
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
+import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
 
 import type { TaskRow } from "../task-rows.lib.ts";
 import { createTasksApi } from "../tasks.api.ts";
@@ -284,6 +284,7 @@ export function fakeTelegram(choices: string[] = []) {
     async showPopup() {
       return pending.shift();
     },
+    haptics: fakeHaptics(),
   };
 }
 
@@ -324,7 +325,7 @@ export function startTasks(
 
   model.screen.subscribe(noop);
 
-  return { model, backend, recorded, openedPets, openedAlbums };
+  return { model, backend, recorded, openedPets, openedAlbums, felt: telegram.haptics.felt };
 }
 
 type Model = ReturnType<typeof startTasks>["model"];

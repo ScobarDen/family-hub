@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test } from "vite-plus/test";
 import type { SlotModule } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { fakeHaptics } from "@/common/telegram";
 
 import { createTabBarApi } from "../tab-bar.api.ts";
 import { reatomTabBarModules } from "../tab-bar.model.ts";
@@ -25,16 +26,25 @@ function startTabBar(saved?: SlotModule[], renamed?: () => Partial<Record<SlotMo
   const activeTab = atom<TabId>("today", "test.activeTab");
   const opened: TabId[] = [];
   const modules = reatomTabBarModules({ api: createTabBarApi(client), saved: () => saved });
+  const haptics = fakeHaptics();
   const model = reatomTabBar({
     modules,
     activeTab,
     onOpen: (tab) => {
       opened.push(tab);
     },
+    telegram: { haptics },
     titles: renamed,
   });
 
-  return { model, menu: reatomTabBarMenu({ modules }), activeTab, opened, saves };
+  return {
+    model,
+    menu: reatomTabBarMenu({ modules, telegram: { haptics } }),
+    activeTab,
+    opened,
+    saves,
+    felt: haptics.felt,
+  };
 }
 
 function titles(tabs: Array<{ title: string }>): string[] {
@@ -77,13 +87,14 @@ describe("the tab bar", () => {
     expect(titles(model.tabs().start)).toEqual(["Сегодня", "Бьюик"]);
   });
 
-  test("opens a tab, the active one included", () => {
-    const { model, opened } = startTabBar();
+  test("opens a tab, the active one included, ticking only on a switch", () => {
+    const { model, opened, felt } = startTabBar();
 
     model.open("today");
     model.open("goals");
 
     expect(opened).toEqual(["today", "goals"]);
+    expect(felt).toEqual(["select"]);
   });
 });
 

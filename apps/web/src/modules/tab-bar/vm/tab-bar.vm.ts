@@ -3,6 +3,7 @@ import { action, computed } from "@reatom/core";
 import type { SlotModule } from "@family-hub/contract";
 
 import { sectionTitles } from "@/common/sections";
+import type { Haptics } from "@/common/telegram";
 
 import type { TabBarModules } from "../tab-bar.model.ts";
 
@@ -15,6 +16,7 @@ type TabBarDependencies = {
   modules: Pick<TabBarModules, "modules">;
   activeTab: () => TabId;
   onOpen: (tab: TabId) => void;
+  telegram: { haptics: Pick<Haptics, "select"> };
   // A slot may be renamed by its content, like the pet tab after the Family's only Pet.
   titles?: () => Partial<Record<SlotModule, string>>;
 };
@@ -25,6 +27,7 @@ export function reatomTabBar({
   modules,
   activeTab,
   onOpen,
+  telegram,
   titles = () => ({}),
 }: TabBarDependencies) {
   function tabOf(id: TabId): TabItem {
@@ -45,8 +48,12 @@ export function reatomTabBar({
       };
     }, "tabBar.tabs"),
 
-    // Tapping the active tab again returns to its root.
+    // Tapping the active tab again returns to its root, which is navigation and stays still.
     open: action((tab: TabId) => {
+      if (tab !== activeTab()) {
+        telegram.haptics.select();
+      }
+
       onOpen(tab);
     }, "tabBar.open"),
   };

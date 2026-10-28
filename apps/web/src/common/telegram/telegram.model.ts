@@ -1,9 +1,11 @@
 import { action, atom, effect, noop, withConnectHook, wrap } from "@reatom/core";
 
+import type { Haptics } from "./telegram.lib.ts";
 import type {
   BottomButton,
   ColorScheme,
   HapticImpact,
+  HapticNotification,
   PopupParams,
   TelegramButton,
   TelegramWebApp,
@@ -20,6 +22,7 @@ const hapticsVersion = "6.1";
 const verticalSwipesVersion = "7.7";
 const deviceStorageVersion = "9.0";
 const readyAfterMs = 300;
+const sameHapticGapMs = 80;
 
 type PlatformLook = "ios" | "android";
 
@@ -92,11 +95,6 @@ function reatomPrompts(webApp: TelegramWebApp) {
 
 function reatomGestures(webApp: TelegramWebApp) {
   return {
-    haptic: action((impact: HapticImpact) => {
-      if (webApp.isVersionAtLeast(hapticsVersion)) {
-        webApp.HapticFeedback.impactOccurred(impact);
-      }
-    }, "telegram.haptic"),
     // A swipe down closes the Mini App, which would fight a finger held on the microphone.
     disableVerticalSwipes: action(() => {
       if (webApp.isVersionAtLeast(verticalSwipesVersion)) {
@@ -111,8 +109,59 @@ function reatomGestures(webApp: TelegramWebApp) {
   };
 }
 
+// Fast taps on several checkboxes would otherwise merge into one long buzz.
+function createHaptics(webApp: TelegramWebApp): Haptics {
+  const isAvailable = webApp.isVersionAtLeast(hapticsVersion);
+  const lastFeltAt = new Map<string, number>();
+
+  function feel(feedback: string, give: () => void): void {
+    const now = Date.now();
+    const last = lastFeltAt.get(feedback);
+
+    if (!isAvailable || (last !== undefined && now - last < sameHapticGapMs)) {
+      return;
+    }
+
+    lastFeltAt.set(feedback, now);
+    give();
+  }
+
+  function notify(type: HapticNotification): void {
+    feel(type, () => {
+      webApp.HapticFeedback.notificationOccurred(type);
+    });
+  }
+
+  return {
+    select: () => {
+      feel("select", () => {
+        webApp.HapticFeedback.selectionChanged();
+      });
+    },
+    success: () => {
+      notify("success");
+    },
+    warning: () => {
+      notify("warning");
+    },
+    error: () => {
+      notify("error");
+    },
+    impact: (style: HapticImpact) => {
+      feel(`impact ${style}`, () => {
+        webApp.HapticFeedback.impactOccurred(style);
+      });
+    },
+  };
+}
+
 function reatomInteractions(webApp: TelegramWebApp) {
-  return { ...reatomDialogs(webApp), ...reatomPrompts(webApp), ...reatomGestures(webApp) };
+  return {
+    ...reatomDialogs(webApp),
+    ...reatomPrompts(webApp),
+    ...reatomGestures(webApp),
+    haptics: createHaptics(webApp),
+  };
 }
 
 function reatomButton(

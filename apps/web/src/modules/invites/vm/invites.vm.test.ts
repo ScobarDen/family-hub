@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { Invite, InviteCreated, InviteList } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { fakeHaptics } from "@/common/telegram";
 
 import { createInvitesApi } from "../invites.api.ts";
 import { reatomInvites } from "./invites.vm.ts";
@@ -59,6 +60,7 @@ function fakeTelegram({ canShareMessage = true } = {}) {
     openTelegramLink(url: string) {
       calls.push(`openTelegramLink ${url}`);
     },
+    haptics: fakeHaptics(),
     calls,
   };
 }

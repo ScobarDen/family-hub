@@ -25,6 +25,7 @@ async function remove({ api, telegram, list, failure }: FamilySources, member: F
     await wrap(api.remove(member.id));
     list.data.set(withoutId(list.data() ?? [], member.id));
   } catch {
+    telegram.haptics.error();
     failure.set("Не получилось исключить участника. Попробуйте ещё раз.");
   }
 }
@@ -49,6 +50,7 @@ async function handOver({ api, telegram, list, failure }: FamilySources, member:
       list.data()?.map((other) => ({ ...other, isFamilyOwner: other.id === member.id })),
     );
   } catch {
+    telegram.haptics.error();
     failure.set("Не получилось передать роль владельца. Попробуйте ещё раз.");
   }
 }

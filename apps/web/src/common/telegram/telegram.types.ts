@@ -36,6 +36,8 @@ export type PopupParams = { title?: string; message: string; buttons: PopupButto
 
 export type HapticImpact = "light" | "medium" | "heavy" | "rigid" | "soft";
 
+export type HapticNotification = "success" | "warning" | "error";
+
 type StorageCallback<Result> = (error: string | null, result?: Result) => void;
 
 export type DeviceStorage = {
@@ -58,7 +60,11 @@ export type TelegramWebApp = {
   requestWriteAccess(callback?: (isAllowed: boolean) => void): void;
   shareMessage(preparedMessageId: string, callback?: (isSent: boolean) => void): void;
   openTelegramLink(url: string): void;
-  HapticFeedback: { impactOccurred(style: HapticImpact): void };
+  HapticFeedback: {
+    impactOccurred(style: HapticImpact): void;
+    notificationOccurred(type: HapticNotification): void;
+    selectionChanged(): void;
+  };
   enableVerticalSwipes(): void;
   disableVerticalSwipes(): void;
   DeviceStorage: DeviceStorage;

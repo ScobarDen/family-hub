@@ -16,7 +16,7 @@ import type { DeviceCache } from "@/common/device-cache";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
 import { detached } from "@/common/state";
-import type { Dialogs } from "@/common/telegram";
+import type { Dialogs, Haptics } from "@/common/telegram";
 
 import { detailsOf, type TaskDetails } from "../task-details.lib.ts";
 import {
@@ -51,7 +51,7 @@ type TasksDependencies = SharedLists &
   LiveVersion & {
     api: TasksApi;
     deviceCache: Pick<DeviceCache, "withDeviceCache">;
-    telegram: Pick<Dialogs, "showPopup">;
+    telegram: Pick<Dialogs, "showPopup"> & { haptics: Haptics };
     self: () => string | undefined;
     viewer: () => Viewer;
     onOpenAlbum: (albumId: string) => void;
@@ -97,10 +97,15 @@ function reatomForms(
   return {
     taskForm: reatomTaskForm({
       ...dependencies,
+      haptics: dependencies.telegram.haptics,
       timeZone: () => dependencies.viewer().timeZone,
       onSaved,
     }),
-    subtaskForm: reatomSubtaskForm({ ...dependencies, onSaved }),
+    subtaskForm: reatomSubtaskForm({
+      ...dependencies,
+      haptics: dependencies.telegram.haptics,
+      onSaved,
+    }),
   };
 }
 
@@ -229,7 +234,7 @@ function reatomOpen({ editing, opened }: Navigation, viewer: () => Viewer, tasks
 
 function reatomBrowsing(
   navigation: Navigation,
-  { viewer, onOpenAlbum }: TasksDependencies,
+  { viewer, onOpenAlbum, telegram }: TasksDependencies,
   tasks: TasksModel,
 ) {
   const { editing, opened } = navigation;
@@ -240,12 +245,15 @@ function reatomBrowsing(
     }, "tasks.openRow"),
     open: detached(reatomOpen(navigation, viewer, tasks), "tasks.open"),
     toggleCompleted: action(() => {
+      telegram.haptics.select();
       navigation.isCompletedShown.toggle();
     }, "tasks.toggleCompleted"),
     showView: action((view: "list" | "calendar") => {
+      telegram.haptics.select();
       navigation.view.set(view);
     }, "tasks.showView"),
     showScope: action((scope: "mine" | "all") => {
+      telegram.haptics.select();
       navigation.scope.set(scope);
     }, "tasks.showScope"),
     back: action(() => {

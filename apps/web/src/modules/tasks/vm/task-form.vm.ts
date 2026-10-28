@@ -16,6 +16,7 @@ import {
 } from "@family-hub/contract";
 
 import { reatomEditableRecord, type DraftOpening } from "@/common/form";
+import type { Haptics } from "@/common/telegram";
 import type { AvatarMember, Choice } from "@/common/ui";
 
 import type { TasksApi } from "../tasks.api.ts";
@@ -33,6 +34,7 @@ type TaskFormDependencies = {
   tasks: Pick<TasksModel, "keep" | "members" | "pets" | "albums">;
   self: () => string | undefined;
   timeZone: () => string;
+  haptics: Pick<Haptics, "success" | "error" | "select">;
   onSaved: (task: Task) => void;
   onDraftSaved: (draftId: string) => void;
 };
@@ -113,6 +115,7 @@ function reatomTaskRecord(dependencies: TaskFormDependencies, picks: Picks) {
     name: "tasks.taskRecord",
     form: (onSubmit) => reatomForm(emptyTask, { name: "tasks.taskForm", schema, onSubmit }),
     failureMessage: "Не получилось сохранить дело. Попробуйте ещё раз.",
+    haptics: dependencies.haptics,
     valuesOf,
     valuesOfDraft,
     create: async (values, { phrase }) =>
@@ -166,12 +169,15 @@ function reatomPeople(dependencies: TaskFormDependencies, { form }: TaskRecord, 
     assignees: choicesOf(picks.assigneeIds, "tasks.taskForm.assignees"),
     recipientChoices: choicesOf(picks.recipientIds, "tasks.taskForm.recipientChoices"),
     toggleAssignee: action((memberId: string) => {
+      dependencies.haptics.select();
       picks.assigneeIds.set(toggled(picks.assigneeIds(), memberId));
     }, "tasks.taskForm.toggleAssignee"),
     toggleRecipient: action((memberId: string) => {
+      dependencies.haptics.select();
       picks.recipientIds.set(toggled(picks.recipientIds(), memberId));
     }, "tasks.taskForm.toggleRecipient"),
     chooseVisibility: action((chosen: string) => {
+      dependencies.haptics.select();
       form.fields.visibility.set(chosen);
 
       if (chosen === "private") {
@@ -195,7 +201,10 @@ function chipTitleOf(offset: ReminderOffset): string {
 }
 
 // No date, no Reminders; a whole day offers only the day-sized offsets.
-function reatomOffsets({ form }: TaskRecord, chosen: Atom<ReminderOffset[]>) {
+function reatomOffsets(
+  { form }: TaskRecord,
+  { chosen, haptics }: { chosen: Atom<ReminderOffset[]>; haptics: Pick<Haptics, "select"> },
+) {
   const offsets = computed((): OffsetChoice[] => {
     const isTimed = form.fields.time() !== "";
 
@@ -220,6 +229,7 @@ function reatomOffsets({ form }: TaskRecord, chosen: Atom<ReminderOffset[]>) {
       "tasks.taskForm.isPickingRecipients",
     ),
     toggleOffset: action((offset: ReminderOffset) => {
+      haptics.select();
       chosen.set(toggled(chosen(), offset, reminderMaxCount));
     }, "tasks.taskForm.toggleOffset"),
   };
@@ -322,7 +332,7 @@ export function reatomTaskForm(dependencies: TaskFormDependencies) {
     ...record,
     ...reatomFlags(record, isExpanded),
     ...reatomPeople(dependencies, record, picks),
-    ...reatomOffsets(record, picks.offsets),
+    ...reatomOffsets(record, { chosen: picks.offsets, haptics: dependencies.haptics }),
     ...reatomLinks(dependencies),
     ...reatomStarts(record, { picks, isExpanded }),
     expand: action(() => {

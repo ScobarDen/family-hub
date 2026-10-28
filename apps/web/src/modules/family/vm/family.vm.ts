@@ -57,6 +57,7 @@ function reatomDeletionFlow(sources: FamilySources) {
     deletionFailure: reatomSubmitFailure(form, {
       message: "Не получилось удалить семью. Попробуйте ещё раз.",
       name: "family.deletionFailure",
+      haptics: sources.telegram.haptics,
     }),
 
     openDeletion: action(() => {

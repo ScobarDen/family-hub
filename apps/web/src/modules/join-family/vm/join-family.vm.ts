@@ -2,6 +2,9 @@ import { action, atom, computed, noop, withAsync, withAsyncData, wrap } from "@r
 
 import { inviteTokenPattern, parseDeepLink, type InvitePreview } from "@family-hub/contract";
 
+import { reatomFailure } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
+
 import type { AcceptOutcome, JoinFamilyApi } from "../join-family.api.ts";
 
 export type JoinFamilyScreen =
@@ -18,6 +21,7 @@ type JoinFamilyDependencies = {
     initData: string;
     startParam: string | undefined;
     requestWriteAccess: () => Promise<boolean>;
+    haptics: Pick<Haptics, "error">;
   };
   onJoined: () => void;
 };
@@ -94,11 +98,11 @@ export function reatomJoinFamily({ api, telegram, onJoined }: JoinFamilyDependen
     screen,
     isOpen: computed(() => screen().kind !== "none", "joinFamily.isOpen"),
     isJoining: computed(() => !accept.ready(), "joinFamily.isJoining"),
-    failure: computed(
-      () =>
-        accept.error() === undefined ? undefined : "Не получилось вступить. Попробуйте ещё раз.",
-      "joinFamily.failure",
-    ),
+    failure: reatomFailure(accept, {
+      message: "Не получилось вступить. Попробуйте ещё раз.",
+      name: "joinFamily.failure",
+      haptics: telegram.haptics,
+    }),
 
     load: action(() => {
       if (token !== undefined) {

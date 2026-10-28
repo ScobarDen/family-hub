@@ -4,7 +4,13 @@ import type { Pet } from "@family-hub/contract";
 
 import { PhotoTooLargeError, type PreparedPhoto } from "@/common/photo";
 import { detached } from "@/common/state";
-import { didSucceedOrAlert, isConfirmed, type Confirmation, type Dialogs } from "@/common/telegram";
+import {
+  didSucceedOrAlert,
+  isConfirmed,
+  type Confirmation,
+  type Dialogs,
+  type Haptics,
+} from "@/common/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -12,7 +18,7 @@ import type { PetsModel } from "../pets.model.ts";
 type PetAvatarDependencies = {
   api: PetsApi;
   pets: Pick<PetsModel, "keep">;
-  telegram: Dialogs;
+  telegram: Dialogs & { haptics: Haptics };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   openedPet: () => Pet | undefined;
@@ -42,11 +48,13 @@ function reatomUpload({ api, telegram, preparePhoto }: PetAvatarDependencies, sa
       const photo = await wrap(api.uploadPhoto(await wrap(preparePhoto(file))));
 
       await wrap(save(photo.id));
+      telegram.haptics.success();
     } catch (error) {
       if (isAbort(error)) {
         throw error;
       }
 
+      telegram.haptics.error();
       telegram.showAlert(failureOf(error));
     }
   }, "pets.uploadAvatarPhoto").extend(withAsync());

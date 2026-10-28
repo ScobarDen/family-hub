@@ -5,6 +5,7 @@ import type { Invite, InviteCreated } from "@family-hub/contract";
 import { formatDay, type Viewer } from "@/common/format-date";
 import { withoutId } from "@/common/records";
 import { detached, reatomFailure } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
 
 import type { InvitesApi } from "../invites.api.ts";
 
@@ -16,6 +17,7 @@ type InvitesDependencies = {
     canShareMessage: boolean;
     shareMessage: (preparedMessageId: string) => Promise<boolean>;
     openTelegramLink: (url: string) => void;
+    haptics: Pick<Haptics, "error">;
   };
   viewer: () => Viewer;
 };
@@ -85,10 +87,12 @@ export function reatomInvites(dependencies: InvitesDependencies) {
   const createFailure = reatomFailure(create, {
     message: "Не получилось создать приглашение. Попробуйте ещё раз.",
     name: "invites.createFailure",
+    haptics: dependencies.telegram.haptics,
   });
   const revokeFailure = reatomFailure(revoke, {
     message: "Не получилось отозвать приглашение. Попробуйте ещё раз.",
     name: "invites.revokeFailure",
+    haptics: dependencies.telegram.haptics,
   });
 
   return {

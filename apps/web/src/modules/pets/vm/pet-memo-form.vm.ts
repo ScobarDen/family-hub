@@ -1,10 +1,10 @@
-import { action, atom, computed, reatomForm, wrap } from "@reatom/core";
+import { action, atom, computed, noop, reatomForm, wrap } from "@reatom/core";
 import { z } from "zod";
 
 import { petLongTextMaxLength, petMemoChange, type Pet } from "@family-hub/contract";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
-import { detached } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -12,6 +12,7 @@ import type { PetsModel } from "../pets.model.ts";
 type MemoFormDependencies = {
   api: PetsApi;
   pets: Pick<PetsModel, "keep">;
+  haptics: Pick<Haptics, "success" | "error">;
   onSaved: (pet: Pet) => void;
 };
 
@@ -21,7 +22,7 @@ const memoText = z
   .string()
   .max(petLongTextMaxLength, `Не длиннее ${petLongTextMaxLength} символов`);
 
-export function reatomPetMemoForm({ api, pets, onSaved }: MemoFormDependencies) {
+export function reatomPetMemoForm({ api, pets, haptics, onSaved }: MemoFormDependencies) {
   const petId = atom<string | undefined>(undefined, "pets.memoForm.petId");
   const form = reatomForm(emptyMemo, {
     name: "pets.memoForm",
@@ -46,9 +47,12 @@ export function reatomPetMemoForm({ api, pets, onSaved }: MemoFormDependencies) 
     failure: reatomSubmitFailure(form, {
       message: "Не получилось сохранить памятку. Попробуйте ещё раз.",
       name: "pets.memoForm.failure",
+      haptics,
     }),
 
-    save: detached(form.submit, "pets.memoForm.save"),
+    save: action(() => {
+      form.submit().then(haptics.success, noop);
+    }, "pets.memoForm.save"),
     startEditing: action((pet: Pet) => {
       petId.set(pet.id);
       fillForm(form, {

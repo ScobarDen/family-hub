@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { ApiError, FamilyRequestCreated, FamilyRequestStatus } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { fakeHaptics } from "@/common/telegram";
 
 import { createFamilyRequestApi } from "../family-request.api.ts";
 import { reatomFamilyRequest } from "./family-request.vm.ts";
@@ -47,6 +48,7 @@ function fakeTelegram({ allowsWriteAccess = true } = {}) {
 
       return allowsWriteAccess;
     },
+    haptics: fakeHaptics(),
     calls,
   };
 }
@@ -74,7 +76,7 @@ function startFamilyRequest(
     onCheck: navigation.check,
   });
 
-  return { model, navigation, familyRequestStatus };
+  return { model, navigation, familyRequestStatus, felt: telegram.haptics.felt };
 }
 
 async function submit(model: ReturnType<typeof startFamilyRequest>["model"], familyName: string) {
@@ -93,10 +95,11 @@ describe("submitting a Family Request", () => {
   test("asks Telegram for write access before sending the request", async () => {
     const backend = fakeBackend({ status: "pending" });
     const telegram = fakeTelegram();
-    const { model } = startFamilyRequest(backend, { telegram });
+    const { model, felt } = startFamilyRequest(backend, { telegram });
 
     await submit(model, "  Гущины ");
 
+    expect(felt).toEqual(["success"]);
     expect(telegram.calls).toEqual(["requestWriteAccess"]);
     expect(backend.requests).toEqual([
       { path: "/api/family-requests", body: { initData, familyName: "Гущины" } },
@@ -117,11 +120,12 @@ describe("submitting a Family Request", () => {
 
   test("asks for a family name instead of sending an empty one", async () => {
     const backend = fakeBackend({ status: "pending" });
-    const { model } = startFamilyRequest(backend);
+    const { model, felt } = startFamilyRequest(backend);
 
     await submit(model, "   ");
 
     expect(backend.requests).toEqual([]);
+    expect(felt).toEqual(["error"]);
     expect(model.screen()).toEqual({ kind: "form" });
     expect(model.form.fields.familyName.validation().error).toBe("Введите название семьи");
   });

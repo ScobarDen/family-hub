@@ -16,6 +16,7 @@ import { today, type FeedUpcoming, type SlotModule, type Today } from "@family-h
 import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
 import { detached, reatomRollbackFailure, type RollbackFailure } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
 
 import type { OccurrenceTarget, TodayApi } from "../today.api.ts";
 import { dueRowOf, headerOf, moreOf, nextRowOf, tilesOf, type Tile } from "../today.lib.ts";
@@ -30,6 +31,7 @@ export type TodayDependencies = LiveVersion & {
   api: TodayApi;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
   today: () => string;
+  telegram: { haptics: Pick<Haptics, "success" | "select" | "error"> };
   onOpen: (target: TodayTarget) => void;
   onOpenSection: (module: SlotModule) => void;
   onOpenFeed: () => void;
@@ -121,7 +123,7 @@ type CompletionState = ReturnType<typeof reatomHidden> & {
 // The server hears of the tap at once, so closing the app loses nothing; the undo stays offered
 // with no timer, until it is dismissed or the next Occurrence is completed.
 function reatomComplete(
-  { api }: Pick<TodayDependencies, "api">,
+  { api, telegram }: Pick<TodayDependencies, "api" | "telegram">,
   { state, onSettled }: { state: CompletionState; onSettled: () => void },
 ) {
   const { pending, failure, hide, show } = state;
@@ -137,6 +139,7 @@ function reatomComplete(
     };
 
     failure.dismiss();
+    telegram.haptics.success();
     hide(key);
     pending.set(completing);
 
@@ -156,7 +159,7 @@ function reatomComplete(
 
 // The undo reopens the Occurrence once its completion is in.
 function reatomRevert(
-  { api }: Pick<TodayDependencies, "api">,
+  { api, telegram }: Pick<TodayDependencies, "api" | "telegram">,
   { state, onSettled }: { state: CompletionState; onSettled: () => void },
 ) {
   const { pending, failure, show } = state;
@@ -169,6 +172,7 @@ function reatomRevert(
     }
 
     pending.set(undefined);
+    telegram.haptics.select();
     show(completing.key);
 
     try {
@@ -183,13 +187,13 @@ function reatomRevert(
 }
 
 function reatomCompletion(
-  dependencies: Pick<TodayDependencies, "api" | "onOpen">,
+  dependencies: Pick<TodayDependencies, "api" | "onOpen" | "telegram">,
   onSettled: () => void,
 ) {
   const state: CompletionState = {
     ...reatomHidden(),
     pending: atom<Completing | undefined>(undefined, "today.pending"),
-    failure: reatomRollbackFailure("today.completionFailure"),
+    failure: reatomRollbackFailure("today.completionFailure", dependencies.telegram.haptics),
   };
 
   return {

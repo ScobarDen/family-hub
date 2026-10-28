@@ -3,6 +3,7 @@ import { action, computed, effect, noop, peek } from "@reatom/core";
 import type { TimeZoneSettings } from "@family-hub/contract";
 
 import { reatomFailure } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
 
 import type { MemberSettingsApi } from "../member-settings.api.ts";
 import { reatomSavedSetting } from "../member-settings.model.ts";
@@ -12,9 +13,10 @@ type TimeZoneDependencies = {
   saved: () => TimeZoneSettings | null | undefined;
   deviceZone: string;
   zones: string[];
+  haptics: Pick<Haptics, "select" | "error">;
 };
 
-export function reatomTimeZone({ api, saved, deviceZone, zones }: TimeZoneDependencies) {
+export function reatomTimeZone({ api, saved, deviceZone, zones, haptics }: TimeZoneDependencies) {
   const setting = reatomSavedSetting("timeZone", { send: api.saveTimeZone, saved });
   const device: TimeZoneSettings = { timeZone: deviceZone, isAuto: true };
 
@@ -29,6 +31,7 @@ export function reatomTimeZone({ api, saved, deviceZone, zones }: TimeZoneDepend
     failure: reatomFailure(setting.save, {
       message: "Не получилось сохранить часовой пояс. Попробуйте ещё раз.",
       name: "timeZone.failure",
+      haptics,
     }),
 
     keepFollowingDevice: () =>
@@ -45,6 +48,7 @@ export function reatomTimeZone({ api, saved, deviceZone, zones }: TimeZoneDepend
         }
       }, "timeZone.keepFollowingDevice"),
     choose: action((timeZone: string) => {
+      haptics.select();
       save({ timeZone, isAuto: false });
     }, "timeZone.choose"),
     followDevice: action((isOn: boolean) => {

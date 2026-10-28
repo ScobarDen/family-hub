@@ -5,7 +5,7 @@ import type { Album, Photo } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
+import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
 
 import { createAlbumsApi } from "../albums.api.ts";
 import { reatomAlbumsScreen } from "./albums.vm.ts";
@@ -110,9 +110,10 @@ function startAlbums({
     return read(url);
   }
 
+  const haptics = fakeHaptics();
   const model = reatomAlbumsScreen({
     api: createAlbumsApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
-    telegram: { showPopup: async () => "cancel", showAlert: noop },
+    telegram: { showPopup: async () => "cancel", showAlert: noop, haptics },
     viewer: () => ({ timeZone: "Europe/Moscow", today: "2026-10-16" }),
     preparePhoto: async (file) => ({ file, takenAt: null }),
     wait: async (ms) => {
@@ -130,6 +131,7 @@ function startAlbums({
 
   return {
     model,
+    felt: haptics.felt,
     requests,
     waits,
     hold() {
@@ -215,6 +217,7 @@ describe("a batch of photos", () => {
     await uploaded(started);
 
     expect(started.model.batch.progress()).toBe("3 / 3");
+    expect(started.felt).toEqual(["success"]);
     expect(additions(started)).toEqual([
       "POST /api/albums/album-1/photos",
       "POST /api/albums/album-1/photos",
@@ -286,6 +289,7 @@ describe("a batch of photos", () => {
 
     expect(started.model.batch.progress()).toBe("2 / 3");
     expect(started.model.batch.failedCount()).toBe(1);
+    expect(started.felt).toEqual(["error"]);
 
     started.model.batch.retry();
     await vi.waitFor(() => {

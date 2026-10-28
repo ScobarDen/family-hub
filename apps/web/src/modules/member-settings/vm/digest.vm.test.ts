@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { DigestSettings } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { fakeHaptics } from "@/common/telegram";
 
 import { createMemberSettingsApi } from "../member-settings.api.ts";
 import { reatomDigest } from "./digest.vm.ts";
@@ -25,6 +26,7 @@ function startDigest({ isFailing = false } = {}) {
       createHttpClient({ baseUrl: "https://api.family-hub.test", fetch }),
     ),
     saved: () => settings,
+    haptics: fakeHaptics(),
   });
 
   model.isEnabled.subscribe(noop);

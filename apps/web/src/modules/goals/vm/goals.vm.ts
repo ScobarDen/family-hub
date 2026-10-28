@@ -27,7 +27,7 @@ import {
   reatomRollbackFailure,
   type RollbackFailure,
 } from "@/common/state";
-import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
+import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
 
 import type { GoalsApi } from "../goals.api.ts";
 import {
@@ -52,7 +52,7 @@ export type GoalsScreen =
 type GoalsDependencies = {
   api: GoalsApi;
   goals: GoalsModel;
-  telegram: Pick<Dialogs, "showPopup">;
+  telegram: Pick<Dialogs, "showPopup"> & { haptics: Haptics };
   self: () => string | undefined;
   today: () => string;
   timeZone: () => string;
@@ -101,6 +101,7 @@ function reatomForms(
   return {
     goalForm: reatomGoalForm({
       ...dependencies,
+      haptics: dependencies.telegram.haptics,
       onSaved: (saved) => {
         editing.set(undefined);
         openedGoalId.set(saved.id);
@@ -109,6 +110,7 @@ function reatomForms(
     // Reaching the target with this very movement sets off the salute.
     movementForm: reatomMovementForm({
       ...dependencies,
+      haptics: dependencies.telegram.haptics,
       onSaved: (before, saved) => {
         editing.set(undefined);
         isCelebrating.set(!before.isAchieved && saved.isAchieved);
@@ -300,7 +302,7 @@ export function reatomGoalsScreen(input: GoalsInput) {
     () => dependencies.goals.list.data()?.goals.find(({ id }) => id === navigation.openedGoalId()),
     "goals.openedGoal",
   );
-  const failure = reatomRollbackFailure("goals.failure");
+  const failure = reatomRollbackFailure("goals.failure", dependencies.telegram.haptics);
   const forms = reatomForms(dependencies, navigation, failure);
   const screen = reatomScreen(dependencies, navigation, { ...forms, openedGoal });
   const complete = reatomCompletion(dependencies, openedGoal);

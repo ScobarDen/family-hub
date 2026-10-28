@@ -2,6 +2,8 @@ import { context, noop, reatomForm } from "@reatom/core";
 import { beforeEach, describe, expect, expectTypeOf, test, vi } from "vite-plus/test";
 import { z } from "zod";
 
+import { fakeHaptics } from "@/common/telegram";
+
 import { reatomEditableRecord } from "./form.model.ts";
 
 const phrase = { saidAt: Date.parse("2026-10-11T06:00:00Z"), timeZone: "Europe/Moscow" };
@@ -33,6 +35,7 @@ function startNotes({ failSaving = false } = {}) {
     return note;
   }
 
+  const haptics = fakeHaptics();
   const notes = reatomEditableRecord({
     name: "test.notes",
     form: (onSubmit) =>
@@ -45,6 +48,7 @@ function startNotes({ failSaving = false } = {}) {
         },
       ),
     failureMessage,
+    haptics,
     valuesOf: (note: Note) => ({ title: note.title }),
     valuesOfDraft: (draft: { title: string | null }) => ({ title: draft.title ?? "" }),
     create: async ({ title }, { phrase: said }) =>
@@ -63,6 +67,7 @@ function startNotes({ failSaving = false } = {}) {
 
   return {
     notes,
+    felt: haptics.felt,
     requests,
     saved,
     settledDrafts,
@@ -92,6 +97,35 @@ describe("an editable record", () => {
       expect(saved).toEqual([{ id: "note-new", title: "Корм Бьюику" }]);
     });
     expect(requests).toEqual(["create Корм Бьюику"]);
+  });
+
+  test("pulses success once it is saved", async () => {
+    const { notes, felt, saved } = startNotes();
+
+    notes.startCreating({ title: "Корм Бьюику" });
+    notes.save();
+
+    await vi.waitFor(() => {
+      expect(felt).toEqual(["success"]);
+    });
+    expect(saved).toHaveLength(1);
+  });
+
+  test("pulses error when a field needs fixing or the server refuses it", async () => {
+    const refused = startNotes({ failSaving: true });
+    const invalid = startNotes();
+
+    refused.notes.startCreating({ title: "Корм" });
+    refused.notes.save();
+    invalid.notes.startCreating({ title: " " });
+    invalid.notes.save();
+
+    await vi.waitFor(() => {
+      expect(refused.felt).toEqual(["error"]);
+    });
+    await vi.waitFor(() => {
+      expect(invalid.felt).toEqual(["error"]);
+    });
   });
 
   test("is updated when it was opened for editing", async () => {
@@ -176,6 +210,7 @@ describe("a record without drafts", () => {
       name: "test.plainNotes",
       form: (onSubmit) => reatomForm({ title: "" }, { name: "test.plainNotes.form", onSubmit }),
       failureMessage,
+      haptics: fakeHaptics(),
       valuesOf: (note: Note) => ({ title: note.title }),
       create: async ({ title }) => {
         requests.push(`create ${title}`);

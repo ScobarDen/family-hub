@@ -3,6 +3,7 @@ import { action, computed, noop } from "@reatom/core";
 import { defaultDigestTime, type DigestSettings } from "@family-hub/contract";
 
 import { reatomFailure } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
 
 import type { MemberSettingsApi } from "../member-settings.api.ts";
 import { reatomSavedSetting } from "../member-settings.model.ts";
@@ -11,11 +12,12 @@ type DigestDependencies = {
   api: MemberSettingsApi;
   // undefined until the Member's settings arrive.
   saved: () => DigestSettings | undefined;
+  haptics: Pick<Haptics, "select" | "error">;
 };
 
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/u;
 
-export function reatomDigest({ api, saved }: DigestDependencies) {
+export function reatomDigest({ api, saved, haptics }: DigestDependencies) {
   const setting = reatomSavedSetting("digest", { send: api.saveDigest, saved });
   const current = computed(
     (): DigestSettings => setting.current() ?? { isEnabled: true, time: defaultDigestTime },
@@ -39,6 +41,7 @@ export function reatomDigest({ api, saved }: DigestDependencies) {
     failure: reatomFailure(setting.save, {
       message: "Не получилось сохранить сводку. Попробуйте ещё раз.",
       name: "digest.failure",
+      haptics,
     }),
 
     toggle: action((isEnabled: boolean) => {
@@ -46,6 +49,7 @@ export function reatomDigest({ api, saved }: DigestDependencies) {
     }, "digest.toggle"),
     chooseTime: action((time: string) => {
       if (timePattern.test(time)) {
+        haptics.select();
         save({ ...current(), time });
       }
     }, "digest.chooseTime"),

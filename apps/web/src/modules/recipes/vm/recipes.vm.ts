@@ -26,7 +26,13 @@ import {
   readOnly,
   type RollbackFailure,
 } from "@/common/state";
-import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
+import {
+  type Confirmation,
+  type Dialogs,
+  didSucceedOrAlert,
+  isConfirmed,
+  type Haptics,
+} from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import {
@@ -79,7 +85,7 @@ export type RecipesScreen =
 type RecipesDependencies = LiveVersion & {
   api: RecipesApi;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
-  telegram: Dialogs;
+  telegram: Dialogs & { haptics: Haptics };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   today: () => string;
@@ -224,7 +230,7 @@ function reatomRecipeActions(dependencies: RecipesDependencies, sources: Sources
   };
 }
 
-function reatomFilters(data: RecipesData) {
+function reatomFilters(data: RecipesData, haptics: Pick<Haptics, "select">) {
   return {
     text: readOnly(data.text),
     tagId: readOnly(data.tagId),
@@ -233,9 +239,11 @@ function reatomFilters(data: RecipesData) {
       data.text.set(text);
     }, "recipes.search"),
     chooseTag: action((tagId: string | undefined) => {
+      haptics.select();
       data.tagId.set(data.tagId() === tagId ? undefined : tagId);
     }, "recipes.chooseTag"),
     toggleFavorites: action(() => {
+      haptics.select();
       data.isFavorite.set(!data.isFavorite());
     }, "recipes.toggleFavorites"),
     resetFilters: action(() => {
@@ -295,6 +303,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   const opened = reatomOpened(dependencies.api, { data, navigation });
   const form = reatomRecipeForm({
     ...dependencies,
+    haptics: dependencies.telegram.haptics,
     onSaved: (saved) => {
       navigation.editing.set(undefined);
       navigation.openedId.set(saved.id);
@@ -302,7 +311,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     },
   });
   const screen = reatomScreen({ ...dependencies, data, navigation, opened, form });
-  const failure = reatomRollbackFailure("recipes.failure");
+  const failure = reatomRollbackFailure("recipes.failure", dependencies.telegram.haptics);
 
   return {
     screen,
@@ -315,7 +324,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
       "recipes.canGoBack",
     ),
     viewer: reatomPhotoViewer({ ...dependencies, onDeleted: data.reload }),
-    ...reatomFilters(data),
+    ...reatomFilters(data, dependencies.telegram.haptics),
     failure: failure.failure,
     dismissFailure: failure.dismiss,
     ...reatomRecipeActions(dependencies, { data, navigation, opened, failure }),

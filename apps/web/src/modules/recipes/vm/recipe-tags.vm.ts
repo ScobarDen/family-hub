@@ -3,14 +3,14 @@ import { action, atom, reatomMap, withAsync, wrap } from "@reatom/core";
 import { recipeTagNameMaxLength, type RecipeTag } from "@family-hub/contract";
 
 import { detached, readOnly, reatomFailure } from "@/common/state";
-import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
+import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import type { RecipesData } from "../recipes.model.ts";
 
 type TagDependencies = {
   api: RecipesApi;
-  telegram: Pick<Dialogs, "showPopup">;
+  telegram: Pick<Dialogs, "showPopup"> & { haptics: Haptics };
 };
 
 const deleteQuestion: Confirmation = {
@@ -81,6 +81,7 @@ export function reatomTagEditing({ api, telegram }: TagDependencies, data: Recip
     tagFailure: reatomFailure(change, {
       message: "Не получилось сохранить тег. Попробуйте ещё раз.",
       name: "recipes.tags.failure",
+      haptics: telegram.haptics,
     }),
     ...reatomTagTyping(api, change),
     removeTag: detached(remove, "recipes.tags.remove"),

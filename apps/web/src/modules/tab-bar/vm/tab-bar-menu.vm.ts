@@ -3,6 +3,7 @@ import { action, computed, noop } from "@reatom/core";
 import { slotModule, type SlotModule } from "@family-hub/contract";
 
 import { sectionTitles } from "@/common/sections";
+import type { Haptics } from "@/common/telegram";
 
 import type { TabBarModules } from "../tab-bar.model.ts";
 
@@ -29,7 +30,13 @@ function withSlotChosen(current: SlotModule[], index: number, module: SlotModule
   return next;
 }
 
-export function reatomTabBarMenu({ modules }: { modules: TabBarModules }) {
+export function reatomTabBarMenu({
+  modules,
+  telegram,
+}: {
+  modules: TabBarModules;
+  telegram: { haptics: Pick<Haptics, "select" | "error"> };
+}) {
   return {
     slots: computed(
       (): Slot[] =>
@@ -52,7 +59,12 @@ export function reatomTabBarMenu({ modules }: { modules: TabBarModules }) {
       const next = withSlotChosen(current, index, module);
 
       if (next !== current) {
-        modules.save(next).catch(noop);
+        telegram.haptics.select();
+        modules.save(next).then(() => {
+          if (modules.failure() !== undefined) {
+            telegram.haptics.error();
+          }
+        }, noop);
       }
     }, "tabBarMenu.choose"),
   };

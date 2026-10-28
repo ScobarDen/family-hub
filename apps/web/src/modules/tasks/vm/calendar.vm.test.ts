@@ -34,6 +34,25 @@ describe("the calendar", () => {
     expect(openedPets).toEqual(["pet-1"]);
   });
 
+  test("ticks on switching to it and on picking a day, not on moving around", async () => {
+    const { model, felt } = startTasks();
+
+    await loaded(model);
+    model.showView("calendar");
+    model.select("2026-10-20");
+
+    const [row] = model.dayRows();
+
+    if (row === undefined) {
+      throw new Error("No Tasks on 20 October");
+    }
+
+    model.openItem(row.item);
+    model.nextMonth();
+
+    expect(felt).toEqual(["select", "select"]);
+  });
+
   test("remembers the list or the calendar for the next opening", () => {
     const first = startTasks();
 

@@ -1,5 +1,6 @@
 import { effect, noop } from "@reatom/core";
 
+import type { Haptics } from "./telegram.lib.ts";
 import type { BottomButtonState } from "./telegram.model.ts";
 import type { DeviceStorage } from "./telegram.types.ts";
 
@@ -88,4 +89,34 @@ export function fakeBottomButton({ isAvailable = true } = {}): FakeBottomButton 
   };
 
   return fake;
+}
+
+// Records every feedback in order, as the ViewModel asked for it, before the wrapper's throttle.
+export type FakeHaptics = Haptics & { felt: string[] };
+
+export function fakeHaptics(): FakeHaptics {
+  const felt: string[] = [];
+
+  function record(feedback: string): void {
+    felt.push(feedback);
+  }
+
+  return {
+    felt,
+    select: () => {
+      record("select");
+    },
+    success: () => {
+      record("success");
+    },
+    warning: () => {
+      record("warning");
+    },
+    error: () => {
+      record("error");
+    },
+    impact: (style) => {
+      record(`impact ${style}`);
+    },
+  };
 }

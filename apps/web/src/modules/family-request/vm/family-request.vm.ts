@@ -1,9 +1,10 @@
-import { action, computed, reatomForm, wrap } from "@reatom/core";
+import { action, computed, noop, reatomForm, wrap } from "@reatom/core";
 import { z } from "zod";
 
 import { familyNameMaxLength, type FamilyRequestStatus } from "@family-hub/contract";
 
-import { detached } from "@/common/state";
+import { reatomSubmitFailure } from "@/common/form";
+import type { Haptics } from "@/common/telegram";
 
 import type { FamilyRequestApi, SubmitOutcome } from "../family-request.api.ts";
 
@@ -15,7 +16,11 @@ export type FamilyRequestScreen =
 
 type FamilyRequestDependencies = {
   api: FamilyRequestApi;
-  telegram: { initData: string; requestWriteAccess: () => Promise<boolean> };
+  telegram: {
+    initData: string;
+    requestWriteAccess: () => Promise<boolean>;
+    haptics: Pick<Haptics, "success" | "error">;
+  };
   familyRequestStatus: () => FamilyRequestStatus | undefined;
   onBack: () => void;
   onCheck: () => void;
@@ -85,14 +90,15 @@ export function reatomFamilyRequest({
       "familyRequest.screen",
     ),
     isSubmitting: computed(() => !form.submit.ready(), "familyRequest.isSubmitting"),
-    failure: computed((): string | undefined => {
-      const isRejectedByServer =
-        form.submit.error() !== undefined && form.validation().errors.length === 0;
+    failure: reatomSubmitFailure(form, {
+      message: "Не получилось отправить заявку. Попробуйте ещё раз.",
+      name: "familyRequest.failure",
+      haptics: dependencies.telegram.haptics,
+    }),
 
-      return isRejectedByServer ? "Не получилось отправить заявку. Попробуйте ещё раз." : undefined;
-    }, "familyRequest.failure"),
-
-    submit: detached(form.submit, "familyRequest.submit"),
+    submit: action(() => {
+      form.submit().then(dependencies.telegram.haptics.success, noop);
+    }, "familyRequest.submit"),
     back: action(onBack, "familyRequest.back"),
     check: action(onCheck, "familyRequest.check"),
   };

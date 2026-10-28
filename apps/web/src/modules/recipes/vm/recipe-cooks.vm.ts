@@ -4,7 +4,7 @@ import { Temporal } from "temporal-polyfill";
 import type { Recipe } from "@family-hub/contract";
 
 import { detached, reatomOptimistic, readOnly, type RollbackFailure } from "@/common/state";
-import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
+import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import { withCook, withoutCook } from "../recipes.lib.ts";
@@ -14,7 +14,7 @@ type CookDependencies = {
   api: RecipesApi;
   today: () => string;
   timeZone: () => string;
-  telegram: Pick<Dialogs, "showPopup">;
+  telegram: Pick<Dialogs, "showPopup"> & { haptics: Haptics };
 };
 
 type Opened = { data: { (): Recipe | undefined; set: (recipe: Recipe) => unknown } };
@@ -36,13 +36,14 @@ function cookedAtOf({ today, timeZone }: CookDependencies, date: string): number
 }
 
 // Today by default; an earlier day marks a dinner cooked before it was written down.
-function reatomCookDay({ today }: CookDependencies) {
+function reatomCookDay({ today, telegram }: CookDependencies) {
   const chosenDay = atom<string | undefined>(undefined, "recipes.cooks.chosenDay");
 
   return {
     today: readOnly(today),
     cookDay: computed(() => chosenDay() ?? today(), "recipes.cooks.day"),
     chooseCookDay: action((day: string) => {
+      telegram.haptics.select();
       chosenDay.set(day);
     }, "recipes.chooseCookDay"),
   };
@@ -106,6 +107,8 @@ export function reatomRecipeCooks(dependencies: CookDependencies, sources: Sourc
     cook: action(() => {
       const cookedAt = cookedAtOf(dependencies, cookDay());
 
+      dependencies.telegram.haptics.success();
+
       change(
         (recipe) => withCook(recipe, cookedAt ?? Date.now()),
         async (recipe) => dependencies.api.cook(recipe.id, cookedAt),
@@ -113,6 +116,7 @@ export function reatomRecipeCooks(dependencies: CookDependencies, sources: Sourc
     }, "recipes.cook"),
     uncook: detached(uncook, "recipes.uncookMark"),
     toggleForgotten: action(() => {
+      dependencies.telegram.haptics.select();
       data.ordering.set(data.ordering() === "forgotten" ? "title" : "forgotten");
     }, "recipes.toggleForgotten"),
   };

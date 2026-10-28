@@ -5,12 +5,14 @@ import {
   isAbort,
   noop,
   withAsync,
+  withCallHook,
   withTransaction,
   wrap,
   type Action,
 } from "@reatom/core";
 
 import { HttpError } from "@/common/http-client";
+import type { Haptics } from "@/common/telegram";
 
 // A View fires a command and reads its outcome from state, so the command's promise is not its concern.
 export function detached<Params extends unknown[]>(
@@ -27,11 +29,17 @@ export function readOnly<State>(target: () => State): () => State {
   return target;
 }
 
-// A failed command's word for the View; the command's next call clears it.
+// A failed command's word for the View, and an error the Member feels; the next call clears it.
 export function reatomFailure(
-  command: { error: () => unknown },
-  { message, name }: { message: string; name: string },
+  command: { error: () => unknown; onReject: Action },
+  { message, name, haptics }: { message: string; name: string; haptics: Pick<Haptics, "error"> },
 ) {
+  command.onReject.extend(
+    withCallHook(() => {
+      haptics.error();
+    }),
+  );
+
   return computed(
     (): string | undefined => (command.error() === undefined ? undefined : message),
     name,
@@ -40,13 +48,14 @@ export function reatomFailure(
 
 export const offlineFailure = "Нет связи, не сохранилось";
 
-export function reatomRollbackFailure(name: string) {
+export function reatomRollbackFailure(name: string, haptics: Pick<Haptics, "error">) {
   const failure = atom<string | undefined>(undefined, name);
 
   return {
     failure: readOnly(failure),
     report: action((error: unknown, refusal: string) => {
       if (!isAbort(error)) {
+        haptics.error();
         failure.set(error instanceof HttpError ? refusal : offlineFailure);
       }
     }, `${name}.report`),

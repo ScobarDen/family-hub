@@ -14,7 +14,7 @@ import {
   reatomRollbackFailure,
   type RollbackFailure,
 } from "@/common/state";
-import { type Dialogs, isConfirmed } from "@/common/telegram";
+import { type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import type { WeightRange } from "../care.config.ts";
@@ -43,7 +43,7 @@ export type CareDependencies = LiveVersion & {
   today: () => string;
   now: () => string;
   timeZone: () => string;
-  telegram: Dialogs;
+  telegram: Dialogs & { haptics: Haptics };
   isReadOnly: () => boolean;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   // Why photos cannot be added now, from photo-storage; undefined when they can.
@@ -184,7 +184,7 @@ function reatomOpening({ api, data, form, screen, onOpenPet }: Sources) {
   return { openEntry: detached(openEntry, "care.openEntry") };
 }
 
-function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRange>) {
+function reatomMoves({ data, form, screen, telegram }: Sources, weightRange: Atom<WeightRange>) {
   return {
     add: action((kind: CareKind) => {
       form.startCreating(kind);
@@ -207,6 +207,7 @@ function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRa
       screen.set("expenses");
     }, "care.openExpenses"),
     chooseWeightRange: action((range: WeightRange) => {
+      telegram.haptics.select();
       weightRange.set(range);
     }, "care.chooseWeightRange"),
     back: action(() => {
@@ -261,6 +262,7 @@ export function reatomCare(dependencies: CareDependencies) {
   const form = reatomCareForm({
     ...dependencies,
     photos: photos.attachments,
+    haptics: dependencies.telegram.haptics,
     onSaved: () => {
       data.reload();
       screen.set("blocks");
@@ -273,7 +275,7 @@ export function reatomCare(dependencies: CareDependencies) {
     screen,
   };
   const weightRange = atom<WeightRange>("quarter", "care.weightRange");
-  const failure = reatomRollbackFailure("care.failure");
+  const failure = reatomRollbackFailure("care.failure", dependencies.telegram.haptics);
   const remove = reatomRemove(sources, failure);
 
   return {

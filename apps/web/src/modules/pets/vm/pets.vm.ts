@@ -32,6 +32,7 @@ function reatomForms(
   openedPet: () => Pet | undefined,
 ) {
   const { route } = dependencies;
+  const { haptics } = dependencies.telegram;
 
   function onSaved(saved: Pet): void {
     editing.set(undefined);
@@ -45,9 +46,10 @@ function reatomForms(
     profileForm: reatomPetProfileForm({
       ...dependencies,
       today: () => dependencies.viewer().today,
+      haptics,
       onSaved,
     }),
-    memoForm: reatomPetMemoForm({ ...dependencies, onSaved }),
+    memoForm: reatomPetMemoForm({ ...dependencies, haptics, onSaved }),
   };
 }
 
@@ -147,6 +149,7 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
   const archive = reatomPetArchive({
     ...dependencies,
     openedPet,
+    haptics: dependencies.telegram.haptics,
     onDeleted: () => {
       navigation.editing.set(undefined);
 

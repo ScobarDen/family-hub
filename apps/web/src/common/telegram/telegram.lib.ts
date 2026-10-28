@@ -1,6 +1,15 @@
 import { isAbort, wrap } from "@reatom/core";
 
-import type { PopupParams } from "./telegram.types.ts";
+import type { HapticImpact, PopupParams } from "./telegram.types.ts";
+
+// Which action gets which feedback: docs/haptics.md.
+export type Haptics = {
+  select: () => void;
+  success: () => void;
+  warning: () => void;
+  error: () => void;
+  impact: (style: HapticImpact) => void;
+};
 
 export type Dialogs = {
   // Resolves with the pressed button's id, or undefined when the popup is dismissed.
@@ -19,9 +28,13 @@ export type Confirmation = {
 const confirmed = "confirm";
 
 export async function isConfirmed(
-  telegram: Pick<Dialogs, "showPopup">,
+  telegram: Pick<Dialogs, "showPopup"> & { haptics: Pick<Haptics, "warning"> },
   { title, message, button, isDestructive = true }: Confirmation,
 ): Promise<boolean> {
+  if (isDestructive) {
+    telegram.haptics.warning();
+  }
+
   const choice = await wrap(
     telegram.showPopup({
       title,
@@ -38,7 +51,7 @@ export async function isConfirmed(
 
 // A call the Member started that fails gets a word instead of silence.
 export async function didSucceedOrAlert(
-  telegram: Pick<Dialogs, "showAlert">,
+  telegram: Pick<Dialogs, "showAlert"> & { haptics: Pick<Haptics, "error"> },
   { failure, call }: { failure: string; call: Promise<unknown> },
 ): Promise<boolean> {
   try {
@@ -50,6 +63,7 @@ export async function didSucceedOrAlert(
       throw error;
     }
 
+    telegram.haptics.error();
     telegram.showAlert(failure);
 
     return false;

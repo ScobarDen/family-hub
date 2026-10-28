@@ -48,6 +48,7 @@ type Write = {
   observe: (model: Model) => unknown;
   before: unknown;
   after: unknown;
+  felt: string[];
 };
 
 const writes: Write[] = [
@@ -60,6 +61,7 @@ const writes: Write[] = [
     observe: (model) => rowOf(model, "Отпуск").status,
     before: "open",
     after: "completed",
+    felt: ["success"],
   },
   {
     name: "un-completing an Occurrence",
@@ -70,6 +72,7 @@ const writes: Write[] = [
     observe: (model) => rowOf(model, "Паспорт").status,
     before: "completed",
     after: "open",
+    felt: ["select"],
   },
   {
     name: "skipping an Occurrence",
@@ -84,6 +87,7 @@ const writes: Write[] = [
       model.screen().kind === "list" ? groups(model).overdue.map((row) => row.key) : "details",
     before: ["task-cleaning-2026-10-02", "task-cleaning-2026-10-09"],
     after: ["task-cleaning-2026-10-02"],
+    felt: ["warning", "select"],
   },
   {
     name: "deleting a Task",
@@ -101,6 +105,7 @@ const writes: Write[] = [
         : "details",
     before: true,
     after: false,
+    felt: ["warning"],
   },
   {
     name: "completing a Subtask",
@@ -113,6 +118,7 @@ const writes: Write[] = [
     observe: stepsOf,
     before: "Шаги · 0 из 2",
     after: "Шаги · 1 из 2",
+    felt: ["success"],
   },
   {
     name: "un-completing a Subtask",
@@ -132,6 +138,7 @@ const writes: Write[] = [
     observe: stepsOf,
     before: "Шаги · 1 из 2",
     after: "Шаги · 0 из 2",
+    felt: ["select"],
   },
   {
     name: "deleting a Subtask",
@@ -145,6 +152,7 @@ const writes: Write[] = [
     observe: stepsOf,
     before: "Шаги · 0 из 2",
     after: "Шаги · 0 из 1",
+    felt: ["warning"],
   },
 ];
 
@@ -155,12 +163,12 @@ function startWrite(write: Write, options: Parameters<typeof fakeBackend>[1]) {
 }
 
 describe.each(writes)("$name", (write) => {
-  test("shows the change before the server answers", async () => {
+  test("shows the change before the server answers, with one pulse", async () => {
     let answer = noop;
     const written = new Promise<void>((resolve) => {
       answer = resolve;
     });
-    const { model, backend } = startWrite(write, { written });
+    const { model, backend, felt } = startWrite(write, { written });
 
     await loaded(model);
     write.act(model);
@@ -170,14 +178,15 @@ describe.each(writes)("$name", (write) => {
 
     expect(sentOf(backend)).toContainEqual(expect.stringMatching(/^(POST|DELETE) /u));
     expect(model.failure()).toBeUndefined();
+    expect(felt).toEqual(write.felt);
     answer();
   });
 
   test.each([
     { cause: "the server refuses it", option: "failing", said: failure },
     { cause: "there is no network", option: "unreachable", said: "Нет связи, не сохранилось" },
-  ])("rolls back with the failure bar when $cause", async ({ option, said }) => {
-    const { model } = startWrite(write, { [option]: write.pattern });
+  ])("rolls back with the failure bar and an error pulse when $cause", async ({ option, said }) => {
+    const { model, felt } = startWrite(write, { [option]: write.pattern });
 
     await loaded(model);
     write.act(model);
@@ -186,12 +195,13 @@ describe.each(writes)("$name", (write) => {
     });
 
     expect(write.observe(model)).toEqual(write.before);
+    expect(felt).toEqual([...write.felt, "error"]);
   });
 });
 
 describe("completing a Task", () => {
   test("completes with one tap and takes it back from the undo bar", async () => {
-    const { model, backend } = startTasks();
+    const { model, backend, felt } = startTasks();
 
     await loaded(model);
     model.toggle(rowOf(model, "Отпуск"));
@@ -209,6 +219,7 @@ describe("completing a Task", () => {
 
     expect(groups(model).undated).toMatchObject([{ title: "Отпуск" }]);
     expect(model.undo()).toBeUndefined();
+    expect(felt).toEqual(["success", "select"]);
     await vi.waitFor(() => {
       expect(sentOf(backend)).toContain("POST /api/tasks/task-vacation/reopen");
     });
@@ -404,8 +415,8 @@ describe("Subtasks", () => {
     });
   });
 
-  test("completes the Task once its last Subtask is completed", async () => {
-    const { model } = startTasks(fakeBackend([{ ...vacation, subtasks: steps }]));
+  test("completes the Task once its last Subtask is completed, with one pulse per tap", async () => {
+    const { model, felt } = startTasks(fakeBackend([{ ...vacation, subtasks: steps }]));
 
     await loaded(model);
     model.open("task-vacation");
@@ -421,6 +432,7 @@ describe("Subtasks", () => {
         task: { stepsTitle: "Шаги · 2 из 2", completed: expect.stringContaining("Выполнено") },
       });
     });
+    expect(felt).toEqual(["success", "success"]);
   });
 
   test("offers no Subtasks on a recurring Task", async () => {

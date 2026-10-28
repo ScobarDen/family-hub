@@ -14,6 +14,7 @@ import { reatomEditableRecord } from "@/common/form";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoAttachments } from "@/common/photo-attachments";
 import { readOnly } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 
@@ -21,6 +22,7 @@ type RecipeFormDependencies = {
   api: RecipesApi;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
+  haptics: Pick<Haptics, "success" | "error" | "select">;
   onSaved: (saved: Recipe) => void;
 };
 
@@ -40,10 +42,11 @@ function valuesOf({ title, ingredients, method }: Recipe): RecipeValues {
   return { title, ingredients: ingredients.join("\n"), method: method ?? "" };
 }
 
-function reatomTagChoice(chosen: Atom<string[]>) {
+function reatomTagChoice(chosen: Atom<string[]>, haptics: Pick<Haptics, "select">) {
   return action((tagId: string) => {
     const current = chosen();
 
+    haptics.select();
     chosen.set(
       current.includes(tagId) ? current.filter((id) => id !== tagId) : [...current, tagId],
     );
@@ -51,7 +54,7 @@ function reatomTagChoice(chosen: Atom<string[]>) {
 }
 
 function reatomRecipeRecord(
-  { api, onSaved }: RecipeFormDependencies,
+  { api, haptics, onSaved }: RecipeFormDependencies,
   { chosenTags, photos }: { chosenTags: Atom<string[]>; photos: { photoIds: () => string[] } },
 ) {
   function changeOf(values: RecipeValues): RecipeChange {
@@ -62,6 +65,7 @@ function reatomRecipeRecord(
     name: "recipes.record",
     form: (onSubmit) => reatomForm(emptyRecipe, { name: "recipes.form", schema, onSubmit }),
     failureMessage: "Не получилось сохранить рецепт. Попробуйте ещё раз.",
+    haptics,
     valuesOf,
     create: async (values) => api.create(changeOf(values)),
     update: async (recipe: Recipe, values) => api.update(recipe.id, changeOf(values)),
@@ -83,7 +87,7 @@ export function reatomRecipeForm(dependencies: RecipeFormDependencies) {
     photos,
     chosenTags: readOnly(chosenTags),
     isSaving: computed(() => record.isSaving() || photos.isUploading(), "recipes.form.isSaving"),
-    toggleTag: reatomTagChoice(chosenTags),
+    toggleTag: reatomTagChoice(chosenTags, dependencies.haptics),
 
     startCreating: action(() => {
       chosenTags.set([]);

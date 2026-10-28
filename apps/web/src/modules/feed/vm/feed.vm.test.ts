@@ -5,7 +5,7 @@ import type { FeedPage, FeedUpcoming, Photo, Task } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
+import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
 
 import { createFeedApi } from "../feed.api.ts";
 import { reatomFeed, type FeedTarget } from "./feed.vm.ts";
@@ -177,6 +177,7 @@ function startFeed({
     return Response.json(wallpaperTask);
   }
 
+  const haptics = fakeHaptics();
   const model = reatomFeed({
     api: createFeedApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     today: () => "2026-10-14",
@@ -184,13 +185,13 @@ function startFeed({
     onOpen: (target) => {
       opened.push(target);
     },
-    telegram: { showPopup: async () => noChoice, showAlert: noop },
+    telegram: { showPopup: async () => noChoice, showAlert: noop, haptics },
     deviceCache: reatomDeviceCache(device.deviceStorage),
   });
 
   model.blocks.subscribe(noop);
 
-  return { model, requests, opened };
+  return { model, requests, opened, felt: haptics.felt };
 }
 
 type Model = ReturnType<typeof startFeed>["model"];
@@ -248,12 +249,13 @@ describe("the Feed", () => {
     });
   });
 
-  test("narrows to one module by its chip", async () => {
-    const { model } = startFeed();
+  test("narrows to one module by its chip, with a selection tick", async () => {
+    const { model, felt } = startFeed();
 
     await loaded(model);
     model.choose("pet");
 
+    expect(felt).toEqual(["select"]);
     expect(shape(model)).toEqual([
       ["Предстоит", ["День рождения Бьюика"]],
       ["Сегодня", ["Вес: 30 кг — Бьюик"]],
@@ -318,21 +320,22 @@ describe("the Feed", () => {
     expect(requests).toContain('POST /api/tasks/task-1/complete {"occurrence":"2026-10-12"}');
   });
 
-  test("takes a completed line away before the server answers", async () => {
-    const { model } = startFeed({ completion: new Promise(noop) });
+  test("takes a completed line away before the server answers, with a success pulse", async () => {
+    const { model, felt } = startFeed({ completion: new Promise(noop) });
 
     await loaded(model);
     model.complete("task-1-2026-10-12");
 
     expect(model.blocks()[0]?.title).toBe("Предстоит");
     expect(model.failure()).toBeUndefined();
+    expect(felt).toEqual(["success"]);
   });
 
   test.each([
     { completion: "refused" as const, said: "Не получилось отметить. Попробуйте ещё раз." },
     { completion: "unreachable" as const, said: "Нет связи, не сохранилось" },
   ])("brings the line back with the failure bar when $completion", async ({ completion, said }) => {
-    const { model } = startFeed({ completion });
+    const { model, felt } = startFeed({ completion });
 
     await loaded(model);
     const before = shape(model);
@@ -343,6 +346,7 @@ describe("the Feed", () => {
     });
 
     expect(shape(model)).toEqual(before);
+    expect(felt).toEqual(["success", "error"]);
   });
 
   test("opens the Task of a line ahead and of a completed one, and a birthday's Pet", async () => {

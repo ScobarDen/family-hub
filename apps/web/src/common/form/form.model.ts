@@ -3,6 +3,7 @@ import {
   atom,
   computed,
   noop,
+  withCallHook,
   wrap,
   type Action,
   type Atom,
@@ -10,6 +11,8 @@ import {
 } from "@reatom/core";
 
 import type { CommandPhrase } from "@family-hub/contract";
+
+import type { Haptics } from "@/common/telegram";
 
 type Fillable<Values> = {
   init: (values: Values) => void;
@@ -26,15 +29,22 @@ export function fillForm<Values>(form: Fillable<Values>, values: Values): void {
 }
 
 type Submittable = {
-  submit: { error: () => unknown };
+  submit: { error: () => unknown; onReject: Action };
   validation: () => { errors: unknown[] };
 };
 
-// A submit that failed with valid fields was refused by the server or the network.
+// A submit that failed with valid fields was refused by the server or the network; either way,
+// and for a field that needs fixing, the Member feels an error.
 export function reatomSubmitFailure(
   form: Submittable,
-  { message, name }: { message: string; name: string },
+  { message, name, haptics }: { message: string; name: string; haptics: Pick<Haptics, "error"> },
 ) {
+  form.submit.onReject.extend(
+    withCallHook(() => {
+      haptics.error();
+    }),
+  );
+
   return computed((): string | undefined => {
     const isRejectedByServer =
       form.submit.error() !== undefined && form.validation().errors.length === 0;
@@ -61,6 +71,7 @@ export type EditableRecordOptions<Values, Form extends RecordForm<Values>, Edite
   // The module builds its own reatomForm around this submit, so its fields keep their types.
   form: (onSubmit: (values: Values) => Promise<void>) => Form;
   failureMessage: string;
+  haptics: Pick<Haptics, "success" | "error">;
   valuesOf: (edited: Edited) => Values;
   create: (values: Values, creation: Creation) => Promise<Saved>;
   update: (edited: Edited, values: Values) => Promise<Saved>;
@@ -162,6 +173,7 @@ export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Ed
     failure: reatomSubmitFailure(form, {
       message: options.failureMessage,
       name: `${name}.failure`,
+      haptics: options.haptics,
     }),
     startCreating: action((values: Values) => {
       start({ kind: "creating" }, values);
@@ -174,7 +186,7 @@ export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Ed
         return;
       }
 
-      form.submit().catch(noop);
+      form.submit().then(options.haptics.success, noop);
     }, `${name}.save`),
   };
 

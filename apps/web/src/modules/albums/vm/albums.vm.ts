@@ -19,7 +19,7 @@ import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
-import { type Dialogs, didSucceedOrAlert, type PopupParams } from "@/common/telegram";
+import { type Dialogs, didSucceedOrAlert, type PopupParams, type Haptics } from "@/common/telegram";
 
 import type { AlbumsApi } from "../albums.api.ts";
 import { subtitleOf, toItem, type AlbumItem, type AlbumView } from "../albums.lib.ts";
@@ -48,7 +48,7 @@ export type AlbumsScreen =
 type AlbumsDependencies = LiveVersion & {
   api: AlbumsApi;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
-  telegram: Dialogs;
+  telegram: Dialogs & { haptics: Haptics };
   viewer: () => Viewer;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   wait: (ms: number) => Promise<void>;
@@ -109,6 +109,9 @@ function reatomRemoval(
 ) {
   return action(async () => {
     const albumId = navigation.openedId();
+
+    dependencies.telegram.haptics.warning();
+
     const choice = await wrap(dependencies.telegram.showPopup(deleteQuestion));
 
     if (albumId === undefined || (choice !== "album-only" && choice !== "with-photos")) {
@@ -167,6 +170,7 @@ function reatomParts(
   return {
     form: reatomAlbumForm({
       api,
+      haptics: dependencies.telegram.haptics,
       onSaved: (saved) => {
         navigation.isEditing.setFalse();
         navigation.openedId.set(saved.id);
@@ -175,6 +179,7 @@ function reatomParts(
     }),
     batch: reatomBatchUpload({
       ...dependencies,
+      haptics: dependencies.telegram.haptics,
       upload: async (prepared) => api.uploadPhoto(prepared),
       addToAlbum: async (albumId, photo) => api.addPhotos(albumId, [photo.id]),
       onFinished: data.reload,

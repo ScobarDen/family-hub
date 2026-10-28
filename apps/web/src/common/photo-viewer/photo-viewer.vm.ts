@@ -3,11 +3,17 @@ import { action, atom, computed, withAsync, wrap } from "@reatom/core";
 import type { Photo } from "@family-hub/contract";
 
 import { detached } from "@/common/state";
-import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
+import {
+  type Confirmation,
+  type Dialogs,
+  didSucceedOrAlert,
+  isConfirmed,
+  type Haptics,
+} from "@/common/telegram";
 
 export type PhotoViewerDependencies = {
   api: { deletePhoto: (photoId: string) => Promise<unknown> };
-  telegram: Dialogs;
+  telegram: Dialogs & { haptics: Haptics };
   // A module's own action on the photo shown, such as making it a Pet's avatar.
   onPick?: (photoId: string) => void;
   onDeleted: () => void;

@@ -13,7 +13,7 @@ import {
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
-import { fakeDeviceStorage } from "@/common/telegram";
+import { fakeDeviceStorage, fakeHaptics } from "@/common/telegram";
 
 import { createPetsApi } from "../pets.api.ts";
 import type { PetTask } from "../pets.lib.ts";
@@ -172,6 +172,7 @@ function startPets(
       showAlert: (message) => {
         alerts.push(message);
       },
+      haptics: fakeHaptics(),
     },
     preparePhoto: async (file) => {
       if (file.size > photoMaxBytes) {

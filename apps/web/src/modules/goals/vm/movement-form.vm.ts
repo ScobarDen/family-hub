@@ -10,6 +10,7 @@ import {
 } from "@family-hub/contract";
 
 import { reatomEditableRecord } from "@/common/form";
+import type { Haptics } from "@/common/telegram";
 import type { Choice } from "@/common/ui";
 
 import type { GoalsApi } from "../goals.api.ts";
@@ -21,6 +22,7 @@ type MovementFormDependencies = {
   goals: Pick<GoalsModel, "keep" | "members">;
   today: () => string;
   self: () => string | undefined;
+  haptics: Pick<Haptics, "success" | "error">;
   onSaved: (before: Goal, saved: Goal) => void;
   onAdding: (before: Goal, change: MovementChange, shown: Goal) => void;
 };
@@ -112,7 +114,7 @@ function reatomMovementRecord(
   dependencies: MovementFormDependencies,
   goal: Atom<Goal | undefined>,
 ) {
-  const { api, goals, today, onSaved, onAdding } = dependencies;
+  const { api, goals, today, haptics, onSaved, onAdding } = dependencies;
 
   return reatomEditableRecord({
     name: "goals.movementRecord",
@@ -123,6 +125,7 @@ function reatomMovementRecord(
         onSubmit,
       }),
     failureMessage: "Не получилось сохранить. Баланс цели не может уйти в минус.",
+    haptics,
     valuesOf,
     create: async (values): Promise<Saved> => {
       const before = goal();

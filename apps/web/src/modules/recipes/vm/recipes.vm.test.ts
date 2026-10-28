@@ -5,7 +5,7 @@ import { recipeChange, type Recipe } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
+import { fakeDeviceStorage, type FakeDeviceStorage, fakeHaptics } from "@/common/telegram";
 
 import { createRecipesApi } from "../recipes.api.ts";
 import { reatomRecipesScreen } from "./recipes.vm.ts";
@@ -122,6 +122,7 @@ function startRecipes({
     return Response.json(replyOf(url, init.method ?? "GET", body));
   }
 
+  const haptics = fakeHaptics();
   const model = reatomRecipesScreen({
     api: createRecipesApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: {
@@ -129,6 +130,7 @@ function startRecipes({
       showAlert(message: string) {
         alerts.push(message);
       },
+      haptics,
     },
     preparePhoto: async (file) => ({ file, takenAt: null }),
     photoHint: () => "Загрузка фото выключена",
@@ -139,7 +141,7 @@ function startRecipes({
 
   model.screen.subscribe(noop);
 
-  return { model, requests, alerts };
+  return { model, requests, alerts, felt: haptics.felt };
 }
 
 type Model = ReturnType<typeof startRecipes>["model"];
@@ -343,6 +345,7 @@ const writes = [
     observe: cooksOf,
     before: 0,
     after: 1,
+    felt: ["success"],
   },
   {
     name: "taking a Cooked mark away",
@@ -355,6 +358,7 @@ const writes = [
     observe: cooksOf,
     before: 1,
     after: 0,
+    felt: ["warning"],
   },
   {
     name: "deleting a Recipe",
@@ -366,12 +370,13 @@ const writes = [
     observe: titles,
     before: ["Борщ", "Лазанья"],
     after: ["Борщ"],
+    felt: ["warning"],
   },
 ];
 
-describe.each(writes)("$name", ({ request, opened, act, observe, before, after }) => {
-  test("shows before the server answers", async () => {
-    const { model } = startRecipes({ held: request, opened });
+describe.each(writes)("$name", ({ request, opened, act, observe, before, after, felt: tap }) => {
+  test("shows before the server answers, with one pulse", async () => {
+    const { model, felt } = startRecipes({ held: request, opened });
 
     await act(model);
     await vi.waitFor(() => {
@@ -379,6 +384,7 @@ describe.each(writes)("$name", ({ request, opened, act, observe, before, after }
     });
 
     expect(model.failure()).toBeUndefined();
+    expect(felt).toEqual(tap);
   });
 
   test.each([
@@ -387,16 +393,20 @@ describe.each(writes)("$name", ({ request, opened, act, observe, before, after }
       said: expect.stringMatching(/^Не получилось .+ Попробуйте ещё раз\.$/u) as unknown,
     },
     { option: "unreachable", said: "Нет связи, не сохранилось" },
-  ])("rolls back with the failure bar when $option", async ({ option, said }) => {
-    const { model } = startRecipes({ [option]: request, opened });
+  ])(
+    "rolls back with the failure bar and an error pulse when $option",
+    async ({ option, said }) => {
+      const { model, felt } = startRecipes({ [option]: request, opened });
 
-    await act(model);
-    await vi.waitFor(() => {
-      expect(model.failure()).toEqual(said);
-    });
+      await act(model);
+      await vi.waitFor(() => {
+        expect(model.failure()).toEqual(said);
+      });
 
-    expect(observe(model)).toEqual(before);
-  });
+      expect(observe(model)).toEqual(before);
+      expect(felt).toEqual([...tap, "error"]);
+    },
+  );
 });
 
 function relaunch(device: FakeDeviceStorage) {

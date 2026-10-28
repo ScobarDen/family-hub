@@ -5,7 +5,7 @@ import { movementChange, type Goal } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
+import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
 import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
 
 import { createGoalsApi } from "../goals.api.ts";
@@ -127,10 +127,11 @@ function startGoals({
   }
 
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch });
+  const haptics = fakeHaptics();
   const model = reatomGoalsScreen({
     api: createGoalsApi(client),
     members: reatomFamilyMembers(createFamilyApi(client)),
-    telegram: { showPopup: async () => pending.shift() },
+    telegram: { showPopup: async () => pending.shift(), haptics },
     self: () => "member-1",
     today: () => "2026-10-14",
     timeZone: () => "Europe/Moscow",
@@ -140,7 +141,7 @@ function startGoals({
   model.screen.subscribe(noop);
   model.movementForm.contributors.subscribe(noop);
 
-  return { model, requests };
+  return { model, requests, felt: haptics.felt };
 }
 
 type Model = ReturnType<typeof startGoals>["model"];
@@ -193,8 +194,8 @@ describe("a Goal with a deadline", () => {
 });
 
 describe("a Contribution", () => {
-  test("that reaches the target sets off the salute", async () => {
-    const { model, requests } = startGoals();
+  test("that reaches the target sets off the salute with a single pulse", async () => {
+    const { model, requests, felt } = startGoals();
 
     await loaded(model);
     model.open("goal-1");
@@ -206,12 +207,30 @@ describe("a Contribution", () => {
     });
 
     expect(opened(model).isCelebrating).toBe(true);
+    expect(felt).toEqual(["success"]);
     expect(requests.at(-1)?.body).toMatchObject({
       kind: "contribution",
       amount: 60_000,
       date: "2026-10-14",
       memberId: "member-1",
     });
+  });
+});
+
+describe("a Movement with a field to fix", () => {
+  test("stays on the form with an error pulse", async () => {
+    const { model, requests, felt } = startGoals();
+
+    await loaded(model);
+    model.open("goal-1");
+    model.addMovement("contribution");
+    model.movementForm.save();
+
+    await vi.waitFor(() => {
+      expect(felt).toEqual(["error"]);
+    });
+    expect(model.screen().kind).toBe("movement-form");
+    expect(requests.filter(({ request }) => request.includes("/movements"))).toEqual([]);
   });
 });
 
@@ -237,11 +256,13 @@ const moves = [
     name: "a Contribution",
     act: async (model: Model) => addMovement(model, "contribution", "60000"),
     after: { progress: "100 000 ₽ из 100 000 ₽ · 100%", movements: 2 },
+    tap: "success",
   },
   {
     name: "a Withdrawal",
     act: async (model: Model) => addMovement(model, "withdrawal", "10000"),
     after: { progress: "30 000 ₽ из 100 000 ₽ · 30%", movements: 2 },
+    tap: "success",
   },
   {
     name: "deleting a Movement",
@@ -252,14 +273,15 @@ const moves = [
       model.removeMovement("movement-1");
     },
     after: { progress: "0 ₽ из 100 000 ₽ · 0%", movements: 0 },
+    tap: "warning",
   },
 ];
 
 const before = { progress: "40 000 ₽ из 100 000 ₽ · 40%", movements: 1 };
 
-describe.each(moves)("$name", ({ act, after, choices }) => {
-  test("changes the Balance before the server answers", async () => {
-    const { model } = startGoals({ choices, moving: new Promise(noop) });
+describe.each(moves)("$name", ({ act, after, choices, tap }) => {
+  test("changes the Balance before the server answers, with one pulse at the tap", async () => {
+    const { model, felt } = startGoals({ choices, moving: new Promise(noop) });
 
     await act(model);
     await vi.waitFor(() => {
@@ -267,6 +289,7 @@ describe.each(moves)("$name", ({ act, after, choices }) => {
     });
 
     expect(model.failure()).toBeUndefined();
+    expect(felt).toEqual([tap]);
   });
 
   test.each([
@@ -276,7 +299,7 @@ describe.each(moves)("$name", ({ act, after, choices }) => {
     },
     { moving: "unreachable" as const, said: "Нет связи, не сохранилось" },
   ])("rolls back with the failure bar when $moving", async ({ moving, said }) => {
-    const { model } = startGoals({ choices, moving });
+    const { model, felt } = startGoals({ choices, moving });
 
     await act(model);
     await vi.waitFor(() => {
@@ -284,6 +307,7 @@ describe.each(moves)("$name", ({ act, after, choices }) => {
     });
 
     expect(balanceOf(model)).toEqual(before);
+    expect(felt).toEqual([tap, "error"]);
   });
 });
 

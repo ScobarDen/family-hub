@@ -5,7 +5,7 @@ import type { FeedUpcoming, Task, Today } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
+import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
 
 import { createTodayApi } from "../today.api.ts";
 import { reatomToday, type TodayTarget } from "./today.vm.ts";
@@ -111,10 +111,12 @@ function startToday(
     },
   });
   const opened: Array<TodayTarget | string> = [];
+  const haptics = fakeHaptics();
   const model = reatomToday({
     api: createTodayApi(client),
     deviceCache: reatomDeviceCache(device.deviceStorage),
     today: () => today,
+    telegram: { haptics },
     onOpen: (target) => {
       opened.push(target);
     },
@@ -129,7 +131,7 @@ function startToday(
   // What the View subscribes to, so a reload refetches as it does on screen.
   model.rows.subscribe(noop);
 
-  return { model, calls, opened };
+  return { model, calls, opened, felt: haptics.felt };
 }
 
 beforeEach(() => {
@@ -203,13 +205,14 @@ describe("«Сделать сегодня»", () => {
   });
 
   test("completes an Occurrence with one tap and keeps the undo until it is dismissed", async () => {
-    const { model, calls } = startToday({ due: [taskDue(1, "2026-10-12")] });
+    const { model, calls, felt } = startToday({ due: [taskDue(1, "2026-10-12")] });
 
     await vi.waitFor(() => {
       expect(model.rows()).toHaveLength(1);
     });
     model.complete("task-1-2026-10-12");
 
+    expect(felt).toEqual(["success"]);
     expect(model.rows()).toEqual([]);
     expect(model.header()).toBe("День свободен");
     expect(model.undo()).toEqual({ title: "Дело 1", hasPet: false });
@@ -281,7 +284,7 @@ describe("«Сделать сегодня»", () => {
   });
 
   test("reopens the Occurrence after its completion when the undo is tapped", async () => {
-    const { model, calls } = startToday({ due: [taskDue(1, "2026-10-12")] });
+    const { model, calls, felt } = startToday({ due: [taskDue(1, "2026-10-12")] });
 
     await vi.waitFor(() => {
       expect(model.rows()).toHaveLength(1);
@@ -289,6 +292,7 @@ describe("«Сделать сегодня»", () => {
     model.complete("task-1-2026-10-12");
     model.revert();
 
+    expect(felt).toEqual(["success", "select"]);
     expect(model.rows()).toHaveLength(1);
     expect(model.undo()).toBeUndefined();
     await vi.waitFor(() => {
@@ -320,7 +324,7 @@ describe("«Сделать сегодня»", () => {
   });
 
   test("brings the row back and says there is no network when the request never arrives", async () => {
-    const { model } = startToday(
+    const { model, felt } = startToday(
       { due: [taskDue(1, "2026-10-12")] },
       { unreachable: "/api/tasks/task-1/complete" },
     );
@@ -335,6 +339,7 @@ describe("«Сделать сегодня»", () => {
       expect(model.completionFailure()).toBe("Нет связи, не сохранилось");
     });
     expect(model.rows()).toHaveLength(1);
+    expect(felt).toEqual(["success", "error"]);
 
     model.dismissFailure();
 
