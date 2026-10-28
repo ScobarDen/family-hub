@@ -1,4 +1,4 @@
-import { action, atom, effect, noop, withConnectHook, wrap } from "@reatom/core";
+import { action, atom, effect, reatomBoolean, noop, withConnectHook, wrap } from "@reatom/core";
 
 import type { Haptics } from "./telegram.lib.ts";
 import type {
@@ -185,6 +185,10 @@ function reatomHomeScreen(webApp: TelegramWebApp) {
 function reatomWindow(webApp: TelegramWebApp) {
   const hasFullscreen = webApp.isVersionAtLeast(fullscreenVersion);
   const hasClosingConfirmation = webApp.isVersionAtLeast(closingConfirmationVersion);
+  const isClosingConfirmationEnabled = reatomBoolean(
+    false,
+    "telegram.isClosingConfirmationEnabled",
+  );
 
   return {
     requestFullscreen: action(() => {
@@ -197,12 +201,17 @@ function reatomWindow(webApp: TelegramWebApp) {
         webApp.exitFullscreen();
       }
     }, "telegram.exitFullscreen"),
+    isClosingConfirmationEnabled: () => isClosingConfirmationEnabled(),
     enableClosingConfirmation: action(() => {
+      isClosingConfirmationEnabled.setTrue();
+
       if (hasClosingConfirmation) {
         webApp.enableClosingConfirmation();
       }
     }, "telegram.enableClosingConfirmation"),
     disableClosingConfirmation: action(() => {
+      isClosingConfirmationEnabled.setFalse();
+
       if (hasClosingConfirmation) {
         webApp.disableClosingConfirmation();
       }
