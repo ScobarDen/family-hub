@@ -1,11 +1,19 @@
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock";
+import type { MiniAppLinks } from "@/common/mini-app-link";
 import type { PhotoLinks } from "@/common/photo-link";
+import type { BotApi } from "@/common/telegram";
 
 import type { RecipeRepo } from "./recipe.repo.ts";
 
-export type RecipeDependencies = { recipes: RecipeRepo; links: PhotoLinks; clock: Clock };
+export type RecipeDependencies = {
+  recipes: RecipeRepo;
+  links: PhotoLinks;
+  clock: Clock;
+  bot: BotApi;
+  appLinks: MiniAppLinks;
+};
 
 export type RecipeRefusal =
   | "not-found"
@@ -26,3 +34,5 @@ export type RecipeQuery = {
   // «Давно не готовили»: never cooked first, then the longest ago.
   sort: "title" | "forgotten";
 };
+
+export type ShareResult = { status: "ok"; preparedMessageId: string } | { status: "not-found" };

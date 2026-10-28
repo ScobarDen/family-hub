@@ -1,5 +1,13 @@
 import { reatomComponent } from "@reatom/react";
-import { ChevronLeft, ChevronRight, ImageOff, Trash2, X, type LucideIcon } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ImageOff,
+  Share,
+  Trash2,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useRef, type PointerEvent } from "react";
 
 import { SignedPhoto } from "@/common/photo";
@@ -21,6 +29,17 @@ const ViewerBar = reatomComponent(
       </Button>
       <span className="text-sm">{position}</span>
       <div className="flex gap-1">
+        {model.canShare() && (
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            aria-label="Поделиться"
+            disabled={model.isSharing()}
+            onClick={model.share}
+          >
+            <Share />
+          </Button>
+        )}
         {pickAction !== undefined && (
           <Button variant="ghost" size="icon-lg" aria-label={pickAction.label} onClick={model.pick}>
             <pickAction.icon />

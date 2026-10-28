@@ -1,3 +1,5 @@
+import type { InlineQueryResultCachedPhoto } from "@grammyjs/types";
+
 import { petAlbumPrefix, type Album, type AlbumSummary, type Photo } from "@family-hub/contract";
 
 import type { PhotoLinks } from "@/common/photo-link";
@@ -95,5 +97,18 @@ export async function albumOf(
   return {
     ...(await summaryOf(links, source)),
     photos: await photosOf(links, { photos: source.photos, viewer }),
+  };
+}
+
+export function photoCard(
+  photo: PhotoRow,
+  { albumTitle, link }: { albumTitle: string; link: string },
+): InlineQueryResultCachedPhoto {
+  return {
+    type: "photo",
+    id: photo.id,
+    photo_file_id: photo.variants.full,
+    caption: albumTitle,
+    reply_markup: { inline_keyboard: [[{ text: "Открыть", url: link }]] },
   };
 }

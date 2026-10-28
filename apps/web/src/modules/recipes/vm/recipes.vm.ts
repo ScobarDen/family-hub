@@ -85,7 +85,11 @@ export type RecipesScreen =
 type RecipesDependencies = LiveVersion & {
   api: RecipesApi;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
-  telegram: Dialogs & { haptics: Haptics };
+  telegram: Dialogs & {
+    haptics: Haptics;
+    canShareMessage: boolean;
+    shareMessage: (preparedMessageId: string) => Promise<boolean>;
+  };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   today: () => string;
@@ -200,6 +204,31 @@ function reatomRecipeRemoval(
   );
 }
 
+function reatomRecipeSharing({ api, telegram }: RecipesDependencies, opened: Opened) {
+  const share = action(async () => {
+    const recipe = opened.data();
+
+    if (recipe === undefined) {
+      return;
+    }
+
+    await wrap(
+      didSucceedOrAlert(telegram, {
+        failure: "Не получилось поделиться рецептом. Попробуйте ещё раз.",
+        call: api
+          .share(recipe.id)
+          .then(async ({ preparedMessageId }) => telegram.shareMessage(preparedMessageId)),
+      }),
+    );
+  }, "recipes.share").extend(withAsync());
+
+  return {
+    canShare: telegram.canShareMessage,
+    isSharing: computed(() => !share.ready(), "recipes.isSharing"),
+    share: detached(share, "recipes.shareRecipe"),
+  };
+}
+
 function reatomRecipeActions(dependencies: RecipesDependencies, sources: Sources) {
   const { data, navigation, opened } = sources;
   const { api, telegram } = dependencies;
@@ -222,6 +251,7 @@ function reatomRecipeActions(dependencies: RecipesDependencies, sources: Sources
   }, "recipes.favorite").extend(withAsync());
 
   return {
+    ...reatomRecipeSharing(dependencies, opened),
     remove: detached(remove, "recipes.removeRecipe"),
     toggleFavorite: detached(favorite, "recipes.toggleFavorite"),
     toggleIngredient: action((index: number) => {

@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import { Pencil, Star, Trash2 } from "lucide-react";
+import { Pencil, Share, Star, Trash2 } from "lucide-react";
 
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
 import { Section, SectionItem, SectionLayout } from "@/common/ui";
@@ -36,6 +36,31 @@ function tabsOf({ model, recipe, checked }: DetailsProps) {
   ];
 }
 
+const RecipeActions = reatomComponent(
+  ({ model, recipe }: Omit<DetailsProps, "checked">) => (
+    <Section>
+      <SectionItem
+        icon={Star}
+        title={recipe.isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+        onClick={model.toggleFavorite}
+      />
+      {model.canShare && (
+        <SectionItem
+          icon={Share}
+          title="Поделиться"
+          disabled={model.isSharing()}
+          onClick={model.share}
+        />
+      )}
+      <SectionItem icon={Pencil} title="Изменить рецепт" onClick={model.edit} />
+      {recipe.canDelete && (
+        <SectionItem icon={Trash2} isDestructive title="Удалить рецепт" onClick={model.remove} />
+      )}
+    </Section>
+  ),
+  "RecipeActions",
+);
+
 export const RecipeDetails = reatomComponent((props: DetailsProps) => {
   const { model, recipe } = props;
 
@@ -61,17 +86,7 @@ export const RecipeDetails = reatomComponent((props: DetailsProps) => {
         action={<CookForm model={model} />}
         tabs={tabsOf(props)}
       />
-      <Section>
-        <SectionItem
-          icon={Star}
-          title={recipe.isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
-          onClick={model.toggleFavorite}
-        />
-        <SectionItem icon={Pencil} title="Изменить рецепт" onClick={model.edit} />
-        {recipe.canDelete && (
-          <SectionItem icon={Trash2} isDestructive title="Удалить рецепт" onClick={model.remove} />
-        )}
-      </Section>
+      <RecipeActions model={model} recipe={recipe} />
       <PhotoViewer model={model.viewer} />
     </>
   );

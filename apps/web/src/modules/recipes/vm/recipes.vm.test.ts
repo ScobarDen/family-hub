@@ -35,6 +35,10 @@ const cookedLasagna: Recipe = {
 };
 
 function replyOf(url: URL, method: string, body: unknown): unknown {
+  if (url.pathname.endsWith("/share")) {
+    return { preparedMessageId: "prepared-1" };
+  }
+
   if (url.pathname === "/api/recipe-tags") {
     return lasagna.tags;
   }
@@ -63,6 +67,7 @@ type Launch = {
   device?: FakeDeviceStorage;
   book?: Recipe[];
   answered?: Promise<void>;
+  canShareMessage?: boolean;
 };
 
 async function troubleOf(
@@ -93,9 +98,11 @@ function startRecipes({
   device = fakeDeviceStorage(),
   book = [borscht, lasagna],
   answered = Promise.resolve(),
+  canShareMessage = true,
 }: Launch = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
   const alerts: string[] = [];
+  const shared: string[] = [];
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
     const request = `${init.method ?? "GET"} ${url.pathname}${url.search}`;
@@ -131,6 +138,12 @@ function startRecipes({
         alerts.push(message);
       },
       haptics,
+      canShareMessage,
+      async shareMessage(preparedMessageId: string) {
+        shared.push(preparedMessageId);
+
+        return true;
+      },
     },
     preparePhoto: async (file) => ({ file, takenAt: null }),
     photoHint: () => "Загрузка фото выключена",
@@ -141,7 +154,7 @@ function startRecipes({
 
   model.screen.subscribe(noop);
 
-  return { model, requests, alerts, felt: haptics.felt };
+  return { model, requests, alerts, shared, felt: haptics.felt };
 }
 
 type Model = ReturnType<typeof startRecipes>["model"];
@@ -224,6 +237,40 @@ describe("the Recipes", () => {
       tagIds: ["tag-1"],
       photoIds: [],
     });
+  });
+});
+
+describe("sharing a Recipe", () => {
+  test("sends the card the bot prepared through Telegram's share sheet", async () => {
+    const { model, shared } = startRecipes();
+
+    await openLasagna(model);
+    model.share();
+    await vi.waitFor(() => {
+      expect(shared).toEqual(["prepared-1"]);
+    });
+
+    expect(model.canShare).toBe(true);
+  });
+
+  test("is not offered where Telegram cannot share a prepared message", () => {
+    const { model } = startRecipes({ canShareMessage: false });
+
+    expect(model.canShare).toBe(false);
+  });
+
+  test("says so when the card could not be prepared", async () => {
+    const { model, alerts, shared } = startRecipes({
+      failing: "POST /api/recipes/recipe-1/share",
+    });
+
+    await openLasagna(model);
+    model.share();
+    await vi.waitFor(() => {
+      expect(alerts).toEqual(["Не получилось поделиться рецептом. Попробуйте ещё раз."]);
+    });
+
+    expect(shared).toEqual([]);
   });
 });
 

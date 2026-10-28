@@ -57,6 +57,7 @@ export {
   type InvitePreview,
   type InviteRevoked,
 } from "./invite.ts";
+export { preparedMessage, type PreparedMessage } from "./share.ts";
 export {
   appModule,
   defaultTabBar,

@@ -54,6 +54,7 @@ type Launch = {
   albums?: Album[];
   answered?: Promise<void>;
   photosAnswered?: Promise<void>;
+  isShareUnsupported?: boolean;
 };
 
 function startAlbums({
@@ -63,8 +64,10 @@ function startAlbums({
   albums = [],
   answered = Promise.resolve(),
   photosAnswered = Promise.resolve(),
+  isShareUnsupported,
 }: Launch = {}) {
   const requests: string[] = [];
+  const shared: string[] = [];
   const waits: number[] = [];
   const pendingUploads = [...uploads];
   const pendingAdditions = [...additionAnswers];
@@ -103,6 +106,10 @@ function startAlbums({
       });
     }
 
+    if (request.endsWith("/share")) {
+      return Response.json({ preparedMessageId: "prepared-1" });
+    }
+
     if (init.method === "POST" && request.endsWith("/photos")) {
       return answerOf(pendingAdditions.shift() ?? "ok", () => albumOf("album-1"));
     }
@@ -113,7 +120,17 @@ function startAlbums({
   const haptics = fakeHaptics();
   const model = reatomAlbumsScreen({
     api: createAlbumsApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
-    telegram: { showPopup: async () => "cancel", showAlert: noop, haptics },
+    telegram: {
+      showPopup: async () => "cancel",
+      showAlert: noop,
+      haptics,
+      canShareMessage: isShareUnsupported !== true,
+      async shareMessage(preparedMessageId: string) {
+        shared.push(preparedMessageId);
+
+        return true;
+      },
+    },
     viewer: () => ({ timeZone: "Europe/Moscow", today: "2026-10-16" }),
     preparePhoto: async (file) => ({ file, takenAt: null }),
     wait: async (ms) => {
@@ -133,6 +150,7 @@ function startAlbums({
     model,
     felt: haptics.felt,
     requests,
+    shared,
     waits,
     hold() {
       gate = new Promise((resolve) => {
@@ -202,6 +220,48 @@ describe("all photos", () => {
         photos: [{ id: "photo-1" }, { id: "photo-2" }],
       });
     });
+  });
+});
+
+async function openPhoto(model: ReturnType<typeof startAlbums>["model"]) {
+  model.open("album-1");
+  await vi.waitFor(() => {
+    expect(model.screen().kind).toBe("album");
+  });
+  model.viewer.open([photoOf("photo-1")], "photo-1");
+}
+
+describe("sharing a photo", () => {
+  test("sends the photo the bot prepared for its Album through Telegram", async () => {
+    const { model, requests, shared } = startAlbums();
+
+    await openPhoto(model);
+
+    expect(model.viewer.canShare()).toBe(true);
+
+    model.viewer.share();
+    await vi.waitFor(() => {
+      expect(shared).toEqual(["prepared-1"]);
+    });
+
+    expect(requests).toContain("POST /api/albums/album-1/photos/photo-1/share");
+  });
+
+  test("is not offered where Telegram cannot share a prepared message", async () => {
+    const { model } = startAlbums({ isShareUnsupported: true });
+
+    await openPhoto(model);
+
+    expect(model.viewer.canShare()).toBe(false);
+  });
+
+  test("is not offered in «Все фото», which belong to no one Album", async () => {
+    const { model } = startAlbums();
+
+    model.openAll();
+    model.viewer.open([photoOf("photo-1")], "photo-1");
+
+    expect(model.viewer.canShare()).toBe(false);
   });
 });
 

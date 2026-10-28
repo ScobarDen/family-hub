@@ -6,6 +6,7 @@ import {
   type Album,
   type AlbumSummary,
   type Photo,
+  type PreparedMessage,
 } from "@family-hub/contract";
 
 import { requireMember, type MemberEnv } from "@/common/auth";
@@ -38,6 +39,19 @@ const refuse = refusalsOf<AlbumRefusal>({
     code: "PHOTO_NOT_FOUND",
     message: "Add photos uploaded to the Family",
     status: httpStatus.badRequest,
+  },
+});
+
+const refuseShare = refusalsOf<"not-found" | "photo-not-in-album">({
+  "not-found": {
+    code: "ALBUM_NOT_FOUND",
+    message: "No such Album in the Family",
+    status: httpStatus.notFound,
+  },
+  "photo-not-in-album": {
+    code: "PHOTO_NOT_FOUND",
+    message: "No such photo in the Album",
+    status: httpStatus.notFound,
   },
 });
 
@@ -115,4 +129,14 @@ export const albumRoute = new Hono<AlbumEnv>()
         photoId: context.req.param("photoId"),
       }),
     ),
-  );
+  )
+  .post("/api/albums/:id/photos/:photoId/share", async (context) => {
+    const result = await context.var.albums.sharePhoto(context.var.membership, {
+      albumId: context.req.param("id"),
+      photoId: context.req.param("photoId"),
+    });
+
+    return result.status === "ok"
+      ? context.json<PreparedMessage>({ preparedMessageId: result.preparedMessageId })
+      : refuseShare(context, result.status);
+  });

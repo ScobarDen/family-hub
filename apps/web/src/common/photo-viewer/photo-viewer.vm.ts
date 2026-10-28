@@ -17,6 +17,7 @@ export type PhotoViewerDependencies = {
   // A module's own action on the photo shown, such as making it a Pet's avatar.
   onPick?: (photoId: string) => void;
   onDeleted: () => void;
+  sharing?: { isAvailable: () => boolean; share: (photoId: string) => Promise<unknown> };
 };
 
 type Opened = { photos: Photo[]; index: number };
@@ -85,13 +86,36 @@ function reatomPhotoRemoval(
   }, "photoViewer.remove").extend(withAsync());
 }
 
+function reatomPhotoSharing(
+  { sharing, telegram }: PhotoViewerDependencies,
+  opened: ReturnType<typeof atom<Opened | undefined>>,
+) {
+  return action(async () => {
+    const photo = photoAt(opened());
+
+    if (sharing === undefined || photo === undefined) {
+      return;
+    }
+
+    await wrap(
+      didSucceedOrAlert(telegram, {
+        failure: "Не получилось поделиться фото. Попробуйте ещё раз.",
+        call: sharing.share(photo.id),
+      }),
+    );
+  }, "photoViewer.share").extend(withAsync());
+}
+
 export function reatomPhotoViewer(dependencies: PhotoViewerDependencies) {
   const opened = atom<Opened | undefined>(undefined, "photoViewer.opened");
   const remove = reatomPhotoRemoval(dependencies, opened);
+  const share = reatomPhotoSharing(dependencies, opened);
 
   return {
     current: computed(() => currentOf(opened()), "photoViewer.current"),
     isRemoving: computed(() => !remove.ready(), "photoViewer.isRemoving"),
+    canShare: computed(() => dependencies.sharing?.isAvailable() ?? false, "photoViewer.canShare"),
+    isSharing: computed(() => !share.ready(), "photoViewer.isSharing"),
 
     open: action((photos: Photo[], photoId: string) => {
       opened.set({
@@ -119,6 +143,7 @@ export function reatomPhotoViewer(dependencies: PhotoViewerDependencies) {
       }
     }, "photoViewer.pick"),
     remove: detached(remove, "photoViewer.removePhoto"),
+    share: detached(share, "photoViewer.sharePhoto"),
   };
 }
 

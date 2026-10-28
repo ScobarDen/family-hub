@@ -1,6 +1,7 @@
 import {
   recipe,
   deleted,
+  preparedMessage,
   recipeList,
   recipeTag,
   recipeTagList,
@@ -84,6 +85,11 @@ export function createRecipesApi(client: HttpClient) {
       one(`/api/recipes/${recipeId}`, { method: "PUT", body: change }),
     remove: async (recipeId: string) =>
       client.request(`/api/recipes/${recipeId}`, { method: "DELETE", schema: deleted }),
+    share: async (recipeId: string) =>
+      client.request(`/api/recipes/${recipeId}/share`, {
+        method: "POST",
+        schema: preparedMessage,
+      }),
     setFavorite: async (recipeId: string, isFavorite: boolean) =>
       one(`/api/recipes/${recipeId}/favorite`, { method: "PUT", body: { isFavorite } }),
     cook: async (recipeId: string, cookedAt: number | null) =>

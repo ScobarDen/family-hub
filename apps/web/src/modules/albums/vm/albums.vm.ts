@@ -48,7 +48,11 @@ export type AlbumsScreen =
 type AlbumsDependencies = LiveVersion & {
   api: AlbumsApi;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
-  telegram: Dialogs & { haptics: Haptics };
+  telegram: Dialogs & {
+    haptics: Haptics;
+    canShareMessage: boolean;
+    shareMessage: (preparedMessageId: string) => Promise<boolean>;
+  };
   viewer: () => Viewer;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   wait: (ms: number) => Promise<void>;
@@ -132,9 +136,36 @@ function reatomRemoval(
   }, "albums.remove").extend(withAsync());
 }
 
+// «Все фото» belong to no one Album, and a shared photo opens its Album.
+function photoSharing(
+  { api, telegram }: AlbumsDependencies,
+  { data, navigation }: { data: AlbumsData; navigation: Navigation },
+) {
+  function sharedAlbumId() {
+    return data.isAllShown() ? undefined : navigation.openedId();
+  }
+
+  return {
+    isAvailable: () => telegram.canShareMessage && sharedAlbumId() !== undefined,
+    async share(photoId: string) {
+      const albumId = sharedAlbumId();
+
+      if (albumId !== undefined) {
+        const { preparedMessageId } = await wrap(api.sharePhoto(albumId, photoId));
+
+        await wrap(telegram.shareMessage(preparedMessageId));
+      }
+    },
+  };
+}
+
 // In an Album the viewer's own action picks the photo shown as its cover.
-function reatomAlbumViewer(dependencies: AlbumsDependencies, data: AlbumsData) {
+function reatomAlbumViewer(
+  dependencies: AlbumsDependencies,
+  sources: { data: AlbumsData; navigation: Navigation },
+) {
   const { api } = dependencies;
+  const { data } = sources;
   const pickCover = action(async (photoId: string) => {
     const album = data.opened.data();
 
@@ -158,6 +189,7 @@ function reatomAlbumViewer(dependencies: AlbumsDependencies, data: AlbumsData) {
       pickCover(photoId).catch(noop);
     },
     onDeleted: data.reload,
+    sharing: photoSharing(dependencies, sources),
   });
 }
 
@@ -184,7 +216,7 @@ function reatomParts(
       addToAlbum: async (albumId, photo) => api.addPhotos(albumId, [photo.id]),
       onFinished: data.reload,
     }),
-    viewer: reatomAlbumViewer(dependencies, data),
+    viewer: reatomAlbumViewer(dependencies, { data, navigation }),
   };
 }
 
