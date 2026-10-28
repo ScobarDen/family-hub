@@ -119,6 +119,8 @@ const linkTargets: Record<DeepLink["kind"], (id: string) => OpenTarget | undefin
   rec: recordTargetOf,
   goal: (goalId) => ({ kind: "goal", goalId }),
   cmd: (draftId) => ({ kind: "draft", draftId }),
+  recipe: (recipeId) => ({ kind: "recipe", recipeId }),
+  album: (albumId) => ({ kind: "album", albumId }),
 };
 
 function recordTargetOf(id: string): OpenTarget | undefined {

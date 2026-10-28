@@ -5,7 +5,19 @@ import { date } from "./primitive.ts";
 const deepLinkMaxLength = 64;
 
 // `plan` and `event` stay so old bot messages open the Task each became.
-const deepLinkKind = z.enum(["inv", "pet", "entry", "task", "rec", "event", "goal", "plan", "cmd"]);
+const deepLinkKind = z.enum([
+  "inv",
+  "pet",
+  "entry",
+  "task",
+  "rec",
+  "event",
+  "goal",
+  "plan",
+  "cmd",
+  "recipe",
+  "album",
+]);
 
 type DeepLinkKind = z.infer<typeof deepLinkKind>;
 
