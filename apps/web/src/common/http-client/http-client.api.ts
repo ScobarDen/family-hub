@@ -1,4 +1,13 @@
-import { abortVar, action, atom, noop, reatomBoolean, withChangeHook, wrap } from "@reatom/core";
+import {
+  abortVar,
+  action,
+  atom,
+  noop,
+  reatomBoolean,
+  withAsync,
+  withChangeHook,
+  wrap,
+} from "@reatom/core";
 import type { z } from "zod";
 
 import { apiError, sessionToken, type ErrorCode } from "@family-hub/contract";
@@ -56,7 +65,6 @@ type HttpClientOptions = {
   baseUrl: string;
   fetch: Fetch;
   timeoutMs?: number;
-  // The token renews when this page comes back on screen.
   page?: Page;
   now?: () => number;
   // Screens drawn from the device cache start loading before sign-in answers.
@@ -67,7 +75,6 @@ type RequestOptions<Schema extends z.ZodType> = {
   schema: Schema;
   method?: "GET" | "POST" | "PUT" | "DELETE";
   body?: unknown;
-  // Signs in with initData in the body: sign-in itself, an Invite and a Family Request.
   withoutSession?: boolean;
 };
 
@@ -147,10 +154,10 @@ function renewOnReturn({ page, session, request }: Renewal): void {
     );
 
     session.token.set(renewed.token);
-  }, "httpClient.renew");
+  }, "httpClient.renew").extend(withAsync());
 
   page.addEventListener("visibilitychange", () => {
-    if (page.visibilityState === "visible" && session.isStale()) {
+    if (page.visibilityState === "visible" && session.isStale() && renew.pending() === 0) {
       // A renewal that fails on the network is tried again the next time the app comes back.
       renew().catch(noop);
     }

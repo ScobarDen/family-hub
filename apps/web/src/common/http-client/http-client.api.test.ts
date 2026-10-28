@@ -98,6 +98,20 @@ describe("renewing the session token when the app comes back on screen", () => {
     expect(renewals(requests)).toHaveLength(1);
   });
 
+  test("sends one renewal while the first is still on its way", async () => {
+    const { client, page, clock, requests } = startClient();
+
+    clock.now = 12 * hourMs;
+    page.show("visible");
+    page.show("hidden");
+    page.show("visible");
+    await vi.waitFor(() => {
+      expect(client.token()).toBe("renewed");
+    });
+
+    expect(renewals(requests)).toHaveLength(1);
+  });
+
   test("asks to restart the app when the Worker refuses to renew", async () => {
     const { client, page, clock } = startClient({
       renewal: Response.json({ code: "UNAUTHENTICATED", message: "" }, { status: 401 }),

@@ -65,7 +65,7 @@ type Device = ReturnType<typeof reatomDeviceStorage>;
 // Showing a cached value writes it back through the atom; skipping that keeps the 30 days counted from the load.
 function reatomCachePersist(device: Device | undefined) {
   const shown = new Map<string, unknown>();
-  const reads: Array<Promise<unknown>> = [];
+  const reads = new Set<Promise<unknown>>();
 
   async function read({
     key,
@@ -74,10 +74,14 @@ function reatomCachePersist(device: Device | undefined) {
     const reading = device?.read(key);
 
     if (reading !== undefined) {
-      reads.push(reading);
+      reads.add(reading);
     }
 
     const record = await reading;
+
+    if (reading !== undefined) {
+      reads.delete(reading);
+    }
 
     if (!isPersistRecord(record)) {
       return null;
@@ -108,7 +112,7 @@ function reatomCachePersist(device: Device | undefined) {
 }
 
 // Reading an atom starts its key's read; Reatom applies the value a few promise turns later.
-function reatomWhenRead(reads: Array<Promise<unknown>>) {
+function reatomWhenRead(reads: ReadonlySet<Promise<unknown>>) {
   return action(async (atoms: Array<() => unknown>) => {
     for (const read of atoms) {
       read();

@@ -1,4 +1,4 @@
-import { computed, context, noop, withAsyncData, wrap } from "@reatom/core";
+import { computed, context, noop, sleep, withAsyncData, wrap } from "@reatom/core";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { z } from "zod";
 
@@ -36,8 +36,15 @@ function cachedList(
 
 function launch(device: FakeDeviceStorage, options?: ListOptions) {
   const cache = reatomDeviceCache(device.deviceStorage);
+  const list = cachedList(cache, options);
 
-  return { cache, list: cachedList(cache, options) };
+  return { cache, list, read: async () => cache.whenRead([list.data]) };
+}
+
+async function stored(device: FakeDeviceStorage, expected: unknown = chores) {
+  await vi.waitFor(() => {
+    expect(JSON.parse(device.items.get("chores") ?? "{}")).toMatchObject({ data: expected });
+  });
 }
 
 async function launchLoaded(device: FakeDeviceStorage, data: unknown = chores) {
@@ -46,7 +53,10 @@ async function launchLoaded(device: FakeDeviceStorage, data: unknown = chores) {
   await vi.waitFor(() => {
     expect(app.list.data()).toEqual(data);
   });
-  await settle();
+
+  if (device.deviceStorage !== undefined) {
+    await stored(device, data);
+  }
 
   return app;
 }
@@ -55,12 +65,6 @@ function relaunch(device: FakeDeviceStorage, options?: Parameters<typeof launch>
   context.reset();
 
   return launch(device, options);
-}
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
 }
 
 beforeEach(() => {
@@ -89,12 +93,12 @@ describe("device cache", () => {
 
     await launchLoaded(device);
     const fresh = ["Сварить борщ"];
-    const { list } = relaunch(device, { load: async () => Promise.resolve(fresh) });
+    const { list, read } = relaunch(device, { load: async () => Promise.resolve(fresh) });
 
     await vi.waitFor(() => {
       expect(list.data()).toEqual(fresh);
     });
-    await settle();
+    await read();
     expect(list.data()).toEqual(fresh);
   });
 
@@ -102,9 +106,9 @@ describe("device cache", () => {
     const device = fakeDeviceStorage();
 
     await launchLoaded(device);
-    const { list } = relaunch(device, { schema: z.array(z.number()) });
+    const { list, read } = relaunch(device, { schema: z.array(z.number()) });
 
-    await settle();
+    await read();
     expect(list.data()).toBeUndefined();
   });
 
@@ -112,9 +116,9 @@ describe("device cache", () => {
     const device = fakeDeviceStorage();
 
     await launchLoaded(device);
-    const { list } = relaunch(device, { version: 2 });
+    const { list, read } = relaunch(device, { version: 2 });
 
-    await settle();
+    await read();
     expect(list.data()).toBeUndefined();
   });
 
@@ -123,9 +127,9 @@ describe("device cache", () => {
 
     await launchLoaded(device);
     vi.setSystemTime(Date.now() + 31 * day);
-    const { list } = relaunch(device);
+    const { list, read } = relaunch(device);
 
-    await settle();
+    await read();
     expect(list.data()).toBeUndefined();
   });
 
@@ -151,11 +155,11 @@ describe("device cache", () => {
     await vi.waitFor(() => {
       expect(shown.list.data()).toEqual(chores);
     });
-    await settle();
+    await sleep(0);
     vi.setSystemTime(Date.now() + 11 * day);
-    const { list } = relaunch(device);
+    const { list, read } = relaunch(device);
 
-    await settle();
+    await read();
     expect(list.data()).toBeUndefined();
   });
 
@@ -164,9 +168,9 @@ describe("device cache", () => {
     const { cache } = await launchLoaded(device);
 
     expect(cachedList(cache).data()).toEqual(chores);
-    const { list } = relaunch(device);
+    const { list, read } = relaunch(device);
 
-    await settle();
+    await read();
     expect(list.data()).toBeUndefined();
   });
 
@@ -198,7 +202,7 @@ describe("device cache", () => {
     await vi.waitFor(() => {
       expect(list.data()).toEqual(chores);
     });
-    await settle();
+    await stored(device, ["Погулять с Бьюиком"]);
     const relaunched = relaunch(device);
 
     await vi.waitFor(() => {
@@ -218,7 +222,7 @@ describe("device cache", () => {
     await vi.waitFor(() => {
       expect(skipped.list.data()).toEqual(["Сварить борщ"]);
     });
-    await settle();
+    await sleep(0);
     const { list } = relaunch(device);
 
     await vi.waitFor(() => {
@@ -233,10 +237,10 @@ describe("device cache", () => {
     await vi.waitFor(() => {
       expect(list.data()).toEqual(chores);
     });
-    await settle();
+    await sleep(0);
     const relaunched = relaunch(device);
 
-    await settle();
+    await relaunched.read();
     expect(relaunched.list.data()).toBeUndefined();
   });
 });
@@ -263,9 +267,9 @@ describe("device cache owner", () => {
     await cache.keepFor(denis);
     await launchLoaded(device);
     await relaunch(device).cache.keepFor({ ...denis, memberId: "member-2" });
-    const { list } = relaunch(device);
+    const { list, read } = relaunch(device);
 
-    await settle();
+    await read();
     expect(list.data()).toBeUndefined();
   });
 
@@ -276,9 +280,9 @@ describe("device cache owner", () => {
     await cache.keepFor(denis);
     await launchLoaded(device);
     await relaunch(device).cache.keepFor({ ...denis, familyId: "family-2" });
-    const { list } = relaunch(device);
+    const { list, read } = relaunch(device);
 
-    await settle();
+    await read();
     expect(list.data()).toBeUndefined();
   });
 
@@ -289,7 +293,7 @@ describe("device cache owner", () => {
     await cache.clear();
     const list = cachedList(cache);
 
-    await settle();
+    await cache.whenRead([list.data]);
     expect(list.data()).toBeUndefined();
   });
 
@@ -298,9 +302,9 @@ describe("device cache owner", () => {
     const { cache } = await launchLoaded(device);
 
     await cache.clear();
-    const { list } = relaunch(device);
+    const { list, read } = relaunch(device);
 
-    await settle();
+    await read();
     expect(list.data()).toBeUndefined();
   });
 });
