@@ -15,13 +15,13 @@ export function TabButton({ tab, onOpen }: TabButtonProps) {
     <button
       type="button"
       aria-current={tab.isActive ? "page" : undefined}
-      className="group press flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1.5 text-muted-foreground transition-colors aria-[current=page]:text-primary"
+      className="group press flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1.5 text-muted-foreground aria-[current=page]:text-primary-text"
       onClick={() => {
         onOpen(tab.id);
       }}
     >
       <Icon
-        className="size-7 fill-transparent transition-[fill] group-aria-[current=page]:fill-primary/25 motion-safe:group-aria-[current=page]:animate-tab-pop"
+        className="size-7 fill-transparent group-aria-[current=page]:fill-primary/30 group-aria-[current=page]:text-primary group-aria-[current=page]:[stroke-width:2.25] motion-safe:group-aria-[current=page]:animate-tab-pop"
         strokeWidth={1.75}
         aria-hidden
       />

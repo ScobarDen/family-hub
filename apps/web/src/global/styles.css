@@ -181,11 +181,13 @@
 }
 
 /* Telegram's push: the new screen slides in from the right over the old one, which drifts left and
-   dims; Back runs it in reverse. Snapshots get the page colour, or the screen behind shows through. */
+   dims; Back runs it in reverse. Snapshots get the page colour, or the screen behind shows through; the
+   tab bar is a group of its own, so it stays above the sliding page. */
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-group(.slide-forward),
   ::view-transition-group(.slide-back) {
-    animation: none;
+    animation-duration: 350ms;
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
   }
 
   ::view-transition-old(.slide-forward),
