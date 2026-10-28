@@ -79,6 +79,9 @@ Each item on iOS and Android; Telegram Desktop and Web keep no cache between lau
 - [ ] Opening an Invite link into another Family goes straight to the invitation, without the old Family's shell.
 - [ ] After leaving the Family (or being removed), the next launch shows the stranger screen without the old Family's data.
 - [ ] A launch from a cache older than the photo links' lifetime (or with a photo link edited to fail in DevTools) shows a same-size placeholder in place of every photo — thumbs, Album covers, the Pet avatar, the viewer — never a broken icon or a shifted row; fresh data brings the photos back.
+- [ ] With the network throttled to Slow 3G and the cache cleared, Today, Задачи, Лента, Питомцы, Цели, Рецепты, Альбомы, «Все фото», a Pet's «Траты» and an Invite link each show a skeleton shaped like their screen, never «Загружаем…» or another text; the content replaces it without the layout jumping, in the light and the dark theme.
+- [ ] The skeleton shimmers in the theme's colours; with reduced motion turned on in the system it stays a still block.
+- [ ] With the network off on a first launch of a section, the screen shows its failure with «Повторить», and «Повторить» brings the content once the network is back.
 
 Items for features that are not built yet are skipped until they land.
 

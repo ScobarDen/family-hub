@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Button, Chip, LoadState } from "@/common/ui";
+import { Button, Chip, LoadState, SkeletonSection } from "@/common/ui";
 
 import type { TasksScreen, TasksScreenModel } from "../vm/tasks.vm.ts";
 import { TaskCalendar } from "./task-calendar.view.tsx";
@@ -101,12 +101,11 @@ function contentOf(model: TasksScreenModel, screen: TasksScreen): ReactNode {
     return <SubtaskForm model={model.subtaskForm} onCancel={model.back} />;
   }
 
-  return (
-    <LoadState
-      failure={screen.kind === "failed" ? "Не получилось загрузить дела." : undefined}
-      onRetry={model.reload}
-    />
-  );
+  if (screen.kind === "loading") {
+    return browsing(model, <SkeletonSection rows={5} />);
+  }
+
+  return <LoadState failure="Не получилось загрузить дела." onRetry={model.reload} />;
 }
 
 export const Tasks = reatomComponent(

@@ -52,7 +52,7 @@ export function reatomAlbumsData({
       version();
       liveVersion?.();
 
-      return isAllShown() ? wrap(api.allPhotos()) : [];
+      return isAllShown() ? wrap(api.allPhotos()) : undefined;
     }, "albums.allPhotos").extend(withAsyncData()),
 
     reload: action(() => {

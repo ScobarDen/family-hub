@@ -27,7 +27,7 @@ type SectionItemProps = {
   isExpanded?: boolean;
 };
 
-const row =
+export const sectionRowClass =
   "flex min-h-12 w-full items-center gap-3 pl-4 text-left [&+&>[data-slot=item-body]]:border-t";
 
 function leadingOf({
@@ -84,7 +84,7 @@ function withControl(props: SectionItemProps, control: ReactNode): ReactNode {
   const { onClick } = props;
 
   return (
-    <div className={row}>
+    <div className={sectionRowClass}>
       {control}
       {onClick === undefined ? (
         bodyOf(props)
@@ -112,14 +112,14 @@ function plainRowOf(props: SectionItemProps): ReactNode {
   );
 
   if (onClick === undefined) {
-    return <div className={row}>{content}</div>;
+    return <div className={sectionRowClass}>{content}</div>;
   }
 
   return (
     <button
       type="button"
       className={cn(
-        row,
+        sectionRowClass,
         "focus-visible:-outline-offset-2 active:bg-muted aria-disabled:opacity-50",
       )}
       aria-disabled={disabled || undefined}

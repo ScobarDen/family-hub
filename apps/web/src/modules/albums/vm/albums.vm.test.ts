@@ -53,6 +53,7 @@ type Launch = {
   device?: FakeDeviceStorage;
   albums?: Album[];
   answered?: Promise<void>;
+  photosAnswered?: Promise<void>;
 };
 
 function startAlbums({
@@ -61,6 +62,7 @@ function startAlbums({
   device = fakeDeviceStorage(),
   albums = [],
   answered = Promise.resolve(),
+  photosAnswered = Promise.resolve(),
 }: Launch = {}) {
   const requests: string[] = [];
   const waits: number[] = [];
@@ -69,6 +71,22 @@ function startAlbums({
   let uploadCount = 0;
   let release: () => void = noop;
   let gate: Promise<void> = Promise.resolve();
+
+  async function read(url: URL): Promise<Response> {
+    if (url.pathname === "/api/photos") {
+      await photosAnswered;
+
+      return Response.json([photoOf("photo-1"), photoOf("photo-2")]);
+    }
+
+    if (url.pathname === "/api/albums") {
+      await answered;
+
+      return Response.json(albums);
+    }
+
+    return Response.json(albumOf(url.pathname.split("/")[3] ?? ""));
+  }
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
     const request = `${init.method ?? "GET"} ${url.pathname}`;
@@ -85,17 +103,11 @@ function startAlbums({
       });
     }
 
-    if (request.endsWith("/photos")) {
+    if (init.method === "POST" && request.endsWith("/photos")) {
       return answerOf(pendingAdditions.shift() ?? "ok", () => albumOf("album-1"));
     }
 
-    if (url.pathname === "/api/albums") {
-      await answered;
-
-      return Response.json(albums);
-    }
-
-    return Response.json(albumOf(url.pathname.split("/")[3] ?? ""));
+    return read(url);
   }
 
   const model = reatomAlbumsScreen({
@@ -164,6 +176,29 @@ describe("the Albums", () => {
 
     await vi.waitFor(() => {
       expect(model.screen()).toEqual({ kind: "list", albums: [], summary: "Пока нет альбомов" });
+    });
+  });
+});
+
+describe("all photos", () => {
+  test("show no photos until they arrive, then all of them", async () => {
+    let answer = noop;
+    const { model } = startAlbums({
+      photosAnswered: new Promise((resolve) => {
+        answer = resolve;
+      }),
+    });
+
+    model.openAll();
+    await vi.waitFor(() => {
+      expect(model.screen()).toEqual({ kind: "all", photos: undefined });
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({
+        kind: "all",
+        photos: [{ id: "photo-1" }, { id: "photo-2" }],
+      });
     });
   });
 });

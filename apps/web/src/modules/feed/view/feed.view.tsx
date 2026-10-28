@@ -11,9 +11,18 @@ import {
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
-import { Button, CheckButton, Chip, PersonAvatar, Section, SectionItem } from "@/common/ui";
+import {
+  Button,
+  CheckButton,
+  Chip,
+  PersonAvatar,
+  Section,
+  SectionItem,
+  SkeletonSection,
+} from "@/common/ui";
 
 import type { FeedRow } from "../feed.lib.ts";
 import { feedFilters, type FeedModel } from "../vm/feed.vm.ts";
@@ -79,6 +88,20 @@ const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
   );
 }, "FeedRowItem");
 
+function placeholderOf(model: FeedModel, blockCount: number): ReactNode {
+  if (model.isLoading()) {
+    return <SkeletonSection rows={4} />;
+  }
+
+  return (
+    blockCount === 0 && (
+      <Section>
+        <SectionItem title="Пока пусто: дела и записи о питомце появятся здесь" />
+      </Section>
+    )
+  );
+}
+
 export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
   const blocks = model.blocks();
 
@@ -97,11 +120,7 @@ export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
           </Chip>
         ))}
       </div>
-      {blocks.length === 0 && !model.isLoading() && (
-        <Section>
-          <SectionItem title="Пока пусто: дела и записи о питомце появятся здесь" />
-        </Section>
-      )}
+      {placeholderOf(model, blocks.length)}
       {blocks.map((block) => (
         <Section key={block.title} title={block.title}>
           {block.rows.map((row) => (

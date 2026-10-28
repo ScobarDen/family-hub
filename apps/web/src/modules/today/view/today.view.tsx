@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { LoadState } from "@/common/ui";
+import { LoadState, SkeletonSection, SkeletonTiles } from "@/common/ui";
 
 import type { TodayModel } from "../vm/today.vm.ts";
 import { DueBlock } from "./due-block.view.tsx";
@@ -11,8 +11,18 @@ import { UndoBar } from "./undo-bar.view.tsx";
 export const Today = reatomComponent(({ model }: { model: TodayModel }) => {
   const failure = model.loadFailure();
 
-  if (model.isLoading() || failure !== undefined) {
-    return <LoadState {...(failure === undefined ? {} : { failure })} onRetry={model.reload} />;
+  if (failure !== undefined) {
+    return <LoadState failure={failure} onRetry={model.reload} />;
+  }
+
+  if (model.isLoading()) {
+    return (
+      <>
+        <SkeletonSection title="Сделать сегодня" rows={2} />
+        <SkeletonSection title="Впереди" rows={3} />
+        <SkeletonTiles count={5} />
+      </>
+    );
   }
 
   return (

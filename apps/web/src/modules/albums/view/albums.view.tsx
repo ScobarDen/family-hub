@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
-import { LoadState } from "@/common/ui";
+import { LoadState, SkeletonPhotoGrid, SkeletonSection, SkeletonSectionLayout } from "@/common/ui";
 
 import type { AlbumsScreen, AlbumsScreenModel } from "../vm/albums.vm.ts";
 import { AlbumDetails } from "./album-details.view.tsx";
@@ -21,14 +21,20 @@ function contentOf(model: AlbumsScreenModel, screen: AlbumsScreen): ReactNode {
   }
 
   if (screen.kind === "all") {
+    const { photos } = screen;
+
+    if (photos === undefined) {
+      return <SkeletonPhotoGrid count={12} />;
+    }
+
     return (
       <>
         <PhotoThumbs
           className="grid grid-cols-3 gap-0.5 px-4 pb-4"
           thumbClassName="aspect-square"
-          photos={screen.photos}
+          photos={photos}
           onOpen={(photoId) => {
-            model.viewer.open(screen.photos, photoId);
+            model.viewer.open(photos, photoId);
           }}
         />
         <PhotoViewer model={model.viewer} />
@@ -40,12 +46,16 @@ function contentOf(model: AlbumsScreenModel, screen: AlbumsScreen): ReactNode {
     return <AlbumForm model={model.form} onCancel={model.back} />;
   }
 
-  return (
-    <LoadState
-      failure={screen.kind === "failed" ? "Не получилось загрузить альбомы." : undefined}
-      onRetry={model.retry}
-    />
-  );
+  if (screen.kind === "loading") {
+    return (
+      <SkeletonSectionLayout tabs={1}>
+        <SkeletonSection rows={1} />
+        <SkeletonSection rows={3} />
+      </SkeletonSectionLayout>
+    );
+  }
+
+  return <LoadState failure="Не получилось загрузить альбомы." onRetry={model.retry} />;
 }
 
 export const Albums = reatomComponent(

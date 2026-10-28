@@ -42,7 +42,7 @@ export type AlbumsScreen =
   | { kind: "failed" }
   | { kind: "list"; albums: AlbumItem[]; summary: string }
   | { kind: "album"; album: AlbumView }
-  | { kind: "all"; photos: Photo[] }
+  | { kind: "all"; photos: Photo[] | undefined }
   | { kind: "form"; isCreating: boolean };
 
 type AlbumsDependencies = LiveVersion & {
@@ -84,7 +84,7 @@ function reatomScreen(
     }
 
     if (data.isAllShown()) {
-      return { kind: "all", photos: data.allPhotos.data() ?? [] };
+      return { kind: "all", photos: data.allPhotos.data() };
     }
 
     const opened = data.opened.data();

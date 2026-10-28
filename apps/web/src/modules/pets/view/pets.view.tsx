@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { LoadState } from "@/common/ui";
+import { LoadState, SkeletonSection } from "@/common/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 import { PetCard } from "./pet-card.view.tsx";
@@ -43,12 +43,11 @@ function contentOf(props: PetsProps, screen: PetsScreen): ReactNode {
     return <PetList model={model} screen={screen} />;
   }
 
-  return (
-    <LoadState
-      failure={screen.kind === "failed" ? "Не получилось загрузить питомцев." : undefined}
-      onRetry={model.retry}
-    />
-  );
+  if (screen.kind === "loading") {
+    return <SkeletonSection rows={2} />;
+  }
+
+  return <LoadState failure="Не получилось загрузить питомцев." onRetry={model.retry} />;
 }
 
 export const Pets = reatomComponent(
