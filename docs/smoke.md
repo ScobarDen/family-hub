@@ -126,7 +126,7 @@ With a keyboard in Telegram Desktop or the browser, then with VoiceOver and Talk
 
 - [ ] Opening a photo from a thumb puts focus on «Закрыть»; Tab cycles only through the viewer's bar and the step buttons, never onto the screen behind; ArrowLeft and ArrowRight step through the photos; Escape closes the viewer and focus lands back on that thumb. The screen reader announces a dialog «Фото».
 - [ ] A refused photo deletion shows its failure bar over the open viewer, read once; «Скрыть» there dismisses it.
-- [ ] The Command Sheet opens as a dialog «Команда» with focus on «Закрыть»; Tab stays inside it; Escape closes it like «×» (a pending draft is dropped) and focus returns to the microphone.
+- [ ] The Command Sheet slides up as a bottom drawer «Команда» with focus on «Закрыть»; Tab stays inside it; Escape, a swipe down and a tap on the dimmed page close it like «×» (a pending draft is dropped) and focus returns to the microphone.
 
 ### Keyboard focus
 
@@ -136,7 +136,7 @@ With a keyboard in Telegram Desktop or the browser, in the light and the dark th
 - [ ] The time zone select in the Member's settings shows the ring when Tab reaches it.
 - [ ] Tapping or clicking any of them shows no ring; text fields and date fields may show it, as the browser decides for anything that takes typing.
 - [ ] Tabbing down to the last row of a long Feed or Recipes list scrolls it fully above the tab bar; with an undo or failure bar on screen, fully above that bar too.
-- [ ] Opening a Task, a Pet, a Goal, an Album or a Recipe from its list puts focus on the new screen's heading, and the screen reader reads it; so does opening a form from there (a Task's form, a Subtask, a care entry, a movement, an Album's form, Recipe tags). «Отмена» or Back puts focus on the heading of the screen returned to. The page does not jump to the heading.
+- [ ] Opening a Task, a Pet, a Goal, an Album or a Recipe from its list puts focus on the new screen's heading, and the screen reader reads it; so does opening Recipe tags. A form (a Task's form, a Subtask, a care entry, a movement, an Album's form) slides up as a bottom drawer named by its title, with the screen it came from still under it; «Отмена», a swipe down, a tap on the dimmed page or Back closes it and returns focus to the control that opened it. Back from a screen puts focus on the heading of the screen returned to. The page does not jump to the heading.
 - [ ] Switching tabs inside a screen (Pets, Goals, Recipes, Albums, «Мои» / «Все» in Tasks) or a Feed filter leaves focus on the tab or filter.
 
 ### Date and time fields
@@ -175,7 +175,7 @@ Each item on iOS and Android; Telegram Desktop and Web keep no cache between lau
 Each item on iOS and Android, once with the system's reduced motion off and once with it on.
 
 - [ ] Buttons, rows, Today's tiles, chips and the completion circle shrink a little while pressed and spring back; a disabled or spinning button does not move.
-- [ ] Opening a section from «Разделы» or a record from Today or the Feed slides the new screen in from the right; Telegram's Back slides it out to the right, inside a module (a form, a Task's card) too. Opening a record inside a module's own list swaps at once.
+- [ ] Opening a section from «Разделы» or a record from Today or the Feed slides the new screen in from the right; Telegram's Back slides it out to the right, inside a module (a Task's card) too, and closes an open form's drawer first. Opening a record inside a module's own list swaps at once.
 - [ ] A tab-bar tap swaps the screen at once, with no slide.
 - [ ] The command sheet rises from the bottom; «×» lets it sink a little and fade, quicker than it came.
 - [ ] Completing a Task in «Сделать сегодня» turns the circle into a check (it grows out of a blur), then the row folds away and the rows below close the gap; «Отменить» opens it up again. Completing the last one folds the whole card.

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { Invite, InviteCreated, InviteList } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
-import { fakeHaptics, type PopupParams } from "@/common/telegram";
+import { fakeHaptics } from "@/common/telegram";
 
 import { createInvitesApi } from "../invites.api.ts";
 import { reatomInvites } from "./invites.vm.ts";
@@ -47,7 +47,7 @@ function fakeBackend({
   return { fetch, requests };
 }
 
-function fakeTelegram({ canShareMessage = true, choice = "confirm" } = {}) {
+function fakeTelegram({ canShareMessage = true } = {}) {
   const calls: string[] = [];
 
   return {
@@ -59,11 +59,6 @@ function fakeTelegram({ canShareMessage = true, choice = "confirm" } = {}) {
     },
     openTelegramLink(url: string) {
       calls.push(`openTelegramLink ${url}`);
-    },
-    async showPopup({ title }: PopupParams) {
-      calls.push(`showPopup ${title ?? ""}`);
-
-      return choice;
     },
     haptics: fakeHaptics(),
     calls,
@@ -185,24 +180,27 @@ describe("revoking", () => {
     await loaded(model);
     model.revoke("invite-1");
 
+    expect([model.isConfirmingRevoke(), telegram.haptics.felt]).toEqual([true, ["warning"]]);
+    expect(backend.requests).not.toContain("DELETE /api/invites/invite-1");
+
+    model.confirmRevoke();
+
     await vi.waitFor(() => {
       expect(backend.requests).toContain("DELETE /api/invites/invite-1");
     });
-    expect(telegram.calls).toEqual(["showPopup Отозвать приглашение?"]);
-    expect(telegram.haptics.felt).toEqual(["warning"]);
+    expect(model.isConfirmingRevoke()).toBe(false);
     expect(model.invites()).toEqual([]);
   });
 
   test("keeps the Invite when the confirmation is dismissed", async () => {
     const backend = fakeBackend();
-    const model = startInvites(backend, fakeTelegram({ choice: "cancel" }));
+    const model = startInvites(backend);
 
     await loaded(model);
     model.revoke("invite-1");
-    await vi.waitFor(() => {
-      expect(model.isRevoking()).toBe(false);
-    });
+    model.cancelRevoke();
 
+    expect(model.isConfirmingRevoke()).toBe(false);
     expect(backend.requests).not.toContain("DELETE /api/invites/invite-1");
     expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября, 15:00" }]);
   });
@@ -212,6 +210,7 @@ describe("revoking", () => {
 
     await loaded(model);
     model.revoke("invite-1");
+    model.confirmRevoke();
 
     await vi.waitFor(() => {
       expect(model.failure()).toBe("Не получилось отозвать приглашение. Попробуйте ещё раз.");
@@ -224,6 +223,7 @@ describe("revoking", () => {
 
     await loaded(model);
     model.revoke("invite-1");
+    model.confirmRevoke();
     await vi.waitFor(() => {
       expect(model.isRevoking()).toBe(false);
     });
