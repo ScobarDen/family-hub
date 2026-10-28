@@ -6,10 +6,9 @@ const plural = new Intl.PluralRules("ru-RU");
 const years = { one: "год", few: "года", many: "лет", other: "года" } as const;
 const months = { one: "месяц", few: "месяца", many: "месяцев", other: "месяца" } as const;
 
-function countOf(
-  count: number,
-  forms: Partial<Record<Intl.LDMLPluralRule, string>> & { other: string },
-): string {
+type CountForms = Partial<Record<Intl.LDMLPluralRule, string>> & { other: string };
+
+function countOf(count: number, forms: CountForms): string {
   return `${count} ${forms[plural.select(count)] ?? forms.other}`;
 }
 
@@ -92,17 +91,30 @@ export function formatAge(birthDate: string, onDate: string): string {
   return age.months > 0 ? countOf(age.months, months) : "меньше месяца";
 }
 
-// Years and months for a small tile; a number keeps its unit on its line when the value wraps.
-export function formatShortAge(birthDate: string, onDate: string): string {
-  const age = Temporal.PlainDate.from(birthDate).until(onDate, { largestUnit: "years" });
-  const parts = [
-    age.years > 0 ? countOf(age.years, years) : undefined,
-    age.months > 0 ? `${age.months} мес.` : undefined,
-  ].filter((part) => part !== undefined);
+const shortYears = { one: "г", few: "г", many: "л", other: "г" } as const;
+const shortMonths = { other: "м" } as const;
 
-  return parts.length === 0
-    ? "меньше месяца"
-    : parts.map((part) => part.replace(" ", "\u00A0")).join(" ");
+function yearsAndMonths(
+  { birthDate, onDate }: { birthDate: string; onDate: string },
+  units: { years: CountForms; months: CountForms },
+): string[] {
+  const age = Temporal.PlainDate.from(birthDate).until(onDate, { largestUnit: "years" });
+
+  return [
+    age.years > 0 ? countOf(age.years, units.years) : undefined,
+    age.years === 0 || age.months > 0 ? countOf(age.months, units.months) : undefined,
+  ].filter((part) => part !== undefined);
+}
+
+// «1 г 1 м» fits one line of a small tile; formatFullAge says the same for a screen reader.
+export function formatShortAge(birthDate: string, onDate: string): string {
+  return yearsAndMonths({ birthDate, onDate }, { years: shortYears, months: shortMonths })
+    .map((part) => part.replace(" ", "\u00A0"))
+    .join(" ");
+}
+
+export function formatFullAge(birthDate: string, onDate: string): string {
+  return yearsAndMonths({ birthDate, onDate }, { years, months }).join(" ");
 }
 
 export type PickerType = "date" | "time" | "datetime-local";

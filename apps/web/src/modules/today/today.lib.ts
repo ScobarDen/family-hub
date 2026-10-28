@@ -1,7 +1,7 @@
 import { type FeedUpcoming, type SlotModule, type TodayTiles } from "@family-hub/contract";
 
 import { formatCount, type CountWords } from "@/common/format-count";
-import { formatNearDate, formatShortAge } from "@/common/format-date";
+import { formatFullAge, formatNearDate, formatShortAge } from "@/common/format-date";
 import { sectionTitles } from "@/common/sections";
 
 export type DueRow = {
@@ -23,6 +23,8 @@ export type Tile = {
   module: SlotModule;
   title: string;
   value: string | undefined;
+  // What a screen reader says instead of a value shortened to fit the tile.
+  valueLabel: string | undefined;
   note: string | undefined;
   isAlert: boolean;
   picture: string | undefined;
@@ -80,6 +82,7 @@ function tile(module: SlotModule, fields: Partial<Omit<Tile, "module">> = {}): T
     module,
     title: sectionTitles[module],
     value: undefined,
+    valueLabel: undefined,
     note: undefined,
     isAlert: false,
     picture: undefined,
@@ -94,6 +97,7 @@ function petTile({ activeCount, only }: NonNullable<Tiles["pet"]>, today: string
     return tile("pet", {
       title: only.name,
       value: only.birthDate === null ? undefined : formatShortAge(only.birthDate, today),
+      valueLabel: only.birthDate === null ? undefined : formatFullAge(only.birthDate, today),
       picture: only.picture ?? undefined,
     });
   }
