@@ -3,6 +3,7 @@ export {
   formatAge,
   formatDate,
   formatDay,
+  formatDayTime,
   formatNearDate,
   formatPickedValue,
   formatShortDate,

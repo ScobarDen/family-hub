@@ -2,7 +2,7 @@ import { action, computed, withAsync, withAsyncData, wrap } from "@reatom/core";
 
 import type { Invite, InviteCreated } from "@family-hub/contract";
 
-import { formatDay, type Viewer } from "@/common/format-date";
+import { formatDayTime, type Viewer } from "@/common/format-date";
 import { withoutId } from "@/common/records";
 import { detached, reatomFailure } from "@/common/state";
 import { type Dialogs, type Haptics, isConfirmed } from "@/common/telegram";
@@ -33,8 +33,9 @@ function newestFirst(invites: Invite[]): Invite[] {
   return invites.toSorted((left, right) => right.expiresAt - left.expiresAt);
 }
 
+// The time keeps two Invites made on one day apart, «Отозвать» included.
 function toItem(invite: Invite, viewer: Viewer): InviteItem {
-  return { id: invite.id, title: `Приглашение до ${formatDay(invite.expiresAt, viewer)}` };
+  return { id: invite.id, title: `Приглашение до ${formatDayTime(invite.expiresAt, viewer)}` };
 }
 
 function reatomList(api: InvitesApi) {

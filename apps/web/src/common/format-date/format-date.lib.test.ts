@@ -4,6 +4,7 @@ import {
   formatAge,
   formatDate,
   formatDay,
+  formatDayTime,
   formatNearDate,
   formatPickedValue,
   formatTimeZone,
@@ -22,6 +23,10 @@ test("takes the day from the viewer's zone, not from UTC", () => {
   expect(formatDay(lateEveningInUtc, { ...moscow, timeZone: "America/New_York" })).toBe(
     "11 октября",
   );
+});
+
+test("adds the time in the viewer's zone to the day", () => {
+  expect(formatDayTime(lateEveningInUtc, moscow)).toBe("12 октября, 01:30");
 });
 
 test("keeps the year of a day from another year", () => {

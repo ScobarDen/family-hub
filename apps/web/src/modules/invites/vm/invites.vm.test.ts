@@ -107,7 +107,19 @@ describe("the Member's Invites", () => {
 
     await loaded(model);
 
-    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
+    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября, 15:00" }]);
+  });
+
+  test("tells apart two Invites made on the same day", async () => {
+    const sameDay = { ...older, id: "invite-3", expiresAt: older.expiresAt + 3_600_000 };
+    const model = startInvites(fakeBackend({ list: [sameDay, older] }));
+
+    await loaded(model);
+
+    expect(model.invites().map(({ title }) => title)).toEqual([
+      "Приглашение до 9 октября, 16:00",
+      "Приглашение до 9 октября, 15:00",
+    ]);
   });
 });
 
@@ -122,8 +134,8 @@ describe("inviting", () => {
     expect(backend.requests).toContain("POST /api/invites");
     expect(telegram.calls).toEqual(["shareMessage prepared-1"]);
     expect(model.invites()).toEqual([
-      { id: "invite-2", title: "Приглашение до 11 октября" },
-      { id: "invite-1", title: "Приглашение до 9 октября" },
+      { id: "invite-2", title: "Приглашение до 11 октября, 12:00" },
+      { id: "invite-1", title: "Приглашение до 9 октября, 15:00" },
     ]);
   });
 
@@ -192,7 +204,7 @@ describe("revoking", () => {
     });
 
     expect(backend.requests).not.toContain("DELETE /api/invites/invite-1");
-    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
+    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября, 15:00" }]);
   });
 
   test("puts the Invite back when revoking fails", async () => {
@@ -204,7 +216,7 @@ describe("revoking", () => {
     await vi.waitFor(() => {
       expect(model.failure()).toBe("Не получилось отозвать приглашение. Попробуйте ещё раз.");
     });
-    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
+    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября, 15:00" }]);
   });
 
   test("keeps it removed when it was already gone on the server", async () => {

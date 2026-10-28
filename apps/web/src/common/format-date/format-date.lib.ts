@@ -26,6 +26,14 @@ export function formatDay(epochMs: number, { timeZone, today: onDate }: Viewer):
   return formatShortDate(day.toPlainDate().toString(), onDate);
 }
 
+export function formatDayTime(epochMs: number, viewer: Viewer): string {
+  const time = Temporal.Instant.fromEpochMilliseconds(epochMs)
+    .toZonedDateTimeISO(viewer.timeZone)
+    .toPlainTime();
+
+  return `${formatDay(epochMs, viewer)}, ${time.toString({ smallestUnit: "minute" })}`;
+}
+
 export function formatDate(date: string): string {
   return Temporal.PlainDate.from(date).toLocaleString("ru-RU", {
     ...dayAndMonth,
