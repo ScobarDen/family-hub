@@ -288,6 +288,39 @@ describe("a Movement with a field to fix", () => {
   });
 });
 
+describe("closing a Movement form", () => {
+  test("keeps it open when the Member keeps the typed amount", async () => {
+    const { model, felt } = startGoals();
+
+    await loaded(model);
+    model.open("goal-1");
+    model.addMovement("contribution");
+    model.movementForm.confirmClosingWhileDirty();
+    model.movementForm.form.fields.amount.change("500");
+    await vi.waitFor(() => {
+      expect(model.movementForm.form.focus().dirty).toBe(true);
+    });
+    model.back();
+
+    await vi.waitFor(() => {
+      expect(felt).toEqual(["warning"]);
+    });
+    expect(model.isFormOpen()).toBe(true);
+  });
+
+  test("closes it at once when nothing was typed", async () => {
+    const { model } = startGoals();
+
+    await loaded(model);
+    model.open("goal-1");
+    model.addMovement("contribution");
+    model.movementForm.confirmClosingWhileDirty();
+    model.back();
+
+    expect([model.screen().kind, model.isFormOpen()]).toEqual(["goal", false]);
+  });
+});
+
 function balanceOf(model: Model) {
   const { progress, movements } = opened(model).goal;
 

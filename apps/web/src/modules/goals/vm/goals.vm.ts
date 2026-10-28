@@ -19,6 +19,7 @@ import type {
 } from "@family-hub/contract";
 
 import type { DeviceCache } from "@/common/device-cache";
+import { reatomFormBack } from "@/common/form";
 import { formatRubles } from "@/common/format-money";
 import type { LiveVersion } from "@/common/live-updates";
 import {
@@ -56,7 +57,7 @@ export type GoalsScreen =
   | ({ kind: "list"; total: string } & GoalSections)
   | { kind: "goal"; goal: GoalDetails; isCelebrating: boolean };
 
-export type GoalFormKind = "goal" | "movement";
+type GoalFormKind = "goal" | "movement";
 
 type GoalsDependencies = {
   api: GoalsApi;
@@ -202,7 +203,10 @@ function reatomRemoval(
   );
 }
 
-function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation, slide: Slide) {
+function reatomBrowsing(
+  { editing, openedGoalId, isCelebrating }: Navigation,
+  { slide, telegram }: { slide: Slide; telegram: GoalsDependencies["telegram"] },
+) {
   return {
     open: action((goalId: string) => {
       slide("forward", () => {
@@ -210,15 +214,20 @@ function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation, sl
         isCelebrating.setFalse();
       });
     }, "goals.open"),
-    back: action(() => {
-      if (editing() === undefined) {
-        openedGoalId.set(undefined);
-      } else {
-        editing.set(undefined);
-      }
+    back: reatomFormBack({
+      name: "goals.back",
+      telegram,
+      isFormOpen: () => editing() !== undefined,
+      back: () => {
+        if (editing() === undefined) {
+          openedGoalId.set(undefined);
+        } else {
+          editing.set(undefined);
+        }
 
-      isCelebrating.setFalse();
-    }, "goals.back"),
+        isCelebrating.setFalse();
+      },
+    }),
   };
 }
 
@@ -266,6 +275,7 @@ function titleOf(screen: GoalsScreen): string {
 function reatomOpenForm({ editing }: Navigation, { goalForm, movementForm }: Forms) {
   return {
     openForm: readOnly(editing),
+    isFormOpen: computed(() => editing() !== undefined, "goals.isFormOpen"),
     formTitles: computed(
       (): Record<GoalFormKind, string> => ({
         goal: goalForm.isCreating() ? "Новая цель" : "Цель",
@@ -332,7 +342,10 @@ export function reatomGoalsScreen(input: GoalsInput) {
     complete: detached(complete, "goals.completeGoal"),
     removeMovement: detached(removeMovement, "goals.removeOneMovement"),
     ...forms,
-    ...reatomBrowsing(navigation, dependencies.slide ?? instantly),
+    ...reatomBrowsing(navigation, {
+      slide: dependencies.slide ?? instantly,
+      telegram: dependencies.telegram,
+    }),
     ...reatomEditing(navigation, { ...forms, openedGoal }),
   };
 }

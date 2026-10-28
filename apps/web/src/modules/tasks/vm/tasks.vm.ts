@@ -13,6 +13,7 @@ import {
 import type { Pet, Task } from "@family-hub/contract";
 
 import type { DeviceCache } from "@/common/device-cache";
+import { reatomFormBack } from "@/common/form";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
 import { detached, instantly, readOnly, type Slide } from "@/common/state";
@@ -42,7 +43,7 @@ export type TasksScreen =
   | { kind: "calendar" }
   | { kind: "task"; task: TaskDetails };
 
-export type TaskFormKind = "task" | "subtask";
+type TaskFormKind = "task" | "subtask";
 
 // What the list says when nothing is left to do: «add the first one» only to a Family with none.
 export type EmptyList = { title: string; hint: string | undefined };
@@ -212,12 +213,27 @@ function reatomOpen({ editing, opened }: Navigation, viewer: () => Viewer, tasks
   }, "tasks.openTask").extend(withAbort());
 }
 
+function reatomBack({ editing, opened }: Navigation, telegram: TasksDependencies["telegram"]) {
+  return reatomFormBack({
+    name: "tasks.back",
+    telegram,
+    isFormOpen: () => editing() !== undefined,
+    back: () => {
+      if (editing() === undefined) {
+        opened.set(undefined);
+      } else {
+        editing.set(undefined);
+      }
+    },
+  });
+}
+
 function reatomBrowsing(
   navigation: Navigation,
   { viewer, onOpenAlbum, telegram, slide = instantly }: TasksDependencies,
   tasks: TasksModel,
 ) {
-  const { editing, opened } = navigation;
+  const { opened } = navigation;
 
   return {
     openRow: action((row: TaskRow) => {
@@ -238,13 +254,7 @@ function reatomBrowsing(
       telegram.haptics.select();
       navigation.scope.set(scope);
     }, "tasks.showScope"),
-    back: action(() => {
-      if (editing() === undefined) {
-        opened.set(undefined);
-      } else {
-        editing.set(undefined);
-      }
-    }, "tasks.back"),
+    back: reatomBack(navigation, telegram),
     openAlbum: action((albumId: string) => {
       onOpenAlbum(albumId);
     }, "tasks.openAlbum"),
@@ -308,6 +318,7 @@ function titleOf(screen: TasksScreen): string {
 function reatomOpenForm({ editing }: Navigation, { taskForm }: Forms) {
   return {
     openForm: readOnly(editing),
+    isFormOpen: computed(() => editing() !== undefined, "tasks.isFormOpen"),
     formTitles: computed(
       (): Record<TaskFormKind, string> => ({
         task: taskForm.isCreating() ? "Новое дело" : "Дело",

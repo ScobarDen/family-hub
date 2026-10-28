@@ -13,6 +13,7 @@ import {
 import type { AlbumSummary, Photo } from "@family-hub/contract";
 
 import type { DeviceCache } from "@/common/device-cache";
+import { reatomFormBack } from "@/common/form";
 import { formatCount } from "@/common/format-count";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
@@ -304,6 +305,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
       data.isAllShown.setTrue();
     }, "albums.openAll"),
     ...reatomMoves({ data, navigation, form: parts.form, batch: parts.batch }),
+    back: reatomBack({ data, navigation, batch: parts.batch }, dependencies.telegram),
     failure: failure.failure,
     dismissFailure: failure.dismiss,
     remove: detached(remove, "albums.removeAlbum"),
@@ -337,7 +339,22 @@ function reatomMoves({
     upload: action((files: Blob[]) => {
       batch.start(navigation.openedId(), files);
     }, "albums.upload"),
-    back: action(() => {
+  };
+}
+
+function reatomBack(
+  {
+    data,
+    navigation,
+    batch,
+  }: { data: AlbumsData; navigation: Navigation; batch: { dismiss: () => void } },
+  telegram: AlbumsDependencies["telegram"],
+) {
+  return reatomFormBack({
+    name: "albums.back",
+    telegram,
+    isFormOpen: navigation.isEditing,
+    back: () => {
       if (navigation.isEditing()) {
         navigation.isEditing.setFalse();
       } else if (data.isAllShown()) {
@@ -346,8 +363,8 @@ function reatomMoves({
         navigation.openedId.set(undefined);
         batch.dismiss();
       }
-    }, "albums.back"),
-  };
+    },
+  });
 }
 
 function titleOf(screen: AlbumsScreen): string {

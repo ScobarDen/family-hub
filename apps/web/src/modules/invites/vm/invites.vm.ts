@@ -120,16 +120,25 @@ function reatomRevokeConfirmation(
   revoke: (inviteId: string) => void,
 ) {
   const confirming = atom<string | undefined>(undefined, "invites.confirmingRevoke");
+  const isConfirmingRevoke = computed(
+    () => confirming() !== undefined,
+    "invites.isConfirmingRevoke",
+  );
+  const cancelRevoke = action(() => {
+    confirming.set(undefined);
+  }, "invites.cancelRevoke");
 
   return {
-    isConfirmingRevoke: computed(() => confirming() !== undefined, "invites.isConfirmingRevoke"),
+    isConfirmingRevoke,
+    // Telegram Back on the Profile closes the drawer first, so leaving it leaves no stale question.
+    canGoBack: isConfirmingRevoke,
+    isFormOpen: isConfirmingRevoke,
+    back: cancelRevoke,
     revoke: action((inviteId: string) => {
       telegram.haptics.warning();
       confirming.set(inviteId);
     }, "invites.askRevoke"),
-    cancelRevoke: action(() => {
-      confirming.set(undefined);
-    }, "invites.cancelRevoke"),
+    cancelRevoke,
     confirmRevoke: action(() => {
       const inviteId = confirming();
 

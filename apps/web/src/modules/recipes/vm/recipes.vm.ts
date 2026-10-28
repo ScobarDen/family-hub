@@ -14,6 +14,7 @@ import {
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
 import type { DeviceCache } from "@/common/device-cache";
+import { reatomFormBack } from "@/common/form";
 import { formatCount } from "@/common/format-count";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
@@ -324,14 +325,22 @@ function reatomMoves({
     openTags: action(() => {
       navigation.editing.set("tags");
     }, "recipes.openTags"),
-    back: action(() => {
+  };
+}
+
+function reatomBack(navigation: Navigation, telegram: RecipesDependencies["telegram"]) {
+  return reatomFormBack({
+    name: "recipes.back",
+    telegram,
+    isFormOpen: () => navigation.editing() === "recipe",
+    back: () => {
       if (navigation.editing() === undefined) {
         navigation.openedId.set(undefined);
       } else {
         navigation.editing.set(undefined);
       }
-    }, "recipes.back"),
-  };
+    },
+  });
 }
 
 // Which screen is shown, apart from the data it shows, so a renamed Recipe keeps focus where it is.
@@ -396,6 +405,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     ...reatomTagEditing(dependencies, { data, failure }),
     ...reatomRecipeCooks(dependencies, { data, opened, failure }),
     ...reatomMoves({ navigation, opened, form, slide: dependencies.slide ?? instantly }),
+    back: reatomBack(navigation, dependencies.telegram),
   };
 }
 

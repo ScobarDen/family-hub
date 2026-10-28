@@ -11,6 +11,7 @@ import {
 
 import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hub/contract";
 
+import { reatomFormBack } from "@/common/form";
 import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { LiveVersion } from "@/common/live-updates";
@@ -200,6 +201,25 @@ function reatomOpening({ api, data, form, isFormOpen, onOpenPet }: Sources) {
   return { openEntry: detached(openEntry, "care.openEntry") };
 }
 
+function reatomBack({
+  screen,
+  isFormOpen,
+  telegram,
+}: Pick<Sources, "screen" | "isFormOpen" | "telegram">) {
+  return reatomFormBack({
+    name: "care.back",
+    telegram,
+    isFormOpen,
+    back: () => {
+      if (isFormOpen()) {
+        isFormOpen.setFalse();
+      } else {
+        screen.set("blocks");
+      }
+    },
+  });
+}
+
 function reatomMoves(
   { data, form, screen, isFormOpen, telegram }: Sources,
   weightRange: Atom<WeightRange>,
@@ -229,13 +249,7 @@ function reatomMoves(
       telegram.haptics.select();
       weightRange.set(range);
     }, "care.chooseWeightRange"),
-    back: action(() => {
-      if (isFormOpen()) {
-        isFormOpen.setFalse();
-      } else {
-        screen.set("blocks");
-      }
-    }, "care.back"),
+    back: reatomBack({ screen, isFormOpen, telegram }),
   };
 }
 

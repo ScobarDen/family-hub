@@ -46,6 +46,10 @@ export function reatomPetTab({ careApi, ...dependencies }: PetTabDependencies) {
       return screen.kind === "card" ? screen.card.nextVisit : undefined;
     }, "petTab.nextVisit"),
     canGoBack: computed(() => care.canGoBack() || pets.canGoBack(), "petTab.canGoBack"),
+    isFormOpen: computed(
+      () => (care.canGoBack() ? care.isFormOpen() : pets.isFormOpen()),
+      "petTab.isFormOpen",
+    ),
     back: action(() => {
       if (care.canGoBack()) {
         care.back();

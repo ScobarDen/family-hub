@@ -2,6 +2,7 @@ import { action, atom, computed, reatomBoolean } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
+import { reatomFormBack } from "@/common/form";
 import { readOnly } from "@/common/state";
 
 import { reatomPetArchive } from "./pet-archive.vm.ts";
@@ -97,7 +98,7 @@ function reatomEditing(
 // Stepping back from a Pet's card is the app's: its address is on the tab's stack. The card
 // already shown, like the only Pet's, gets no second place on it.
 function reatomBrowsing(
-  { route }: PetsDependencies,
+  { route, telegram }: PetsDependencies,
   { editing, isListShown }: Navigation,
   openedPet: () => Pet | undefined,
 ) {
@@ -122,13 +123,19 @@ function reatomBrowsing(
       }
     }, "pets.showChoice"),
     canGoBack: computed(() => editing() !== undefined || isListShown(), "pets.canGoBack"),
-    back: action(() => {
-      if (editing() === undefined) {
-        isListShown.setFalse();
-      } else {
-        editing.set(undefined);
-      }
-    }, "pets.back"),
+    isFormOpen: computed(() => editing() !== undefined, "pets.isFormOpen"),
+    back: reatomFormBack({
+      name: "pets.back",
+      telegram,
+      isFormOpen: () => editing() !== undefined,
+      back: () => {
+        if (editing() === undefined) {
+          isListShown.setFalse();
+        } else {
+          editing.set(undefined);
+        }
+      },
+    }),
   };
 }
 

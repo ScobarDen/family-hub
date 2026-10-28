@@ -205,6 +205,47 @@ describe("revoking", () => {
     expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября, 15:00" }]);
   });
 
+  test("closes the question on Back, so it does not come back with the Profile", async () => {
+    const backend = fakeBackend();
+    const model = startInvites(backend);
+
+    await loaded(model);
+    model.revoke("invite-1");
+
+    expect(model.canGoBack()).toBe(true);
+
+    model.back();
+
+    expect([model.isConfirmingRevoke(), model.canGoBack()]).toEqual([false, false]);
+    expect(backend.requests).not.toContain("DELETE /api/invites/invite-1");
+  });
+
+  test("revokes nothing when confirmed with no Invite asked about", async () => {
+    const backend = fakeBackend();
+    const model = startInvites(backend);
+
+    await loaded(model);
+    model.confirmRevoke();
+
+    expect(model.isRevoking()).toBe(false);
+    expect(backend.requests).toEqual(["GET /api/invites"]);
+  });
+
+  test("revokes once when confirmed twice", async () => {
+    const backend = fakeBackend();
+    const model = startInvites(backend);
+
+    await loaded(model);
+    model.revoke("invite-1");
+    model.confirmRevoke();
+    model.confirmRevoke();
+    await vi.waitFor(() => {
+      expect(model.isRevoking()).toBe(false);
+    });
+
+    expect(backend.requests).toEqual(["GET /api/invites", "DELETE /api/invites/invite-1"]);
+  });
+
   test("puts the Invite back when revoking fails", async () => {
     const model = startInvites(fakeBackend({ revoke: new TypeError("Failed to fetch") }));
 
