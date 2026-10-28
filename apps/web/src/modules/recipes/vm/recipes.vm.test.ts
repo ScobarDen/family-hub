@@ -478,7 +478,7 @@ describe.each(writes)("$name", ({ request, opened, act, observe, before, after, 
       option: "failing",
       said: expect.stringMatching(/^Не получилось .+ Попробуйте ещё раз\.$/u) as unknown,
     },
-    { option: "unreachable", said: "Нет связи, не сохранилось" },
+    { option: "unreachable", said: "Нет связи — не сохранилось. Проверьте интернет и повторите." },
   ])(
     "rolls back with the failure bar and an error pulse when $option",
     async ({ option, said }) => {

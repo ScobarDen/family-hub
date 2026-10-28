@@ -336,7 +336,9 @@ describe("«Сделать сегодня»", () => {
 
     expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: true })]);
     await vi.waitFor(() => {
-      expect(model.completionFailure()).toBe("Нет связи, не сохранилось");
+      expect(model.completionFailure()).toBe(
+        "Нет связи — не сохранилось. Проверьте интернет и повторите.",
+      );
     });
     expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: false })]);
     expect(felt).toEqual(["success", "error"]);

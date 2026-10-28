@@ -46,7 +46,7 @@ export function reatomFailure(
   );
 }
 
-export const offlineFailure = "Нет связи, не сохранилось";
+export const offlineFailure = "Нет связи — не сохранилось. Проверьте интернет и повторите.";
 
 export function reatomRollbackFailure(name: string, haptics: Pick<Haptics, "error">) {
   const failure = atom<string | undefined>(undefined, name);

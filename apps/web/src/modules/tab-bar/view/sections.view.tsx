@@ -32,9 +32,10 @@ const QuickAdds = reatomComponent(
     <section className="flex flex-col gap-2 px-4 pb-7">
       <h2 className="px-1 text-[0.9375rem] font-semibold tracking-tight">Быстро добавить</h2>
       <div className="flex flex-wrap gap-2">
-        {model.quickAdds().map(({ title, target }) => (
+        {model.quickAdds().map(({ title, label, target }) => (
           <Chip
             key={target.kind}
+            aria-label={label}
             onClick={() => {
               model.quickAdd(target);
             }}
@@ -44,7 +45,11 @@ const QuickAdds = reatomComponent(
           </Chip>
         ))}
         {model.canAddPhoto() && (
-          <FilePick className={chipClass(false)} onPick={model.addPhotos}>
+          <FilePick
+            className={chipClass(false)}
+            aria-label="Добавить фото"
+            onPick={model.addPhotos}
+          >
             <Plus className="size-4" aria-hidden />
             Фото
           </FilePick>

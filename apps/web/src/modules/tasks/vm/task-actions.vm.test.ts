@@ -184,7 +184,11 @@ describe.each(writes)("$name", (write) => {
 
   test.each([
     { cause: "the server refuses it", option: "failing", said: failure },
-    { cause: "there is no network", option: "unreachable", said: "Нет связи, не сохранилось" },
+    {
+      cause: "there is no network",
+      option: "unreachable",
+      said: "Нет связи — не сохранилось. Проверьте интернет и повторите.",
+    },
   ])("rolls back with the failure bar and an error pulse when $cause", async ({ option, said }) => {
     const { model, felt } = startWrite(write, { [option]: write.pattern });
 

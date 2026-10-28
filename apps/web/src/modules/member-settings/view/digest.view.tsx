@@ -33,7 +33,7 @@ const DigestPreview = reatomComponent(
       <div className="flex max-w-72 flex-col gap-1 rounded-2xl rounded-bl-md bg-secondary px-3.5 py-2.5 text-[0.9375rem]">
         <span className="font-medium">Сводка на сегодня</span>
         <span>Просрочено: что не успели раньше</span>
-        <span>Сегодня: события, напоминания и сроки</span>
+        <span>Сегодня: дела и дни рождения</span>
         <span className="self-end text-xs text-muted-foreground">{model.time()}</span>
       </div>
       <p className="pt-2 text-[0.8125rem] text-muted-foreground">

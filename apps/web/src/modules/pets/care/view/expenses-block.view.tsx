@@ -32,7 +32,7 @@ export const ExpensesBlock = reatomComponent(({ model }: { model: CareModel }) =
               model.add("expense");
             }}
           >
-            <Plus /> Трата
+            <Plus /> Добавить трату
           </Button>
         )}
       </div>

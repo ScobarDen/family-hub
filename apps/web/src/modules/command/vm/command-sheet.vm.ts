@@ -47,19 +47,24 @@ export type CommandSheet =
       error: string | undefined;
       isCreating: boolean;
     }
-  | { kind: "created" };
+  | { kind: "created"; message: string };
 
 type Phase =
   | { kind: "closed" }
   | { kind: "sending" }
   | { kind: "outcome"; outcome: CommandOutcome; error?: string | undefined; isCreating?: boolean }
-  | { kind: "created" };
+  | { kind: "created"; record: DraftCreated["kind"] };
 
 type PhaseAtom = Atom<Phase>;
 
 export const sendFailedText = "Не получилось отправить запись. Попробуйте ещё раз.";
 export const createFailedText = "Не получилось создать. Попробуйте ещё раз или нажмите «Изменить».";
 export const staleDraftText = "Черновик устарел или уже решён — скажите команду ещё раз.";
+const createdTexts: Record<DraftCreated["kind"], string> = {
+  task: "Дело создано",
+  care_entry: "Запись добавлена в журнал",
+};
+
 export const pickFailedText = "Не получилось выбрать. Попробуйте ещё раз.";
 
 // A draft being created is out of reach: no second «Создать», no «Изменить», nothing to drop.
@@ -139,7 +144,7 @@ function reatomCreate({ api, telegram, onCreated }: CommandSheetDependencies, ph
       const created = await wrap(api.create(opened.draftId));
 
       if (phase() === creating) {
-        phase.set({ kind: "created" });
+        phase.set({ kind: "created", record: created.kind });
       }
 
       telegram.haptics.success();
@@ -213,6 +218,10 @@ function reatomLeaving(
 }
 
 function sheetOf(current: Phase, names: () => FamilyNames): CommandSheet {
+  if (current.kind === "created") {
+    return { kind: "created", message: createdTexts[current.record] };
+  }
+
   if (current.kind !== "outcome") {
     return current;
   }

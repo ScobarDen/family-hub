@@ -330,7 +330,7 @@ describe("the preview sheet", () => {
     await vi.waitFor(() => {
       expect(created).toEqual([{ kind: "task", id: "task-1" }]);
     });
-    expect(model.sheet().kind).toBe("created");
+    expect(model.sheet()).toEqual({ kind: "created", message: "Дело создано" });
     expect(felt).toEqual(["success"]);
   });
 

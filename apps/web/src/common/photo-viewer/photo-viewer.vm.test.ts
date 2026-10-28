@@ -99,7 +99,7 @@ test.each([
   {
     trouble: "unreachable",
     error: new TypeError("Failed to fetch"),
-    said: "Нет связи, не сохранилось",
+    said: "Нет связи — не сохранилось. Проверьте интернет и повторите.",
   },
 ])(
   "puts a photo back with the failure bar and an error pulse when $trouble",

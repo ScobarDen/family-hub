@@ -147,7 +147,7 @@ function emptyOf(
   }
 
   if (!hasFamilyTasks) {
-    return { title: "Дел нет", hint: "Нажмите «Дело», чтобы добавить первое" };
+    return { title: "Дел нет", hint: "Нажмите «Добавить дело», чтобы завести первое" };
   }
 
   return scope === "mine"

@@ -96,7 +96,7 @@ describe("the list of Tasks", () => {
     await loaded(model);
 
     expect(model.screen()).toMatchObject({
-      empty: { title: "Дел нет", hint: "Нажмите «Дело», чтобы добавить первое" },
+      empty: { title: "Дел нет", hint: "Нажмите «Добавить дело», чтобы завести первое" },
     });
   });
 

@@ -328,7 +328,10 @@ describe.each(moves)("$name", ({ act, after, choices, tap }) => {
       moving: "refused" as const,
       said: "Не получилось сохранить. Баланс цели не может уйти в минус.",
     },
-    { moving: "unreachable" as const, said: "Нет связи, не сохранилось" },
+    {
+      moving: "unreachable" as const,
+      said: "Нет связи — не сохранилось. Проверьте интернет и повторите.",
+    },
   ])("rolls back with the failure bar when $moving", async ({ moving, said }) => {
     const { model, felt } = startGoals({ choices, moving });
 

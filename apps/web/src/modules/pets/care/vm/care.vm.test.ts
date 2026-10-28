@@ -466,7 +466,10 @@ describe("deleting a Care Entry", () => {
 
   test.each([
     { removing: "refused" as const, said: "Не получилось удалить запись. Попробуйте ещё раз." },
-    { removing: "unreachable" as const, said: "Нет связи, не сохранилось" },
+    {
+      removing: "unreachable" as const,
+      said: "Нет связи — не сохранилось. Проверьте интернет и повторите.",
+    },
   ])("comes back with the failure bar when $removing", async ({ removing, said }) => {
     const { model } = startCare(["confirm"], removing);
 

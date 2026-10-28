@@ -338,7 +338,10 @@ describe("the Feed", () => {
 
   test.each([
     { completion: "refused" as const, said: "Не получилось отметить. Попробуйте ещё раз." },
-    { completion: "unreachable" as const, said: "Нет связи, не сохранилось" },
+    {
+      completion: "unreachable" as const,
+      said: "Нет связи — не сохранилось. Проверьте интернет и повторите.",
+    },
   ])("brings the line back with the failure bar when $completion", async ({ completion, said }) => {
     const { model, felt } = startFeed({ completion });
 

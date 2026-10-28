@@ -260,7 +260,10 @@ describe("deleting an Album", () => {
 
   test.each([
     { deletion: "failing", said: "Не получилось удалить альбом. Попробуйте ещё раз." },
-    { deletion: "unreachable", said: "Нет связи, не сохранилось" },
+    {
+      deletion: "unreachable",
+      said: "Нет связи — не сохранилось. Проверьте интернет и повторите.",
+    },
   ] as const)(
     "puts it back with the failure bar and an error pulse when $deletion",
     async ({ deletion, said }) => {

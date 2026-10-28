@@ -18,13 +18,13 @@ function contentOf(model: CommandSheetModel, sheet: SheetState): ReactNode {
     return (
       <p className="flex items-center gap-2 text-muted-foreground">
         <LoaderCircle className="size-5 animate-spin" />
-        Слушаю…
+        Распознаю…
       </p>
     );
   }
 
   if (sheet.kind === "created") {
-    return <p className="text-lg font-semibold">Создано</p>;
+    return <p className="text-lg font-semibold">{sheet.message}</p>;
   }
 
   if (sheet.kind === "failure") {

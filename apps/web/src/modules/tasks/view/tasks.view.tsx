@@ -65,7 +65,7 @@ function browsing(model: TasksScreenModel, content: ReactNode) {
         <Button className="w-full" onClick={model.add}>
           <span className="relative">
             <Plus className="absolute top-1/2 right-full mr-1.5 -translate-y-1/2" />
-            Дело
+            Добавить дело
           </span>
         </Button>
       </div>
