@@ -1,4 +1,4 @@
-import { atom, context, noop } from "@reatom/core";
+import { atom, context, noop, sleep } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import {
@@ -654,7 +654,9 @@ async function loadedBefore() {
   const device = fakeDeviceStorage();
 
   await saved(startPets(fakeBackend([buick]), { device }).model);
-  await settle();
+  await vi.waitFor(() => {
+    expect(device.items.has("pets")).toBe(true);
+  });
   context.reset();
 
   return device;
@@ -686,15 +688,9 @@ describe("launching from the device cache", () => {
     const device = await loadedBefore();
     const { model } = startPets(fakeBackend(new Error("offline")), { device });
 
-    await settle();
-    await settle();
+    await sleep(0);
+    await sleep(0);
 
     expect(model.screen()).toMatchObject({ kind: "card", card: { name: "Бьюик" } });
   });
 });
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
-}

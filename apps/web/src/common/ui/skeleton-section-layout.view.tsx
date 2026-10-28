@@ -8,7 +8,6 @@ const summaryLine = (
   </div>
 );
 
-// Mirrors SectionLayout: the summary, the primary button, the tab chips, then the module's own rows.
 export function SkeletonSectionLayout({
   summary = summaryLine,
   tabs,

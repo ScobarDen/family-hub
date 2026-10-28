@@ -490,7 +490,9 @@ describe("launching from the device cache", () => {
     await vi.waitFor(() => {
       expect(model.rows()).toHaveLength(1);
     });
-    await settle();
+    await vi.waitFor(() => {
+      expect(device.items.has("today")).toBe(true);
+    });
     context.reset();
 
     return device;
@@ -530,9 +532,3 @@ describe("launching from the device cache", () => {
     expect(model.isDueOutdated()).toBe(false);
   });
 });
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
-}

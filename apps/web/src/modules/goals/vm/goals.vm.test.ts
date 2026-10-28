@@ -354,7 +354,9 @@ describe("launching from the device cache", () => {
     const device = fakeDeviceStorage();
 
     await loaded(startGoals({ device }).model);
-    await settle();
+    await vi.waitFor(() => {
+      expect(device.items.has("goals")).toBe(true);
+    });
     context.reset();
     let answer = noop;
     const { model } = startGoals({
@@ -374,9 +376,3 @@ describe("launching from the device cache", () => {
     });
   });
 });
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
-}

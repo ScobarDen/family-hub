@@ -415,7 +415,9 @@ describe("launching from the device cache", () => {
     await loaded(first.model);
     const before = shape(first.model);
 
-    await settle();
+    await vi.waitFor(() => {
+      expect(device.items.has("feed")).toBe(true);
+    });
     context.reset();
     let answer = noop;
     const { model } = startFeed({
@@ -435,9 +437,3 @@ describe("launching from the device cache", () => {
     });
   });
 });
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
-}

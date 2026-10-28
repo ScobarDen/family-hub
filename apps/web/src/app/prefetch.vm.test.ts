@@ -1,4 +1,4 @@
-import { atom, computed, context, noop, withAsyncData, wrap } from "@reatom/core";
+import { atom, computed, context, noop, sleep, withAsyncData, wrap } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { SlotModule } from "@family-hub/contract";
@@ -34,12 +34,6 @@ function startPrefetch(slots: SlotModule[] = ["goals", "pet"]) {
   return { prefetch, signedIn, loaded };
 }
 
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
-}
-
 beforeEach(() => {
   context.reset();
 });
@@ -49,7 +43,7 @@ describe("prefetching after sign-in", () => {
     const { prefetch, signedIn, loaded } = startPrefetch();
 
     prefetch().catch(noop);
-    await settle();
+    await sleep(0);
     expect(loaded).toEqual([]);
 
     signedIn.set(true);

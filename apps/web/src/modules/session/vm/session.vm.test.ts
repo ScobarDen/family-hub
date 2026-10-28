@@ -355,9 +355,15 @@ async function signedInBefore(member: CurrentMember = denis) {
       device,
     }),
   );
-  await settle();
+  await cachedAs(device, member.member.name);
 
   return device;
+}
+
+async function cachedAs(device: FakeDeviceStorage, text: string) {
+  await vi.waitFor(() => {
+    expect(device.items.get("member")).toContain(text);
+  });
 }
 
 function relaunch(
@@ -403,7 +409,7 @@ describe("launching from the device cache", () => {
     const device = await signedInBefore();
 
     await signIn(relaunch(device, { session: { status: "member", token, ...relative } }));
-    await settle();
+    await cachedAs(device, "Ася");
 
     expect(await shownAfterRead(relaunch(device))).toMatchObject({ memberName: "Ася" });
   });
@@ -416,7 +422,7 @@ describe("launching from the device cache", () => {
         session: { status: "member", token, ...denis, family: { id: "family-2", name: "Ивановы" } },
       }),
     );
-    await settle();
+    await cachedAs(device, "Ивановы");
 
     expect(await shownAfterRead(relaunch(device))).toMatchObject({ familyName: "Ивановы" });
   });
@@ -425,7 +431,9 @@ describe("launching from the device cache", () => {
     const device = await signedInBefore();
 
     await signIn(relaunch(device, { session: { status: "stranger", familyRequest: "none" } }));
-    await settle();
+    await vi.waitFor(() => {
+      expect(device.items.has("member")).toBe(false);
+    });
 
     expect(await shownAfterRead(relaunch(device))).toEqual({ kind: "signing-in" });
   });
@@ -433,8 +441,12 @@ describe("launching from the device cache", () => {
   test("keeps the cache when sign-in gets 401", async () => {
     const device = await signedInBefore();
 
-    await signIn(relaunch(device, { session: 401 }));
-    await settle();
+    const refused = relaunch(device, { session: 401 });
+
+    refused.signIn();
+    await vi.waitFor(() => {
+      expect(refused.screen()).toEqual({ kind: "restart" });
+    });
 
     expect(await shownAfterRead(relaunch(device))).toMatchObject({ kind: "member" });
   });
@@ -447,12 +459,11 @@ describe("launching from the device cache", () => {
     const chores = cachedChores(session);
 
     await vi.waitFor(() => {
-      expect(chores.data()).toEqual(["Погулять с Бьюиком"]);
+      expect(device.items.get("chores")).toContain("Погулять с Бьюиком");
     });
-    await settle();
 
+    expect(chores.data()).toEqual(["Погулять с Бьюиком"]);
     expect(session.backend.requests).toEqual(["/api/session", "/api/chores"]);
-    expect(device.items.get("chores")).toContain("Погулять с Бьюиком");
   });
 
   test("opens an Invite without the cached shell", async () => {
@@ -476,10 +487,4 @@ function cachedChores(session: ReturnType<typeof startSession>) {
   chores.data.subscribe(noop);
 
   return chores;
-}
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
 }

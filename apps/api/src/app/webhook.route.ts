@@ -77,10 +77,10 @@ function botCommandOf(message: Message | undefined): string | undefined {
     : undefined;
 }
 
-async function handleBotCommand(
+function handleBotCommand(
   services: AppServices,
   { message, background }: { message: Message | undefined; background: Background },
-): Promise<void> {
+): void {
   const botCommand = botCommandOf(message);
 
   if (message && botCommand === "/remind") {
@@ -88,7 +88,7 @@ async function handleBotCommand(
   }
 
   if (message && botCommand === "/today") {
-    await services.reminders.sendToday(message);
+    background.waitUntil(services.reminders.sendToday(message));
   }
 }
 
@@ -102,7 +102,7 @@ async function handleUpdate(
     waitUntil(services.commands.handleText(update.message));
   }
 
-  await handleBotCommand(services, { message: update.message, background });
+  handleBotCommand(services, { message: update.message, background });
 
   if (isVoiceCommand(update.message)) {
     waitUntil(services.commands.handleVoice(update.message));

@@ -1,4 +1,4 @@
-import { encodeDeepLink, encodeRecordLink, type ReminderOffset } from "@family-hub/contract";
+import { encodeRecordLink, type ReminderOffset } from "@family-hub/contract";
 import {
   daysAfter,
   firstOccurrenceFrom,
@@ -64,14 +64,19 @@ async function recipientsOf({ sources }: ReminderDependencies, { root }: TaskTre
   return root.assignees.length > 0 ? root.assignees.map(({ id }) => id) : owner;
 }
 
-type Sourcing = { offset: ReminderOffset; recipientIds: string[]; chatLink: string };
+type Sourcing = {
+  offset: ReminderOffset;
+  recipientIds: string[];
+  chatLink: string;
+  openUrl: string;
+};
 
 function taskSource(
   dependencies: ReminderDependencies,
   { tree, date, sourcing }: { tree: TaskTree; date: string; sourcing: Sourcing },
 ): Source {
   const { row } = tree.root;
-  const { offset, recipientIds, chatLink } = sourcing;
+  const { offset, recipientIds, chatLink, openUrl } = sourcing;
   const isTimed = row.time !== null;
 
   function recordUrlOf(occurrence: string): string | undefined {
@@ -93,7 +98,7 @@ function taskSource(
     buttons: (dispatchId, occurrence) =>
       reminderButtons(dispatchId, {
         recordUrl: recordUrlOf(occurrence),
-        openUrl: `${chatLink}?startapp=${encodeDeepLink({ kind: "task", id: row.id })}`,
+        openUrl,
       }),
     closesForEveryone: true,
     complete: async (presser, occurrence) => {
@@ -138,8 +143,13 @@ export async function taskSources(
   const { row } = tree.root;
   const recipientIds = await recipientsOf(dependencies, tree);
   const chatLink = await dependencies.appLinks.chatLink();
+  const openUrl = await dependencies.appLinks.appLink({ kind: "task", id: row.id });
 
   return row.reminderOffsets.map((offset) =>
-    taskSource(dependencies, { tree, date, sourcing: { offset, recipientIds, chatLink } }),
+    taskSource(dependencies, {
+      tree,
+      date,
+      sourcing: { offset, recipientIds, chatLink, openUrl },
+    }),
   );
 }

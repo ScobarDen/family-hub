@@ -56,7 +56,6 @@ export function fakeDeviceStorage({
 export type FakeBottomButton = {
   isAvailable: boolean;
   follow(state: () => BottomButtonState | undefined, onClick: () => void): () => void;
-  // Every state the button was given, in order; undefined is hidden.
   states: Array<BottomButtonState | undefined>;
   click(): void;
 };
@@ -121,7 +120,6 @@ export function fakeHaptics(): FakeHaptics {
   };
 }
 
-// Records home screen, full screen and closing confirmation calls in order.
 export type FakeWindow = HomeScreen & Fullscreen & ClosingConfirmation & { calls: string[] };
 
 export function fakeWindow({

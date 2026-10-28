@@ -1,4 +1,4 @@
-import { context, noop } from "@reatom/core";
+import { context, noop, sleep } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { fakeDeviceStorage } from "@/common/telegram";
@@ -181,7 +181,9 @@ async function loadedBefore() {
   const device = fakeDeviceStorage();
 
   await loaded(startTasks(fakeBackend([vaccination]), { device }).model);
-  await settle();
+  await vi.waitFor(() => {
+    expect(device.items.has("tasks")).toBe(true);
+  });
   context.reset();
 
   return device;
@@ -222,16 +224,10 @@ describe("launching from the device cache", () => {
     await vi.waitFor(() => {
       expect(backend.sent).toContainEqual({ request: "GET /api/tasks", body: undefined });
     });
-    await settle();
+    await sleep(0);
 
     expect(model.screen()).toMatchObject({
       groups: { overdue: [{ title: "Прививка Бьюику" }] },
     });
   });
 });
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
-}

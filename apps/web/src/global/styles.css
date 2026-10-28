@@ -137,7 +137,6 @@
   }
 }
 
-/* A tap compresses what it lands on; a disabled control stays still. */
 @utility press {
   transition-property: scale;
   transition-duration: 150ms;

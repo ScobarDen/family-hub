@@ -2,7 +2,6 @@ import { Children, useState, type ReactNode } from "react";
 
 type RevealedProps = {
   isSkeleton: boolean;
-  // A stagger brings each child in 100 ms after the one before it.
   entrance?: "fade" | "stagger";
   children: ReactNode;
 };
