@@ -104,6 +104,7 @@ With VoiceOver on iOS and TalkBack on Android.
 - [ ] Uploading photos to an Album reads the count as it grows; the row shows an upload icon, not an empty circle.
 - [ ] A Task's card shows one failure bar when a change is rolled back, and it is read once.
 - [ ] A field error and a form's failure are read politely after the current speech, not cutting it off.
+- [ ] Saving a Task, a Savings Goal or a care entry with an empty required field moves focus to that field, and the screen reader reads its label, «недопустимое значение» (or the platform's word) and the error text; the first of several invalid fields gets focus. A date field reads its error too. A form the server refused leaves focus on «Сохранить».
 - [ ] In the Tasks calendar the screen reader reads a day as «вторник, 20 октября, есть дела» (a day without Tasks drops «есть дела»), today also as the current date and the picked day as pressed; it never reads the weekday header or the dot. Days of the next and previous month read as clearly as this month's.
 
 ### Overlays
@@ -134,6 +135,13 @@ Each item on iOS and Android, in the light and the dark theme.
 - [ ] A tap anywhere on the field, not only at its edge, opens the native picker once; in Telegram Desktop and Web a click opens it too.
 - [ ] Optional fields (Task date, time, end, «Повторять до», Subtask «Срок», Goal «Дедлайн», birth date, «Повторить») show «×» once a value is picked; «×» empties the field without opening the picker, and the screen reader reads it as «Очистить «<label>»». Required fields show no «×».
 - [ ] The screen reader reads each field by its label; an invalid field gets the red border; an archived Pet's care entry shows its fields dimmed and untappable.
+
+### Number keypads
+
+On iOS and Android.
+
+- [ ] The care entry's «Вес, кг» opens the decimal keypad with a separator key; «12,4» is saved as 12.4. «Цель, ₽», «Сумма, ₽» in a Contribution and the care entry's «Сумма, ₽» and «Стоимость, ₽» open the digit keypad.
+- [ ] Pasting text works in every text field, amounts included.
 
 ### Launch from the device cache
 

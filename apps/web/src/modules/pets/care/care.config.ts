@@ -23,6 +23,7 @@ export type KindField = {
     | "repeatOn";
   label: string;
   placeholder?: string;
+  inputMode?: "decimal" | "numeric";
   type?: "date";
   choices?: Choice[];
 };
@@ -33,7 +34,7 @@ const costChoices: Choice[] = [
 ];
 
 const costFields: KindField[] = [
-  { name: "costAmount", label: "Стоимость, ₽" },
+  { name: "costAmount", label: "Стоимость, ₽", inputMode: "numeric" },
   { name: "costCategory", label: "Стоимость — это", choices: costChoices },
   { name: "repeatOn", label: "Повторить", type: "date" },
 ];
@@ -47,9 +48,9 @@ export const kindFields: Record<CareKind, KindField[]> = {
     ...costFields,
   ],
   vet_visit: [{ name: "reason", label: "Причина" }, ...costFields],
-  weight: [{ name: "weightKg", label: "Вес, кг", placeholder: "12,4" }],
+  weight: [{ name: "weightKg", label: "Вес, кг", placeholder: "12,4", inputMode: "decimal" }],
   expense: [
-    { name: "amount", label: "Сумма, ₽" },
+    { name: "amount", label: "Сумма, ₽", inputMode: "numeric" },
     {
       name: "category",
       label: "Категория",

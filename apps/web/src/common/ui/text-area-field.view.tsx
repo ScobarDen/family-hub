@@ -21,8 +21,14 @@ export const TextAreaField = reatomComponent(
     return (
       <Field data-invalid={isInvalid}>
         <FieldLabel htmlFor={id}>{label}</FieldLabel>
-        <Textarea id={id} placeholder={placeholder} aria-invalid={isInvalid} {...textarea} />
-        <FieldError>{error}</FieldError>
+        <Textarea
+          id={id}
+          placeholder={placeholder}
+          aria-invalid={isInvalid}
+          aria-describedby={isInvalid ? `${id}-error` : undefined}
+          {...textarea}
+        />
+        <FieldError id={`${id}-error`}>{error}</FieldError>
       </Field>
     );
   },

@@ -10,6 +10,7 @@ import {
   PickerField,
   TextAreaField,
   TextField,
+  useFocusOnInvalid,
   type Choice,
 } from "@/common/ui";
 
@@ -33,7 +34,7 @@ const kindChoices: Choice[] = Object.entries(careKindTitles).map(([value, title]
 const KindFields = reatomComponent(({ model }: { model: CareFormModel }) => {
   const { fields } = model.form;
 
-  return model.kindFields().map(({ name, label, placeholder, type, choices }) => {
+  return model.kindFields().map(({ name, label, placeholder, inputMode, type, choices }) => {
     if (type === "date") {
       return (
         <PickerField key={name} field={fields[name]} id={`care-${name}`} label={label} isOptional />
@@ -51,6 +52,7 @@ const KindFields = reatomComponent(({ model }: { model: CareFormModel }) => {
         id={`care-${name}`}
         label={label}
         {...(placeholder === undefined ? {} : { placeholder })}
+        {...(inputMode === undefined ? {} : { inputMode })}
       />
     );
   });
@@ -89,6 +91,8 @@ export const CareForm = reatomComponent(({ photos, ...props }: CareFormProps) =>
   const { model, isReadOnly } = props;
   const { fields } = model.form;
 
+  const form = useFocusOnInvalid(model.form.submit.error());
+
   useEffect(() => model.confirmClosingWhileDirty(), [model]);
 
   function submit(event: FormEvent) {
@@ -97,7 +101,7 @@ export const CareForm = reatomComponent(({ photos, ...props }: CareFormProps) =>
   }
 
   return (
-    <form className="flex flex-col gap-4 px-5 pb-6" onSubmit={submit}>
+    <form ref={form} className="flex flex-col gap-4 px-5 pb-6" onSubmit={submit}>
       <fieldset className="flex min-w-0 flex-col gap-4" disabled={isReadOnly}>
         <ChoiceField field={fields.kind} label="Что записать" choices={kindChoices} />
         <PickerField kind="datetime-local" field={fields.occurredAt} id="care-time" label="Когда" />

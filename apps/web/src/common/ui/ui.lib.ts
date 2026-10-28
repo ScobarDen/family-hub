@@ -1,6 +1,6 @@
 import { batch } from "@reatom/core";
 import { clsx, type ClassValue } from "clsx";
-import { addTransitionType, startTransition } from "react";
+import { addTransitionType, startTransition, useEffect, useRef, type RefObject } from "react";
 import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]): string {
@@ -15,4 +15,19 @@ export function slideScreens(direction: string, update: () => void): void {
     addTransitionType(direction);
     batch(update, true);
   });
+}
+
+// Runs after the render that marked the fields of a rejected submit invalid, so focus can land on one.
+export function useFocusOnInvalid(rejection: unknown): RefObject<HTMLFormElement | null> {
+  const form = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (rejection === undefined) {
+      return;
+    }
+
+    form.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [rejection]);
+
+  return form;
 }

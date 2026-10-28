@@ -9,7 +9,14 @@ import { cn } from "./ui.lib.ts";
 
 type PickerInputProps = Pick<
   ComponentProps<"input">,
-  "id" | "aria-label" | "aria-invalid" | "max" | "onBlur" | "onFocus" | "className"
+  | "id"
+  | "aria-label"
+  | "aria-invalid"
+  | "aria-describedby"
+  | "max"
+  | "onBlur"
+  | "onFocus"
+  | "className"
 > & {
   kind: PickerType;
   value: string;

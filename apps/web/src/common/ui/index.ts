@@ -34,4 +34,4 @@ export { Switch } from "./switch.view.tsx";
 export { TextAreaField } from "./text-area-field.view.tsx";
 export { TextField } from "./text-field.view.tsx";
 export { visibilityChoices } from "./ui.config.ts";
-export { cn, slideScreens } from "./ui.lib.ts";
+export { cn, slideScreens, useFocusOnInvalid } from "./ui.lib.ts";

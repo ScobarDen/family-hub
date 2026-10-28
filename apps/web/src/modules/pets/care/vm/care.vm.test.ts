@@ -342,6 +342,29 @@ describe("the entry form", () => {
     });
   });
 
+  test("asks for weight on the decimal keypad and for whole rubles on the digit keypad", async () => {
+    const { model } = startCare();
+
+    function keypads() {
+      return Object.fromEntries(
+        model.form
+          .kindFields()
+          .filter(({ inputMode }) => inputMode !== undefined)
+          .map(({ name, inputMode }) => [name, inputMode]),
+      );
+    }
+
+    await loaded(model);
+    model.add("weight");
+    expect(keypads()).toEqual({ weightKg: "decimal" });
+
+    model.form.form.fields.kind.set("expense");
+    expect(keypads()).toEqual({ amount: "numeric" });
+
+    model.form.form.fields.kind.set("vet_visit");
+    expect(keypads()).toEqual({ costAmount: "numeric" });
+  });
+
   test("drops the date to repeat on when the kind is switched to one that does not repeat", async () => {
     const { model, backend } = startCare();
 

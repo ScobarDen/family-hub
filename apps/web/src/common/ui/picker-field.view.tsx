@@ -32,9 +32,10 @@ export const PickerField = reatomComponent(
           onBlur={onBlur}
           onFocus={onFocus}
           aria-invalid={isInvalid}
+          aria-describedby={isInvalid ? `${id}-error` : undefined}
           {...(isOptional ? { clearLabel: `Очистить «${label}»` } : {})}
         />
-        <FieldError>{error}</FieldError>
+        <FieldError id={`${id}-error`}>{error}</FieldError>
       </Field>
     );
   },
