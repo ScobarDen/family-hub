@@ -8,6 +8,7 @@ import {
   ChoiceField,
   FormShell,
   PersonAvatar,
+  PickerField,
   SectionItem,
   TextAreaField,
   TextField,
@@ -52,17 +53,23 @@ const TaskWhen = reatomComponent(({ model }: { model: TaskFormModel }) => {
 
   return (
     <>
-      <TextField field={fields.date} id="task-date" label="Дата" type="date" />
+      <PickerField field={fields.date} id="task-date" label="Дата" isOptional />
       {model.hasDate() && (
         <>
-          <TextField field={fields.time} id="task-time" label="Время" type="time" />
-          <TextField field={fields.endDate} id="task-end-date" label="Дата окончания" type="date" />
+          <PickerField kind="time" field={fields.time} id="task-time" label="Время" isOptional />
+          <PickerField
+            field={fields.endDate}
+            id="task-end-date"
+            label="Дата окончания"
+            isOptional
+          />
           {model.isTimed() && (
-            <TextField
+            <PickerField
+              kind="time"
               field={fields.endTime}
               id="task-end-time"
               label="Время окончания"
-              type="time"
+              isOptional
             />
           )}
         </>
@@ -85,7 +92,7 @@ const TaskSchedule = reatomComponent(({ model }: { model: TaskFormModel }) => {
         <ChoiceField field={fields.frequency} label="Повтор" choices={frequencies} />
       )}
       {model.isRecurring() && (
-        <TextField field={fields.until} id="task-until" label="Повторять до" type="date" />
+        <PickerField field={fields.until} id="task-until" label="Повторять до" isOptional />
       )}
       <ChipGroup label="Напомнить">
         {model.offsets().map((choice) => (
@@ -176,7 +183,7 @@ export const SubtaskForm = reatomComponent(({ model, onCancel }: SubtaskFormProp
   return (
     <FormShell model={model} onCancel={onCancel}>
       <TextField field={fields.title} id="subtask-title" label="Шаг" placeholder="Купить обои" />
-      <TextField field={fields.date} id="subtask-date" label="Срок" type="date" />
+      <PickerField field={fields.date} id="subtask-date" label="Срок" isOptional />
       <PeopleChips label="Исполнители" people={model.assignees()} onToggle={model.toggleAssignee} />
     </FormShell>
   );

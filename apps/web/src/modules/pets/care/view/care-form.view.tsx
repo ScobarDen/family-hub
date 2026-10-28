@@ -7,6 +7,7 @@ import {
   Button,
   ChoiceField,
   FieldError,
+  PickerField,
   TextAreaField,
   TextField,
   type Choice,
@@ -32,22 +33,27 @@ const kindChoices: Choice[] = Object.entries(careKindTitles).map(([value, title]
 const KindFields = reatomComponent(({ model }: { model: CareFormModel }) => {
   const { fields } = model.form;
 
-  return model
-    .kindFields()
-    .map(({ name, label, placeholder, type, choices }) =>
-      choices === undefined ? (
-        <TextField
-          key={name}
-          field={fields[name]}
-          id={`care-${name}`}
-          label={label}
-          {...(placeholder === undefined ? {} : { placeholder })}
-          {...(type === undefined ? {} : { type })}
-        />
-      ) : (
-        <ChoiceField key={name} field={fields[name]} label={label} choices={choices} />
-      ),
+  return model.kindFields().map(({ name, label, placeholder, type, choices }) => {
+    if (type === "date") {
+      return (
+        <PickerField key={name} field={fields[name]} id={`care-${name}`} label={label} isOptional />
+      );
+    }
+
+    if (choices !== undefined) {
+      return <ChoiceField key={name} field={fields[name]} label={label} choices={choices} />;
+    }
+
+    return (
+      <TextField
+        key={name}
+        field={fields[name]}
+        id={`care-${name}`}
+        label={label}
+        {...(placeholder === undefined ? {} : { placeholder })}
+      />
     );
+  });
 }, "KindFields");
 
 const Actions = reatomComponent(({ model, isReadOnly, onCancel, onRemove }: ActionsProps) => {
@@ -94,7 +100,7 @@ export const CareForm = reatomComponent(({ photos, ...props }: CareFormProps) =>
     <form className="flex flex-col gap-4 px-5 pb-6" onSubmit={submit}>
       <fieldset className="flex min-w-0 flex-col gap-4" disabled={isReadOnly}>
         <ChoiceField field={fields.kind} label="Что записать" choices={kindChoices} />
-        <TextField field={fields.occurredAt} id="care-time" label="Когда" type="datetime-local" />
+        <PickerField kind="datetime-local" field={fields.occurredAt} id="care-time" label="Когда" />
         <KindFields model={model} />
         <TextAreaField field={fields.note} id="care-note" label="Заметка" />
         {photos}

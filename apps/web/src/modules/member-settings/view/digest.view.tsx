@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Clock, Sunrise } from "lucide-react";
 
-import { FieldError, Input, SectionItem, Switch } from "@/common/ui";
+import { FieldError, PickerInput, SectionItem, Switch } from "@/common/ui";
 
 import type { DigestModel } from "../vm/digest.vm.ts";
 
@@ -13,14 +13,12 @@ const DigestTime = reatomComponent(
       icon={Clock}
       title="Время сводки"
       after={
-        <Input
+        <PickerInput
           className="w-28"
-          type="time"
+          kind="time"
           aria-label="Время сводки"
           value={model.time()}
-          onChange={(event) => {
-            model.chooseTime(event.target.value);
-          }}
+          onValueChange={model.chooseTime}
         />
       }
     />

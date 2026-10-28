@@ -2,6 +2,8 @@ export { Button, buttonVariants } from "./button.view.tsx";
 export { CheckButton } from "./check-button.view.tsx";
 export { ChartContainer, type ChartConfig } from "./chart.view.tsx";
 export { ChoiceField, type Choice } from "./choice-field.view.tsx";
+export { PickerField } from "./picker-field.view.tsx";
+export { PickerInput } from "./picker-input.view.tsx";
 export { ConfirmDeletionForm } from "./confirm-deletion-form.view.tsx";
 export { ChipGroup } from "./chip-group.view.tsx";
 export { Chip, chipClass } from "./chip.view.tsx";

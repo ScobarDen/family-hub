@@ -78,6 +78,16 @@ Each item on iOS, Android and Telegram Desktop.
 - [ ] With the network throttled, «Сохранить» in a Task form, «Отправить заявку», «Вступить» and «Удалить навсегда» keep their size, show a spinner over an invisible label, and cannot be pressed again until the answer; the screen reader reads them as busy.
 - [ ] «Пригласить в семью» keeps its title and shows a spinner at the row's end while the Invite is made.
 
+### Date and time fields
+
+Each item on iOS and Android, in the light and the dark theme.
+
+- [ ] Every date field in the Task, Subtask, Savings Goal, Contribution, Pet profile and care forms, «Когда приготовили» and «Время сводки» show a calendar or clock icon and no native arrow; a date reads «пт, 31 окт» (another year adds it: «вс, 1 мая 2016»), a time «09:05», the care entry's time «пт, 31 окт, 14:30».
+- [ ] An empty field reads «Не выбрана» (a date) or «Не выбрано» (a time) in the muted colour.
+- [ ] A tap anywhere on the field, not only at its edge, opens the native picker once; in Telegram Desktop and Web a click opens it too.
+- [ ] Optional fields (Task date, time, end, «Повторять до», Subtask «Срок», Goal «Дедлайн», birth date, «Повторить») show «×» once a value is picked; «×» empties the field without opening the picker, and the screen reader reads it as «Очистить «<label>»». Required fields show no «×».
+- [ ] The screen reader reads each field by its label; an invalid field gets the red border; an archived Pet's care entry shows its fields dimmed and untappable.
+
 ### Launch from the device cache
 
 Each item on iOS and Android; Telegram Desktop and Web keep no cache between launches.

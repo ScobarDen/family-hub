@@ -9,6 +9,7 @@ import {
   FormShell,
   IconBadge,
   Label,
+  PickerField,
   TextAreaField,
   TextField,
   visibilityChoices,
@@ -77,7 +78,7 @@ export const GoalForm = reatomComponent(
           placeholder="Отпуск в Турции"
         />
         <TextField field={fields.target} id="goal-target" label="Цель, ₽" placeholder="150000" />
-        <TextField field={fields.deadline} id="goal-deadline" label="Дедлайн" type="date" />
+        <PickerField field={fields.deadline} id="goal-deadline" label="Дедлайн" isOptional />
         <CoverPicker model={model} />
         <TextAreaField field={fields.note} id="goal-note" label="Заметка" />
         {model.canChooseVisibility() && (
@@ -97,7 +98,7 @@ export const MovementForm = reatomComponent(
       <FormShell model={model} onCancel={onCancel}>
         <ChoiceField field={fields.kind} label="Что" choices={kindChoices} />
         <TextField field={fields.amount} id="movement-amount" label="Сумма, ₽" placeholder="5000" />
-        <TextField field={fields.date} id="movement-date" label="Дата" type="date" />
+        <PickerField field={fields.date} id="movement-date" label="Дата" />
         {model.hasContributorChoice() && (
           <ChoiceField field={fields.memberId} label="Чей вклад" choices={model.contributors()} />
         )}
