@@ -26,7 +26,7 @@ type NavigationDependencies = {
   // Screens inside a module (a form, a Task's card) step back before the app does.
   nestedBack?: Partial<Record<AppModule, NestedBack>>;
   onTodayShown?: () => void;
-  // A pushed screen and Back slide; a tab switch and a launch swap at once.
+  // A pushed screen, a tab switch and Back slide; a launch swaps at once.
   slide?: Slide;
 };
 
@@ -168,11 +168,7 @@ function reatomStack(
         });
       }
     }, "navigation.push"),
-    openTab: action((next: TabId) => {
-      tab.set(next);
-      trail.set([]);
-      go(rootOf(next));
-    }, "navigation.openTab"),
+    openTab: reatomOpenTab(go, { tab, trail, screen, slide }),
     // A launch link opens on top of the hub, whatever the slots are.
     launch: action((place: Place | undefined) => {
       tab.set("today");
@@ -181,6 +177,32 @@ function reatomStack(
     }, "navigation.launch"),
     pop: reatomPop(go, { trail, activeTab, slide }),
   };
+}
+
+function reatomOpenTab(
+  go: (screen: Screen) => void,
+  {
+    tab,
+    trail,
+    screen,
+    slide,
+  }: { tab: Atom<TabId | undefined>; trail: Atom<Screen[]>; screen: () => Screen; slide: Slide },
+) {
+  return action((next: TabId) => {
+    const root = rootOf(next);
+
+    function open() {
+      tab.set(next);
+      trail.set([]);
+      go(root);
+    }
+
+    if (isSameScreen(screen(), root)) {
+      open();
+    } else {
+      slide("forward", open);
+    }
+  }, "navigation.openTab");
 }
 
 function reatomPop(

@@ -193,11 +193,19 @@ describe("screen transitions", () => {
     expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
   });
 
-  test("swap tabs and launch links at once", () => {
+  test("slide a tab switch forward unless the tab's root is already on screen", () => {
     const { navigation, slides } = startSliding();
 
     navigation.openTab("recipes");
-    navigation.openModule("tasks");
+    navigation.openTab("recipes");
+
+    expect(slides).toEqual(["forward"]);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "recipes" });
+  });
+
+  test("swap a launch link at once", () => {
+    const { navigation, slides } = startSliding();
+
     navigation.launch({ module: "goals" });
 
     expect(slides).toEqual([]);
