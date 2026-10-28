@@ -123,6 +123,21 @@ describe("opening a Task", () => {
     expect(model.screen()).toMatchObject({ kind: "task", task: { title: "Купить корм" } });
   });
 
+  test("titles each screen it pushes and the one Back returns to", async () => {
+    const { model } = startTasks();
+
+    await loaded(model);
+    model.openRow(rowOf(model, "Купить корм"));
+    const opened = model.title();
+
+    model.edit();
+    const editing = model.title();
+
+    model.back();
+
+    expect([opened, editing, model.title()]).toEqual(["Купить корм", "Дело", "Купить корм"]);
+  });
+
   test("by its id, as a link does, lands without a slide", async () => {
     const { model, slides } = startTasks(fakeBackend([cleaning]));
 

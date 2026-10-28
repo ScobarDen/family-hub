@@ -144,13 +144,16 @@ function screenOf(props: HomeProps): ReactNode {
   );
 }
 
-function screenKeyOf(screen: Screen): string {
-  return screen.kind === "module" ? `${screen.module}:${screen.petId ?? ""}` : screen.kind;
+// A push inside a module keeps the module and changes only its title.
+function screenKeyOf(props: HomeProps, screen: Screen): string {
+  return screen.kind === "module"
+    ? `${screen.module}:${screen.petId ?? ""}:${contents[screen.module](props).title}`
+    : screen.kind;
 }
 
 // A new screen takes focus to its heading, so a screen reader announces where the Member is.
 export const Home = reatomComponent((props: HomeProps) => {
-  const screenKey = screenKeyOf(props.navigation.screen());
+  const screenKey = screenKeyOf(props, props.navigation.screen());
 
   useEffect(() => {
     document.querySelector<HTMLElement>("main h1")?.focus({ preventScroll: true });

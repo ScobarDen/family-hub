@@ -122,6 +122,8 @@ With a keyboard in Telegram Desktop or the browser, in the light and the dark th
 - [ ] The time zone select in the Member's settings shows the ring when Tab reaches it.
 - [ ] Tapping or clicking any of them shows no ring; text fields and date fields may show it, as the browser decides for anything that takes typing.
 - [ ] Tabbing down to the last row of a long Feed or Recipes list scrolls it fully above the tab bar; with an undo or failure bar on screen, fully above that bar too.
+- [ ] Opening a Task, a Pet, a Goal, an Album or a Recipe from its list puts focus on the new screen's heading, and the screen reader reads it; so does opening a form from there (a Task's form, a Subtask, a care entry, a movement, an Album's form, Recipe tags). «Отмена» or Back puts focus on the heading of the screen returned to. The page does not jump to the heading.
+- [ ] Switching tabs inside a screen (Pets, Goals, Recipes, Albums, «Мои» / «Все» in Tasks) or a Feed filter leaves focus on the tab or filter.
 
 ### Date and time fields
 
