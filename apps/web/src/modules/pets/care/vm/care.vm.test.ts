@@ -5,6 +5,7 @@ import type { CareEntry, CommandPhrase, ExpenseSummary, Photo } from "@family-hu
 
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
+import { fakeSlide } from "@/common/state";
 import { fakeHaptics, fakeWindow } from "@/common/telegram";
 
 import { createCareApi } from "../care.api.ts";
@@ -150,6 +151,7 @@ const connectedStorage: string | undefined = undefined;
 function startCare(choices: string[] = [], removing?: Removing) {
   const backend = fakeBackend(removing);
   const avatars: string[] = [];
+  const { slides, slide } = fakeSlide();
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const pending = [...choices];
   const openedPet = atom<string | undefined>("pet-1", "test.openedPet");
@@ -182,13 +184,14 @@ function startCare(choices: string[] = [], removing?: Removing) {
     onOpenPet: (petId) => {
       openedPet.set(petId);
     },
+    slide,
   });
 
   model.journal.subscribe(noop);
   model.month.subscribe(noop);
   model.weight.subscribe(noop);
 
-  return { model, backend, avatars, openedPet, isArchived };
+  return { model, backend, avatars, openedPet, isArchived, slides };
 }
 
 type Model = ReturnType<typeof startCare>["model"];
@@ -217,6 +220,18 @@ describe("the journal", () => {
       note: "Перенёс спокойно",
       photos: [],
     });
+  });
+});
+
+describe("opening a Care Entry", () => {
+  test("slides its form in", async () => {
+    const { model, slides } = startCare();
+
+    await loaded(model);
+    model.edit("entry-2");
+
+    expect(slides).toEqual(["forward"]);
+    expect(model.screen()).toMatchObject({ kind: "form", isCreating: false });
   });
 });
 

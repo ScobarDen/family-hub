@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { appModule, type AppModule, type SlotModule } from "@family-hub/contract";
 
+import { instantly, type Slide } from "@/common/state";
 import type { Telegram } from "@/common/telegram";
 import type { TabId } from "@/modules/tab-bar";
 
@@ -16,10 +17,6 @@ export type Screen =
   | { kind: "module"; module: AppModule; petId?: string };
 
 type NestedBack = { canGoBack: () => boolean; back: () => void };
-
-export type SlideDirection = "forward" | "back";
-
-type Slide = (direction: SlideDirection, update: () => void) => void;
 
 type NavigationDependencies = {
   base: string;
@@ -298,9 +295,7 @@ export function reatomNavigation({
   telegram,
   nestedBack,
   onTodayShown = noop,
-  slide = (_direction, update) => {
-    update();
-  },
+  slide = instantly,
 }: NavigationDependencies) {
   const routes = reatomRoutes(base);
   const screen = reatomScreen(routes);

@@ -9,6 +9,7 @@ import {
   food,
   groups,
   loaded,
+  rowOf,
   startTasks,
   taskOf,
   vaccination,
@@ -108,6 +109,29 @@ describe("the list of Tasks", () => {
     expect(model.screen()).toMatchObject({
       empty: { title: "Ваших дел нет", hint: "Дела всей семьи — во вкладке «Все»" },
     });
+  });
+});
+
+describe("opening a Task", () => {
+  test("slides its card in from a row", async () => {
+    const { model, slides } = startTasks();
+
+    await loaded(model);
+    model.openRow(rowOf(model, "Купить корм"));
+
+    expect(slides).toEqual(["forward"]);
+    expect(model.screen()).toMatchObject({ kind: "task", task: { title: "Купить корм" } });
+  });
+
+  test("by its id, as a link does, lands without a slide", async () => {
+    const { model, slides } = startTasks(fakeBackend([cleaning]));
+
+    model.open("task-cleaning");
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("task");
+    });
+
+    expect(slides).toEqual([]);
   });
 });
 

@@ -18,7 +18,7 @@ import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
-import { detached, readOnly } from "@/common/state";
+import { detached, instantly, readOnly, type Slide } from "@/common/state";
 import {
   type ClosingConfirmation,
   type Dialogs,
@@ -69,6 +69,7 @@ type AlbumsDependencies = LiveVersion & {
   // The Family Owner can connect the photo channel, so a closed upload leads them to it.
   canSetUpPhotos: () => boolean;
   onSetUpPhotos: () => void;
+  slide?: Slide;
 };
 
 type Navigation = { openedId: Atom<string | undefined>; isEditing: BooleanAtom };
@@ -230,6 +231,16 @@ function reatomParts(
   };
 }
 
+function reatomOpening(navigation: Navigation, slide: Slide) {
+  return {
+    open: action((albumId: string) => {
+      slide("forward", () => {
+        navigation.openedId.set(albumId);
+      });
+    }, "albums.open"),
+  };
+}
+
 export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
   const navigation: Navigation = {
     openedId: atom<string | undefined>(undefined, "albums.openedId"),
@@ -259,9 +270,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
       () => navigation.isEditing() || data.isAllShown() || navigation.openedId() !== undefined,
       "albums.canGoBack",
     ),
-    open: action((albumId: string) => {
-      navigation.openedId.set(albumId);
-    }, "albums.open"),
+    ...reatomOpening(navigation, dependencies.slide ?? instantly),
     openAll: action(() => {
       data.isAllShown.setTrue();
     }, "albums.openAll"),

@@ -5,6 +5,7 @@ import { recipeChange, type Recipe } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeSlide } from "@/common/state";
 import {
   fakeDeviceStorage,
   type FakeDeviceStorage,
@@ -108,6 +109,7 @@ function startRecipes({
   const requests: Array<{ request: string; body: unknown }> = [];
   const alerts: string[] = [];
   const shared: string[] = [];
+  const { slides, slide } = fakeSlide();
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
     const request = `${init.method ?? "GET"} ${url.pathname}${url.search}`;
@@ -156,11 +158,12 @@ function startRecipes({
     today: () => "2026-10-21",
     timeZone: () => "Europe/Moscow",
     deviceCache: reatomDeviceCache(device.deviceStorage),
+    slide,
   });
 
   model.screen.subscribe(noop);
 
-  return { model, requests, alerts, shared, felt: haptics.felt };
+  return { model, requests, alerts, shared, slides, felt: haptics.felt };
 }
 
 type Model = ReturnType<typeof startRecipes>["model"];
@@ -243,6 +246,16 @@ describe("the Recipes", () => {
       tagIds: ["tag-1"],
       photoIds: [],
     });
+  });
+});
+
+describe("opening a Recipe", () => {
+  test("slides it in", async () => {
+    const { model, slides } = startRecipes();
+
+    await openLasagna(model);
+
+    expect(slides).toEqual(["forward"]);
   });
 });
 

@@ -149,6 +149,7 @@ const albums = reatomAlbumsScreen({
   onSetUpPhotos: () => {
     navigation.openProfile();
   },
+  slide: slideScreens,
 });
 const recipes = reatomRecipesScreen({
   api: createRecipesApi(httpClient),
@@ -159,6 +160,7 @@ const recipes = reatomRecipesScreen({
   timeZone: zone,
   preparePhoto: prepare,
   photoHint: photoStorage.uploadHint,
+  slide: slideScreens,
 });
 const tasks = reatomTasksScreen({
   api: createTasksApi(httpClient),
@@ -181,6 +183,7 @@ const tasks = reatomTasksScreen({
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
+  slide: slideScreens,
 });
 const goals = reatomGoalsScreen({
   api: createGoalsApi(httpClient),
@@ -191,6 +194,7 @@ const goals = reatomGoalsScreen({
   self,
   today,
   timeZone: zone,
+  slide: slideScreens,
 });
 const pet = reatomPetTab({
   api: petsApi,
@@ -222,6 +226,7 @@ const pet = reatomPetTab({
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
+  slide: slideScreens,
 });
 const commandSheet = reatomCommandSheet({
   api: commandApi,

@@ -5,6 +5,7 @@ import type { Album, Photo } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeSlide } from "@/common/state";
 import {
   fakeDeviceStorage,
   fakeHaptics,
@@ -74,6 +75,7 @@ function startAlbums({
   const requests: string[] = [];
   const shared: string[] = [];
   const waits: number[] = [];
+  const { slides, slide } = fakeSlide();
   const pendingUploads = [...uploads];
   const pendingAdditions = [...additionAnswers];
   let uploadCount = 0;
@@ -146,6 +148,7 @@ function startAlbums({
     canSetUpPhotos: () => false,
     onSetUpPhotos: noop,
     deviceCache: reatomDeviceCache(device.deviceStorage),
+    slide,
   });
 
   model.screen.subscribe(noop);
@@ -158,6 +161,7 @@ function startAlbums({
     requests,
     shared,
     waits,
+    slides,
     hold() {
       gate = new Promise((resolve) => {
         release = resolve;
@@ -203,6 +207,16 @@ describe("the Albums", () => {
     await vi.waitFor(() => {
       expect(model.screen()).toEqual({ kind: "list", albums: [], summary: "Пока нет альбомов" });
     });
+  });
+});
+
+describe("opening an Album", () => {
+  test("slides it in", async () => {
+    const started = startAlbums({ albums: [albumOf("album-1")] });
+
+    await openAlbum(started, "album-1");
+
+    expect(started.slides).toEqual(["forward"]);
   });
 });
 

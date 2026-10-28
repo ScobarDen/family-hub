@@ -9,10 +9,12 @@ import type { PreparedPhoto } from "@/common/photo";
 import { withoutId } from "@/common/records";
 import {
   detached,
+  instantly,
   readOnly,
   reatomOptimistic,
   reatomRollbackFailure,
   type RollbackFailure,
+  type Slide,
 } from "@/common/state";
 import {
   type ClosingConfirmation,
@@ -57,6 +59,7 @@ export type CareDependencies = LiveVersion & {
   onMakeAvatar: (photoId: string) => void;
   onOpenPet: (petId: string) => void;
   onDraftSaved: (draftId: string) => void;
+  slide?: Slide;
 };
 
 // What the pet card's summary leads with; the month reads as nothing spent until it arrives.
@@ -190,7 +193,10 @@ function reatomOpening({ api, data, form, screen, onOpenPet }: Sources) {
   return { openEntry: detached(openEntry, "care.openEntry") };
 }
 
-function reatomMoves({ data, form, screen, telegram }: Sources, weightRange: Atom<WeightRange>) {
+function reatomMoves(
+  { data, form, screen, telegram, slide = instantly }: Sources,
+  weightRange: Atom<WeightRange>,
+) {
   return {
     add: action((kind: CareKind) => {
       form.startCreating(kind);
@@ -205,8 +211,10 @@ function reatomMoves({ data, form, screen, telegram }: Sources, weightRange: Ato
       const entry = data.entries.data()?.find(({ id }) => id === entryId);
 
       if (entry !== undefined) {
-        form.startEditing(entry);
-        screen.set("form");
+        slide("forward", () => {
+          form.startEditing(entry);
+          screen.set("form");
+        });
       }
     }, "care.edit"),
     openExpenses: action(() => {

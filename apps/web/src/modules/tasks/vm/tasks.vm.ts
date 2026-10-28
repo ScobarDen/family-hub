@@ -15,7 +15,7 @@ import type { Pet, Task } from "@family-hub/contract";
 import type { DeviceCache } from "@/common/device-cache";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
-import { detached } from "@/common/state";
+import { detached, instantly, type Slide } from "@/common/state";
 import type { ClosingConfirmation, Dialogs, Haptics } from "@/common/telegram";
 
 import { detailsOf, type TaskDetails } from "../task-details.lib.ts";
@@ -58,6 +58,7 @@ type TasksDependencies = SharedLists &
     onOpenPet: (petId: string) => void;
     onRecord: (record: CareRecord) => void;
     onDraftSaved: (draftId: string) => void;
+    slide?: Slide;
   };
 
 type Navigation = {
@@ -236,14 +237,16 @@ function reatomOpen({ editing, opened }: Navigation, viewer: () => Viewer, tasks
 
 function reatomBrowsing(
   navigation: Navigation,
-  { viewer, onOpenAlbum, telegram }: TasksDependencies,
+  { viewer, onOpenAlbum, telegram, slide = instantly }: TasksDependencies,
   tasks: TasksModel,
 ) {
   const { editing, opened } = navigation;
 
   return {
     openRow: action((row: TaskRow) => {
-      opened.set({ taskId: row.taskId, occurrence: row.occurrence });
+      slide("forward", () => {
+        opened.set({ taskId: row.taskId, occurrence: row.occurrence });
+      });
     }, "tasks.openRow"),
     open: detached(reatomOpen(navigation, viewer, tasks), "tasks.open"),
     toggleCompleted: action(() => {

@@ -14,6 +14,7 @@ import {
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeSlide } from "@/common/state";
 import {
   fakeDeviceStorage,
   fakeHaptics,
@@ -308,6 +309,8 @@ export function startTasks(
   const recorded: CareRecord[] = [];
   const openedPets: string[] = [];
   const openedAlbums: string[] = [];
+  const { slides, slide } = fakeSlide();
+  const { felt } = telegram.haptics;
   const model = reatomTasksScreen({
     api: createTasksApi(client),
     deviceCache: reatomDeviceCache(device.deviceStorage),
@@ -327,11 +330,12 @@ export function startTasks(
       recorded.push(record);
     },
     onDraftSaved: noop,
+    slide,
   });
 
   model.screen.subscribe(noop);
 
-  return { model, backend, recorded, openedPets, openedAlbums, felt: telegram.haptics.felt };
+  return { model, backend, recorded, openedPets, openedAlbums, slides, felt };
 }
 
 type Model = ReturnType<typeof startTasks>["model"];

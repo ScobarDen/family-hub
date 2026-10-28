@@ -23,9 +23,11 @@ import { formatRubles } from "@/common/format-money";
 import type { LiveVersion } from "@/common/live-updates";
 import {
   detached,
+  instantly,
   reatomOptimistic,
   reatomRollbackFailure,
   type RollbackFailure,
+  type Slide,
 } from "@/common/state";
 import {
   type ClosingConfirmation,
@@ -62,6 +64,7 @@ type GoalsDependencies = {
   self: () => string | undefined;
   today: () => string;
   timeZone: () => string;
+  slide?: Slide;
 };
 
 type Navigation = {
@@ -212,11 +215,13 @@ function reatomRemoval(
   );
 }
 
-function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation) {
+function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation, slide: Slide) {
   return {
     open: action((goalId: string) => {
-      openedGoalId.set(goalId);
-      isCelebrating.setFalse();
+      slide("forward", () => {
+        openedGoalId.set(goalId);
+        isCelebrating.setFalse();
+      });
     }, "goals.open"),
     back: action(() => {
       if (editing() === undefined) {
@@ -331,7 +336,7 @@ export function reatomGoalsScreen(input: GoalsInput) {
     complete: detached(complete, "goals.completeGoal"),
     removeMovement: detached(removeMovement, "goals.removeOneMovement"),
     ...forms,
-    ...reatomBrowsing(navigation),
+    ...reatomBrowsing(navigation, dependencies.slide ?? instantly),
     ...reatomEditing(navigation, { ...forms, openedGoal }),
   };
 }

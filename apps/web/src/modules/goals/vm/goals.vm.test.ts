@@ -5,6 +5,7 @@ import { movementChange, type Goal } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeSlide } from "@/common/state";
 import {
   fakeDeviceStorage,
   fakeHaptics,
@@ -104,6 +105,7 @@ function startGoals({
   moving = Promise.resolve(),
 }: Launch = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
+  const { slides, slide } = fakeSlide();
   const pending = [...choices];
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
@@ -141,12 +143,13 @@ function startGoals({
     today: () => "2026-10-14",
     timeZone: () => "Europe/Moscow",
     deviceCache: reatomDeviceCache(device.deviceStorage),
+    slide,
   });
 
   model.screen.subscribe(noop);
   model.movementForm.contributors.subscribe(noop);
 
-  return { model, requests, felt: haptics.felt };
+  return { model, requests, slides, felt: haptics.felt };
 }
 
 type Model = ReturnType<typeof startGoals>["model"];
@@ -184,6 +187,18 @@ describe("the Goals", () => {
       achieved: [{ title: "Диван" }],
       archive: [{ title: "Камера" }],
     });
+  });
+});
+
+describe("opening a Goal", () => {
+  test("slides its card in", async () => {
+    const { model, slides } = startGoals();
+
+    await loaded(model);
+    model.open("goal-1");
+
+    expect(slides).toEqual(["forward"]);
+    expect(opened(model).goal.title).toBe("Отпуск в Турции");
   });
 });
 

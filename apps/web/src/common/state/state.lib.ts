@@ -84,3 +84,11 @@ export function reatomOptimistic<Params extends unknown[]>(
     }
   }, name).extend(withAsync(), withTransaction());
 }
+
+type SlideDirection = "forward" | "back";
+
+export type Slide = (direction: SlideDirection, update: () => void) => void;
+
+export function instantly(_direction: SlideDirection, update: () => void): void {
+  update();
+}

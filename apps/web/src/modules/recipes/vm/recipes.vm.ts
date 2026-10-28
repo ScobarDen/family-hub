@@ -21,10 +21,12 @@ import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { withoutId } from "@/common/records";
 import {
   detached,
+  instantly,
   reatomOptimistic,
   reatomRollbackFailure,
   readOnly,
   type RollbackFailure,
+  type Slide,
 } from "@/common/state";
 import {
   type Confirmation,
@@ -98,6 +100,7 @@ type RecipesDependencies = LiveVersion & {
   photoHint: () => string | undefined;
   today: () => string;
   timeZone: () => string;
+  slide?: Slide;
 };
 
 type Navigation = {
@@ -288,20 +291,30 @@ function reatomFilters(data: RecipesData, haptics: Pick<Haptics, "select">) {
   };
 }
 
+function reatomOpening(navigation: Navigation, slide: Slide) {
+  return {
+    open: action((recipeId: string) => {
+      slide("forward", () => {
+        navigation.openedId.set(recipeId);
+        navigation.checked.clear();
+      });
+    }, "recipes.open"),
+  };
+}
+
 function reatomMoves({
   navigation,
   opened,
   form,
+  slide,
 }: {
   navigation: Navigation;
   opened: Opened;
   form: ReturnType<typeof reatomRecipeForm>;
+  slide: Slide;
 }) {
   return {
-    open: action((recipeId: string) => {
-      navigation.openedId.set(recipeId);
-      navigation.checked.clear();
-    }, "recipes.open"),
+    ...reatomOpening(navigation, slide),
     add: action(() => {
       form.startCreating();
       navigation.editing.set("recipe");
@@ -365,7 +378,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     ...reatomRecipeActions(dependencies, { data, navigation, opened, failure }),
     ...reatomTagEditing(dependencies, data),
     ...reatomRecipeCooks(dependencies, { data, opened, failure }),
-    ...reatomMoves({ navigation, opened, form }),
+    ...reatomMoves({ navigation, opened, form, slide: dependencies.slide ?? instantly }),
   };
 }
 
