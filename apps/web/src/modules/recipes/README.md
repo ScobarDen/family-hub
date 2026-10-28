@@ -4,7 +4,7 @@ The «Рецепты» tab: the Family's recipes, always Shared. A Recipe has a 
 
 Recipe photos go to the Photo Storage like any other but stay out of «Все фото» and the Albums.
 
-The Recipe form is a `reatomEditableRecord` from `common/form`, which owns creating, editing and the saving flags; the form adds its tags, its photos and saving while a photo still uploads.
+The Recipe form is a `reatomEditableRecord` from `common/form`, which owns creating, editing and the saving flags; the form adds its tags, its photos and saving while a photo still uploads. It opens in a bottom `FormDrawer` (`isFormOpen`) over the list or the Recipe it came from; the tags stay a screen of their own.
 
 ## Injected
 

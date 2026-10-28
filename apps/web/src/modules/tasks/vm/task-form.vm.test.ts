@@ -33,7 +33,11 @@ describe("the Task form", () => {
     await loaded(model);
     model.add();
 
-    expect(model.screen()).toEqual({ kind: "task-form", isCreating: true });
+    expect([model.screen().kind, model.openForm(), model.formTitles().task]).toEqual([
+      "list",
+      "task",
+      "Новое дело",
+    ]);
     expect(model.taskForm.isExpanded()).toBe(false);
     expect(model.taskForm.form.fields.date()).toBe("");
 
@@ -95,7 +99,7 @@ describe("the Task form", () => {
       phrase: { saidAt: Date.parse("2026-10-16T06:00:00Z"), timeZone: "Europe/Moscow" },
     });
 
-    expect(model.screen()).toMatchObject({ kind: "task-form" });
+    expect(model.openForm()).toBe("task");
     expect({
       title: model.taskForm.form.fields.title(),
       date: model.taskForm.form.fields.date(),

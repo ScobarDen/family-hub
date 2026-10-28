@@ -5,7 +5,6 @@ import type { CareEntry, CommandPhrase, ExpenseSummary, Photo } from "@family-hu
 
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
-import { fakeSlide } from "@/common/state";
 import { fakeHaptics, fakeWindow } from "@/common/telegram";
 
 import { createCareApi } from "../care.api.ts";
@@ -151,7 +150,6 @@ const connectedStorage: string | undefined = undefined;
 function startCare(choices: string[] = [], removing?: Removing) {
   const backend = fakeBackend(removing);
   const avatars: string[] = [];
-  const { slides, slide } = fakeSlide();
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const pending = [...choices];
   const openedPet = atom<string | undefined>("pet-1", "test.openedPet");
@@ -184,14 +182,13 @@ function startCare(choices: string[] = [], removing?: Removing) {
     onOpenPet: (petId) => {
       openedPet.set(petId);
     },
-    slide,
   });
 
   model.journal.subscribe(noop);
   model.month.subscribe(noop);
   model.weight.subscribe(noop);
 
-  return { model, backend, avatars, openedPet, isArchived, slides };
+  return { model, backend, avatars, openedPet, isArchived };
 }
 
 type Model = ReturnType<typeof startCare>["model"];
@@ -224,14 +221,22 @@ describe("the journal", () => {
 });
 
 describe("opening a Care Entry", () => {
-  test("slides its form in", async () => {
-    const { model, slides } = startCare();
+  test("opens its form over the year's expenses, and Back closes only the form", async () => {
+    const { model } = startCare();
 
     await loaded(model);
+    model.openExpenses();
     model.edit("entry-2");
 
-    expect(slides).toEqual(["forward"]);
-    expect(model.screen()).toMatchObject({ kind: "form", isCreating: false });
+    expect([model.screen(), model.isFormOpen(), model.formTitle()]).toEqual([
+      { kind: "expenses" },
+      true,
+      "Запись",
+    ]);
+
+    model.back();
+
+    expect([model.screen(), model.isFormOpen()]).toEqual([{ kind: "expenses" }, false]);
   });
 });
 
@@ -423,7 +428,7 @@ describe("the entry form", () => {
     await loaded(model);
     model.edit("entry-2");
 
-    expect(model.title()).toBe("Запись");
+    expect(model.formTitle()).toBe("Запись");
     expect(model.form.form.fields.reason()).toBe("Хромает");
     expect(model.form.form.fields.costAmount()).toBe("2500");
     expect(model.form.form.fields.occurredAt()).toBe("2026-10-02T18:00");
@@ -556,7 +561,7 @@ describe("a Care Entry draft opened by «Изменить»", () => {
       phrase: saidThisMorning,
     });
 
-    expect(model.screen()).toEqual({ kind: "form", isCreating: true });
+    expect([model.isFormOpen(), model.formTitle()]).toEqual([true, "Новая запись"]);
     expect(model.form.kind()).toBe("vaccination");
     expect(model.form.form.fields.occurredAt()).toBe("2026-10-10T09:00");
     expect(model.form.form.fields.name()).toBe("Бешенство");
@@ -649,7 +654,7 @@ describe("a Care Entry draft opened by «Изменить»", () => {
     await vi.waitFor(() => {
       expect(model.form.failure()).toBe("Не получилось сохранить запись. Попробуйте ещё раз.");
     });
-    expect(model.screen()).toEqual({ kind: "form", isCreating: true });
+    expect([model.isFormOpen(), model.formTitle()]).toEqual([true, "Новая запись"]);
     expect(backend.requests.map(({ request }) => request)).not.toContain(
       "POST /api/pets/pet-1/care-entries",
     );
@@ -664,7 +669,7 @@ describe("a Care Entry opened from outside the card", () => {
     model.openEntry("entry-7");
 
     await vi.waitFor(() => {
-      expect(model.screen()).toEqual({ kind: "form", isCreating: false });
+      expect([model.isFormOpen(), model.formTitle()]).toEqual([true, "Запись"]);
     });
     expect(openedPet()).toBe("pet-2");
     expect(model.form.form.fields.name()).toBe("Нобивак DHPPi");
@@ -697,7 +702,7 @@ describe("a Care Entry opened from outside the card", () => {
     model.openEntry("entry-7");
 
     await vi.waitFor(() => {
-      expect(model.screen()).toEqual({ kind: "form", isCreating: false });
+      expect([model.isFormOpen(), model.formTitle()]).toEqual([true, "Запись"]);
     });
     expect(model.isReadOnly()).toBe(true);
     expect(model.attachments.canAdd()).toBe(false);

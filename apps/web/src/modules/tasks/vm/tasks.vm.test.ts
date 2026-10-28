@@ -123,19 +123,24 @@ describe("opening a Task", () => {
     expect(model.screen()).toMatchObject({ kind: "task", task: { title: "Купить корм" } });
   });
 
-  test("titles each screen it pushes and the one Back returns to", async () => {
+  test("keeps the Task under its form, and Back closes only the form", async () => {
     const { model } = startTasks();
 
     await loaded(model);
     model.openRow(rowOf(model, "Купить корм"));
-    const opened = model.title();
-
     model.edit();
-    const editing = model.title();
+
+    expect([model.title(), model.screen().kind, model.openForm(), model.formTitles().task]).toEqual(
+      ["Купить корм", "task", "task", "Дело"],
+    );
 
     model.back();
 
-    expect([opened, editing, model.title()]).toEqual(["Купить корм", "Дело", "Купить корм"]);
+    expect([model.title(), model.screen().kind, model.openForm()]).toEqual([
+      "Купить корм",
+      "task",
+      undefined,
+    ]);
   });
 
   test("by its id, as a link does, lands without a slide", async () => {

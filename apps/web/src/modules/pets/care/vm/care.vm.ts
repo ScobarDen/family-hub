@@ -1,4 +1,13 @@
-import { action, atom, type Atom, computed, withAbort, wrap } from "@reatom/core";
+import {
+  action,
+  atom,
+  type Atom,
+  type BooleanAtom,
+  computed,
+  reatomBoolean,
+  withAbort,
+  wrap,
+} from "@reatom/core";
 
 import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hub/contract";
 
@@ -9,12 +18,10 @@ import type { PreparedPhoto } from "@/common/photo";
 import { withoutId } from "@/common/records";
 import {
   detached,
-  instantly,
   readOnly,
   reatomOptimistic,
   reatomRollbackFailure,
   type RollbackFailure,
-  type Slide,
 } from "@/common/state";
 import {
   type ClosingConfirmation,
@@ -40,10 +47,7 @@ import { reatomCareData, type CareData } from "../care.model.ts";
 import { reatomCareForm, type CareEntryDraftOpening, type CareFormModel } from "./care-form.vm.ts";
 import { reatomCarePhotos } from "./care-photos.vm.ts";
 
-export type CareScreen =
-  | { kind: "blocks" }
-  | { kind: "form"; isCreating: boolean }
-  | { kind: "expenses" };
+export type CareScreen = { kind: "blocks" } | { kind: "expenses" };
 
 export type CareDependencies = LiveVersion & {
   api: CareApi;
@@ -59,7 +63,6 @@ export type CareDependencies = LiveVersion & {
   onMakeAvatar: (photoId: string) => void;
   onOpenPet: (petId: string) => void;
   onDraftSaved: (draftId: string) => void;
-  slide?: Slide;
 };
 
 // What the pet card's summary leads with; the month reads as nothing spent until it arrives.
@@ -76,6 +79,7 @@ type Sources = CareDependencies & {
   data: CareData;
   form: CareFormModel;
   screen: Atom<CareScreen["kind"]>;
+  isFormOpen: BooleanAtom;
 };
 
 function reatomWeight({ data, timeZone, today }: Sources, weightRange: Atom<WeightRange>) {
@@ -137,7 +141,10 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
 }
 
 // The entry leaves the journal at once; the expenses are the server's to count, so they follow.
-function reatomRemove({ api, data, form, screen, telegram }: Sources, failure: RollbackFailure) {
+function reatomRemove(
+  { api, data, form, isFormOpen, telegram }: Sources,
+  failure: RollbackFailure,
+) {
   return reatomOptimistic(
     async () => {
       const entryId = form.editedId();
@@ -154,7 +161,7 @@ function reatomRemove({ api, data, form, screen, telegram }: Sources, failure: R
       }
 
       data.entries.data.set(withoutId(data.entries.data() ?? [], entryId));
-      screen.set("blocks");
+      isFormOpen.setFalse();
       await wrap(api.remove(entryId));
       data.reload();
     },
@@ -167,17 +174,17 @@ function reatomRemove({ api, data, form, screen, telegram }: Sources, failure: R
 }
 
 // «Изменить» on a Command Draft lands in the ordinary form, filled in from the draft.
-function reatomDraftEditing({ form, screen }: Sources) {
+function reatomDraftEditing({ form, isFormOpen }: Sources) {
   return {
     editDraft: action((opening: CareEntryDraftOpening) => {
       form.startFromDraft(opening);
-      screen.set("form");
+      isFormOpen.setTrue();
     }, "care.editDraft"),
   };
 }
 
 // A link or the Feed may name an entry before its Pet's journal has loaded, or of another Pet.
-function reatomOpening({ api, data, form, screen, onOpenPet }: Sources) {
+function reatomOpening({ api, data, form, isFormOpen, onOpenPet }: Sources) {
   async function entryOf(entryId: string): Promise<CareEntry> {
     return data.entries.data()?.find(({ id }) => id === entryId) ?? api.get(entryId);
   }
@@ -187,34 +194,32 @@ function reatomOpening({ api, data, form, screen, onOpenPet }: Sources) {
 
     onOpenPet(entry.petId);
     form.startEditing(entry);
-    screen.set("form");
+    isFormOpen.setTrue();
   }, "care.openEntryOfPet").extend(withAbort());
 
   return { openEntry: detached(openEntry, "care.openEntry") };
 }
 
 function reatomMoves(
-  { data, form, screen, telegram, slide = instantly }: Sources,
+  { data, form, screen, isFormOpen, telegram }: Sources,
   weightRange: Atom<WeightRange>,
 ) {
   return {
     add: action((kind: CareKind) => {
       form.startCreating(kind);
-      screen.set("form");
+      isFormOpen.setTrue();
     }, "care.add"),
     // «Записать» on a Pet's Task opens the entry filled in from what the Task was.
     addFromTask: action((taskTitle: string) => {
       form.startFromTask(taskTitle);
-      screen.set("form");
+      isFormOpen.setTrue();
     }, "care.addFromTask"),
     edit: action((entryId: string) => {
       const entry = data.entries.data()?.find(({ id }) => id === entryId);
 
       if (entry !== undefined) {
-        slide("forward", () => {
-          form.startEditing(entry);
-          screen.set("form");
-        });
+        form.startEditing(entry);
+        isFormOpen.setTrue();
       }
     }, "care.edit"),
     openExpenses: action(() => {
@@ -225,21 +230,30 @@ function reatomMoves(
       weightRange.set(range);
     }, "care.chooseWeightRange"),
     back: action(() => {
-      screen.set("blocks");
+      if (isFormOpen()) {
+        isFormOpen.setFalse();
+      } else {
+        screen.set("blocks");
+      }
     }, "care.back"),
   };
 }
 
-function reatomTitle(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
-  return computed((): string | undefined => {
-    const kind = screen();
-
-    if (kind === "form") {
-      return form.editedId() === undefined ? "Новая запись" : "Запись";
-    }
-
-    return kind === "expenses" ? "Траты" : undefined;
-  }, "care.title");
+// The entry form opens over the blocks or the year's expenses, which stay shown under it.
+function reatomScreenState({ screen, form, isFormOpen }: Sources) {
+  return {
+    screen: computed((): CareScreen => ({ kind: screen() }), "care.screen"),
+    isFormOpen: readOnly(isFormOpen),
+    canGoBack: computed(() => isFormOpen() || screen() !== "blocks", "care.canGoBack"),
+    title: computed(
+      (): string | undefined => (screen() === "expenses" ? "Траты" : undefined),
+      "care.title",
+    ),
+    formTitle: computed(
+      () => (form.editedId() === undefined ? "Новая запись" : "Запись"),
+      "care.formTitle",
+    ),
+  };
 }
 
 function reatomSummary(views: {
@@ -261,17 +275,10 @@ function reatomSummarizedViews(sources: Sources, weightRange: Atom<WeightRange>)
   return { ...views, summary: reatomSummary(views) };
 }
 
-function reatomScreen(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
-  return computed((): CareScreen => {
-    const kind = screen();
-
-    return kind === "form" ? { kind, isCreating: form.editedId() === undefined } : { kind };
-  }, "care.screen");
-}
-
 export function reatomCare(dependencies: CareDependencies) {
   const data = reatomCareData(dependencies);
   const screen = atom<CareScreen["kind"]>("blocks", "care.screenKind");
+  const isFormOpen = reatomBoolean(false, "care.isFormOpen");
   const failure = reatomRollbackFailure("care.failure", dependencies.telegram.haptics);
   const photos = reatomCarePhotos({ ...dependencies, failure }, data);
   const form = reatomCareForm({
@@ -281,7 +288,7 @@ export function reatomCare(dependencies: CareDependencies) {
     closingConfirmation: dependencies.telegram,
     onSaved: () => {
       data.reload();
-      screen.set("blocks");
+      isFormOpen.setFalse();
     },
   });
   const sources: Sources = {
@@ -289,14 +296,13 @@ export function reatomCare(dependencies: CareDependencies) {
     data,
     form,
     screen,
+    isFormOpen,
   };
   const weightRange = atom<WeightRange>("quarter", "care.weightRange");
   const remove = reatomRemove(sources, failure);
 
   return {
-    screen: reatomScreen(screen, form),
-    title: reatomTitle(screen, form),
-    canGoBack: computed(() => screen() !== "blocks", "care.canGoBack"),
+    ...reatomScreenState(sources),
     isReadOnly: readOnly(dependencies.isReadOnly),
     failure: failure.failure,
     dismissFailure: failure.dismiss,

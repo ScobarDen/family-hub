@@ -15,7 +15,7 @@ import type { Pet, Task } from "@family-hub/contract";
 import type { DeviceCache } from "@/common/device-cache";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
-import { detached, instantly, type Slide } from "@/common/state";
+import { detached, instantly, readOnly, type Slide } from "@/common/state";
 import type { ClosingConfirmation, Dialogs, Haptics } from "@/common/telegram";
 
 import { detailsOf, type TaskDetails } from "../task-details.lib.ts";
@@ -40,9 +40,9 @@ export type TasksScreen =
   | { kind: "failed" }
   | { kind: "list"; groups: TaskGroups; empty: EmptyList | undefined; isCompletedShown: boolean }
   | { kind: "calendar" }
-  | { kind: "task"; task: TaskDetails }
-  | { kind: "task-form"; isCreating: boolean }
-  | { kind: "subtask-form"; isCreating: boolean };
+  | { kind: "task"; task: TaskDetails };
+
+export type TaskFormKind = "task" | "subtask";
 
 // What the list says when nothing is left to do: «add the first one» only to a Family with none.
 export type EmptyList = { title: string; hint: string | undefined };
@@ -62,7 +62,7 @@ type TasksDependencies = SharedLists &
   };
 
 type Navigation = {
-  editing: Atom<"task" | "subtask" | undefined>;
+  editing: Atom<TaskFormKind | undefined>;
   opened: Atom<TaskOccurrence | undefined>;
   isCompletedShown: ReturnType<typeof reatomBoolean>;
   view: ReturnType<typeof reatomEnum<"list" | "calendar">>;
@@ -75,7 +75,7 @@ function reatomNavigation({ viewer }: TasksDependencies): Navigation {
   const { today } = viewer();
 
   return {
-    editing: atom<"task" | "subtask" | undefined>(undefined, "tasks.editing"),
+    editing: atom<TaskFormKind | undefined>(undefined, "tasks.editing"),
     opened: atom<TaskOccurrence | undefined>(undefined, "tasks.opened"),
     isCompletedShown: reatomBoolean(false, "tasks.isCompletedShown"),
     // The list or the calendar is a per-device habit; without storage it starts at the list.
@@ -125,19 +125,6 @@ function reatomShown(
   }, "tasks.shown");
 }
 
-function editingScreenOf(
-  editing: "task" | "subtask" | undefined,
-  forms: Forms,
-): TasksScreen | undefined {
-  if (editing === "task") {
-    return { kind: "task-form", isCreating: forms.taskForm.isCreating() };
-  }
-
-  return editing === "subtask"
-    ? { kind: "subtask-form", isCreating: forms.subtaskForm.isCreating() }
-    : undefined;
-}
-
 function emptyOf(
   { overdue, today, upcoming, undated }: TaskGroups,
   { hasFamilyTasks, scope }: { hasFamilyTasks: boolean; scope: "mine" | "all" },
@@ -183,19 +170,9 @@ function browsingScreenOf(
 function reatomScreen(
   dependencies: TasksDependencies & { tasks: TasksModel },
   navigation: Navigation,
-  {
-    forms,
-    shown,
-    openedTask,
-  }: { forms: Forms; shown: () => Task[] | undefined; openedTask: () => Task | undefined },
+  { shown, openedTask }: { shown: () => Task[] | undefined; openedTask: () => Task | undefined },
 ) {
   return computed((): TasksScreen => {
-    const editing = editingScreenOf(navigation.editing(), forms);
-
-    if (editing !== undefined) {
-      return editing;
-    }
-
     const tasks = shown();
     const task = openedTask();
     const viewer = dependencies.viewer();
@@ -324,15 +301,21 @@ function reatomEditing(
 }
 
 function titleOf(screen: TasksScreen): string {
-  if (screen.kind === "task") {
-    return screen.task.title;
-  }
+  return screen.kind === "task" ? screen.task.title : "Дела";
+}
 
-  if (screen.kind === "task-form") {
-    return screen.isCreating ? "Новое дело" : "Дело";
-  }
-
-  return screen.kind === "subtask-form" ? "Шаг" : "Дела";
+// A form opens over the screen it came from, which stays shown under it.
+function reatomOpenForm({ editing }: Navigation, { taskForm }: Forms) {
+  return {
+    openForm: readOnly(editing),
+    formTitles: computed(
+      (): Record<TaskFormKind, string> => ({
+        task: taskForm.isCreating() ? "Новое дело" : "Дело",
+        subtask: "Шаг",
+      }),
+      "tasks.formTitles",
+    ),
+  };
 }
 
 // The pet card shows a Pet's Overdue and upcoming Tasks; the tasks module stays their only source.
@@ -350,15 +333,8 @@ function tasksOfPet(tasks: TasksModel, viewer: () => Viewer) {
 }
 
 // Which screen is shown, apart from the data it shows, so a renamed Task keeps focus where it is.
-function reatomScreenKey({ editing, opened }: Navigation, { taskForm, subtaskForm }: Forms) {
-  return computed(() => {
-    const current = editing();
-    const isCreating = current === "task" ? taskForm.isCreating() : subtaskForm.isCreating();
-
-    return current === undefined
-      ? (opened()?.taskId ?? "list")
-      : `${current}:${isCreating ? "new" : "edit"}`;
-  }, "tasks.screenKey");
+function reatomScreenKey({ opened }: Navigation) {
+  return computed(() => opened()?.taskId ?? "list", "tasks.screenKey");
 }
 
 export function reatomTasksScreen(input: TasksDependencies) {
@@ -378,12 +354,13 @@ export function reatomTasksScreen(input: TasksDependencies) {
       navigation.opened.set(undefined);
     },
   });
-  const screen = reatomScreen(dependencies, navigation, { forms, shown, openedTask });
+  const screen = reatomScreen(dependencies, navigation, { shown, openedTask });
 
   return {
     screen,
     title: computed(() => titleOf(screen()), "tasks.title"),
-    screenKey: reatomScreenKey(navigation, forms),
+    screenKey: reatomScreenKey(navigation),
+    ...reatomOpenForm(navigation, forms),
     view: navigation.view,
     scope: navigation.scope,
     reload: tasks.reload,

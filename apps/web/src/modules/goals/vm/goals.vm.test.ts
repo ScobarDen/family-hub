@@ -257,7 +257,7 @@ describe("a Contribution", () => {
     model.movementForm.form.fields.amount.set("60000");
     model.movementForm.save();
     await vi.waitFor(() => {
-      expect(model.screen().kind).toBe("goal");
+      expect([model.screen().kind, model.openForm()]).toEqual(["goal", undefined]);
     });
 
     expect(opened(model).isCelebrating).toBe(true);
@@ -283,7 +283,7 @@ describe("a Movement with a field to fix", () => {
     await vi.waitFor(() => {
       expect(felt).toEqual(["error"]);
     });
-    expect(model.screen().kind).toBe("movement-form");
+    expect([model.screen().kind, model.openForm()]).toEqual(["goal", "movement"]);
     expect(requests.filter(({ request }) => request.includes("/movements"))).toEqual([]);
   });
 });
@@ -301,7 +301,7 @@ async function addMovement(model: Model, kind: "contribution" | "withdrawal", am
   model.movementForm.form.fields.amount.set(amount);
   model.movementForm.save();
   await vi.waitFor(() => {
-    expect(model.screen().kind).toBe("goal");
+    expect([model.screen().kind, model.openForm()]).toEqual(["goal", undefined]);
   });
 }
 

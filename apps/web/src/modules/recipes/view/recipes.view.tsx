@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import {
   FailureBar,
+  FormDrawer,
   LoadState,
   Revealed,
   SkeletonSection,
@@ -35,17 +36,6 @@ function contentOf({ model }: RecipesProps, screen: RecipesScreen): ReactNode {
     return <RecipeDetails model={model} recipe={screen.recipe} checked={screen.checked} />;
   }
 
-  if (screen.kind === "form") {
-    return (
-      <RecipeForm
-        model={model.form}
-        tags={screen.tags}
-        photoHint={model.photoHint()}
-        onCancel={model.back}
-      />
-    );
-  }
-
   if (screen.kind === "tags") {
     return <RecipeTags model={model} tags={screen.tags} />;
   }
@@ -68,6 +58,18 @@ export const Recipes = reatomComponent((props: RecipesProps) => {
   return (
     <>
       <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(props, screen)}</Revealed>
+      <FormDrawer
+        open={props.model.isFormOpen()}
+        title={props.model.formTitle()}
+        onClose={props.model.back}
+      >
+        <RecipeForm
+          model={props.model.form}
+          tags={props.model.formTags()}
+          photoHint={props.model.photoHint()}
+          onCancel={props.model.back}
+        />
+      </FormDrawer>
       <FailureBar failure={props.model.failure()} onDismiss={props.model.dismissFailure} />
     </>
   );

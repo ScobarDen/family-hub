@@ -49,15 +49,7 @@ export type PetsScreen =
   | { kind: "failed" }
   | { kind: "empty"; archived: PetListItem[] }
   | { kind: "list"; pets: PetListItem[]; archived: PetListItem[] }
-  | { kind: "card"; card: PetCard; canDelete: boolean; archivedCount: number }
-  | { kind: "profile-form"; isCreating: boolean }
-  | { kind: "memo-form" }
-  | { kind: "delete-form" };
-
-const editingScreens: Record<Exclude<Editing, "profile">, PetsScreen> = {
-  memo: { kind: "memo-form" },
-  delete: { kind: "delete-form" },
-};
+  | { kind: "card"; card: PetCard; canDelete: boolean; archivedCount: number };
 
 function cardOf(dependencies: PetsDependencies, pet: Pet): PetsScreen {
   const { pets, viewer, tasksOf, isFamilyOwner } = dependencies;
@@ -79,22 +71,8 @@ function listOf({ pets, viewer }: PetsDependencies): PetsScreen {
     : { kind: "list", pets: active.map((item) => toListItem(item, viewer())), archived };
 }
 
-export function reatomScreen(
-  dependencies: PetsDependencies,
-  { editing }: Navigation,
-  { openedPet, isCreating }: { openedPet: () => Pet | undefined; isCreating: () => boolean },
-) {
+export function reatomScreen(dependencies: PetsDependencies, openedPet: () => Pet | undefined) {
   return computed((): PetsScreen => {
-    const current = editing();
-
-    if (current === "profile") {
-      return { kind: "profile-form", isCreating: isCreating() };
-    }
-
-    if (current !== undefined) {
-      return editingScreens[current];
-    }
-
     if (dependencies.pets.list.data() === undefined) {
       return dependencies.pets.list.error() === undefined
         ? { kind: "loading" }
@@ -107,20 +85,21 @@ export function reatomScreen(
   }, "pets.screen");
 }
 
-const screenTitles: Partial<Record<PetsScreen["kind"], string>> = {
-  list: "Питомцы",
-  "memo-form": "Памятка",
-  "delete-form": "Удаление питомца",
-};
-
 export function titleOf(screen: PetsScreen): string {
   if (screen.kind === "card") {
     return screen.card.name;
   }
 
-  if (screen.kind === "profile-form") {
-    return screen.isCreating ? "Новый питомец" : "Питомец";
-  }
+  return screen.kind === "list" ? "Питомцы" : "Питомец";
+}
 
-  return screenTitles[screen.kind] ?? "Питомец";
+export function reatomFormTitles(isCreating: () => boolean) {
+  return computed(
+    (): Record<Editing, string> => ({
+      profile: isCreating() ? "Новый питомец" : "Питомец",
+      memo: "Памятка",
+      delete: "Удаление питомца",
+    }),
+    "pets.formTitles",
+  );
 }

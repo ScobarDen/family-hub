@@ -226,7 +226,6 @@ const pet = reatomPetTab({
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
-  slide: slideScreens,
 });
 const commandSheet = reatomCommandSheet({
   api: commandApi,

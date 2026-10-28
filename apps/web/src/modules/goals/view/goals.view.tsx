@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import {
   FailureBar,
+  FormDrawer,
   LoadState,
   Revealed,
   Skeleton,
@@ -37,14 +38,6 @@ function contentOf(model: GoalsScreenModel, screen: GoalsScreen): ReactNode {
     return <GoalDetails goal={screen.goal} isCelebrating={screen.isCelebrating} model={model} />;
   }
 
-  if (screen.kind === "goal-form") {
-    return <GoalForm model={model.goalForm} onCancel={model.back} />;
-  }
-
-  if (screen.kind === "movement-form") {
-    return <MovementForm model={model.movementForm} onCancel={model.back} />;
-  }
-
   if (screen.kind === "loading") {
     return (
       <SkeletonSectionLayout tabs={3} summary={summary}>
@@ -56,12 +49,29 @@ function contentOf(model: GoalsScreenModel, screen: GoalsScreen): ReactNode {
   return <LoadState failure="Не получилось загрузить цели." onRetry={model.retry} />;
 }
 
+const GoalForms = reatomComponent(({ model }: GoalsProps) => {
+  const openForm = model.openForm();
+  const titles = model.formTitles();
+
+  return (
+    <>
+      <FormDrawer open={openForm === "goal"} title={titles.goal} onClose={model.back}>
+        <GoalForm model={model.goalForm} onCancel={model.back} />
+      </FormDrawer>
+      <FormDrawer open={openForm === "movement"} title={titles.movement} onClose={model.back}>
+        <MovementForm model={model.movementForm} onCancel={model.back} />
+      </FormDrawer>
+    </>
+  );
+}, "GoalForms");
+
 export const Goals = reatomComponent(({ model }: GoalsProps) => {
   const screen = model.screen();
 
   return (
     <>
       <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(model, screen)}</Revealed>
+      <GoalForms model={model} />
       <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
     </>
   );

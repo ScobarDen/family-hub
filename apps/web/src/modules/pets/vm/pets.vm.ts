@@ -2,11 +2,14 @@ import { action, atom, computed, reatomBoolean } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
+import { readOnly } from "@/common/state";
+
 import { reatomPetArchive } from "./pet-archive.vm.ts";
 import { reatomPetAvatar } from "./pet-avatar.vm.ts";
 import { reatomPetMemoForm } from "./pet-memo-form.vm.ts";
 import { reatomPetProfileForm } from "./pet-profile-form.vm.ts";
 import {
+  reatomFormTitles,
   reatomScreen,
   titleOf,
   type Editing,
@@ -141,21 +144,8 @@ function reatomLinks(dependencies: PetsDependencies) {
 }
 
 // Which screen is shown, apart from the data it shows, so a renamed Pet keeps focus where it is.
-function reatomScreenKey(
-  { route }: PetsDependencies,
-  { editing }: Navigation,
-  { openedPet, isCreating }: { openedPet: () => Pet | undefined; isCreating: () => boolean },
-) {
-  return computed(() => {
-    const current = editing();
-    const pet = route.petId() ?? openedPet()?.id ?? "list";
-
-    if (current === "profile") {
-      return isCreating() ? "new" : `${pet}:profile`;
-    }
-
-    return current === undefined ? pet : `${pet}:${current}`;
-  }, "pets.screenKey");
+function reatomScreenKey({ route }: PetsDependencies, openedPet: () => Pet | undefined) {
+  return computed(() => route.petId() ?? openedPet()?.id ?? "list", "pets.screenKey");
 }
 
 export function reatomPetsScreen(dependencies: PetsDependencies) {
@@ -177,13 +167,15 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
       }
     },
   });
-  const shown = { openedPet, isCreating: forms.profileForm.isCreating };
-  const screen = reatomScreen(dependencies, navigation, shown);
+  const screen = reatomScreen(dependencies, openedPet);
 
   return {
     screen,
     title: computed(() => titleOf(screen()), "pets.title"),
-    screenKey: reatomScreenKey(dependencies, navigation, shown),
+    screenKey: reatomScreenKey(dependencies, openedPet),
+    // A form opens over the screen it came from, which stays shown under it.
+    openForm: readOnly(navigation.editing),
+    formTitles: reatomFormTitles(forms.profileForm.isCreating),
     retry: dependencies.pets.reload,
     openedPetId: computed(() => openedPet()?.id, "pets.openedPetId"),
     isOpenedPetArchived: computed(

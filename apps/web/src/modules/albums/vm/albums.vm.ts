@@ -57,8 +57,7 @@ export type AlbumsScreen =
   | { kind: "failed" }
   | { kind: "list"; albums: AlbumItem[]; summary: string }
   | { kind: "album"; album: AlbumView }
-  | { kind: "all"; photos: Photo[] | undefined }
-  | { kind: "form"; isCreating: boolean };
+  | { kind: "all"; photos: Photo[] | undefined };
 
 type AlbumsDependencies = LiveVersion & {
   api: AlbumsApi;
@@ -94,17 +93,9 @@ const deleteQuestion: PopupParams = {
 
 function reatomScreen(
   { viewer }: AlbumsDependencies,
-  {
-    data,
-    navigation,
-    form,
-  }: { data: AlbumsData; navigation: Navigation; form: { isCreating: () => boolean } },
+  { data, navigation }: { data: AlbumsData; navigation: Navigation },
 ) {
   return computed((): AlbumsScreen => {
-    if (navigation.isEditing()) {
-      return { kind: "form", isCreating: form.isCreating() };
-    }
-
     if (data.isAllShown()) {
       return { kind: "all", photos: data.allPhotos.data() };
     }
@@ -126,22 +117,17 @@ function reatomScreen(
 }
 
 // Which screen is shown, apart from the data it shows, so a renamed Album keeps focus where it is.
-function reatomScreenKey({
-  data,
-  navigation,
-  form,
-}: {
-  data: AlbumsData;
-  navigation: Navigation;
-  form: { isCreating: () => boolean };
-}) {
-  return computed(() => {
-    if (navigation.isEditing()) {
-      return form.isCreating() ? "new" : "edit";
-    }
-
-    return data.isAllShown() ? "all" : (navigation.openedId() ?? "list");
-  }, "albums.screenKey");
+function reatomPlace({ data, navigation }: { data: AlbumsData; navigation: Navigation }) {
+  return {
+    screenKey: computed(
+      () => (data.isAllShown() ? "all" : (navigation.openedId() ?? "list")),
+      "albums.screenKey",
+    ),
+    canGoBack: computed(
+      () => navigation.isEditing() || data.isAllShown() || navigation.openedId() !== undefined,
+      "albums.canGoBack",
+    ),
+  };
 }
 
 function reatomRemoval(
@@ -267,6 +253,14 @@ function reatomParts(
   };
 }
 
+// The form opens over the screen it came from, which stays shown under it.
+function reatomOpenForm({ isEditing }: Navigation, form: { isCreating: () => boolean }) {
+  return {
+    isFormOpen: readOnly(isEditing),
+    formTitle: computed(() => (form.isCreating() ? "Новый альбом" : "Альбом"), "albums.formTitle"),
+  };
+}
+
 function reatomOpening(navigation: Navigation, slide: Slide) {
   return {
     open: action((albumId: string) => {
@@ -290,7 +284,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
   });
   const failure = reatomRollbackFailure("albums.failure", dependencies.telegram.haptics);
   const parts = reatomParts(dependencies, { data, navigation, failure });
-  const screen = reatomScreen(dependencies, { data, navigation, form: parts.form });
+  const screen = reatomScreen(dependencies, { data, navigation });
   const remove = reatomRemoval(dependencies, { data, navigation, failure });
 
   return {
@@ -302,12 +296,9 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
       dependencies.onSetUpPhotos();
     }, "albums.setUpPhotos"),
     title: computed(() => titleOf(screen()), "albums.title"),
-    screenKey: reatomScreenKey({ data, navigation, form: parts.form }),
+    ...reatomOpenForm(navigation, parts.form),
+    ...reatomPlace({ data, navigation }),
     retry: data.reload,
-    canGoBack: computed(
-      () => navigation.isEditing() || data.isAllShown() || navigation.openedId() !== undefined,
-      "albums.canGoBack",
-    ),
     ...reatomOpening(navigation, dependencies.slide ?? instantly),
     openAll: action(() => {
       data.isAllShown.setTrue();
@@ -362,10 +353,6 @@ function reatomMoves({
 function titleOf(screen: AlbumsScreen): string {
   if (screen.kind === "album") {
     return screen.album.title;
-  }
-
-  if (screen.kind === "form") {
-    return screen.isCreating ? "Новый альбом" : "Альбом";
   }
 
   return screen.kind === "all" ? "Все фото" : "Альбомы";
