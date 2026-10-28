@@ -12,7 +12,7 @@ function resolvedPage(client: HttpClient, page: FeedPage): FeedPage {
     overdue: page.overdue.map((item) => resolvedUpcoming(item, client.url)),
     upcoming: page.upcoming.map((item) => resolvedUpcoming(item, client.url)),
     activity: page.activity.map((item) =>
-      item.kind === "care" || item.kind === "upload" || item.kind === "cooked"
+      item.kind === "care" || item.kind === "upload"
         ? { ...item, photos: item.photos.map((each) => resolvedPhoto(each, client.url)) }
         : item,
     ),

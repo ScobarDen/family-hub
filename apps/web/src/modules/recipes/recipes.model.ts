@@ -4,7 +4,6 @@ import {
   computed,
   peek,
   reatomBoolean,
-  reatomEnum,
   withAsyncData,
   withRollback,
   wrap,
@@ -35,15 +34,13 @@ function reatomQuery() {
   const text = atom("", "recipes.text");
   const tagId = atom<string | undefined>(undefined, "recipes.tagId");
   const isFavorite = reatomBoolean(false, "recipes.isFavorite");
-  const ordering = reatomEnum(["title", "forgotten"], "recipes.sort");
 
   return {
     text,
     tagId,
     isFavorite,
-    ordering,
     isWholeBook: computed(
-      () => text() === "" && tagId() === undefined && !isFavorite() && ordering() === "title",
+      () => text() === "" && tagId() === undefined && !isFavorite(),
       "recipes.isWholeBook",
     ),
   };
@@ -71,14 +68,12 @@ function reatomTags(
 // The list follows the search text, the tag chip and «⭐»; every change reloads it from the server.
 export function reatomRecipesData({ api, liveVersion, deviceCache }: RecipesDataDependencies) {
   const version = atom(0, "recipes.version");
-  const { text, tagId, isFavorite, ordering, isWholeBook } = reatomQuery();
+  const { text, tagId, isFavorite, isWholeBook } = reatomQuery();
   const list = computed(async () => {
     version();
     liveVersion?.();
 
-    return wrap(
-      api.list({ text: text(), tagId: tagId(), isFavorite: isFavorite(), sort: ordering() }),
-    );
+    return wrap(api.list({ text: text(), tagId: tagId(), isFavorite: isFavorite() }));
   }, "recipes.list").extend(withAsyncData());
   const tags = reatomTags({ api, liveVersion, deviceCache }, version);
 
@@ -98,7 +93,6 @@ export function reatomRecipesData({ api, liveVersion, deviceCache }: RecipesData
     text,
     tagId,
     isFavorite,
-    ordering,
     list,
     tags,
     reload: action(() => {

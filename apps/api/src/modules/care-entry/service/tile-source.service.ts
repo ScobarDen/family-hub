@@ -22,7 +22,12 @@ export function createPetTile({
         only:
           only === undefined
             ? null
-            : { petId: only.id, name: only.name, picture: await links.thumbOf(only.avatarPhotoId) },
+            : {
+                petId: only.id,
+                name: only.name,
+                picture: await links.thumbOf(only.avatarPhotoId),
+                birthDate: only.birthDate,
+              },
       };
     },
   };

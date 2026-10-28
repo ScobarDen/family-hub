@@ -1,10 +1,8 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, eq, inArray } from "drizzle-orm";
 
 import { bindFirst } from "@/common/bind";
 import {
-  members,
   photos,
-  recipeCooks,
   recipeFavorites,
   recipePhotos,
   recipeTagLinks,
@@ -12,7 +10,6 @@ import {
   recipes,
   type Db,
 } from "@/common/db";
-import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
 import { knownPhotoIds } from "@/modules/photo";
 
 export type RecipeRow = typeof recipes.$inferSelect;
@@ -114,90 +111,20 @@ async function knownTagIds(db: Db, { familyId, ids }: Links): Promise<string[]> 
   return rows.map(({ id }) => id);
 }
 
-type CookRow = typeof recipeCooks.$inferSelect & { memberName: string };
-
-async function cooksOf(db: Db, familyId: string): Promise<CookRow[]> {
-  const rows = await db
-    .select({ cook: recipeCooks, memberName: members.name })
-    .from(recipeCooks)
-    .innerJoin(members, eq(members.id, recipeCooks.createdBy))
-    .where(eq(recipeCooks.familyId, familyId))
-    .all();
-
-  return rows.map(({ cook, memberName }) => ({ ...cook, memberName }));
-}
-
-async function lastCookedOf(db: Db, familyId: string) {
-  return db
-    .select({ recipeId: recipes.id, title: recipes.title })
-    .from(recipeCooks)
-    .innerJoin(recipes, eq(recipes.id, recipeCooks.recipeId))
-    .where(eq(recipeCooks.familyId, familyId))
-    .orderBy(desc(recipeCooks.cookedAt))
-    .limit(1)
-    .get();
-}
-
-const cookKeyed = { at: recipeCooks.cookedAt, key: keyOf("cooked", recipeCooks.id) };
-
-async function cooksBefore(db: Db, familyId: string, { keyset, limit }: KeysetPage) {
-  return db
-    .select({
-      key: cookKeyed.key,
-      recipeId: recipeCooks.recipeId,
-      cookedAt: recipeCooks.cookedAt,
-      title: recipes.title,
-      memberName: members.name,
-      memberPicture: members.profilePicture,
-    })
-    .from(recipeCooks)
-    .innerJoin(recipes, eq(recipes.id, recipeCooks.recipeId))
-    .innerJoin(members, eq(members.id, recipeCooks.createdBy))
-    .where(and(eq(recipeCooks.familyId, familyId), olderThan(cookKeyed, keyset)))
-    .orderBy(...newestFirstBy(cookKeyed))
-    .limit(limit)
-    .all();
-}
-
-async function photosOf(db: Db, { familyId, ids }: Links) {
-  if (ids.length === 0) {
-    return [];
-  }
-
-  return db
-    .select({ recipeId: recipePhotos.recipeId, photo: photos })
-    .from(recipePhotos)
-    .innerJoin(photos, eq(photos.id, recipePhotos.photoId))
-    .where(and(eq(recipePhotos.familyId, familyId), inArray(recipePhotos.recipeId, ids)))
-    .orderBy(asc(recipePhotos.position))
-    .all();
-}
-
-function ofCook({ familyId, cookId }: { familyId: string; cookId: string }) {
-  return and(eq(recipeCooks.familyId, familyId), eq(recipeCooks.id, cookId));
-}
-
-// «🍳 Приготовили» marks, each with the Member who made it.
-function cookCalls(db: Db) {
-  return {
-    ...bindFirst(db, { cooksOf, cooksBefore, photosOf }),
-    findCook: async (target: { familyId: string; cookId: string }) =>
-      db.select().from(recipeCooks).where(ofCook(target)).get(),
-    async addCook(row: typeof recipeCooks.$inferInsert): Promise<void> {
-      await db.insert(recipeCooks).values(row);
-    },
-    async deleteCook(target: { familyId: string; cookId: string }): Promise<void> {
-      await db.delete(recipeCooks).where(ofCook(target));
-    },
-  };
-}
-
 export function createRecipeRepo(db: Db) {
   return {
-    ...bindFirst(db, { linksOf, favoritesOf, knownTagIds, setLinks, setFavorite, lastCookedOf }),
+    ...bindFirst(db, { linksOf, favoritesOf, knownTagIds, setLinks, setFavorite }),
     recipesOf: async (familyId: string) =>
       db.select().from(recipes).where(eq(recipes.familyId, familyId)).all(),
-    ...cookCalls(db),
+    async countOf(familyId: string): Promise<number> {
+      const row = await db
+        .select({ count: count() })
+        .from(recipes)
+        .where(eq(recipes.familyId, familyId))
+        .get();
+
+      return row?.count ?? 0;
+    },
     tagsOf: async (familyId: string) =>
       db.select().from(recipeTags).where(eq(recipeTags.familyId, familyId)).all(),
     find: async (target: RecipeTarget) => db.select().from(recipes).where(ofRecipe(target)).get(),

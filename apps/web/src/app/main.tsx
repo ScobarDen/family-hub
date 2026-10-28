@@ -156,8 +156,6 @@ const recipes = reatomRecipesScreen({
   liveVersion: () => live.versionOf("recipes"),
   deviceCache,
   telegram,
-  today,
-  timeZone: zone,
   preparePhoto: prepare,
   photoHint: photoStorage.uploadHint,
   slide: slideScreens,

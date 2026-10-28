@@ -26,19 +26,9 @@ const lasagna: Recipe = {
   isFavorite: false,
   canDelete: true,
   createdAt: 0,
-  cookedCount: 0,
-  lastCookedAt: null,
-  cooks: [],
 };
 
 const borscht: Recipe = { ...lasagna, id: "recipe-2", title: "Борщ", tags: [] };
-
-const cookedLasagna: Recipe = {
-  ...lasagna,
-  cookedCount: 1,
-  lastCookedAt: Date.parse("2026-10-18T09:00:00Z"),
-  cooks: [{ id: "cook-1", at: Date.parse("2026-10-18T09:00:00Z"), memberName: "Ася", isOwn: true }],
-};
 
 function replyOf(url: URL, method: string, body: unknown): unknown {
   if (url.pathname.endsWith("/share")) {
@@ -68,7 +58,6 @@ type Launch = {
   failing?: string;
   unreachable?: string;
   held?: string;
-  opened?: Recipe;
   popup?: string;
   device?: FakeDeviceStorage;
   book?: Recipe[];
@@ -99,7 +88,6 @@ function startRecipes({
   failing,
   unreachable,
   held,
-  opened,
   popup = "confirm",
   device = fakeDeviceStorage(),
   book = [borscht, lasagna],
@@ -124,7 +112,7 @@ function startRecipes({
     }
 
     if (request === "GET /api/recipes/recipe-1") {
-      return Response.json(opened ?? lasagna);
+      return Response.json(lasagna);
     }
 
     if (request === "GET /api/recipes") {
@@ -155,8 +143,6 @@ function startRecipes({
     },
     preparePhoto: async (file) => ({ file, takenAt: null }),
     photoHint: () => "Загрузка фото выключена",
-    today: () => "2026-10-21",
-    timeZone: () => "Europe/Moscow",
     deviceCache: reatomDeviceCache(device.deviceStorage),
     slide,
   });
@@ -341,79 +327,12 @@ describe("the Family's tags", () => {
   });
 });
 
-describe("cooking a Recipe", () => {
-  test("lists what was cooked longest ago once asked", async () => {
-    const { model, requests } = startRecipes();
-
-    await listed(model);
-    model.toggleForgotten();
-    await vi.waitFor(() => {
-      expect(requests.map(({ request }) => request)).toContain("GET /api/recipes?sort=forgotten");
-    });
-
-    expect(model.ordering()).toBe("forgotten");
-  });
-
-  test("marks today as now and an earlier day at its midday", async () => {
-    const { model, requests } = startRecipes();
-
-    await listed(model);
-    model.open("recipe-1");
-    await vi.waitFor(() => {
-      expect(model.screen().kind).toBe("recipe");
-    });
-    model.chooseCookDay("2026-10-21");
-    model.cook();
-    await vi.waitFor(() => {
-      expect(model.canCook()).toBe(true);
-    });
-    model.chooseCookDay("2026-10-18");
-    model.cook();
-    await vi.waitFor(() => {
-      expect(requests.filter(({ request }) => request.endsWith("/cooked"))).toHaveLength(2);
-    });
-
-    expect(
-      requests.filter(({ request }) => request.endsWith("/cooked")).map(({ body }) => body),
-    ).toEqual([{ cookedAt: null }, { cookedAt: Date.parse("2026-10-18T09:00:00Z") }]);
-  });
-
-  test.each([
-    { popup: "confirm", isDeleted: true },
-    { popup: "cancel", isDeleted: false },
-  ])(
-    "takes a «Приготовили» mark away only once confirmed: $popup",
-    async ({ popup, isDeleted }) => {
-      const { model, requests } = startRecipes({ popup });
-
-      await listed(model);
-      model.open("recipe-1");
-      await vi.waitFor(() => {
-        expect(model.screen().kind).toBe("recipe");
-      });
-      model.uncook("cook-1");
-      await sleep(0);
-      await vi.waitFor(() => {
-        expect(model.canCook()).toBe(true);
-      });
-
-      expect(requests.some(({ request }) => request.startsWith("DELETE"))).toBe(isDeleted);
-    },
-  );
-});
-
 async function openLasagna(model: Model) {
   await listed(model);
   model.open("recipe-1");
   await vi.waitFor(() => {
     expect(model.screen().kind).toBe("recipe");
   });
-}
-
-function cooksOf(model: Model) {
-  const screen = model.screen();
-
-  return screen.kind === "recipe" ? screen.recipe.cooks.length : undefined;
 }
 
 function tagNames(model: Model) {
@@ -423,31 +342,6 @@ function tagNames(model: Model) {
 }
 
 const writes = [
-  {
-    name: "Cooked",
-    request: "POST /api/recipes/recipe-1/cooked",
-    act: async (model: Model) => {
-      await openLasagna(model);
-      model.cook();
-    },
-    observe: cooksOf,
-    before: 0,
-    after: 1,
-    felt: ["success"],
-  },
-  {
-    name: "taking a Cooked mark away",
-    request: "DELETE /api/recipes/recipe-1/cooked/cook-1",
-    opened: cookedLasagna,
-    act: async (model: Model) => {
-      await openLasagna(model);
-      model.uncook("cook-1");
-    },
-    observe: cooksOf,
-    before: 1,
-    after: 0,
-    felt: ["warning"],
-  },
   {
     name: "deleting a Recipe",
     request: "DELETE /api/recipes/recipe-1",
@@ -476,9 +370,9 @@ const writes = [
   },
 ];
 
-describe.each(writes)("$name", ({ request, opened, act, observe, before, after, felt: tap }) => {
+describe.each(writes)("$name", ({ request, act, observe, before, after, felt: tap }) => {
   test("shows before the server answers, with one pulse", async () => {
-    const { model, felt } = startRecipes({ held: request, opened });
+    const { model, felt } = startRecipes({ held: request });
 
     await act(model);
     await vi.waitFor(() => {
@@ -498,7 +392,7 @@ describe.each(writes)("$name", ({ request, opened, act, observe, before, after, 
   ])(
     "rolls back with the failure bar and an error pulse when $option",
     async ({ option, said }) => {
-      const { model, felt } = startRecipes({ [option]: request, opened });
+      const { model, felt } = startRecipes({ [option]: request });
 
       await act(model);
       await vi.waitFor(() => {

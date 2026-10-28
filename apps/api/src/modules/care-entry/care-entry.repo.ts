@@ -50,6 +50,7 @@ async function petsOf(db: Db, familyId: string) {
       name: pets.name,
       archivedAt: pets.archivedAt,
       avatarPhotoId: pets.avatarPhotoId,
+      birthDate: pets.birthDate,
     })
     .from(pets)
     .where(eq(pets.familyId, familyId))

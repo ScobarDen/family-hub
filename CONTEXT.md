@@ -142,10 +142,6 @@ _Avoid_: Dish, post, entry
 A Family-defined label that groups Recipes, such as «завтрак» or «для гостей».
 _Avoid_: Category, hashtag
 
-**Cooked**:
-A mark a Member puts on a Recipe each time the Family cooks it; it records who and when.
-_Avoid_: Made, done, prepared
-
 ### Savings
 
 **Savings Goal**:

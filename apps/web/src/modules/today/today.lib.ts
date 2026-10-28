@@ -1,7 +1,7 @@
 import { type FeedUpcoming, type SlotModule, type TodayTiles } from "@family-hub/contract";
 
 import { formatCount, type CountWords } from "@/common/format-count";
-import { formatNearDate } from "@/common/format-date";
+import { formatNearDate, formatShortAge } from "@/common/format-date";
 import { sectionTitles } from "@/common/sections";
 
 export type DueRow = {
@@ -89,9 +89,13 @@ function tile(module: SlotModule, fields: Partial<Omit<Tile, "module">> = {}): T
 
 type Tiles = TodayTiles;
 
-function petTile({ activeCount, only }: NonNullable<Tiles["pet"]>): Tile {
+function petTile({ activeCount, only }: NonNullable<Tiles["pet"]>, today: string): Tile {
   if (only !== null) {
-    return tile("pet", { title: only.name, picture: only.picture ?? undefined });
+    return tile("pet", {
+      title: only.name,
+      value: only.birthDate === null ? undefined : formatShortAge(only.birthDate, today),
+      picture: only.picture ?? undefined,
+    });
   }
 
   return activeCount === 0
@@ -122,7 +126,7 @@ const tileOf: {
       note: tasksNoteOf({ overdue, week }),
       isAlert: overdue > 0,
     }),
-  pet: petTile,
+  pet: (read, today) => petTile(read, today),
   goals: ({ nearest }) =>
     tile("goals", {
       value: nearest === null ? undefined : `${nearest.percent}%`,
@@ -133,7 +137,7 @@ const tileOf: {
       value: counted(photos),
       note: photos === 0 ? undefined : "фото за неделю",
     }),
-  recipes: ({ lastCooked }) => tile("recipes", { note: lastCooked?.title }),
+  recipes: ({ count }) => tile("recipes", { value: counted(count) }),
 };
 
 function readOrBare<Read>(

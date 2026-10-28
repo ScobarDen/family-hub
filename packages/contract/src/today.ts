@@ -14,7 +14,12 @@ export const todayTiles = z.object({
     .object({
       activeCount: z.number(),
       only: z
-        .object({ petId: z.string(), name: z.string(), picture: z.string().nullable() })
+        .object({
+          petId: z.string(),
+          name: z.string(),
+          picture: z.string().nullable(),
+          birthDate: z.iso.date().nullable(),
+        })
         .nullable(),
     })
     .nullable(),
@@ -24,9 +29,7 @@ export const todayTiles = z.object({
     })
     .nullable(),
   albums: z.object({ photos: z.number() }).nullable(),
-  recipes: z
-    .object({ lastCooked: z.object({ recipeId: z.string(), title: z.string() }).nullable() })
-    .nullable(),
+  recipes: z.object({ count: z.number() }).nullable(),
 });
 
 export type TodayTiles = z.infer<typeof todayTiles>;

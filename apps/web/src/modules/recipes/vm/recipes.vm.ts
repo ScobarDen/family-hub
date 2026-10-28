@@ -47,7 +47,6 @@ import {
   type RecipeItem,
 } from "../recipes.lib.ts";
 import { reatomRecipesData, type RecipesData } from "../recipes.model.ts";
-import { reatomRecipeCooks } from "./recipe-cooks.vm.ts";
 import { reatomRecipeForm } from "./recipe-form.vm.ts";
 import { reatomTagEditing } from "./recipe-tags.vm.ts";
 
@@ -98,8 +97,6 @@ type RecipesDependencies = LiveVersion & {
     };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
-  today: () => string;
-  timeZone: () => string;
   slide?: Slide;
 };
 
@@ -138,14 +135,10 @@ function reatomScreen({
   data,
   navigation,
   opened,
-  today,
-  timeZone,
 }: {
   data: RecipesData;
   navigation: Navigation;
   opened: Opened;
-  today: () => string;
-  timeZone: () => string;
 }) {
   return computed((): RecipesScreen => {
     const tags = data.tags.data() ?? [];
@@ -159,7 +152,7 @@ function reatomScreen({
     if (navigation.openedId() !== undefined && recipe !== undefined) {
       return {
         kind: "recipe",
-        recipe: toRecipeDetails(recipe, { today: today(), timeZone: timeZone() }),
+        recipe: toRecipeDetails(recipe),
         checked: [...navigation.checked()],
       };
     }
@@ -403,7 +396,6 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     dismissFailure: failure.dismiss,
     ...reatomRecipeActions(dependencies, { data, navigation, opened, failure }),
     ...reatomTagEditing(dependencies, { data, failure }),
-    ...reatomRecipeCooks(dependencies, { data, opened, failure }),
     ...reatomMoves({ navigation, opened, form, slide: dependencies.slide ?? instantly }),
     back: reatomBack(navigation, dependencies.telegram),
   };

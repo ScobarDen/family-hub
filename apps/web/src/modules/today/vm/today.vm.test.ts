@@ -15,7 +15,7 @@ const quiet: Today["tiles"] = {
   pet: { activeCount: 0, only: null },
   goals: { nearest: null },
   albums: { photos: 0 },
-  recipes: { lastCooked: null },
+  recipes: { count: 0 },
 };
 
 function taskDue(index: number, date: string): Extract<FeedUpcoming, { kind: "task" }> {
@@ -417,7 +417,7 @@ describe("the section tiles", () => {
         pet: { activeCount: 2, only: null },
         goals: { nearest: { goalId: "goal-1", title: "Диван", percent: 25 } },
         albums: { photos: 4 },
-        recipes: { lastCooked: { recipeId: "recipe-1", title: "Борщ" } },
+        recipes: { count: 12 },
       },
     });
 
@@ -429,7 +429,7 @@ describe("the section tiles", () => {
       { module: "pet", title: "Питомцы", value: "2", note: undefined, isAlert: false },
       { module: "goals", title: "Цели", value: "25%", note: "Диван", isAlert: false },
       { module: "albums", title: "Альбомы", value: "4", note: "фото за неделю", isAlert: false },
-      { module: "recipes", title: "Рецепты", value: undefined, note: "Борщ", isAlert: false },
+      { module: "recipes", title: "Рецепты", value: "12", note: undefined, isAlert: false },
     ]);
   });
 
@@ -441,14 +441,19 @@ describe("the section tiles", () => {
     });
   });
 
-  test("show the only Pet's avatar on its tile and on its birthday", async () => {
+  test("show the only Pet's avatar and age on its tile and its avatar on its birthday", async () => {
     const { model } = startToday({
       due: [{ ...birthday, petPicture: "/photos/avatar/thumb" }],
       tiles: {
         ...quiet,
         pet: {
           activeCount: 1,
-          only: { petId: "pet-1", name: "Бьюик", picture: "/photos/avatar/thumb" },
+          only: {
+            petId: "pet-1",
+            name: "Бьюик",
+            picture: "/photos/avatar/thumb",
+            birthDate: "2022-05-14",
+          },
         },
       },
     });
@@ -456,6 +461,7 @@ describe("the section tiles", () => {
     await vi.waitFor(() => {
       expect(model.tiles()[1]).toMatchObject({
         title: "Бьюик",
+        value: "4\u00A0года 5\u00A0мес.",
         picture: "https://api.family-hub.test/photos/avatar/thumb",
       });
     });
@@ -464,7 +470,10 @@ describe("the section tiles", () => {
 
   test.each([
     {
-      pet: { activeCount: 1, only: { petId: "pet-1", name: "Бьюик", picture: null } },
+      pet: {
+        activeCount: 1,
+        only: { petId: "pet-1", name: "Бьюик", picture: null, birthDate: null },
+      },
       opened: { kind: "pet", petId: "pet-1" },
     },
     { pet: { activeCount: 0, only: null }, opened: { kind: "new-pet" } },

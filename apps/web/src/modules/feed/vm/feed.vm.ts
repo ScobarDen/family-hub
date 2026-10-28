@@ -32,8 +32,7 @@ export type FeedTarget =
   | { kind: "pet"; petId: string }
   | { kind: "care-entry"; petId: string; entryId: string }
   | { kind: "goal"; goalId: string }
-  | { kind: "album"; albumId: string }
-  | { kind: "recipe"; recipeId: string };
+  | { kind: "album"; albumId: string };
 
 export type FeedDependencies = LiveVersion & {
   api: FeedApi;
@@ -50,7 +49,6 @@ export const feedFilters: Array<{ value: FeedFilter; title: string }> = [
   { value: "pet", title: "Питомцы" },
   { value: "goals", title: "Цели" },
   { value: "albums", title: "Альбомы" },
-  { value: "recipes", title: "Рецепты" },
 ];
 
 function petTargetOf(item: Extract<FeedItem, { petId: string }>): FeedTarget {
@@ -70,10 +68,6 @@ function targetOf(item: FeedItem): FeedTarget | undefined {
 
   if (item.kind === "upload") {
     return { kind: "album", albumId: item.albumId };
-  }
-
-  if (item.kind === "cooked") {
-    return { kind: "recipe", recipeId: item.recipeId };
   }
 
   return item.kind === "joined" ? undefined : petTargetOf(item);

@@ -64,13 +64,6 @@ const feedActivity = z.discriminatedUnion("kind", [
   }),
   z.object({ kind: z.literal("task"), ...done, title: z.string(), taskId: z.string() }),
   z.object({ kind: z.literal("goal"), ...done, title: z.string(), goalId: z.string() }),
-  z.object({
-    kind: z.literal("cooked"),
-    ...done,
-    ...withPhotos,
-    title: z.string(),
-    recipeId: z.string(),
-  }),
   z.object({ kind: z.literal("joined"), ...done }),
 ]);
 

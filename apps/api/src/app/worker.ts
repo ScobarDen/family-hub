@@ -64,7 +64,6 @@ import {
   photoStorageRoute,
 } from "@/modules/photo-storage";
 import {
-  createRecipeFeed,
   createRecipeRepo,
   createRecipeService,
   createRecipeTile,
@@ -191,7 +190,6 @@ function feedServiceOf(
       createCareFeed({ entries: createCareEntryRepo(db), links }),
       taskFeed,
       createGoalFeed({ goals: createGoalRepo(db) }),
-      createRecipeFeed({ recipes: createRecipeRepo(db), links }),
       createAlbumFeed({ albums: createAlbumRepo(db), links }),
       createFamilyFeed({ families: createFamilyRepo(db) }),
     ],

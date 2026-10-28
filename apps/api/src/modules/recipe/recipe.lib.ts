@@ -1,6 +1,6 @@
 import type { InlineQueryResult } from "@grammyjs/types";
 
-import type { Cooked, Photo, Recipe, RecipeTag } from "@family-hub/contract";
+import type { Photo, Recipe, RecipeTag } from "@family-hub/contract";
 
 import type { RecipeRow } from "./recipe.repo.ts";
 
@@ -8,7 +8,6 @@ export type RecipeParts = {
   tags: RecipeTag[];
   photos: Photo[];
   isFavorite: boolean;
-  cooks: Cooked[];
 };
 
 function ingredientsOf(text: string): string[] {
@@ -31,8 +30,6 @@ export function toRecipe(
     ...parts,
     canDelete: row.createdBy === memberId,
     createdAt: row.createdAt,
-    cookedCount: parts.cooks.length,
-    lastCookedAt: parts.cooks[0]?.at ?? null,
   };
 }
 
@@ -52,18 +49,6 @@ export function isFoundBy(row: RecipeRow, text: string | undefined): boolean {
 
 export function byTitle(left: Recipe, right: Recipe): number {
   return left.title.localeCompare(right.title, "ru-RU");
-}
-
-export function byForgotten(left: Recipe, right: Recipe): number {
-  if (left.lastCookedAt === right.lastCookedAt) {
-    return byTitle(left, right);
-  }
-
-  if (left.lastCookedAt === null || right.lastCookedAt === null) {
-    return left.lastCookedAt === null ? -1 : 1;
-  }
-
-  return left.lastCookedAt - right.lastCookedAt;
 }
 
 const captionMaxLength = 1024;

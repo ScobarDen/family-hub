@@ -71,7 +71,11 @@ async function complete(
   });
 }
 
-async function addPet(worker: Worker, name: string): Promise<Pet> {
+async function addPet(
+  worker: Worker,
+  name: string,
+  { birthDate = null }: { birthDate?: string | null } = {},
+): Promise<Pet> {
   const response = await request(worker, denis, {
     method: "POST",
     path: "/api/pets",
@@ -80,7 +84,7 @@ async function addPet(worker: Worker, name: string): Promise<Pet> {
       species: "dog",
       breed: null,
       sex: null,
-      birthDate: null,
+      birthDate,
       chipNumber: null,
       notes: null,
     },
@@ -288,7 +292,7 @@ describe("the section tiles", () => {
       pet: { activeCount: 0, only: null },
       goals: { nearest: null },
       albums: { photos: 0 },
-      recipes: { lastCooked: null },
+      recipes: { count: 0 },
     });
   });
 
@@ -339,16 +343,16 @@ describe("the section tiles", () => {
     expect(await tileOf(worker, "tasks", asya)).toEqual({ open: 2, overdue: 1, week: 0 });
   });
 
-  test("name the only Pet in care and leave out an Archived one", async () => {
+  test("name the only Pet in care with its birth date and leave out an Archived one", async () => {
     const worker = await startWithFamily();
-    const buick = await addPet(worker, "Бьюик");
+    const buick = await addPet(worker, "Бьюик", { birthDate: "2022-05-14" });
     const old = await addPet(worker, "Рыжик");
 
     await request(worker, denis, { method: "POST", path: `/api/pets/${old.id}/archive` });
 
     expect(await tileOf(worker, "pet")).toEqual({
       activeCount: 1,
-      only: { petId: buick.id, name: "Бьюик", picture: null },
+      only: { petId: buick.id, name: "Бьюик", picture: null, birthDate: "2022-05-14" },
     });
   });
 
@@ -396,26 +400,13 @@ describe("the section tiles", () => {
     expect(await tileOf(worker, "albums")).toEqual({ photos: 2 });
   });
 
-  test("show the Recipe cooked last", async () => {
+  test("count the Family's Recipes", async () => {
     const worker = await startWithFamily();
 
-    const lasagna = await addRecipe(worker, "Лазанья");
-    const borscht = await addRecipe(worker, "Борщ");
+    await addRecipe(worker, "Лазанья");
+    await addRecipe(worker, "Борщ");
 
-    for (const [recipe, at] of [
-      [borscht, "2026-09-30T18:00:00Z"],
-      [lasagna, "2026-09-20T18:00:00Z"],
-    ] as const) {
-      await request(worker, denis, {
-        method: "POST",
-        path: `/api/recipes/${recipe.id}/cooked`,
-        body: { cookedAt: Date.parse(at) },
-      });
-    }
-
-    expect(await tileOf(worker, "recipes")).toEqual({
-      lastCooked: { recipeId: borscht.id, title: "Борщ" },
-    });
+    expect(await tileOf(worker, "recipes")).toEqual({ count: 2 });
   });
 });
 

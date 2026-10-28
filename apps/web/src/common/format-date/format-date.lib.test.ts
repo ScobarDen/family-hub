@@ -7,6 +7,7 @@ import {
   formatDayTime,
   formatNearDate,
   formatPickedValue,
+  formatShortAge,
   formatTimeZone,
 } from "./format-date.lib.ts";
 
@@ -47,6 +48,15 @@ test.each([
   ["2026-10-01", "меньше месяца"],
 ])("tells the age of someone born on %s", (birthDate, age) => {
   expect(formatAge(birthDate, "2026-10-11")).toBe(age);
+});
+
+test.each([
+  ["2023-08-01", "3\u00A0года 2\u00A0мес."],
+  ["2016-10-11", "10\u00A0лет"],
+  ["2026-05-11", "5\u00A0мес."],
+  ["2026-10-01", "меньше месяца"],
+])("tells the age in years and months on a tile for someone born on %s", (birthDate, age) => {
+  expect(formatShortAge(birthDate, "2026-10-11")).toBe(age);
 });
 
 test("counts a year only once the birthday has come", () => {
