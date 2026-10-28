@@ -1,11 +1,12 @@
 import {
   action,
-  type AtomLike,
+  type Atom,
   type AtomState,
   type Ext,
   isPersistRecord,
   type PersistRecord,
   reatomPersist,
+  withInit,
   wrap,
 } from "@reatom/core";
 import { z } from "zod";
@@ -108,7 +109,7 @@ function reatomCachePersist(device: Device | undefined) {
     },
   });
 
-  return { withPersist, reads };
+  return { withPersist, reads, shown };
 }
 
 // Reading an atom starts its key's read; Reatom applies the value a few promise turns later.
@@ -127,8 +128,13 @@ function reatomWhenRead(reads: ReadonlySet<Promise<unknown>>) {
   }, "deviceCache.whenRead");
 }
 
-function reatomWithDeviceCache(withPersist: ReturnType<typeof reatomCachePersist>["withPersist"]) {
-  return function withDeviceCache<Target extends AtomLike>({
+type Resets = Map<string, () => void>;
+
+function reatomWithDeviceCache(
+  withPersist: ReturnType<typeof reatomCachePersist>["withPersist"],
+  resets: Resets,
+) {
+  return function withDeviceCache<Target extends Atom>({
     key,
     schema,
     version,
@@ -140,22 +146,46 @@ function reatomWithDeviceCache(withPersist: ReturnType<typeof reatomCachePersist
     // undefined leaves the copy already on the device.
     cachedPart?: (state: AtomState<Target>) => AtomState<Target> | undefined;
   }): Ext<Target> {
-    return withPersist<Target, AtomState<Target> | undefined>({
-      key,
-      contract: schema,
-      version,
-      time: keptForMs,
-      toSnapshot: cachedPart,
-    });
+    return (target) => {
+      let initial: AtomState<Target>;
+
+      resets.set(key, () => target.set(initial));
+
+      return target.extend(
+        withInit((state: AtomState<Target>) => {
+          initial = state;
+
+          return state;
+        }),
+        withPersist<Target, AtomState<Target> | undefined>({
+          key,
+          contract: schema,
+          version,
+          time: keptForMs,
+          toSnapshot: cachedPart,
+        }),
+      );
+    };
   };
 }
 
 export function reatomDeviceCache(storage: DeviceStorage | undefined) {
   const device = storage === undefined ? undefined : reatomDeviceStorage(storage);
-  const { withPersist, reads } = reatomCachePersist(device);
+  const { withPersist, reads, shown } = reatomCachePersist(device);
+  const resets: Resets = new Map();
 
+  // Atoms already showing the old owner's copy go back to their start, so no screen keeps it.
   const clear = action(async () => {
-    withPersist.storageAtom().cache.clear();
+    for (const [key, reset] of resets) {
+      if (shown.has(key)) {
+        reset();
+      }
+    }
+
+    shown.clear();
+    const records = withPersist.storageAtom();
+
+    await wrap(Promise.all([...resets.keys()].map(async (key) => records.clear?.({ key }))));
     await wrap(device?.clear());
   }, "deviceCache.clear");
 
@@ -175,7 +205,7 @@ export function reatomDeviceCache(storage: DeviceStorage | undefined) {
   }, "deviceCache.keepFor");
 
   return {
-    withDeviceCache: reatomWithDeviceCache(withPersist),
+    withDeviceCache: reatomWithDeviceCache(withPersist, resets),
     keepFor,
     clear,
     whenRead: reatomWhenRead(reads),

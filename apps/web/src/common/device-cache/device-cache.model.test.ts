@@ -1,4 +1,4 @@
-import { computed, context, noop, sleep, withAsyncData, wrap } from "@reatom/core";
+import { computed, context, noop, withAsyncData, wrap } from "@reatom/core";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { z } from "zod";
 
@@ -149,13 +149,15 @@ describe("device cache", () => {
     const device = fakeDeviceStorage();
 
     await launchLoaded(device);
+    const written = device.items.get("chores");
+
     vi.setSystemTime(Date.now() + 20 * day);
     const shown = relaunch(device);
 
     await vi.waitFor(() => {
       expect(shown.list.data()).toEqual(chores);
     });
-    await sleep(0);
+    expect(device.items.get("chores")).toBe(written);
     vi.setSystemTime(Date.now() + 11 * day);
     const { list, read } = relaunch(device);
 
@@ -222,7 +224,7 @@ describe("device cache", () => {
     await vi.waitFor(() => {
       expect(skipped.list.data()).toEqual(["Сварить борщ"]);
     });
-    await sleep(0);
+    await stored(device);
     const { list } = relaunch(device);
 
     await vi.waitFor(() => {
@@ -237,7 +239,6 @@ describe("device cache", () => {
     await vi.waitFor(() => {
       expect(list.data()).toEqual(chores);
     });
-    await sleep(0);
     const relaunched = relaunch(device);
 
     await relaunched.read();
@@ -283,6 +284,36 @@ describe("device cache owner", () => {
     const { list, read } = relaunch(device);
 
     await read();
+    expect(list.data()).toBeUndefined();
+  });
+
+  test("forgets the data already shown from another Family's cache", async () => {
+    const device = fakeDeviceStorage();
+    const { cache } = launch(device);
+
+    await cache.keepFor(denis);
+    await launchLoaded(device);
+    const invited = relaunch(device);
+
+    await vi.waitFor(() => {
+      expect(invited.list.data()).toEqual(chores);
+    });
+    await invited.cache.keepFor({ ...denis, familyId: "family-2" });
+
+    expect(invited.list.data()).toBeUndefined();
+  });
+
+  test("forgets the data already shown when the cache is cleared", async () => {
+    const device = fakeDeviceStorage();
+
+    await launchLoaded(device);
+    const { cache, list } = relaunch(device);
+
+    await vi.waitFor(() => {
+      expect(list.data()).toEqual(chores);
+    });
+    await cache.clear();
+
     expect(list.data()).toBeUndefined();
   });
 
