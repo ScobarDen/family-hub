@@ -1,4 +1,5 @@
 import { reatomComponent } from "@reatom/react";
+import { RotateCw } from "lucide-react";
 
 import { PersonAvatar, SectionItem } from "@/common/ui";
 
@@ -11,7 +12,12 @@ export const Family = reatomComponent(({ model }: FamilyProps) => {
   const isBusy = model.isBusy();
 
   if (loadFailure !== undefined) {
-    return <SectionItem title={loadFailure} />;
+    return (
+      <>
+        <SectionItem title={loadFailure} />
+        <SectionItem icon={RotateCw} title="Повторить" onClick={model.retry} />
+      </>
+    );
   }
 
   return model.members().map((member) => (

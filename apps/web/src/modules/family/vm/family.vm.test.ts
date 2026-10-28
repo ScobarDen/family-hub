@@ -44,7 +44,7 @@ function fakeBackend(replies: Record<string, unknown> = {}) {
       : Response.json(reply);
   }
 
-  return { fetch, requests };
+  return { fetch, requests, answers };
 }
 
 function fakeTelegram(choices: string[] = []) {
@@ -151,6 +151,20 @@ describe("the Family's Members in the Profile", () => {
     await vi.waitFor(() => {
       expect(model.loadFailure()).toBe("Не получилось загрузить участников.");
     });
+  });
+
+  test("loads the list again on retry", async () => {
+    const backend = fakeBackend({ "GET /api/family/members": new TypeError("Failed to fetch") });
+    const { model } = startFamily({ backend });
+
+    await vi.waitFor(() => {
+      expect(model.loadFailure()).toBeDefined();
+    });
+    backend.answers["GET /api/family/members"] = members;
+    model.retry();
+
+    await loaded(model);
+    expect(model.loadFailure()).toBeUndefined();
   });
 });
 

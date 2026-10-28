@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { Invite, InviteCreated, InviteList } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
-import { fakeHaptics } from "@/common/telegram";
+import { fakeHaptics, type PopupParams } from "@/common/telegram";
 
 import { createInvitesApi } from "../invites.api.ts";
 import { reatomInvites } from "./invites.vm.ts";
@@ -47,7 +47,7 @@ function fakeBackend({
   return { fetch, requests };
 }
 
-function fakeTelegram({ canShareMessage = true } = {}) {
+function fakeTelegram({ canShareMessage = true, choice = "confirm" } = {}) {
   const calls: string[] = [];
 
   return {
@@ -59,6 +59,11 @@ function fakeTelegram({ canShareMessage = true } = {}) {
     },
     openTelegramLink(url: string) {
       calls.push(`openTelegramLink ${url}`);
+    },
+    async showPopup({ title }: PopupParams) {
+      calls.push(`showPopup ${title ?? ""}`);
+
+      return choice;
     },
     haptics: fakeHaptics(),
     calls,
@@ -160,17 +165,34 @@ describe("inviting", () => {
 });
 
 describe("revoking", () => {
-  test("removes the Invite at once", async () => {
+  test("asks first and removes the Invite once confirmed", async () => {
     const backend = fakeBackend();
-    const model = startInvites(backend);
+    const telegram = fakeTelegram();
+    const model = startInvites(backend, telegram);
 
     await loaded(model);
     model.revoke("invite-1");
 
-    expect(model.invites()).toEqual([]);
     await vi.waitFor(() => {
       expect(backend.requests).toContain("DELETE /api/invites/invite-1");
     });
+    expect(telegram.calls).toEqual(["showPopup Отозвать приглашение?"]);
+    expect(telegram.haptics.felt).toEqual(["warning"]);
+    expect(model.invites()).toEqual([]);
+  });
+
+  test("keeps the Invite when the confirmation is dismissed", async () => {
+    const backend = fakeBackend();
+    const model = startInvites(backend, fakeTelegram({ choice: "cancel" }));
+
+    await loaded(model);
+    model.revoke("invite-1");
+    await vi.waitFor(() => {
+      expect(model.isRevoking()).toBe(false);
+    });
+
+    expect(backend.requests).not.toContain("DELETE /api/invites/invite-1");
+    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
   });
 
   test("puts the Invite back when revoking fails", async () => {
@@ -180,9 +202,9 @@ describe("revoking", () => {
     model.revoke("invite-1");
 
     await vi.waitFor(() => {
-      expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
+      expect(model.failure()).toBe("Не получилось отозвать приглашение. Попробуйте ещё раз.");
     });
-    expect(model.failure()).toBe("Не получилось отозвать приглашение. Попробуйте ещё раз.");
+    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
   });
 
   test("keeps it removed when it was already gone on the server", async () => {
