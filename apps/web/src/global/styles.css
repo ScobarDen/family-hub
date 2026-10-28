@@ -212,6 +212,15 @@
     @apply border-border outline-ring;
   }
 
+  /* Keeps a focused row above the fixed tab bar and the failure / undo bar, the room home.view.tsx pads for. */
+  html {
+    scroll-padding-bottom: calc(var(--safe-area-bottom) + 6rem);
+  }
+
+  html:has([data-undo]) {
+    scroll-padding-bottom: calc(var(--safe-area-bottom) + 10rem);
+  }
+
   body {
     @apply bg-background font-sans text-foreground tabular-nums antialiased;
   }

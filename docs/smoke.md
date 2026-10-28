@@ -97,6 +97,15 @@ With a keyboard in Telegram Desktop or the browser, then with VoiceOver and Talk
 - [ ] A refused photo deletion shows its failure bar over the open viewer, read once; «Скрыть» there dismisses it.
 - [ ] The Command Sheet opens as a dialog «Команда» with focus on «Закрыть»; Tab stays inside it; Escape closes it like «×» (a pending draft is dropped) and focus returns to the microphone.
 
+### Keyboard focus
+
+With a keyboard in Telegram Desktop or the browser, in the light and the dark theme.
+
+- [ ] Tab shows a solid ring with a small gap around every button (a filled «Сохранить» and a red «Удалить» too), input, text area, date and time field and switch; it stands out on the card and on the grey page.
+- [ ] The time zone select in the Member's settings shows the ring when Tab reaches it.
+- [ ] Tapping or clicking any of them shows no ring; text fields and date fields may show it, as the browser decides for anything that takes typing.
+- [ ] Tabbing down to the last row of a long Feed or Recipes list scrolls it fully above the tab bar; with an undo or failure bar on screen, fully above that bar too.
+
 ### Date and time fields
 
 Each item on iOS and Android, in the light and the dark theme.

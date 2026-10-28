@@ -32,7 +32,7 @@ export const PickerInput = reatomComponent(
     return (
       <div
         className={cn(
-          "relative flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-input bg-transparent px-3 text-base transition-colors focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30",
+          "relative flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-input bg-transparent px-3 text-base transition-colors has-[input:focus-visible]:border-ring has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-2 has-disabled:opacity-50 has-aria-invalid:border-destructive has-aria-invalid:ring-3 has-aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30",
           className,
         )}
       >
