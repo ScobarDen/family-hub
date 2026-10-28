@@ -1,7 +1,6 @@
 import { Hono, type Context } from "hono";
 
 import {
-  cookedChange,
   recipeChange,
   recipeFavorite,
   recipeTagChange,
@@ -39,16 +38,6 @@ const refuse = refusalsOf<RecipeRefusal>({
   "photo-not-found": {
     code: "PHOTO_NOT_FOUND",
     message: "Attach photos uploaded to the Family, at most ten",
-    status: httpStatus.badRequest,
-  },
-  "cooked-not-found": {
-    code: "COOKED_NOT_FOUND",
-    message: "No such «Приготовили» on this Recipe",
-    status: httpStatus.notFound,
-  },
-  "cooked-in-future": {
-    code: "COOKED_IN_FUTURE",
-    message: "A Recipe is marked cooked for a moment gone by",
     status: httpStatus.badRequest,
   },
 });
@@ -105,7 +94,6 @@ export const recipeRoute = new Hono<RecipeEnv>()
         text: context.req.query("q"),
         tagId: context.req.query("tag"),
         isFavorite: context.req.query("favorite") === "true",
-        sort: context.req.query("sort") === "forgotten" ? "forgotten" : "title",
       }),
     ),
   )
@@ -166,28 +154,5 @@ export const recipeRoute = new Hono<RecipeEnv>()
           context.req.valid("json").isFavorite,
         ),
       ),
-  )
-  .post(
-    "/api/recipes/:id/cooked",
-    jsonBody(cookedChange, "A Recipe needs a title; a tag needs a name"),
-    async (context) =>
-      reply(
-        context,
-        await context.var.recipes.cook(
-          context.var.membership,
-          context.req.param("id"),
-          context.req.valid("json").cookedAt,
-        ),
-      ),
-  )
-  .delete("/api/recipes/:id/cooked/:cookId", async (context) =>
-    reply(
-      context,
-      await context.var.recipes.uncook(
-        context.var.membership,
-        context.req.param("id"),
-        context.req.param("cookId"),
-      ),
-    ),
   )
   .route("/", tagRoute);

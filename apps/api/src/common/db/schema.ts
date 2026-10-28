@@ -571,6 +571,7 @@ export const recipeFavorites = sqliteTable(
   (table) => [primaryKey({ columns: [table.recipeId, table.memberId] })],
 );
 
+// shortcut: nothing reads «Приготовили» marks any more, but the Worker before this release does; drop the table in the next release (expand/contract).
 export const recipeCooks = sqliteTable(
   "recipe_cooks",
   {

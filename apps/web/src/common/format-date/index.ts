@@ -6,6 +6,7 @@ export {
   formatDayTime,
   formatNearDate,
   formatPickedValue,
+  formatShortAge,
   formatShortDate,
   formatTimeZone,
   today,

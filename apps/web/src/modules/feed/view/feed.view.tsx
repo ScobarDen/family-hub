@@ -2,7 +2,6 @@ import { reatomComponent } from "@reatom/react";
 import {
   Cake,
   CircleCheck,
-  CookingPot,
   Images,
   ListTodo,
   PawPrint,
@@ -35,7 +34,6 @@ const icons: Record<FeedRow["kind"], LucideIcon> = {
   care: PawPrint,
   goal: PiggyBank,
   upload: Images,
-  cooked: CookingPot,
   done: CircleCheck,
   joined: UserPlus,
 };

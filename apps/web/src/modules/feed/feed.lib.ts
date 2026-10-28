@@ -3,7 +3,7 @@ import { dateInZone, timeInZone } from "@family-hub/recurrence";
 
 import { formatNearDate } from "@/common/format-date";
 
-export type FeedFilter = "all" | "tasks" | "pet" | "goals" | "albums" | "recipes";
+export type FeedFilter = "all" | "tasks" | "pet" | "goals" | "albums";
 
 export type FeedItem = FeedUpcoming | FeedActivity;
 
@@ -36,7 +36,6 @@ const modules: Record<FeedItem["kind"], FeedFilter> = {
   care: "pet",
   goal: "goals",
   upload: "albums",
-  cooked: "recipes",
   joined: "all",
 };
 
@@ -67,17 +66,13 @@ function titleOf(item: FeedActivity): string {
     return `${item.memberName} теперь в семье`;
   }
 
-  if (item.kind === "cooked") {
-    return `${item.memberName} приготовил(а) ${item.title}`;
-  }
-
   return item.kind === "upload"
     ? `${item.memberName} добавил(а) ${item.photoCount} фото в «${item.albumTitle}»`
     : item.title;
 }
 
 function photosOf(item: FeedActivity): Pick<FeedRow, "photos" | "morePhotos"> {
-  return item.kind === "care" || item.kind === "upload" || item.kind === "cooked"
+  return item.kind === "care" || item.kind === "upload"
     ? { photos: item.photos, morePhotos: item.photoCount - item.photos.length }
     : { photos: [], morePhotos: 0 };
 }
@@ -90,9 +85,7 @@ function activityRow(item: FeedActivity, timeZone: string): FeedRow {
     kind: item.kind === "task" ? "done" : item.kind,
     title: titleOf(item),
     subtitle:
-      item.kind === "joined" || item.kind === "upload" || item.kind === "cooked"
-        ? time
-        : `${item.memberName} · ${time}`,
+      item.kind === "joined" || item.kind === "upload" ? time : `${item.memberName} · ${time}`,
     isOverdue: false,
     canComplete: false,
     ...photosOf(item),

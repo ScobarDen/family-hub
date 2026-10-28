@@ -92,6 +92,19 @@ export function formatAge(birthDate: string, onDate: string): string {
   return age.months > 0 ? countOf(age.months, months) : "меньше месяца";
 }
 
+// Years and months for a small tile; a number keeps its unit on its line when the value wraps.
+export function formatShortAge(birthDate: string, onDate: string): string {
+  const age = Temporal.PlainDate.from(birthDate).until(onDate, { largestUnit: "years" });
+  const parts = [
+    age.years > 0 ? countOf(age.years, years) : undefined,
+    age.months > 0 ? `${age.months} мес.` : undefined,
+  ].filter((part) => part !== undefined);
+
+  return parts.length === 0
+    ? "меньше месяца"
+    : parts.map((part) => part.replace(" ", "\u00A0")).join(" ");
+}
+
 export type PickerType = "date" | "time" | "datetime-local";
 
 const notChosen: Record<PickerType, string> = {

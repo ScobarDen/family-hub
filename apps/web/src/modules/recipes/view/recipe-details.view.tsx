@@ -6,8 +6,6 @@ import { Section, SectionItem, SectionLayout } from "@/common/ui";
 
 import type { RecipeDetails as RecipeDetailsData } from "../recipes.lib.ts";
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
-import { CookForm } from "./cook-form.view.tsx";
-import { RecipeCooked } from "./recipe-cooked.view.tsx";
 import { RecipeIngredients } from "./recipe-ingredients.view.tsx";
 
 type DetailsProps = { model: RecipesScreenModel; recipe: RecipeDetailsData; checked: number[] };
@@ -32,7 +30,6 @@ function tabsOf({ model, recipe, checked }: DetailsProps) {
         </Section>
       ),
     },
-    { key: "cooked", title: "История", content: <RecipeCooked model={model} recipe={recipe} /> },
   ];
 }
 
@@ -68,20 +65,16 @@ export const RecipeDetails = reatomComponent((props: DetailsProps) => {
     <>
       <SectionLayout
         summary={
-          <>
-            <PhotoThumbs
-              className="flex gap-1 overflow-x-auto px-4 pb-3"
-              thumbClassName="size-28 rounded-lg"
-              resolution="medium"
-              photos={recipe.photos}
-              onOpen={(photoId) => {
-                model.viewer.open(recipe.photos, photoId);
-              }}
-            />
-            <p className="px-5 pb-4 text-subhead text-muted-foreground">{recipe.cookedSummary}</p>
-          </>
+          <PhotoThumbs
+            className="flex gap-1 overflow-x-auto px-4 pb-3"
+            thumbClassName="size-28 rounded-lg"
+            resolution="medium"
+            photos={recipe.photos}
+            onOpen={(photoId) => {
+              model.viewer.open(recipe.photos, photoId);
+            }}
+          />
         }
-        action={<CookForm model={model} />}
         tabs={tabsOf(props)}
       />
       <RecipeActions model={model} recipe={recipe} />

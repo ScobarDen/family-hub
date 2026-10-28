@@ -16,14 +16,13 @@ export type RecipeQuery = {
   text: string;
   tagId: string | undefined;
   isFavorite: boolean;
-  sort: "title" | "forgotten";
 };
 
 function resolved(client: HttpClient, saved: Recipe): Recipe {
   return { ...saved, photos: saved.photos.map((each) => resolvedPhoto(each, client.url)) };
 }
 
-function queryOf({ text, tagId, isFavorite, sort }: RecipeQuery): string {
+function queryOf({ text, tagId, isFavorite }: RecipeQuery): string {
   const params = new URLSearchParams();
 
   if (text.trim() !== "") {
@@ -36,10 +35,6 @@ function queryOf({ text, tagId, isFavorite, sort }: RecipeQuery): string {
 
   if (isFavorite) {
     params.set("favorite", "true");
-  }
-
-  if (sort === "forgotten") {
-    params.set("sort", "forgotten");
   }
 
   const query = params.toString();
@@ -92,10 +87,6 @@ export function createRecipesApi(client: HttpClient) {
       }),
     setFavorite: async (recipeId: string, isFavorite: boolean) =>
       one(`/api/recipes/${recipeId}/favorite`, { method: "PUT", body: { isFavorite } }),
-    cook: async (recipeId: string, cookedAt: number | null) =>
-      one(`/api/recipes/${recipeId}/cooked`, { method: "POST", body: { cookedAt } }),
-    uncook: async (recipeId: string, cookId: string) =>
-      one(`/api/recipes/${recipeId}/cooked/${cookId}`, { method: "DELETE" }),
     ...tagCalls(client),
     ...createPhotoCalls(client),
   };

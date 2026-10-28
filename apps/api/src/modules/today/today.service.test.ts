@@ -24,7 +24,7 @@ function tilesWith(failing: keyof TileSources): TileSources {
     pet: { tile: async () => ({ activeCount: 0, only: null }) },
     goals: { tile: async () => ({ nearest: null }) },
     albums: { tile: async () => ({ photos: 3 }) },
-    recipes: { tile: async () => ({ lastCooked: null }) },
+    recipes: { tile: async () => ({ count: 0 }) },
   };
 
   return { ...tiles, [failing]: { tile: async () => Promise.reject(new Error("D1 is down")) } };
