@@ -32,11 +32,13 @@ Bring up the Worker, the Mini App and the tunnel on the dev bot as in [docs/dev.
 
 ### Reminder buttons
 
+- [ ] A Task's Reminder shows «✅ Готово» (green) · «⏰ Отложить» in the first row and «Открыть» in the second, in Telegram on iOS, Android and desktop.
 - [ ] «✅ Готово» closes the Reminder for everyone and edits the other Recipients' messages.
 - [ ] «⏰ Отложить» postpones only the pressing Recipient's copy; a new message arrives after the delay (move the clock with a manual tick).
 - [ ] A button pressed by someone who is not that message's Recipient changes nothing and shows an alert.
 - [ ] «⏰ Отложить» comes back in an hour for a timed Task and in a day for a Task without a time.
 - [ ] A Pet-linked Task's Reminder also has «📝 Записать»: it opens the Mini App, completes that Occurrence and opens a Care Entry for the Pet.
+- [ ] «Открыть» opens the Mini App on that Task, from a private chat and from a group the Reminder was forwarded to.
 
 ### Voice and commands
 

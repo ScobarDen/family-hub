@@ -32,18 +32,28 @@ export function parseCallback(data: string | undefined) {
       };
 }
 
-// One set for every Reminder; a Pet-linked Task adds «Записать», which the Mini App opens on.
+// One set for every Reminder; a Task adds «Открыть», a Pet-linked one also «Записать», both as
+// url buttons because web_app buttons work only in private chats.
 export function reminderButtons(
   dispatchId: string,
-  { recordUrl }: { recordUrl?: string } = {},
+  { recordUrl, openUrl }: { recordUrl?: string; openUrl?: string } = {},
 ): InlineKeyboardMarkup {
+  const links = [
+    ...(recordUrl === undefined ? [] : [{ text: "📝 Записать", url: recordUrl }]),
+    ...(openUrl === undefined ? [] : [{ text: "Открыть", url: openUrl }]),
+  ];
+
   return {
     inline_keyboard: [
       [
-        { text: "✅ Готово", callback_data: `${callbackPrefix}:done:${dispatchId}` },
+        {
+          text: "✅ Готово",
+          callback_data: `${callbackPrefix}:done:${dispatchId}`,
+          style: "success",
+        },
         { text: "⏰ Отложить", callback_data: `${callbackPrefix}:snooze:${dispatchId}` },
       ],
-      ...(recordUrl === undefined ? [] : [[{ text: "📝 Записать", url: recordUrl }]]),
+      ...(links.length === 0 ? [] : [links]),
     ],
   };
 }
