@@ -1,5 +1,6 @@
 import { context } from "@reatom/core";
-import { beforeEach, describe, expect, test } from "vite-plus/test";
+import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import {
@@ -10,6 +11,10 @@ import {
 } from "@/common/telegram";
 
 import { reatomHomeScreen } from "./home-screen.vm.ts";
+
+function storedIn<Value>(device: FakeDeviceStorage, key: string, schema: z.ZodType<Value>) {
+  return z.object({ data: schema }).safeParse(JSON.parse(device.items.get(key) ?? "{}")).data?.data;
+}
 
 async function launch(
   device: FakeDeviceStorage,
@@ -22,12 +27,20 @@ async function launch(
     deviceCache: reatomDeviceCache(device.deviceStorage),
   });
 
+  const launched = (storedIn(device, "home-screen.launches", z.number()) ?? 0) + 1;
+  const wasOffered = storedIn(device, "home-screen.offered", z.boolean()) ?? false;
+
   await model.countLaunch();
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
+  const offers = telegram.calls.filter((call) => call === "addToHomeScreen");
+
+  await vi.waitFor(() => {
+    expect(storedIn(device, "home-screen.launches", z.number())).toBe(launched);
+    expect(storedIn(device, "home-screen.offered", z.boolean()) ?? false).toBe(
+      wasOffered || offers.length > 0,
+    );
   });
 
-  return { model, offers: telegram.calls.filter((call) => call === "addToHomeScreen") };
+  return { model, offers };
 }
 
 async function launchTimes(device: FakeDeviceStorage, times: number) {
@@ -62,6 +75,17 @@ describe("the Add to Home Screen offer", () => {
     const { offers } = await launch(device, { status: "added" });
 
     expect(offers).toEqual([]);
+  });
+
+  test("comes on a later launch when the app was not missing on the fifth", async () => {
+    const device = fakeDeviceStorage();
+
+    await launchTimes(device, 4);
+    await launch(device, { status: "unsupported" });
+    const sixth = await launch(device);
+    const seventh = await launch(device);
+
+    expect([sixth.offers, seventh.offers]).toEqual([["addToHomeScreen"], []]);
   });
 });
 

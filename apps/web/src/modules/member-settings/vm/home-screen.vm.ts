@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { DeviceCache } from "@/common/device-cache";
 import type { HomeScreen, HomeScreenStatus } from "@/common/telegram";
 
-const offeredOnLaunch = 5;
+const offeredFromLaunch = 5;
 
 type HomeScreenDependencies = {
   telegram: HomeScreen;
@@ -18,6 +18,9 @@ export function reatomHomeScreen({ telegram, deviceCache }: HomeScreenDependenci
   const launches = atom(0, "homeScreen.launches").extend(
     deviceCache.withDeviceCache({ key: "home-screen.launches", schema: z.number(), version: 1 }),
   );
+  const wasOffered = atom(false, "homeScreen.wasOffered").extend(
+    deviceCache.withDeviceCache({ key: "home-screen.offered", schema: z.boolean(), version: 1 }),
+  );
 
   return {
     entry: computed(
@@ -30,11 +33,12 @@ export function reatomHomeScreen({ telegram, deviceCache }: HomeScreenDependenci
       telegram.addToHomeScreen();
     }, "homeScreen.add"),
     countLaunch: action(async () => {
-      await wrap(deviceCache.whenRead([launches]));
+      await wrap(deviceCache.whenRead([launches, wasOffered]));
       launches.set(launches() + 1);
       status.set(await wrap(telegram.checkHomeScreenStatus()));
 
-      if (launches() === offeredOnLaunch && status() === "missed") {
+      if (launches() >= offeredFromLaunch && status() === "missed" && !wasOffered()) {
+        wasOffered.set(true);
         telegram.addToHomeScreen();
       }
     }, "homeScreen.countLaunch"),
