@@ -7,7 +7,7 @@ type ChipProps = ComponentProps<"button"> & { isSelected?: boolean };
 // A file pick shaped as a chip takes the same classes as the chip itself.
 export function chipClass(isSelected: boolean): string {
   return cn(
-    "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
+    "inline-flex min-h-8 max-w-full min-w-0 shrink-0 items-center gap-1.5 rounded-full px-3.5 py-1.5 text-left text-sm wrap-anywhere font-medium transition-[color,background-color,scale] duration-150 ease-out motion-safe:enabled:active:scale-96",
     isSelected
       ? "bg-foreground text-background"
       : "bg-[color-mix(in_oklch,var(--foreground)_7%,transparent)] text-foreground",

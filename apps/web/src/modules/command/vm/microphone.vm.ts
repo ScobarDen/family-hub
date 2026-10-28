@@ -3,13 +3,13 @@ import { action, atom, computed, noop, wrap } from "@reatom/core";
 import { voiceMaxSeconds } from "@family-hub/contract";
 
 import { readOnly } from "@/common/state";
-import type { HapticImpact } from "@/common/telegram";
+import type { Haptics } from "@/common/telegram";
 import type { Recording, VoiceRecorder } from "@/common/voice-recorder";
 
 type MicrophoneDependencies = {
   recorder: VoiceRecorder;
   telegram: {
-    haptic: (impact: HapticImpact) => void;
+    haptics: Pick<Haptics, "impact" | "warning">;
     disableVerticalSwipes: () => void;
     enableVerticalSwipes: () => void;
     openTelegramLink: (url: string) => void;
@@ -60,7 +60,12 @@ function reatomFinish(dependencies: MicrophoneDependencies, current: RecordingSt
     current.state.set("idle");
     current.elapsed.set(0);
     dependencies.telegram.enableVerticalSwipes();
-    dependencies.telegram.haptic("light");
+
+    if (shouldSend) {
+      dependencies.telegram.haptics.impact("light");
+    } else {
+      dependencies.telegram.haptics.warning();
+    }
 
     if (recording === undefined) {
       return;
@@ -128,10 +133,11 @@ function reatomStart(
     } else if (current.letting() === "holding") {
       current.recording.set(started);
       current.state.set("recording");
-      dependencies.telegram.haptic("medium");
+      dependencies.telegram.haptics.impact("medium");
       count(started).catch(noop);
     } else {
       started.cancel();
+      dependencies.telegram.haptics.warning();
       current.hint.set(current.letting() === "released" ? holdHint : undefined);
     }
   }, "microphone.start");

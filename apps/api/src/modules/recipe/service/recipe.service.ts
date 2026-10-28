@@ -7,11 +7,21 @@ import type { RecipeDependencies } from "../recipe.types.ts";
 import { cook, uncook } from "./cooked.service.ts";
 import { list } from "./recipe-read.service.ts";
 import { create, current, remove, setFavorite, update } from "./recipe-write.service.ts";
+import { share } from "./share.service.ts";
 import { addTag, removeTag, renameTag, tags } from "./tag.service.ts";
 
 export function createRecipeService(dependencies: RecipeDependencies) {
   return {
-    ...bindFirst(dependencies, { list, get: current, create, remove, tags, addTag, removeTag }),
+    ...bindFirst(dependencies, {
+      list,
+      get: current,
+      create,
+      remove,
+      share,
+      tags,
+      addTag,
+      removeTag,
+    }),
     update: async (membership: Membership, recipeId: string, change: RecipeChange) =>
       update(dependencies, membership, { recipeId, change }),
     setFavorite: async (membership: Membership, recipeId: string, isFavorite: boolean) =>

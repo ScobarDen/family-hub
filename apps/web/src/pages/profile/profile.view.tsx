@@ -3,9 +3,11 @@ import { Family, FamilyExit, type FamilyModel } from "@/modules/family";
 import { Invites, type InvitesModel } from "@/modules/invites";
 import {
   DigestSetting,
+  HomeScreenSetting,
   NotificationsSetting,
   TimeZone,
   type DigestModel,
+  type HomeScreenModel,
   type NotificationsModel,
   type TimeZoneModel,
 } from "@/modules/member-settings";
@@ -17,6 +19,7 @@ type ProfilePageProps = {
   notifications: NotificationsModel;
   timeZone: TimeZoneModel;
   digest: DigestModel;
+  homeScreen: HomeScreenModel;
   family: FamilyModel;
   invites: InvitesModel;
   photoStorage: PhotoStorageModel;
@@ -28,6 +31,7 @@ export function ProfilePage({
   notifications,
   timeZone,
   digest,
+  homeScreen,
   family,
   invites,
   photoStorage,
@@ -41,6 +45,9 @@ export function ProfilePage({
       </Section>
       <Section title="Время">
         <TimeZone model={timeZone} />
+      </Section>
+      <Section title="Приложение">
+        <HomeScreenSetting model={homeScreen} />
       </Section>
       <Section title="Семья">
         <Family model={family} />

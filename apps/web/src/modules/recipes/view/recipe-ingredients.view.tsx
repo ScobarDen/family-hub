@@ -18,6 +18,7 @@ export const RecipeIngredients = reatomComponent(
           key={index}
           icon={checked.includes(index) ? CircleCheck : Circle}
           title={ingredient}
+          isPressed={checked.includes(index)}
           onClick={() => {
             model.toggleIngredient(index);
           }}

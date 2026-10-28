@@ -28,8 +28,8 @@ export const FamilyRequestForm = reatomComponent(({ model }: FamilyRequestFormPr
           placeholder="Например, Гущины"
         />
         <FieldError>{model.failure()}</FieldError>
-        <Button type="submit" size="lg" disabled={isSubmitting}>
-          {isSubmitting ? "Отправляем…" : "Отправить заявку"}
+        <Button type="submit" size="lg" isPending={isSubmitting}>
+          Отправить заявку
         </Button>
         <Button type="button" size="lg" variant="ghost" onClick={model.back}>
           Назад

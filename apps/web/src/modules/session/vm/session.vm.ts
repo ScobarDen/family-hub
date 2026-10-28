@@ -3,7 +3,12 @@ import { action, computed, noop, reatomBoolean } from "@reatom/core";
 import type { CurrentMember, FamilyRequestStatus } from "@family-hub/contract";
 
 import type { SessionApi } from "../session.api.ts";
-import { reatomSignIn, type SignInOutcome } from "../session.model.ts";
+import {
+  reatomShell,
+  reatomSignIn,
+  type SessionCache,
+  type SignInOutcome,
+} from "../session.model.ts";
 
 export type SessionScreen =
   | { kind: "signing-in" }
@@ -17,19 +22,22 @@ export type SessionScreen =
 
 type SessionDependencies = {
   api: SessionApi;
-  telegram: { initData: string; showAlert: (message: string) => void };
+  telegram: {
+    initData: string;
+    startParam: string | undefined;
+    showAlert: (message: string) => void;
+  };
   isJoiningFamily: () => boolean;
+  deviceCache: SessionCache;
 };
 
-function screenOf(outcome: SignInOutcome | undefined): SessionScreen {
-  if (outcome === undefined) {
-    return { kind: "signing-in" };
-  }
+function memberScreenOf({ member, family }: CurrentMember): SessionScreen {
+  return { kind: "member", memberName: member.name, familyName: family.name };
+}
 
+function screenOf(outcome: SignInOutcome): SessionScreen {
   if (outcome.status === "member") {
-    const { member, family } = outcome.member;
-
-    return { kind: "member", memberName: member.name, familyName: family.name };
+    return memberScreenOf(outcome.member);
   }
 
   if (outcome.status === "stranger") {
@@ -41,12 +49,14 @@ function screenOf(outcome: SignInOutcome | undefined): SessionScreen {
 
 type ScreenSources = Pick<SessionDependencies, "api" | "isJoiningFamily"> & {
   signIn: ReturnType<typeof reatomSignIn>;
+  shell: () => CurrentMember | undefined;
   isRequestingFamily: () => boolean;
 };
 
 function currentScreen({
   api,
   signIn,
+  shell,
   isJoiningFamily,
   isRequestingFamily,
 }: ScreenSources): SessionScreen {
@@ -58,8 +68,22 @@ function currentScreen({
     return { kind: "join-family" };
   }
 
-  if (signIn.error() !== undefined) {
-    return { kind: "failed" };
+  return signIn.error() === undefined
+    ? answeredScreen({ signIn, shell, isRequestingFamily })
+    : { kind: "failed" };
+}
+
+function answeredScreen({
+  signIn,
+  shell,
+  isRequestingFamily,
+}: Pick<ScreenSources, "signIn" | "shell" | "isRequestingFamily">): SessionScreen {
+  const outcome = signIn.data();
+
+  if (outcome === undefined) {
+    const cached = shell();
+
+    return cached === undefined ? { kind: "signing-in" } : memberScreenOf(cached);
   }
 
   // A repeated sign-in after joining a Family must not flash the stranger screen.
@@ -67,34 +91,49 @@ function currentScreen({
     return { kind: "signing-in" };
   }
 
-  const screen = screenOf(signIn.data());
+  const screen = screenOf(outcome);
 
   return screen.kind === "stranger" && isRequestingFamily() ? { kind: "family-request" } : screen;
 }
 
-export function reatomSession({ api, telegram, isJoiningFamily }: SessionDependencies) {
-  const signIn = reatomSignIn({ api, initData: telegram.initData });
+// Until sign-in answers, the shell's Member.
+function reatomMember({ signIn, shell }: Pick<ScreenSources, "signIn" | "shell">) {
+  return computed((): CurrentMember | undefined => {
+    const outcome = signIn.data();
+
+    if (outcome === undefined) {
+      return shell();
+    }
+
+    return outcome.status === "member" ? outcome.member : undefined;
+  }, "session.member");
+}
+
+export function reatomSession({
+  api,
+  telegram,
+  isJoiningFamily,
+  deviceCache,
+}: SessionDependencies) {
+  const { cachedMember, shell } = reatomShell({ deviceCache, startParam: telegram.startParam });
+  const signIn = reatomSignIn({ api, initData: telegram.initData, deviceCache, cachedMember });
   const isRequestingFamily = reatomBoolean(false, "session.isRequestingFamily");
   const familyRequestStatus = computed((): FamilyRequestStatus | undefined => {
     const outcome = signIn.data();
 
     return outcome?.status === "stranger" ? outcome.familyRequest : undefined;
   }, "session.familyRequestStatus");
-
-  const member = computed((): CurrentMember | undefined => {
-    const outcome = signIn.data();
-
-    return outcome?.status === "member" ? outcome.member : undefined;
-  }, "session.member");
+  const member = reatomMember({ signIn, shell });
 
   return {
     familyRequestStatus,
     member,
+    isSignedIn: computed(() => signIn.data()?.status === "member", "session.isSignedIn"),
     memberName: computed(() => member()?.member.name ?? "", "session.memberName"),
     familyName: computed(() => member()?.family.name ?? "", "session.familyName"),
 
     screen: computed(
-      () => currentScreen({ api, signIn, isJoiningFamily, isRequestingFamily }),
+      () => currentScreen({ api, signIn, shell, isJoiningFamily, isRequestingFamily }),
       "session.screen",
     ),
 

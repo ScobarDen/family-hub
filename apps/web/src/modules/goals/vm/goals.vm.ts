@@ -4,20 +4,47 @@ import {
   type Atom,
   type BooleanAtom,
   computed,
+  noop,
   reatomBoolean,
   withAsync,
   wrap,
 } from "@reatom/core";
 
-import type { FamilyMember, Goal, GoalOutcome, MovementKind } from "@family-hub/contract";
+import type {
+  FamilyMember,
+  Goal,
+  GoalOutcome,
+  MovementChange,
+  MovementKind,
+} from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import { formatRubles } from "@/common/format-money";
 import type { LiveVersion } from "@/common/live-updates";
-import { detached } from "@/common/state";
-import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
+import {
+  detached,
+  instantly,
+  reatomOptimistic,
+  reatomRollbackFailure,
+  type RollbackFailure,
+  type Slide,
+} from "@/common/state";
+import {
+  type ClosingConfirmation,
+  type Confirmation,
+  type Dialogs,
+  isConfirmed,
+  type Haptics,
+} from "@/common/telegram";
 
 import type { GoalsApi } from "../goals.api.ts";
-import { sectionsOf, toDetails, type GoalDetails, type GoalSections } from "../goals.lib.ts";
+import {
+  sectionsOf,
+  toDetails,
+  withoutMovement,
+  type GoalDetails,
+  type GoalSections,
+} from "../goals.lib.ts";
 import { reatomGoals, type GoalsModel } from "../goals.model.ts";
 import { reatomGoalForm } from "./goal-form.vm.ts";
 import { reatomMovementForm } from "./movement-form.vm.ts";
@@ -33,10 +60,11 @@ export type GoalsScreen =
 type GoalsDependencies = {
   api: GoalsApi;
   goals: GoalsModel;
-  telegram: Pick<Dialogs, "showPopup">;
+  telegram: Pick<Dialogs, "showPopup"> & ClosingConfirmation & { haptics: Haptics };
   self: () => string | undefined;
   today: () => string;
   timeZone: () => string;
+  slide?: Slide;
 };
 
 type Navigation = {
@@ -59,12 +87,31 @@ const outcomeQuestions: Record<GoalOutcome, Confirmation> = {
   },
 };
 
-function reatomForms(dependencies: GoalsDependencies, navigation: Navigation) {
+const refusal = "Не получилось сохранить. Баланс цели не может уйти в минус.";
+
+function reatomAdding({ api, goals }: GoalsDependencies, failure: RollbackFailure) {
+  return reatomOptimistic(
+    async (before: Goal, change: MovementChange, shown: Goal) => {
+      goals.keep(shown);
+      goals.keep(await wrap(api.addMovement(before.id, change)));
+    },
+    { name: "goals.addMovement", failure, refusal },
+  );
+}
+
+function reatomForms(
+  dependencies: GoalsDependencies,
+  navigation: Navigation,
+  failure: RollbackFailure,
+) {
   const { editing, openedGoalId, isCelebrating } = navigation;
+  const adding = reatomAdding(dependencies, failure);
 
   return {
     goalForm: reatomGoalForm({
       ...dependencies,
+      haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
       onSaved: (saved) => {
         editing.set(undefined);
         openedGoalId.set(saved.id);
@@ -73,9 +120,14 @@ function reatomForms(dependencies: GoalsDependencies, navigation: Navigation) {
     // Reaching the target with this very movement sets off the salute.
     movementForm: reatomMovementForm({
       ...dependencies,
+      haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
       onSaved: (before, saved) => {
         editing.set(undefined);
         isCelebrating.set(!before.isAchieved && saved.isAchieved);
+      },
+      onAdding: (before, change, shown) => {
+        adding(before, change, shown).catch(noop);
       },
     }),
   };
@@ -135,32 +187,41 @@ function reatomCompletion(dependencies: GoalsDependencies, openedGoal: () => Goa
   }, "goals.complete").extend(withAsync());
 }
 
-function reatomRemoval(dependencies: GoalsDependencies, openedGoal: () => Goal | undefined) {
-  return action(async (movementId: string) => {
-    const goal = openedGoal();
-    const isSure =
-      goal !== undefined &&
-      (await wrap(
-        isConfirmed(dependencies.telegram, {
-          title: "Удалить запись?",
-          message: "Баланс цели пересчитается.",
-          button: "Удалить",
-        }),
-      ));
+function reatomRemoval(
+  dependencies: GoalsDependencies,
+  { openedGoal, failure }: { openedGoal: () => Goal | undefined; failure: RollbackFailure },
+) {
+  return reatomOptimistic(
+    async (movementId: string) => {
+      const goal = openedGoal();
+      const isSure =
+        goal !== undefined &&
+        (await wrap(
+          isConfirmed(dependencies.telegram, {
+            title: "Удалить запись?",
+            message: "Баланс цели пересчитается.",
+            button: "Удалить",
+          }),
+        ));
 
-    if (isSure) {
-      dependencies.goals.keep(
-        await wrap(dependencies.api.removeMovement({ goalId: goal.id, movementId })),
-      );
-    }
-  }, "goals.removeMovement").extend(withAsync());
+      if (isSure) {
+        dependencies.goals.keep(withoutMovement(goal, movementId));
+        dependencies.goals.keep(
+          await wrap(dependencies.api.removeMovement({ goalId: goal.id, movementId })),
+        );
+      }
+    },
+    { name: "goals.removeMovement", failure, refusal },
+  );
 }
 
-function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation) {
+function reatomBrowsing({ editing, openedGoalId, isCelebrating }: Navigation, slide: Slide) {
   return {
     open: action((goalId: string) => {
-      openedGoalId.set(goalId);
-      isCelebrating.setFalse();
+      slide("forward", () => {
+        openedGoalId.set(goalId);
+        isCelebrating.setFalse();
+      });
     }, "goals.open"),
     back: action(() => {
       if (editing() === undefined) {
@@ -226,8 +287,34 @@ function titleOf(screen: GoalsScreen): string {
   return "Цели";
 }
 
+// Which screen is shown, apart from the data it shows, so a renamed Goal keeps focus where it is.
+function reatomScreenKey({ editing, openedGoalId }: Navigation, { goalForm, movementForm }: Forms) {
+  return computed(() => {
+    const current = editing();
+    const isCreating = current === "goal" ? goalForm.isCreating() : movementForm.isCreating();
+
+    return current === undefined
+      ? (openedGoalId() ?? "list")
+      : `${current}:${isCreating ? "new" : "edit"}`;
+  }, "goals.screenKey");
+}
+
 type GoalsInput = Omit<GoalsDependencies, "goals"> &
-  LiveVersion & { members: { data: () => FamilyMember[] | undefined } };
+  LiveVersion & {
+    members: { data: () => FamilyMember[] | undefined };
+    deviceCache: Pick<DeviceCache, "withDeviceCache">;
+  };
+
+// A Goal opened by id shows once the list holds it; a loaded list without it means it is gone.
+function reatomOpenedGoalState({ goals }: GoalsDependencies, openedGoal: () => Goal | undefined) {
+  return computed((): "loading" | "opened" | "missing" => {
+    if (openedGoal() !== undefined) {
+      return "opened";
+    }
+
+    return goals.list.data() === undefined ? "loading" : "missing";
+  }, "goals.openedGoalState");
+}
 
 export function reatomGoalsScreen(input: GoalsInput) {
   const dependencies: GoalsDependencies = { ...input, goals: reatomGoals(input) };
@@ -240,32 +327,29 @@ export function reatomGoalsScreen(input: GoalsInput) {
     () => dependencies.goals.list.data()?.goals.find(({ id }) => id === navigation.openedGoalId()),
     "goals.openedGoal",
   );
-  const forms = reatomForms(dependencies, navigation);
+  const failure = reatomRollbackFailure("goals.failure", dependencies.telegram.haptics);
+  const forms = reatomForms(dependencies, navigation, failure);
   const screen = reatomScreen(dependencies, navigation, { ...forms, openedGoal });
   const complete = reatomCompletion(dependencies, openedGoal);
-  const removeMovement = reatomRemoval(dependencies, openedGoal);
+  const removeMovement = reatomRemoval(dependencies, { openedGoal, failure });
 
   return {
     screen,
     title: computed(() => titleOf(screen()), "goals.title"),
+    screenKey: reatomScreenKey(navigation, forms),
     retry: dependencies.goals.reload,
     canGoBack: computed(
       () => navigation.editing() !== undefined || openedGoal() !== undefined,
       "goals.canGoBack",
     ),
-    isChanging: computed(() => !complete.ready() || !removeMovement.ready(), "goals.isChanging"),
-    // A Goal opened by id shows once the list holds it; a loaded list without it means it is gone.
-    openedGoalState: computed((): "loading" | "opened" | "missing" => {
-      if (openedGoal() !== undefined) {
-        return "opened";
-      }
-
-      return dependencies.goals.list.data() === undefined ? "loading" : "missing";
-    }, "goals.openedGoalState"),
+    isChanging: computed(() => !complete.ready(), "goals.isChanging"),
+    failure: failure.failure,
+    dismissFailure: failure.dismiss,
+    openedGoalState: reatomOpenedGoalState(dependencies, openedGoal),
     complete: detached(complete, "goals.completeGoal"),
     removeMovement: detached(removeMovement, "goals.removeOneMovement"),
     ...forms,
-    ...reatomBrowsing(navigation),
+    ...reatomBrowsing(navigation, dependencies.slide ?? instantly),
     ...reatomEditing(navigation, { ...forms, openedGoal }),
   };
 }

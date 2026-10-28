@@ -2,9 +2,10 @@ import { action, computed, withAsync, withAsyncData, wrap } from "@reatom/core";
 
 import type { Invite, InviteCreated } from "@family-hub/contract";
 
-import { formatDay, type Viewer } from "@/common/format-date";
+import { formatDayTime, type Viewer } from "@/common/format-date";
 import { withoutId } from "@/common/records";
 import { detached, reatomFailure } from "@/common/state";
+import { type Dialogs, type Haptics, isConfirmed } from "@/common/telegram";
 
 import type { InvitesApi } from "../invites.api.ts";
 
@@ -16,6 +17,8 @@ type InvitesDependencies = {
     canShareMessage: boolean;
     shareMessage: (preparedMessageId: string) => Promise<boolean>;
     openTelegramLink: (url: string) => void;
+    showPopup: Dialogs["showPopup"];
+    haptics: Pick<Haptics, "error" | "warning">;
   };
   viewer: () => Viewer;
 };
@@ -30,8 +33,9 @@ function newestFirst(invites: Invite[]): Invite[] {
   return invites.toSorted((left, right) => right.expiresAt - left.expiresAt);
 }
 
+// The time keeps two Invites made on one day apart, «Отозвать» included.
 function toItem(invite: Invite, viewer: Viewer): InviteItem {
-  return { id: invite.id, title: `Приглашение до ${formatDay(invite.expiresAt, viewer)}` };
+  return { id: invite.id, title: `Приглашение до ${formatDayTime(invite.expiresAt, viewer)}` };
 }
 
 function reatomList(api: InvitesApi) {
@@ -60,8 +64,20 @@ function reatomCreate({ api, telegram, list }: Sources) {
   }, "invites.create").extend(withAsync());
 }
 
-function reatomRevoke({ api, list }: Sources) {
+function reatomRevoke({ api, telegram, list }: Sources) {
   return action(async (inviteId: string) => {
+    const isSure = await wrap(
+      isConfirmed(telegram, {
+        title: "Отозвать приглашение?",
+        message: "Ссылка перестанет работать. Чтобы позвать снова, понадобится новое приглашение.",
+        button: "Отозвать",
+      }),
+    );
+
+    if (!isSure) {
+      return;
+    }
+
     const revoked = list.data()?.find((invite) => invite.id === inviteId);
 
     list.data.set(withoutId(list.data() ?? [], inviteId));
@@ -85,10 +101,12 @@ export function reatomInvites(dependencies: InvitesDependencies) {
   const createFailure = reatomFailure(create, {
     message: "Не получилось создать приглашение. Попробуйте ещё раз.",
     name: "invites.createFailure",
+    haptics: dependencies.telegram.haptics,
   });
   const revokeFailure = reatomFailure(revoke, {
     message: "Не получилось отозвать приглашение. Попробуйте ещё раз.",
     name: "invites.revokeFailure",
+    haptics: dependencies.telegram.haptics,
   });
 
   return {

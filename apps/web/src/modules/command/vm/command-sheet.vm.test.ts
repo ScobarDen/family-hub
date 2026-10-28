@@ -13,6 +13,7 @@ import {
 } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { fakeBottomButton, fakeHaptics } from "@/common/telegram";
 
 import { createCommandApi } from "../command.api.ts";
 import {
@@ -132,12 +133,26 @@ function sheetOver(
   {
     onEdit = noop,
     onCreated = noop,
-  }: { onEdit?: (opened: OpenedDraft) => void; onCreated?: (created: DraftCreated) => void } = {},
+    telegram = {
+      mainButton: fakeBottomButton(),
+      secondaryButton: fakeBottomButton(),
+      haptics: fakeHaptics(),
+    },
+  }: {
+    onEdit?: (opened: OpenedDraft) => void;
+    onCreated?: (created: DraftCreated) => void;
+    telegram?: {
+      mainButton: ReturnType<typeof fakeBottomButton>;
+      secondaryButton: ReturnType<typeof fakeBottomButton>;
+      haptics: ReturnType<typeof fakeHaptics>;
+    };
+  } = {},
 ) {
   return reatomCommandSheet({
     api: createCommandApi(createHttpClient({ baseUrl: "https://api.test", fetch: backend.fetch })),
     members: { data: () => members },
     pets: { data: () => pets },
+    telegram,
     onEdit,
     onCreated,
   });
@@ -147,6 +162,11 @@ function startSheet(draft: TaskDraft = internet) {
   const backend = fakeBackend({ status: "draft", draftId: "draft-1", phrase, heard, draft });
   const edited: OpenedDraft[] = [];
   const created: DraftCreated[] = [];
+  const telegram = {
+    mainButton: fakeBottomButton(),
+    secondaryButton: fakeBottomButton(),
+    haptics: fakeHaptics(),
+  };
   const model = sheetOver(backend, {
     onEdit: (opened) => {
       edited.push(opened);
@@ -154,9 +174,12 @@ function startSheet(draft: TaskDraft = internet) {
     onCreated: (record) => {
       created.push(record);
     },
+    telegram,
   });
 
-  return { model, backend, edited, created };
+  model.start();
+
+  return { model, backend, edited, created, ...telegram, felt: telegram.haptics.felt };
 }
 
 async function sent(model: ReturnType<typeof reatomCommandSheet>) {
@@ -194,23 +217,26 @@ describe("the preview sheet", () => {
     });
   });
 
-  test("shows «Создано» at once and brings the draft back with the reason the server refused", async () => {
-    const { model, backend, created } = startSheet();
+  test("brings the draft back with the reason the server refused", async () => {
+    const { model, backend, created, mainButton, felt } = startSheet();
 
     await sent(model);
     backend.refuseCreate("RECIPIENTS_NOT_ALLOWED");
     model.create();
 
-    expect(model.sheet().kind).toBe("created");
+    expect(model.sheet()).toMatchObject({ kind: "draft", isCreating: true });
 
     await vi.waitFor(() => {
       expect(model.sheet()).toMatchObject({
         kind: "draft",
+        isCreating: false,
         error:
           "Не получилось создать: кого-то из получателей уже нет в семье. Выберите получателей в «Изменить».",
       });
     });
     expect(created).toEqual([]);
+    expect(felt).toEqual(["error"]);
+    expect(mainButton.states.at(-1)).toEqual({ text: "Создать", isInProgress: false });
   });
 
   test("brings the draft back with a general word when «Создать» fails for no stated reason", async () => {
@@ -225,8 +251,78 @@ describe("the preview sheet", () => {
     });
   });
 
-  test("tells the app what was created", async () => {
-    const { model, created } = startSheet();
+  test("shows Telegram's «Создать» and «Изменить» over a draft, with progress while creating", async () => {
+    const { model, mainButton, secondaryButton } = startSheet();
+
+    await sent(model);
+
+    await vi.waitFor(() => {
+      expect(mainButton.states.at(-1)).toEqual({ text: "Создать", isInProgress: false });
+    });
+    expect(secondaryButton.states.at(-1)).toEqual({ text: "Изменить", isInProgress: false });
+
+    mainButton.click();
+
+    await vi.waitFor(() => {
+      expect(model.sheet().kind).toBe("created");
+    });
+    expect(mainButton.states).toContainEqual({ text: "Создать", isInProgress: true });
+    expect(mainButton.states.at(-1)).toBeUndefined();
+    expect(secondaryButton.states.at(-1)).toBeUndefined();
+  });
+
+  test("creates once however often «Создать» is pressed while it runs", async () => {
+    const { model, backend, mainButton, secondaryButton, edited } = startSheet();
+
+    await sent(model);
+    mainButton.click();
+    mainButton.click();
+    model.create();
+    secondaryButton.click();
+
+    await vi.waitFor(() => {
+      expect(model.sheet().kind).toBe("created");
+    });
+    expect(backend.requests.filter((request) => request.endsWith("/create"))).toHaveLength(1);
+    expect(edited).toEqual([]);
+  });
+
+  test("hands «Изменить» from Telegram's button to the form", async () => {
+    const { model, secondaryButton, edited } = startSheet();
+
+    await sent(model);
+    secondaryButton.click();
+
+    expect(edited).toEqual([{ draftId: "draft-1", phrase, draft: internet }]);
+    expect(model.sheet().kind).toBe("closed");
+  });
+
+  test("keeps the buttons in the sheet on a client without Telegram's bottom buttons", async () => {
+    const backend = fakeBackend({
+      status: "draft",
+      draftId: "draft-1",
+      phrase,
+      heard,
+      draft: internet,
+    });
+    const mainButton = fakeBottomButton({ isAvailable: false });
+    const model = sheetOver(backend, {
+      telegram: {
+        mainButton,
+        secondaryButton: fakeBottomButton({ isAvailable: false }),
+        haptics: fakeHaptics(),
+      },
+    });
+
+    model.start();
+    await sent(model);
+
+    expect(model.hasNativeButtons).toBe(false);
+    expect(mainButton.states).toEqual([]);
+  });
+
+  test("tells the app what was created, with a success pulse", async () => {
+    const { model, created, felt } = startSheet();
 
     await sent(model);
     model.create();
@@ -234,7 +330,8 @@ describe("the preview sheet", () => {
     await vi.waitFor(() => {
       expect(created).toEqual([{ kind: "task", id: "task-1" }]);
     });
-    expect(model.sheet().kind).toBe("created");
+    expect(model.sheet()).toEqual({ kind: "created", message: "Дело создано" });
+    expect(felt).toEqual(["success"]);
   });
 
   test("offers no «Создать» to an incomplete draft and asks which Member was meant", async () => {

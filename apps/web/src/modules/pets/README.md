@@ -5,6 +5,7 @@ The pet tab: the Family's Pets, each one's card and its Pet Memo, with the `care
 ## Injected
 
 - `api` — `createPetsApi(httpClient)`: lists the Family's Pets, adds one, saves its card and its Pet Memo.
+- `deviceCache` — `common/device-cache`: the Pets of the last launch with their Pet Memo show at once and stay on screen through a failed refresh.
 - `pets` — `reatomPets({ api })`, the Pets themselves (`withAsyncData`, loaded once the tab bar or the tab subscribes). Its `tabTitle` goes to the tab bar; a saved Pet replaces its old copy in the list.
 - `careApi`, `now`, `telegram`, `preparePhoto`, `photoHint`, `onDraftSaved` — handed on to the `care` submodule (see its README).
 - `tasksOf`, `onOpenTask`, `onAddTask` — `tasksOf` is the Pet's Task rows from the `tasks` module (Overdue, today, upcoming and undated, already in order) for the card's «Дела» block, which adds «Просрочено» in words to an Overdue one. A tap opens the Task and «+» adds a Task for this Pet, both through the app's opener.

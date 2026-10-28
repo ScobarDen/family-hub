@@ -18,6 +18,14 @@ export type TelegramButton = {
   offClick(handler: () => void): void;
 };
 
+export type BottomButtonParams = { text?: string; is_visible?: boolean };
+
+export type BottomButton = TelegramButton & {
+  setParams(params: BottomButtonParams): void;
+  showProgress(): void;
+  hideProgress(): void;
+};
+
 export type PopupButton = {
   id: string;
   type?: "default" | "ok" | "close" | "cancel" | "destructive";
@@ -27,6 +35,19 @@ export type PopupButton = {
 export type PopupParams = { title?: string; message: string; buttons: PopupButton[] };
 
 export type HapticImpact = "light" | "medium" | "heavy" | "rigid" | "soft";
+
+export type HapticNotification = "success" | "warning" | "error";
+
+export type HomeScreenStatus = "unsupported" | "unknown" | "added" | "missed";
+
+type StorageCallback<Result> = (error: string | null, result?: Result) => void;
+
+export type DeviceStorage = {
+  setItem(key: string, value: string, callback?: StorageCallback<boolean>): void;
+  getItem(key: string, callback: StorageCallback<string | null>): void;
+  removeItem(key: string, callback?: StorageCallback<boolean>): void;
+  clear(callback?: StorageCallback<boolean>): void;
+};
 
 export type TelegramWebApp = {
   initData: string;
@@ -41,9 +62,22 @@ export type TelegramWebApp = {
   requestWriteAccess(callback?: (isAllowed: boolean) => void): void;
   shareMessage(preparedMessageId: string, callback?: (isSent: boolean) => void): void;
   openTelegramLink(url: string): void;
-  HapticFeedback: { impactOccurred(style: HapticImpact): void };
+  addToHomeScreen(): void;
+  checkHomeScreenStatus(callback?: (status: HomeScreenStatus) => void): void;
+  requestFullscreen(): void;
+  exitFullscreen(): void;
+  enableClosingConfirmation(): void;
+  disableClosingConfirmation(): void;
+  HapticFeedback: {
+    impactOccurred(style: HapticImpact): void;
+    notificationOccurred(type: HapticNotification): void;
+    selectionChanged(): void;
+  };
   enableVerticalSwipes(): void;
   disableVerticalSwipes(): void;
+  DeviceStorage: DeviceStorage;
+  MainButton: BottomButton;
+  SecondaryButton: BottomButton;
   BackButton: TelegramButton;
   SettingsButton: TelegramButton;
   onEvent(event: WebAppEvent, handler: () => void): void;

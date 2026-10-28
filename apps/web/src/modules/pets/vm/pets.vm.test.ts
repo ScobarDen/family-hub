@@ -1,4 +1,4 @@
-import { atom, context, noop } from "@reatom/core";
+import { atom, context, noop, sleep } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import {
@@ -10,8 +10,10 @@ import {
   type PetList,
 } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
+import { fakeDeviceStorage, fakeHaptics, fakeWindow } from "@/common/telegram";
 
 import { createPetsApi } from "../pets.api.ts";
 import type { PetTask } from "../pets.lib.ts";
@@ -77,7 +79,10 @@ function savedReply(request: string, body: unknown): Response {
   return Response.json({ ...buick, ...petProfile.parse(body), id: "pet-new" });
 }
 
-function fakeBackend(list: PetList | Error = [buick], { failSaving = false } = {}) {
+function fakeBackend(
+  list: PetList | Error = [buick],
+  { failSaving = false, answered = Promise.resolve() } = {},
+) {
   const requests: Array<{ request: string; body: unknown }> = [];
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
@@ -85,6 +90,10 @@ function fakeBackend(list: PetList | Error = [buick], { failSaving = false } = {
     const body: unknown = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
 
     requests.push({ request, body });
+
+    if (request === "GET /api/pets") {
+      await answered;
+    }
 
     if (list instanceof Error && request === "GET /api/pets") {
       throw list;
@@ -131,13 +140,18 @@ const buickTasks: PetTask[] = [
 
 function startPets(
   backend = fakeBackend(),
-  { isFamilyOwner = true, photoHint = undefined as string | undefined, choices = ["confirm"] } = {},
+  {
+    isFamilyOwner = true,
+    photoHint = undefined as string | undefined,
+    choices = ["confirm"],
+    device = fakeDeviceStorage(),
+  } = {},
 ) {
   const opened: unknown[] = [];
   const alerts: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const api = createPetsApi(client);
-  const pets = reatomPets({ api });
+  const pets = reatomPets({ api, deviceCache: reatomDeviceCache(device.deviceStorage) });
   const routePetId = atom<string | undefined>(undefined, "test.petRoute");
   const model = reatomPetsScreen({
     api,
@@ -154,10 +168,12 @@ function startPets(
     viewer: () => ({ today: "2026-10-11", timeZone: "Europe/Moscow" }),
     isFamilyOwner: () => isFamilyOwner,
     telegram: {
+      ...fakeWindow(),
       showPopup: async () => choices.shift(),
       showAlert: (message) => {
         alerts.push(message);
       },
+      haptics: fakeHaptics(),
     },
     preparePhoto: async (file) => {
       if (file.size > photoMaxBytes) {
@@ -631,5 +647,50 @@ describe("the Pet Avatar", () => {
       expect(alerts).toEqual(["Фото больше 10 МБ."]);
     });
     expect(backend.requests.map(({ request }) => request)).not.toContain("POST /api/photos");
+  });
+});
+
+async function loadedBefore() {
+  const device = fakeDeviceStorage();
+
+  await saved(startPets(fakeBackend([buick]), { device }).model);
+  await vi.waitFor(() => {
+    expect(device.items.has("pets")).toBe(true);
+  });
+  context.reset();
+
+  return device;
+}
+
+describe("launching from the device cache", () => {
+  test("shows the Pets of the last launch with their Memo until the fresh ones arrive", async () => {
+    const device = await loadedBefore();
+    let answer = noop;
+    const { model } = startPets(
+      fakeBackend([{ ...buick, name: "Бьюик-младший" }], {
+        answered: new Promise((resolve) => {
+          answer = resolve;
+        }),
+      }),
+      { device },
+    );
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ kind: "card", card: { name: "Бьюик" } });
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ kind: "card", card: { name: "Бьюик-младший" } });
+    });
+  });
+
+  test("keeps the cached Pets when the refresh fails", async () => {
+    const device = await loadedBefore();
+    const { model } = startPets(fakeBackend(new Error("offline")), { device });
+
+    await sleep(0);
+    await sleep(0);
+
+    expect(model.screen()).toMatchObject({ kind: "card", card: { name: "Бьюик" } });
   });
 });

@@ -1,6 +1,7 @@
 import { context } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
+import { fakeHaptics } from "@/common/telegram";
 import type { Recording, RecordingRefusal } from "@/common/voice-recorder";
 
 import { botHint, holdHint, reatomMicrophone } from "./microphone.vm.ts";
@@ -39,9 +40,7 @@ function startMicrophone(recorder = fakeRecorder()) {
   const seconds: Array<() => void> = [];
   const telegram = {
     calls: [] as string[],
-    haptic(impact: string) {
-      telegram.calls.push(`haptic ${impact}`);
-    },
+    haptics: fakeHaptics(),
     disableVerticalSwipes() {
       telegram.calls.push("disableVerticalSwipes");
     },
@@ -111,10 +110,11 @@ describe("holding the microphone", () => {
     });
     expect(model.state()).toBe("idle");
     expect(swipes(telegram.calls)).toEqual(["disableVerticalSwipes", "enableVerticalSwipes"]);
+    expect(telegram.haptics.felt).toEqual(["impact medium", "impact light"]);
   });
 
   test("cancels without sending when the finger slides off", async () => {
-    const { model, recorder, sent } = startMicrophone();
+    const { model, recorder, sent, telegram } = startMicrophone();
 
     model.press();
     await recordingStarted(model);
@@ -122,6 +122,7 @@ describe("holding the microphone", () => {
 
     expect(recorder.cancelled).toBe(1);
     expect(sent).toEqual([]);
+    expect(telegram.haptics.felt).toEqual(["impact medium", "warning"]);
     expect(model.state()).toBe("idle");
   });
 
@@ -146,7 +147,7 @@ describe("holding the microphone", () => {
       allowMicrophone = resolve;
     });
 
-    const { model, sent } = startMicrophone(recorder);
+    const { model, sent, telegram } = startMicrophone(recorder);
 
     model.press();
     model.release();
@@ -158,6 +159,7 @@ describe("holding the microphone", () => {
     expect(recorder.cancelled).toBe(1);
     expect(sent).toEqual([]);
     expect(model.state()).toBe("idle");
+    expect(telegram.haptics.felt).toEqual(["warning"]);
   });
 });
 

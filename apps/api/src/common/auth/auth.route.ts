@@ -3,8 +3,10 @@ import { createMiddleware } from "hono/factory";
 
 import {
   telegramLogin,
+  type CurrentMember,
   type FamilyRequestStatus,
   type SessionResponse,
+  type SessionToken,
 } from "@family-hub/contract";
 
 import { apiError, httpStatus, jsonBody } from "@/common/errors";
@@ -36,17 +38,16 @@ export const requireMember = createMiddleware<MemberEnv>(async (context, next) =
   return next();
 });
 
-// Wired by the app to the family-request module, which modules may not import directly.
+// Wired by the app to the family-request and member modules, which common code may not import.
 type SessionEnv = {
   Variables: AuthEnv["Variables"] & {
     familyRequests: { statusOf(telegramId: number): Promise<FamilyRequestStatus> };
+    members: { current(membership: Membership): Promise<CurrentMember> };
   };
 };
 
-export const sessionRoute = new Hono<SessionEnv>().post(
-  "/api/session",
-  jsonBody(telegramLogin, "initData is required"),
-  async (context) => {
+export const sessionRoute = new Hono<SessionEnv>()
+  .post("/api/session", jsonBody(telegramLogin, "initData is required"), async (context) => {
     const result = await context.var.auth.signIn(context.req.valid("json").initData);
 
     if (result.status === "invalid") {
@@ -63,6 +64,14 @@ export const sessionRoute = new Hono<SessionEnv>().post(
       });
     }
 
-    return context.json<SessionResponse>(result);
-  },
-);
+    return context.json<SessionResponse>({
+      status: "member",
+      token: result.token,
+      ...(await context.var.members.current(result.membership)),
+    });
+  })
+  .post("/api/session/renew", requireMember, async (context) =>
+    context.json<SessionToken>({
+      token: await context.var.auth.renew(context.var.membership),
+    }),
+  );

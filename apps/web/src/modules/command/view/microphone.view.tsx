@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { Mic } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
-import { cn } from "@/common/ui";
+import { cn, LiveRegion } from "@/common/ui";
 
 import type { MicrophoneModel } from "../vm/microphone.vm.ts";
 
@@ -30,20 +30,28 @@ function talkKeysOf(model: MicrophoneModel) {
   };
 }
 
+function Recording({ timer }: { timer: string }) {
+  return (
+    <>
+      <span className="sr-only">Идёт запись</span>
+      <span aria-hidden>● {timer}</span>
+    </>
+  );
+}
+
 export const Microphone = reatomComponent(({ model }: MicrophoneProps) => {
   const isRecording = model.state() === "recording";
   const hint = model.hint();
 
   return (
     <div className="relative flex flex-col items-center">
-      {(isRecording || hint !== undefined) && (
-        <span
-          role="status"
-          className="absolute bottom-full mb-2 rounded-full bg-foreground px-3 py-1 w-max max-w-[calc(100vw-2rem)] text-center text-xs font-medium text-background"
-        >
-          {isRecording ? `● ${model.timer()}` : hint}
-        </span>
-      )}
+      <LiveRegion className="absolute bottom-full mb-2">
+        {(isRecording || hint !== undefined) && (
+          <span className="block w-max max-w-[calc(100vw-2rem)] rounded-full bg-foreground px-3 py-1 text-center text-xs font-medium text-background">
+            {isRecording ? <Recording timer={model.timer()} /> : hint}
+          </span>
+        )}
+      </LiveRegion>
       <button
         type="button"
         aria-label="Удерживайте и говорите"

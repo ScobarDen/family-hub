@@ -3,7 +3,14 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { FeedPage, FeedUpcoming, Photo, Task } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import {
+  fakeDeviceStorage,
+  fakeHaptics,
+  type FakeDeviceStorage,
+  fakeWindow,
+} from "@/common/telegram";
 
 import { createFeedApi } from "../feed.api.ts";
 import { reatomFeed, type FeedTarget } from "./feed.vm.ts";
@@ -129,7 +136,19 @@ const wallpaperTask: Task = {
   subtasks: [],
 };
 
-function startFeed() {
+type Launch = {
+  device?: FakeDeviceStorage;
+  page?: FeedPage;
+  answered?: Promise<void>;
+  completion?: "refused" | "unreachable" | Promise<void>;
+};
+
+function startFeed({
+  device = fakeDeviceStorage(),
+  page = firstPage,
+  answered = Promise.resolve(),
+  completion = Promise.resolve(),
+}: Launch = {}) {
   const requests: string[] = [];
   const opened: FeedTarget[] = [];
 
@@ -144,9 +163,26 @@ function startFeed() {
       return Response.json(olderPage);
     }
 
-    return Response.json(url.pathname === "/api/feed" ? firstPage : wallpaperTask);
+    if (url.pathname === "/api/feed") {
+      await answered;
+
+      return Response.json(page);
+    }
+
+    if (completion === "unreachable") {
+      throw new TypeError("Failed to fetch");
+    }
+
+    if (completion === "refused") {
+      return Response.json({ code: "INTERNAL", message: "" }, { status: 500 });
+    }
+
+    await completion;
+
+    return Response.json(wallpaperTask);
   }
 
+  const haptics = fakeHaptics();
   const model = reatomFeed({
     api: createFeedApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     today: () => "2026-10-14",
@@ -154,12 +190,13 @@ function startFeed() {
     onOpen: (target) => {
       opened.push(target);
     },
-    telegram: { showPopup: async () => noChoice, showAlert: noop },
+    telegram: { ...fakeWindow(), showPopup: async () => noChoice, showAlert: noop, haptics },
+    deviceCache: reatomDeviceCache(device.deviceStorage),
   });
 
   model.blocks.subscribe(noop);
 
-  return { model, requests, opened };
+  return { model, requests, opened, felt: haptics.felt };
 }
 
 type Model = ReturnType<typeof startFeed>["model"];
@@ -217,12 +254,13 @@ describe("the Feed", () => {
     });
   });
 
-  test("narrows to one module by its chip", async () => {
-    const { model } = startFeed();
+  test("narrows to one module by its chip, with a selection tick", async () => {
+    const { model, felt } = startFeed();
 
     await loaded(model);
     model.choose("pet");
 
+    expect(felt).toEqual(["select"]);
     expect(shape(model)).toEqual([
       ["Предстоит", ["День рождения Бьюика"]],
       ["Сегодня", ["Вес: 30 кг — Бьюик"]],
@@ -287,6 +325,38 @@ describe("the Feed", () => {
     expect(requests).toContain('POST /api/tasks/task-1/complete {"occurrence":"2026-10-12"}');
   });
 
+  test("takes a completed line away before the server answers, with a success pulse", async () => {
+    const { model, felt } = startFeed({ completion: new Promise(noop) });
+
+    await loaded(model);
+    model.complete("task-1-2026-10-12");
+
+    expect(model.blocks()[0]?.title).toBe("Предстоит");
+    expect(model.failure()).toBeUndefined();
+    expect(felt).toEqual(["success"]);
+  });
+
+  test.each([
+    { completion: "refused" as const, said: "Не получилось отметить. Попробуйте ещё раз." },
+    {
+      completion: "unreachable" as const,
+      said: "Нет связи — не сохранилось. Проверьте интернет и повторите.",
+    },
+  ])("brings the line back with the failure bar when $completion", async ({ completion, said }) => {
+    const { model, felt } = startFeed({ completion });
+
+    await loaded(model);
+    const before = shape(model);
+
+    model.complete("task-1-2026-10-12");
+    await vi.waitFor(() => {
+      expect(model.failure()).toBe(said);
+    });
+
+    expect(shape(model)).toEqual(before);
+    expect(felt).toEqual(["success", "error"]);
+  });
+
   test("opens the Task of a line ahead and of a completed one, and a birthday's Pet", async () => {
     const { model, opened } = startFeed();
 
@@ -337,5 +407,36 @@ describe("an Activity with photos", () => {
     model.choose("albums");
 
     expect(model.blocks()).toEqual([]);
+  });
+});
+
+describe("launching from the device cache", () => {
+  test("shows the first page of the last launch until the fresh one arrives", async () => {
+    const device = fakeDeviceStorage();
+    const first = startFeed({ device });
+
+    await loaded(first.model);
+    const before = shape(first.model);
+
+    await vi.waitFor(() => {
+      expect(device.items.has("feed")).toBe(true);
+    });
+    context.reset();
+    let answer = noop;
+    const { model } = startFeed({
+      device,
+      page: olderPage,
+      answered: new Promise((resolve) => {
+        answer = resolve;
+      }),
+    });
+
+    await vi.waitFor(() => {
+      expect(shape(model)).toEqual(before);
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(shape(model)).not.toEqual(before);
+    });
   });
 });

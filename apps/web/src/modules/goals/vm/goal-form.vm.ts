@@ -12,6 +12,7 @@ import {
 } from "@family-hub/contract";
 
 import { reatomEditableRecord } from "@/common/form";
+import type { ClosingConfirmation, Haptics } from "@/common/telegram";
 
 import type { GoalsApi } from "../goals.api.ts";
 import type { GoalsModel } from "../goals.model.ts";
@@ -19,6 +20,8 @@ import type { GoalsModel } from "../goals.model.ts";
 type GoalFormDependencies = {
   api: GoalsApi;
   goals: Pick<GoalsModel, "keep">;
+  haptics: Pick<Haptics, "success" | "error">;
+  closingConfirmation: ClosingConfirmation;
   onSaved: (goal: Goal) => void;
 };
 
@@ -64,11 +67,14 @@ function valuesOf(goal: Goal): GoalValues {
   };
 }
 
-export function reatomGoalForm({ api, goals, onSaved }: GoalFormDependencies) {
+export function reatomGoalForm(dependencies: GoalFormDependencies) {
+  const { api, goals, onSaved } = dependencies;
   const record = reatomEditableRecord({
     name: "goals.record",
     form: (onSubmit) => reatomForm(emptyGoal, { name: "goals.form", schema, onSubmit }),
     failureMessage: "Не получилось сохранить цель. Попробуйте ещё раз.",
+    haptics: dependencies.haptics,
+    closingConfirmation: dependencies.closingConfirmation,
     valuesOf,
     create: async (values) => api.create(changeOf(values)),
     update: async (goal: Goal, values) => api.update(goal.id, changeOf(values)),

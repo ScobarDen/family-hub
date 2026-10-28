@@ -14,10 +14,10 @@ export function Section({ title, aside, footer, children }: SectionProps) {
       {(title !== undefined || aside !== undefined) && (
         <div className="flex items-baseline justify-between gap-3 px-1">
           {title !== undefined && (
-            <h2 className="text-[0.9375rem] font-semibold tracking-tight">{title}</h2>
+            <h2 className="text-subhead font-semibold tracking-tight">{title}</h2>
           )}
           {aside !== undefined && (
-            <span className="text-[0.8125rem] text-muted-foreground">{aside}</span>
+            <span className="text-footnote text-muted-foreground">{aside}</span>
           )}
         </div>
       )}
@@ -25,7 +25,7 @@ export function Section({ title, aside, footer, children }: SectionProps) {
         {children}
       </div>
       {footer !== undefined && (
-        <div className="px-1 text-[0.8125rem] text-muted-foreground">{footer}</div>
+        <div className="px-1 text-footnote text-muted-foreground">{footer}</div>
       )}
     </section>
   );

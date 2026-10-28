@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { Button, Notice } from "@/common/ui";
+import { Button, Notice, Skeleton } from "@/common/ui";
 
 import type { SessionModel, SessionScreen } from "../vm/session.vm.ts";
 import { Stranger } from "./stranger.view.tsx";
@@ -13,10 +13,9 @@ export type SessionProps = {
   home: ReactNode;
 };
 
-type PlainNotice = Extract<SessionScreen, { kind: "signing-in" | "outside-telegram" | "restart" }>;
+type PlainNotice = Extract<SessionScreen, { kind: "outside-telegram" | "restart" }>;
 
 const plainNotices: Record<PlainNotice["kind"], { title: string; description?: string }> = {
-  "signing-in": { title: "Входим…" },
   "outside-telegram": {
     title: "Откройте Family Hub в Telegram",
     description: "Приложение работает только внутри Telegram.",
@@ -26,6 +25,25 @@ const plainNotices: Record<PlainNotice["kind"], { title: string; description?: s
     description: "Сессия устарела. Закройте Family Hub и откройте его снова.",
   },
 };
+
+// Only a first launch, or one without DeviceStorage, waits here: otherwise the cached shell shows.
+function SigningIn() {
+  return (
+    <main
+      aria-busy
+      className="flex min-h-svh flex-col gap-4 bg-secondary px-4 pt-safe-top pb-safe-bottom"
+    >
+      <h1 className="sr-only">Входим</h1>
+      <Skeleton className="mt-6 h-8 w-40" />
+      <Skeleton className="h-32 rounded-2xl" />
+      <div className="grid grid-cols-3 gap-2">
+        <Skeleton className="aspect-square rounded-2xl" />
+        <Skeleton className="aspect-square rounded-2xl" />
+        <Skeleton className="aspect-square rounded-2xl" />
+      </div>
+    </main>
+  );
+}
 
 export const Session = reatomComponent(
   ({ model, familyRequest, joinFamily, home }: SessionProps) => {
@@ -58,6 +76,10 @@ export const Session = reatomComponent(
           </Button>
         </Notice>
       );
+    }
+
+    if (screen.kind === "signing-in") {
+      return <SigningIn />;
     }
 
     return <Notice {...plainNotices[screen.kind]} />;

@@ -57,6 +57,7 @@ export {
   type InvitePreview,
   type InviteRevoked,
 } from "./invite.ts";
+export { preparedMessage, type PreparedMessage } from "./share.ts";
 export {
   appModule,
   defaultTabBar,
@@ -100,8 +101,10 @@ export {
 export {
   currentMember,
   sessionResponse,
+  sessionToken,
   type CurrentMember,
   type SessionResponse,
+  type SessionToken,
 } from "./session.ts";
 export {
   encodeDeepLink,

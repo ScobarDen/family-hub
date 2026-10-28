@@ -136,3 +136,71 @@ describe("the tab stacks", () => {
     expect(navigation.screen()).toEqual({ kind: "today" });
   });
 });
+
+function startSliding() {
+  const button = { isAvailable: true, follow: () => noop };
+  const slides: string[] = [];
+  let isFormOpen = false;
+  const navigation = reatomNavigation({
+    base: "/family-hub/",
+    slots: () => ["tasks", "recipes"],
+    isSignedIn: () => true,
+    telegram: { backButton: button, settingsButton: button },
+    nestedBack: {
+      goals: {
+        canGoBack: () => isFormOpen,
+        back: () => {
+          isFormOpen = false;
+        },
+      },
+    },
+    slide: (direction, update) => {
+      slides.push(direction);
+      update();
+    },
+  });
+
+  navigation.screen.subscribe(noop);
+
+  return {
+    navigation,
+    slides,
+    openForm: () => {
+      isFormOpen = true;
+    },
+  };
+}
+
+describe("screen transitions", () => {
+  test("slide a pushed screen forward and Back the other way", () => {
+    const { navigation, slides } = startSliding();
+
+    navigation.openModule("goals");
+    navigation.back();
+
+    expect(slides).toEqual(["forward", "back"]);
+    expect(navigation.screen()).toEqual({ kind: "today" });
+  });
+
+  test("slide Back inside a module too", () => {
+    const { navigation, slides, openForm } = startSliding();
+
+    navigation.openModule("goals");
+    openForm();
+    navigation.back();
+
+    expect(slides).toEqual(["forward", "back"]);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+  });
+
+  test("swap tabs and launch links at once", () => {
+    const { navigation, slides } = startSliding();
+
+    navigation.openTab("recipes");
+    navigation.openModule("tasks");
+    navigation.launch({ module: "goals" });
+
+    expect(slides).toEqual([]);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+  });
+});

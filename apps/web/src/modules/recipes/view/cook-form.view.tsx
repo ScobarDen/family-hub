@@ -1,22 +1,20 @@
 import { reatomComponent } from "@reatom/react";
 import { CookingPot } from "lucide-react";
 
-import { Button, Input } from "@/common/ui";
+import { Button, PickerInput } from "@/common/ui";
 
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
 
 export const CookForm = reatomComponent(
   ({ model }: { model: RecipesScreenModel }) => (
     <div className="flex items-center gap-2">
-      <Input
-        type="date"
+      <PickerInput
+        kind="date"
         aria-label="Когда приготовили"
-        className="min-w-0 flex-1"
+        className="flex-1"
         max={model.today()}
         value={model.cookDay()}
-        onChange={(event) => {
-          model.chooseCookDay(event.target.value);
-        }}
+        onValueChange={model.chooseCookDay}
       />
       <Button className="shrink-0" disabled={!model.canCook()} onClick={model.cook}>
         <CookingPot /> Приготовили

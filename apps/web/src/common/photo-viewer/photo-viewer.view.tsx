@@ -1,8 +1,17 @@
 import { reatomComponent } from "@reatom/react";
-import { ChevronLeft, ChevronRight, Trash2, X, type LucideIcon } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ImageOff,
+  Share,
+  Trash2,
+  X,
+  type LucideIcon,
+} from "lucide-react";
 import { useRef, type PointerEvent } from "react";
 
-import { Button } from "@/common/ui";
+import { SignedPhoto } from "@/common/photo";
+import { Button, FailureBar, ModalDialog } from "@/common/ui";
 
 import type { PhotoViewerModel } from "./photo-viewer.vm.ts";
 
@@ -20,6 +29,17 @@ const ViewerBar = reatomComponent(
       </Button>
       <span className="text-sm">{position}</span>
       <div className="flex gap-1">
+        {model.canShare() && (
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            aria-label="Поделиться"
+            disabled={model.isSharing()}
+            onClick={model.share}
+          >
+            <Share />
+          </Button>
+        )}
         {pickAction !== undefined && (
           <Button variant="ghost" size="icon-lg" aria-label={pickAction.label} onClick={model.pick}>
             <pickAction.icon />
@@ -88,32 +108,56 @@ function useSwipe(model: PhotoViewerModel) {
   };
 }
 
+const SwipedPhoto = reatomComponent(({ model, src }: { model: PhotoViewerModel; src: string }) => {
+  const swipe = useSwipe(model);
+
+  return (
+    <div
+      className="relative flex flex-1 touch-pan-y items-center justify-center overflow-hidden"
+      onPointerDown={swipe.onPointerDown}
+      onPointerUp={swipe.onPointerUp}
+    >
+      <SignedPhoto
+        src={src}
+        className="max-h-full max-w-full object-contain"
+        fallback={<ImageOff aria-hidden className="size-12 text-white/50" />}
+      />
+      <StepButtons model={model} />
+    </div>
+  );
+}, "SwipedPhoto");
+
 // Full screen over everything, as Telegram's own photo viewer is.
 export const PhotoViewer = reatomComponent(({ model, pickAction }: ViewerProps) => {
   const current = model.current();
   const photo = current?.photo;
-  const swipe = useSwipe(model);
-
-  if (current === undefined || photo === undefined) {
-    return null;
-  }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black pt-safe-top pb-safe-bottom text-white">
-      <ViewerBar
-        model={model}
-        pickAction={pickAction}
-        position={current.position}
-        canDelete={photo.canDelete}
-      />
-      <div
-        className="relative flex flex-1 touch-pan-y items-center justify-center overflow-hidden"
-        onPointerDown={swipe.onPointerDown}
-        onPointerUp={swipe.onPointerUp}
-      >
-        <img src={photo.urls.full} alt="" className="max-h-full max-w-full object-contain" />
-        <StepButtons model={model} />
-      </div>
-    </div>
+    <ModalDialog
+      isOpen={photo !== undefined}
+      onClose={model.close}
+      aria-label="Фото"
+      className="flex-col bg-black pt-safe-top pr-[var(--tg-safe-area-inset-right,0px)] pb-safe-bottom pl-[var(--tg-safe-area-inset-left,0px)] text-white open:flex"
+      onKeyDown={(event) => {
+        if (event.key === "ArrowLeft") {
+          model.previous();
+        } else if (event.key === "ArrowRight") {
+          model.next();
+        }
+      }}
+    >
+      {current !== undefined && photo !== undefined && (
+        <>
+          <ViewerBar
+            model={model}
+            pickAction={pickAction}
+            position={current.position}
+            canDelete={photo.canDelete}
+          />
+          <SwipedPhoto model={model} src={photo.urls.full} />
+        </>
+      )}
+      <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
+    </ModalDialog>
   );
 }, "PhotoViewer");

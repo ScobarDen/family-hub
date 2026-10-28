@@ -5,12 +5,11 @@ import { TaskMarks } from "./task-marks.view.tsx";
 
 export type TaskRowProps = {
   row: Row;
-  disabled: boolean;
   onToggle: (row: Row) => void;
   onOpen: (row: Row) => void;
 };
 
-export function TaskRow({ row, disabled, onToggle, onOpen }: TaskRowProps) {
+export function TaskRow({ row, onToggle, onOpen }: TaskRowProps) {
   return (
     <SectionItem
       control={
@@ -18,7 +17,6 @@ export function TaskRow({ row, disabled, onToggle, onOpen }: TaskRowProps) {
           label={`${row.status === "completed" ? "Вернуть в работу" : "Отметить выполненным"}: ${row.title}`}
           isChecked={row.status === "completed"}
           isAlert={row.status === "overdue"}
-          disabled={disabled}
           onClick={() => {
             onToggle(row);
           }}

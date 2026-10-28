@@ -1,5 +1,6 @@
 import type { FieldAtom } from "@reatom/core";
 import { bindField, reatomComponent } from "@reatom/react";
+import type { ComponentProps } from "react";
 
 import { FieldError } from "./field-error.view.tsx";
 import { FieldLabel } from "./field-label.view.tsx";
@@ -11,11 +12,11 @@ type TextFieldProps = {
   id: string;
   label: string;
   placeholder?: string;
-  type?: "text" | "date" | "time" | "datetime-local";
+  inputMode?: ComponentProps<"input">["inputMode"];
 };
 
 export const TextField = reatomComponent(
-  ({ field, id, label, placeholder, type = "text" }: TextFieldProps) => {
+  ({ field, id, label, placeholder, inputMode }: TextFieldProps) => {
     const { error, ...input } = bindField(field);
     const isInvalid = error !== undefined;
 
@@ -24,13 +25,14 @@ export const TextField = reatomComponent(
         <FieldLabel htmlFor={id}>{label}</FieldLabel>
         <Input
           id={id}
-          type={type}
           placeholder={placeholder}
+          inputMode={inputMode}
           autoComplete="off"
           aria-invalid={isInvalid}
+          aria-describedby={isInvalid ? `${id}-error` : undefined}
           {...input}
         />
-        <FieldError>{error}</FieldError>
+        <FieldError id={`${id}-error`}>{error}</FieldError>
       </Field>
     );
   },

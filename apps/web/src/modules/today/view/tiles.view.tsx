@@ -20,19 +20,19 @@ export const Tiles = reatomComponent(
           <button
             key={module}
             type="button"
-            className="flex aspect-square min-w-0 flex-col items-start gap-1 rounded-2xl bg-card p-3 text-left text-card-foreground active:bg-muted"
+            className="flex aspect-square min-w-0 flex-col items-start gap-1 rounded-2xl bg-card p-3 text-left text-card-foreground active:bg-muted press"
             onClick={() => {
               model.openTile(module);
             }}
           >
             {picture === undefined ? icon : <RoundPicture src={picture} fallback={icon} />}
-            <span className="w-full text-[0.8125rem] font-medium break-words hyphens-auto">
+            <span className="w-full text-footnote font-medium break-words hyphens-auto">
               {title}
             </span>
             <span
               aria-hidden={value === undefined}
               className={cn(
-                "text-xl leading-none font-semibold",
+                "text-value leading-none font-semibold",
                 isAlert ? "text-destructive-text" : value === undefined && "text-muted-foreground",
               )}
             >

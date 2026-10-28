@@ -32,6 +32,7 @@ function reatomForms(
   openedPet: () => Pet | undefined,
 ) {
   const { route } = dependencies;
+  const { haptics } = dependencies.telegram;
 
   function onSaved(saved: Pet): void {
     editing.set(undefined);
@@ -45,9 +46,11 @@ function reatomForms(
     profileForm: reatomPetProfileForm({
       ...dependencies,
       today: () => dependencies.viewer().today,
+      haptics,
+      closingConfirmation: dependencies.telegram,
       onSaved,
     }),
-    memoForm: reatomPetMemoForm({ ...dependencies, onSaved }),
+    memoForm: reatomPetMemoForm({ ...dependencies, haptics, onSaved }),
   };
 }
 
@@ -137,6 +140,24 @@ function reatomLinks(dependencies: PetsDependencies) {
   };
 }
 
+// Which screen is shown, apart from the data it shows, so a renamed Pet keeps focus where it is.
+function reatomScreenKey(
+  { route }: PetsDependencies,
+  { editing }: Navigation,
+  { openedPet, isCreating }: { openedPet: () => Pet | undefined; isCreating: () => boolean },
+) {
+  return computed(() => {
+    const current = editing();
+    const pet = route.petId() ?? openedPet()?.id ?? "list";
+
+    if (current === "profile") {
+      return isCreating() ? "new" : `${pet}:profile`;
+    }
+
+    return current === undefined ? pet : `${pet}:${current}`;
+  }, "pets.screenKey");
+}
+
 export function reatomPetsScreen(dependencies: PetsDependencies) {
   const navigation: Navigation = {
     editing: atom<Editing | undefined>(undefined, "pets.editing"),
@@ -147,6 +168,7 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
   const archive = reatomPetArchive({
     ...dependencies,
     openedPet,
+    haptics: dependencies.telegram.haptics,
     onDeleted: () => {
       navigation.editing.set(undefined);
 
@@ -155,14 +177,13 @@ export function reatomPetsScreen(dependencies: PetsDependencies) {
       }
     },
   });
-  const screen = reatomScreen(dependencies, navigation, {
-    openedPet,
-    isCreating: forms.profileForm.isCreating,
-  });
+  const shown = { openedPet, isCreating: forms.profileForm.isCreating };
+  const screen = reatomScreen(dependencies, navigation, shown);
 
   return {
     screen,
     title: computed(() => titleOf(screen()), "pets.title"),
+    screenKey: reatomScreenKey(dependencies, navigation, shown),
     retry: dependencies.pets.reload,
     openedPetId: computed(() => openedPet()?.id, "pets.openedPetId"),
     isOpenedPetArchived: computed(

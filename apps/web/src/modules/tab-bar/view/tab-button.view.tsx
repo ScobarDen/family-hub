@@ -14,18 +14,20 @@ export function TabButton({ tab, onOpen }: TabButtonProps) {
   return (
     <button
       type="button"
-      aria-label={tab.title}
       aria-current={tab.isActive ? "page" : undefined}
-      className="group flex min-w-0 flex-1 items-center justify-center rounded-full py-3 text-muted-foreground transition-colors aria-[current=page]:text-foreground android:aria-[current=page]:bg-primary/15"
+      className="group flex min-w-0 flex-1 flex-col items-center gap-0.5 rounded-2xl py-1.5 text-muted-foreground transition-colors aria-[current=page]:text-foreground"
       onClick={() => {
         onOpen(tab.id);
       }}
     >
-      <Icon
-        className="size-6 group-aria-[current=page]:text-primary"
-        strokeWidth={1.75}
-        aria-hidden
-      />
+      <span className="flex rounded-full px-3 py-0.5 transition-colors group-aria-[current=page]:bg-primary/15">
+        <Icon
+          className="size-6 group-aria-[current=page]:text-primary"
+          strokeWidth={1.75}
+          aria-hidden
+        />
+      </span>
+      <span className="max-w-full truncate text-tab-label font-medium">{tab.title}</span>
     </button>
   );
 }

@@ -59,7 +59,7 @@ function tagsOf({ model, tags }: RecipeListProps) {
 export const RecipeList = reatomComponent(
   (props: RecipeListProps) => (
     <SectionLayout
-      summary={<p className="px-5 pb-4 text-[0.9375rem] text-muted-foreground">{props.summary}</p>}
+      summary={<p className="px-5 pb-4 text-subhead text-muted-foreground">{props.summary}</p>}
       action={<PrimaryButton onClick={props.model.add}>Добавить рецепт</PrimaryButton>}
       tabs={[
         { key: "recipes", title: "Рецепты", content: recipesOf(props) },

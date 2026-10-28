@@ -4,6 +4,7 @@ import type { Photo } from "@family-hub/contract";
 
 import { PhotoTooLargeError, type PreparedPhoto } from "@/common/photo";
 import { readOnly } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
 
 export type Attachment =
   | { key: string; status: "uploading" }
@@ -14,6 +15,7 @@ export type PhotoAttachmentsDependencies = {
   api: { uploadPhoto: (prepared: PreparedPhoto) => Promise<Photo> };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   canUploadPhotos: () => boolean;
+  haptics: Pick<Haptics, "error">;
   // How many photos the record takes: five for a Care Entry, ten for a Recipe.
   max: number;
 };
@@ -27,7 +29,7 @@ function reasonOf(error: unknown): string {
 let lastKey = 0;
 
 function reatomUpload(
-  { api, preparePhoto }: Pick<PhotoAttachmentsDependencies, "api" | "preparePhoto">,
+  { api, preparePhoto, haptics }: Omit<PhotoAttachmentsDependencies, "canUploadPhotos" | "max">,
   items: Atom<Attachment[]>,
 ) {
   function settle(key: string, attachment: Attachment) {
@@ -47,6 +49,7 @@ function reatomUpload(
 
       settle(key, { key, status: "ready", photo });
     } catch (error) {
+      haptics.error();
       settle(key, { key, status: "failed", reason: reasonOf(error) });
     }
   }, "photoAttachments.uploadOne").extend(withAsync());
@@ -57,11 +60,12 @@ export function reatomPhotoAttachments({
   api,
   preparePhoto,
   canUploadPhotos,
+  haptics,
   max,
 }: PhotoAttachmentsDependencies) {
   const items = atom<Attachment[]>([], "photoAttachments.items");
 
-  const uploadOne = reatomUpload({ api, preparePhoto }, items);
+  const uploadOne = reatomUpload({ api, preparePhoto, haptics }, items);
 
   return {
     items: readOnly(items),

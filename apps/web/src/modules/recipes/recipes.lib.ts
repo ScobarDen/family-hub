@@ -56,3 +56,26 @@ export function toRecipeDetails(recipe: Recipe, viewer: Viewer): RecipeDetails {
     })),
   };
 }
+
+function cookedOf(recipe: Recipe, cooks: Recipe["cooks"]): Recipe {
+  const [last] = cooks;
+
+  return { ...recipe, cooks, cookedCount: cooks.length, lastCookedAt: last?.at ?? null };
+}
+
+// A mark not yet saved has no id or name of its own and cannot be taken away until it is.
+export function withCook(recipe: Recipe, at: number): Recipe {
+  const cook = { id: `unsaved-${String(at)}`, at, memberName: "", isOwn: false };
+
+  return cookedOf(
+    recipe,
+    [...recipe.cooks, cook].toSorted((one, other) => other.at - one.at),
+  );
+}
+
+export function withoutCook(recipe: Recipe, cookId: string): Recipe {
+  return cookedOf(
+    recipe,
+    recipe.cooks.filter(({ id }) => id !== cookId),
+  );
+}

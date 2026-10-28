@@ -1,13 +1,19 @@
 import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
 
-import type { Pet } from "@family-hub/contract";
+import { petList, type Pet } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
 import { upserted, withoutId } from "@/common/records";
 
 import type { PetsApi } from "./pets.api.ts";
 
-export function reatomPets({ api, liveVersion }: { api: PetsApi } & LiveVersion) {
+type PetsDependencies = LiveVersion & {
+  api: PetsApi;
+  deviceCache: Pick<DeviceCache, "withDeviceCache">;
+};
+
+function reatomList({ api, liveVersion, deviceCache }: PetsDependencies) {
   const version = atom(0, "pets.version");
   const list = computed(async () => {
     version();
@@ -15,6 +21,19 @@ export function reatomPets({ api, liveVersion }: { api: PetsApi } & LiveVersion)
 
     return wrap(api.list());
   }, "pets.list").extend(withAsyncData());
+
+  list.data.extend(deviceCache.withDeviceCache({ key: "pets", schema: petList, version: 1 }));
+
+  return {
+    list,
+    reload: action(() => {
+      version.set(version() + 1);
+    }, "pets.reload"),
+  };
+}
+
+export function reatomPets(dependencies: PetsDependencies) {
+  const { list, reload } = reatomList(dependencies);
   const active = computed(
     () => (list.data() ?? []).filter((pet) => pet.archivedAt === null),
     "pets.active",
@@ -22,9 +41,7 @@ export function reatomPets({ api, liveVersion }: { api: PetsApi } & LiveVersion)
 
   return {
     list,
-    reload: action(() => {
-      version.set(version() + 1);
-    }, "pets.reload"),
+    reload,
     active,
     archived: computed(
       () => (list.data() ?? []).filter((pet) => pet.archivedAt !== null),

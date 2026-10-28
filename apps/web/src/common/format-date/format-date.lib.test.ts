@@ -4,7 +4,9 @@ import {
   formatAge,
   formatDate,
   formatDay,
+  formatDayTime,
   formatNearDate,
+  formatPickedValue,
   formatTimeZone,
 } from "./format-date.lib.ts";
 
@@ -21,6 +23,10 @@ test("takes the day from the viewer's zone, not from UTC", () => {
   expect(formatDay(lateEveningInUtc, { ...moscow, timeZone: "America/New_York" })).toBe(
     "11 октября",
   );
+});
+
+test("adds the time in the viewer's zone to the day", () => {
+  expect(formatDayTime(lateEveningInUtc, moscow)).toBe("12 октября, 01:30");
 });
 
 test("keeps the year of a day from another year", () => {
@@ -59,4 +65,21 @@ test.each([
   ["2027-01-05", "5 января 2027 г."],
 ])("names %s near 11 October 2026 in words, without this year", (date, words) => {
   expect(formatNearDate(date, "2026-10-11")).toBe(words);
+});
+
+test.each([
+  ["date", "2026-10-30", "пт, 30 окт"],
+  ["date", "2027-05-01", "сб, 1 мая 2027"],
+  ["time", "09:05", "09:05"],
+  ["datetime-local", "2026-10-30T14:05", "пт, 30 окт, 14:05"],
+] as const)("shows a picked %s %s as «%s» on 28 October 2026", (type, value, words) => {
+  expect(formatPickedValue(type, value, "2026-10-28")).toBe(words);
+});
+
+test.each([
+  ["date", "Не выбрана"],
+  ["time", "Не выбрано"],
+  ["datetime-local", "Не выбрано"],
+] as const)("tells an empty %s field is not chosen", (type, words) => {
+  expect(formatPickedValue(type, "", "2026-10-28")).toBe(words);
 });

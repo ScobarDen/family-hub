@@ -11,9 +11,20 @@ import {
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
-import { Button, CheckButton, Chip, PersonAvatar, Section, SectionItem } from "@/common/ui";
+import {
+  Button,
+  CheckButton,
+  Chip,
+  FailureBar,
+  PersonAvatar,
+  Revealed,
+  Section,
+  SectionItem,
+  SkeletonSection,
+} from "@/common/ui";
 
 import type { FeedRow } from "../feed.lib.ts";
 import { feedFilters, type FeedModel } from "../vm/feed.vm.ts";
@@ -37,7 +48,6 @@ function checkOf({ row, model }: RowProps) {
       <CheckButton
         label={`Отметить выполненным: ${row.title}`}
         isAlert={row.isOverdue}
-        disabled={model.isChanging()}
         onClick={() => {
           model.complete(row.key);
         }}
@@ -79,6 +89,20 @@ const FeedRowItem = reatomComponent(({ row, model }: RowProps) => {
   );
 }, "FeedRowItem");
 
+function placeholderOf(model: FeedModel, blockCount: number): ReactNode {
+  if (model.isLoading()) {
+    return <SkeletonSection rows={4} />;
+  }
+
+  return (
+    blockCount === 0 && (
+      <Section>
+        <SectionItem title="Пока пусто: дела и записи о питомце появятся здесь" />
+      </Section>
+    )
+  );
+}
+
 export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
   const blocks = model.blocks();
 
@@ -97,18 +121,16 @@ export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
           </Chip>
         ))}
       </div>
-      {blocks.length === 0 && !model.isLoading() && (
-        <Section>
-          <SectionItem title="Пока пусто: дела и записи о питомце появятся здесь" />
-        </Section>
-      )}
-      {blocks.map((block) => (
-        <Section key={block.title} title={block.title}>
-          {block.rows.map((row) => (
-            <FeedRowItem key={row.key} row={row} model={model} />
-          ))}
-        </Section>
-      ))}
+      <Revealed isSkeleton={model.isLoading()}>
+        {placeholderOf(model, blocks.length)}
+        {blocks.map((block) => (
+          <Section key={block.title} title={block.title}>
+            {block.rows.map((row) => (
+              <FeedRowItem key={row.key} row={row} model={model} />
+            ))}
+          </Section>
+        ))}
+      </Revealed>
       {model.canLoadMore() && (
         <div className="px-4 pb-6">
           <Button className="w-full" variant="secondary" onClick={model.loadMore}>
@@ -117,6 +139,7 @@ export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
         </div>
       )}
       <PhotoViewer model={model.viewer} />
+      <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
     </>
   );
 }, "Feed");

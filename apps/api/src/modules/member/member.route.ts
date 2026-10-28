@@ -21,17 +21,9 @@ type MemberRouteEnv = {
 };
 
 export const memberRoute = new Hono<MemberRouteEnv>()
-  .get("/api/me", requireMember, async (context) => {
-    const membership = context.var.membership;
-    const { member, family, isFamilyOwner } = membership;
-
-    return context.json<CurrentMember>({
-      member: { id: member.id, name: member.name },
-      family,
-      isFamilyOwner,
-      settings: await context.var.members.settings(membership),
-    });
-  })
+  .get("/api/me", requireMember, async (context) =>
+    context.json<CurrentMember>(await context.var.members.current(context.var.membership)),
+  )
   .put(
     "/api/me/tab-bar",
     requireMember,

@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { FeedUpcoming, Task, Today } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
 
 import { createTodayApi } from "../today.api.ts";
 import { reatomToday, type TodayTarget } from "./today.vm.ts";
@@ -70,7 +72,24 @@ function answerOf(
   return Response.json(path === "/api/today" ? payload : chore);
 }
 
-function startToday(answer: Partial<Today> = {}, { failing }: { failing?: string } = {}) {
+type Launch = {
+  failing?: string;
+  unreachable?: string;
+  device?: FakeDeviceStorage;
+  today?: string;
+  isOffline?: boolean;
+};
+
+function startToday(
+  answer: Partial<Today> = {},
+  {
+    failing,
+    unreachable,
+    device = fakeDeviceStorage(),
+    today = "2026-10-16",
+    isOffline = false,
+  }: Launch = {},
+) {
   const calls: string[] = [];
   const payload: Today = { due: [], next: [], tiles: quiet, ...answer };
   const client = createHttpClient({
@@ -84,13 +103,20 @@ function startToday(answer: Partial<Today> = {}, { failing }: { failing?: string
           .join(" "),
       );
 
-      return answerOf(path, { payload, failing });
+      if (path === unreachable) {
+        throw new TypeError("Failed to fetch");
+      }
+
+      return isOffline ? new Promise<Response>(noop) : answerOf(path, { payload, failing });
     },
   });
   const opened: Array<TodayTarget | string> = [];
+  const haptics = fakeHaptics();
   const model = reatomToday({
     api: createTodayApi(client),
-    today: () => "2026-10-16",
+    deviceCache: reatomDeviceCache(device.deviceStorage),
+    today: () => today,
+    telegram: { haptics },
     onOpen: (target) => {
       opened.push(target);
     },
@@ -105,7 +131,7 @@ function startToday(answer: Partial<Today> = {}, { failing }: { failing?: string
   // What the View subscribes to, so a reload refetches as it does on screen.
   model.rows.subscribe(noop);
 
-  return { model, calls, opened };
+  return { model, calls, opened, felt: haptics.felt };
 }
 
 beforeEach(() => {
@@ -179,14 +205,15 @@ describe("«Сделать сегодня»", () => {
   });
 
   test("completes an Occurrence with one tap and keeps the undo until it is dismissed", async () => {
-    const { model, calls } = startToday({ due: [taskDue(1, "2026-10-12")] });
+    const { model, calls, felt } = startToday({ due: [taskDue(1, "2026-10-12")] });
 
     await vi.waitFor(() => {
       expect(model.rows()).toHaveLength(1);
     });
     model.complete("task-1-2026-10-12");
 
-    expect(model.rows()).toEqual([]);
+    expect(felt).toEqual(["success"]);
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: true })]);
     expect(model.header()).toBe("День свободен");
     expect(model.undo()).toEqual({ title: "Дело 1", hasPet: false });
     await vi.waitFor(() => {
@@ -201,7 +228,7 @@ describe("«Сделать сегодня»", () => {
     model.dismissUndo();
 
     expect(model.undo()).toBeUndefined();
-    expect(model.rows()).toEqual([]);
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: true })]);
   });
 
   test("offers to record a Pet's Task in its journal from the undo bar", async () => {
@@ -253,11 +280,11 @@ describe("«Сделать сегодня»", () => {
     await vi.waitFor(() => {
       expect(calls).toContain("POST /api/tasks/task-1/subtasks/sub-1/reopen");
     });
-    expect(model.rows()).toHaveLength(1);
+    expect(model.rows()).toEqual([expect.objectContaining({ isDone: false })]);
   });
 
   test("reopens the Occurrence after its completion when the undo is tapped", async () => {
-    const { model, calls } = startToday({ due: [taskDue(1, "2026-10-12")] });
+    const { model, calls, felt } = startToday({ due: [taskDue(1, "2026-10-12")] });
 
     await vi.waitFor(() => {
       expect(model.rows()).toHaveLength(1);
@@ -265,7 +292,8 @@ describe("«Сделать сегодня»", () => {
     model.complete("task-1-2026-10-12");
     model.revert();
 
-    expect(model.rows()).toHaveLength(1);
+    expect(felt).toEqual(["success", "select"]);
+    expect(model.rows()).toEqual([expect.objectContaining({ isDone: false })]);
     expect(model.undo()).toBeUndefined();
     await vi.waitFor(() => {
       expect(calls).toContain('POST /api/tasks/task-1/reopen {"occurrence":"2026-10-12"}');
@@ -291,8 +319,33 @@ describe("«Сделать сегодня»", () => {
         "Не получилось отметить «Дело 1». Попробуйте ещё раз.",
       );
     });
-    expect(model.rows()).toHaveLength(1);
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: false })]);
     expect(model.undo()).toBeUndefined();
+  });
+
+  test("brings the row back and says there is no network when the request never arrives", async () => {
+    const { model, felt } = startToday(
+      { due: [taskDue(1, "2026-10-12")] },
+      { unreachable: "/api/tasks/task-1/complete" },
+    );
+
+    await vi.waitFor(() => {
+      expect(model.rows()).toHaveLength(1);
+    });
+    model.complete("task-1-2026-10-12");
+
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: true })]);
+    await vi.waitFor(() => {
+      expect(model.completionFailure()).toBe(
+        "Нет связи — не сохранилось. Проверьте интернет и повторите.",
+      );
+    });
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: false })]);
+    expect(felt).toEqual(["success", "error"]);
+
+    model.dismissFailure();
+
+    expect(model.completionFailure()).toBeUndefined();
   });
 
   test("does not complete a birthday", async () => {
@@ -310,7 +363,10 @@ describe("«Сделать сегодня»", () => {
     expect(calls.filter((call) => call.startsWith("POST"))).toEqual([
       'POST /api/tasks/task-1/complete {"occurrence":"2026-10-16"}',
     ]);
-    expect(model.rows().map(({ title }) => title)).toEqual(["День рождения Бьюика"]);
+    expect(model.rows().map(({ title, isDone }) => ({ title, isDone }))).toEqual([
+      { title: "День рождения Бьюика", isDone: false },
+      { title: "Дело 1", isDone: true },
+    ]);
   });
 });
 
@@ -422,5 +478,59 @@ describe("the section tiles", () => {
     model.openTile("pet");
 
     expect(opened).toEqual([target]);
+  });
+});
+
+describe("launching from the device cache", () => {
+  const due = [taskDue(1, "2026-10-15")];
+  const next = [taskDue(2, "2026-10-20")];
+
+  async function loadedOn(today: string) {
+    const device = fakeDeviceStorage();
+    const { model } = startToday({ due, next }, { device, today });
+
+    await vi.waitFor(() => {
+      expect(model.rows()).toHaveLength(1);
+    });
+    await vi.waitFor(() => {
+      expect(device.items.has("today")).toBe(true);
+    });
+    context.reset();
+
+    return device;
+  }
+
+  test("shows the Today of the last launch while the new one loads", async () => {
+    const device = await loadedOn("2026-10-16");
+    const { model } = startToday({}, { device, isOffline: true });
+
+    await vi.waitFor(() => {
+      expect(model.rows()).toHaveLength(1);
+    });
+    expect(model.isDueOutdated()).toBe(false);
+    expect(model.header()).toBe("1 дело");
+  });
+
+  test("hides yesterday's «Сделать сегодня» but keeps «Впереди» and the tiles", async () => {
+    const device = await loadedOn("2026-10-15");
+    const { model } = startToday({}, { device, isOffline: true });
+
+    await vi.waitFor(() => {
+      expect(model.next()).toHaveLength(1);
+    });
+    expect(model.isDueOutdated()).toBe(true);
+    expect(model.rows()).toEqual([]);
+    expect(model.header()).toBeUndefined();
+    expect(model.tiles()).toHaveLength(5);
+  });
+
+  test("shows «Сделать сегодня» again once today's Today arrives", async () => {
+    const device = await loadedOn("2026-10-15");
+    const { model } = startToday({ due: [taskDue(3, "2026-10-16")] }, { device });
+
+    await vi.waitFor(() => {
+      expect(model.rows().map(({ title }) => title)).toEqual(["Дело 3"]);
+    });
+    expect(model.isDueOutdated()).toBe(false);
   });
 });

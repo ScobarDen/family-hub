@@ -2,7 +2,10 @@ import {
   action,
   atom,
   computed,
+  effect,
   noop,
+  reatomBoolean,
+  withCallHook,
   wrap,
   type Action,
   type Atom,
@@ -10,6 +13,8 @@ import {
 } from "@reatom/core";
 
 import type { CommandPhrase } from "@family-hub/contract";
+
+import type { ClosingConfirmation, Haptics } from "@/common/telegram";
 
 type Fillable<Values> = {
   init: (values: Values) => void;
@@ -26,15 +31,22 @@ export function fillForm<Values>(form: Fillable<Values>, values: Values): void {
 }
 
 type Submittable = {
-  submit: { error: () => unknown };
+  submit: { error: () => unknown; onReject: Action };
   validation: () => { errors: unknown[] };
 };
 
-// A submit that failed with valid fields was refused by the server or the network.
+// A submit that failed with valid fields was refused by the server or the network; either way,
+// and for a field that needs fixing, the Member feels an error.
 export function reatomSubmitFailure(
   form: Submittable,
-  { message, name }: { message: string; name: string },
+  { message, name, haptics }: { message: string; name: string; haptics: Pick<Haptics, "error"> },
 ) {
+  form.submit.onReject.extend(
+    withCallHook(() => {
+      haptics.error();
+    }),
+  );
+
   return computed((): string | undefined => {
     const isRejectedByServer =
       form.submit.error() !== undefined && form.validation().errors.length === 0;
@@ -54,13 +66,18 @@ export type DraftOpening<Draft> = { draftId: string; draft: Draft; phrase: Comma
 export type Creation = { phrase: CommandPhrase | undefined };
 
 type RecordForm<Values> = Fillable<Values> &
-  Submittable & { submit: (() => Promise<unknown>) & { ready: () => boolean } };
+  Submittable & {
+    submit: (() => Promise<unknown>) & { ready: () => boolean };
+    focus: () => { dirty: boolean };
+  };
 
 export type EditableRecordOptions<Values, Form extends RecordForm<Values>, Edited, Saved> = {
   name: string;
   // The module builds its own reatomForm around this submit, so its fields keep their types.
   form: (onSubmit: (values: Values) => Promise<void>) => Form;
   failureMessage: string;
+  haptics: Pick<Haptics, "success" | "error">;
+  closingConfirmation: ClosingConfirmation;
   valuesOf: (edited: Edited) => Values;
   create: (values: Values, creation: Creation) => Promise<Saved>;
   update: (edited: Edited, values: Values) => Promise<Saved>;
@@ -82,6 +99,8 @@ export type EditableRecord<Values, Form, Edited> = {
   startCreating: Action<[values: Values], void>;
   startEditing: Action<[edited: Edited], void>;
   save: Action<[], void>;
+  // The form's View holds it while on screen, so leaving the form drops the confirmation too.
+  confirmClosingWhileDirty: () => () => void;
 };
 
 export type DraftableRecord<Values, Form, Edited, Draft> = EditableRecord<Values, Form, Edited> & {
@@ -99,6 +118,7 @@ type AnyOptions<
 function submitWith<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(
   options: AnyOptions<Values, Form, Edited, Draft, Saved>,
   mode: Atom<Mode<Edited>>,
+  onDone: () => void,
 ) {
   return async (values: Values): Promise<void> => {
     const current = mode();
@@ -115,6 +135,7 @@ function submitWith<Values, Form extends RecordForm<Values>, Edited, Draft, Save
       options.onDraftSaved?.(current.draftId);
     }
 
+    onDone();
     options.onSaved(saved);
   };
 }
@@ -131,6 +152,39 @@ function reatomDraftStart<Values, Edited, Draft>(
   }, `${name}.startFromDraft`);
 }
 
+function reatomSave(
+  form: { submit: RecordForm<unknown>["submit"] },
+  { name, haptics }: { name: string; haptics: Pick<Haptics, "success"> },
+) {
+  return action(() => {
+    if (!form.submit.ready()) {
+      return;
+    }
+
+    form.submit().then(haptics.success, noop);
+  }, `${name}.save`);
+}
+
+function confirmingClosing(
+  telegram: ClosingConfirmation,
+  { name, isUnsaved }: { name: string; isUnsaved: () => boolean },
+) {
+  return () => {
+    const following = effect(() => {
+      if (isUnsaved()) {
+        telegram.enableClosingConfirmation();
+      } else {
+        telegram.disableClosingConfirmation();
+      }
+    }, `${name}.closingConfirmation`);
+
+    return () => {
+      following.unsubscribe();
+      telegram.disableClosingConfirmation();
+    };
+  };
+}
+
 export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(
   options: EditableRecordOptions<Values, Form, Edited, Saved> & DraftOptions<Values, Draft>,
 ): DraftableRecord<Values, Form, Edited, Draft>;
@@ -143,10 +197,13 @@ export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Ed
 ): EditableRecord<Values, Form, Edited> | DraftableRecord<Values, Form, Edited, Draft> {
   const { name, valuesOfDraft } = options;
   const mode = atom<Mode<Edited>>({ kind: "creating" }, `${name}.mode`);
-  const form = options.form(submitWith(options, mode));
+  const isSaved = reatomBoolean(false, `${name}.isSaved`);
+  const form = options.form(submitWith(options, mode, isSaved.setTrue));
+  const isUnsaved = computed(() => form.focus().dirty && !isSaved(), `${name}.isUnsaved`);
 
   function start(next: Mode<Edited>, values: Values): void {
     mode.set(next);
+    isSaved.setFalse();
     fillForm(form, values);
   }
 
@@ -162,6 +219,7 @@ export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Ed
     failure: reatomSubmitFailure(form, {
       message: options.failureMessage,
       name: `${name}.failure`,
+      haptics: options.haptics,
     }),
     startCreating: action((values: Values) => {
       start({ kind: "creating" }, values);
@@ -169,9 +227,8 @@ export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Ed
     startEditing: action((edited: Edited) => {
       start({ kind: "editing", edited }, options.valuesOf(edited));
     }, `${name}.startEditing`),
-    save: action(() => {
-      form.submit().catch(noop);
-    }, `${name}.save`),
+    save: reatomSave(form, { name, haptics: options.haptics }),
+    confirmClosingWhileDirty: confirmingClosing(options.closingConfirmation, { name, isUnsaved }),
   };
 
   return valuesOfDraft === undefined

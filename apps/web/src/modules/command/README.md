@@ -8,12 +8,12 @@ Hold to talk, as in Telegram: `pointerdown` starts recording, `pointerup` sends,
 
 ## Sheet
 
-Shows what was heard and the draft as the bot shows it: both read it with `previewOf` from `@family-hub/commands`, the bot adding its emoji. A missing field or an unresolved Member takes «Создать» away; candidates are picked right in the sheet. «Создать» shows «Создано» at once and brings the draft back if the server refuses, with the bot's words for the refusal's reason. «×» drops a pending draft. Failures read the same as in the bot: the server sends the text.
+Shows what was heard and the draft as the bot shows it: both read it with `previewOf` from `@family-hub/commands`, the bot adding its emoji. A missing field or an unresolved Member takes «Создать» away; candidates are picked right in the sheet. «Создать» and «Изменить» are Telegram's MainButton and SecondaryButton (in-page buttons on clients older than 7.10): «Создать» shows its progress until the server answers, takes no second press meanwhile, and turns into «Дело создано» or «Запись добавлена в журнал» or brings the draft back with the bot's words for the refusal's reason. «×» drops a pending draft. Failures read the same as in the bot: the server sends the text.
 
 ## Injected
 
 - `recorder` — `common/voice-recorder`, the browser's `MediaRecorder` behind a seam tests replace.
-- `telegram` — haptics, vertical swipes and `openTelegramLink` from `common/telegram`.
+- `telegram` — haptics, vertical swipes and `openTelegramLink` from `common/telegram` for the microphone; MainButton and SecondaryButton for the sheet, which `start()` from the composition root makes follow the draft.
 - `botChat` — the bot chat link from `GET /api/commands/bot`, since the Mini App does not know its bot's name.
 - `wait` — the one-second tick of the recording timer.
 - `onRecorded` — the composition root passes the recording to the sheet.

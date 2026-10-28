@@ -3,6 +3,7 @@ import { action, computed, type Atom } from "@reatom/core";
 import type { Pet, Task } from "@family-hub/contract";
 
 import { formatNearDate, type Viewer } from "@/common/format-date";
+import type { Haptics } from "@/common/telegram";
 
 import {
   agendaRowsOf,
@@ -19,6 +20,7 @@ type CalendarDependencies = {
   viewer: () => Viewer;
   pets: { data: () => Pet[] | undefined };
   onOpenPet: (petId: string) => void;
+  telegram: { haptics: Pick<Haptics, "select"> };
 };
 
 type CalendarState = {
@@ -29,7 +31,7 @@ type CalendarState = {
 };
 
 function reatomCalendarMoves(
-  { onOpenPet }: CalendarDependencies,
+  { onOpenPet, telegram }: CalendarDependencies,
   { month, selected, opened }: CalendarState,
 ) {
   return {
@@ -40,6 +42,7 @@ function reatomCalendarMoves(
       month.set(shiftMonth(month(), 1));
     }, "tasks.nextMonth"),
     select: action((date: string) => {
+      telegram.haptics.select();
       selected.set(date);
     }, "tasks.select"),
     openPet: action((petId: string) => {

@@ -12,10 +12,11 @@ import {
 
 import type { Pet, Task } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
-import { detached } from "@/common/state";
-import type { Dialogs } from "@/common/telegram";
+import { detached, instantly, type Slide } from "@/common/state";
+import type { ClosingConfirmation, Dialogs, Haptics } from "@/common/telegram";
 
 import { detailsOf, type TaskDetails } from "../task-details.lib.ts";
 import {
@@ -49,13 +50,15 @@ export type EmptyList = { title: string; hint: string | undefined };
 type TasksDependencies = SharedLists &
   LiveVersion & {
     api: TasksApi;
-    telegram: Pick<Dialogs, "showPopup">;
+    deviceCache: Pick<DeviceCache, "withDeviceCache">;
+    telegram: Pick<Dialogs, "showPopup"> & ClosingConfirmation & { haptics: Haptics };
     self: () => string | undefined;
     viewer: () => Viewer;
     onOpenAlbum: (albumId: string) => void;
     onOpenPet: (petId: string) => void;
     onRecord: (record: CareRecord) => void;
     onDraftSaved: (draftId: string) => void;
+    slide?: Slide;
   };
 
 type Navigation = {
@@ -95,10 +98,17 @@ function reatomForms(
   return {
     taskForm: reatomTaskForm({
       ...dependencies,
+      haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
       timeZone: () => dependencies.viewer().timeZone,
       onSaved,
     }),
-    subtaskForm: reatomSubtaskForm({ ...dependencies, onSaved }),
+    subtaskForm: reatomSubtaskForm({
+      ...dependencies,
+      haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
+      onSaved,
+    }),
   };
 }
 
@@ -137,7 +147,7 @@ function emptyOf(
   }
 
   if (!hasFamilyTasks) {
-    return { title: "Дел нет", hint: "Нажмите «Дело», чтобы добавить первое" };
+    return { title: "Дел нет", hint: "Нажмите «Добавить дело», чтобы завести первое" };
   }
 
   return scope === "mine"
@@ -186,16 +196,14 @@ function reatomScreen(
       return editing;
     }
 
-    if (dependencies.tasks.list.error() !== undefined) {
-      return { kind: "failed" };
-    }
-
     const tasks = shown();
     const task = openedTask();
     const viewer = dependencies.viewer();
 
     if (tasks === undefined) {
-      return { kind: "loading" };
+      return dependencies.tasks.list.error() === undefined
+        ? { kind: "loading" }
+        : { kind: "failed" };
     }
 
     return task === undefined
@@ -229,23 +237,28 @@ function reatomOpen({ editing, opened }: Navigation, viewer: () => Viewer, tasks
 
 function reatomBrowsing(
   navigation: Navigation,
-  { viewer, onOpenAlbum }: TasksDependencies,
+  { viewer, onOpenAlbum, telegram, slide = instantly }: TasksDependencies,
   tasks: TasksModel,
 ) {
   const { editing, opened } = navigation;
 
   return {
     openRow: action((row: TaskRow) => {
-      opened.set({ taskId: row.taskId, occurrence: row.occurrence });
+      slide("forward", () => {
+        opened.set({ taskId: row.taskId, occurrence: row.occurrence });
+      });
     }, "tasks.openRow"),
     open: detached(reatomOpen(navigation, viewer, tasks), "tasks.open"),
     toggleCompleted: action(() => {
+      telegram.haptics.select();
       navigation.isCompletedShown.toggle();
     }, "tasks.toggleCompleted"),
     showView: action((view: "list" | "calendar") => {
+      telegram.haptics.select();
       navigation.view.set(view);
     }, "tasks.showView"),
     showScope: action((scope: "mine" | "all") => {
+      telegram.haptics.select();
       navigation.scope.set(scope);
     }, "tasks.showScope"),
     back: action(() => {
@@ -336,6 +349,18 @@ function tasksOfPet(tasks: TasksModel, viewer: () => Viewer) {
   };
 }
 
+// Which screen is shown, apart from the data it shows, so a renamed Task keeps focus where it is.
+function reatomScreenKey({ editing, opened }: Navigation, { taskForm, subtaskForm }: Forms) {
+  return computed(() => {
+    const current = editing();
+    const isCreating = current === "task" ? taskForm.isCreating() : subtaskForm.isCreating();
+
+    return current === undefined
+      ? (opened()?.taskId ?? "list")
+      : `${current}:${isCreating ? "new" : "edit"}`;
+  }, "tasks.screenKey");
+}
+
 export function reatomTasksScreen(input: TasksDependencies) {
   const tasks = reatomTasks(input);
   const dependencies = { ...input, tasks };
@@ -358,6 +383,7 @@ export function reatomTasksScreen(input: TasksDependencies) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "tasks.title"),
+    screenKey: reatomScreenKey(navigation, forms),
     view: navigation.view,
     scope: navigation.scope,
     reload: tasks.reload,

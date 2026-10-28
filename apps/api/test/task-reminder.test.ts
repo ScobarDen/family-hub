@@ -75,10 +75,14 @@ function textsTo(worker: Worker, user: TelegramUserFixture) {
   return messagesTo(worker, user).map(({ text }) => text);
 }
 
-function buttonsOf(worker: Worker, user: TelegramUserFixture) {
+function keyboardOf(worker: Worker, user: TelegramUserFixture) {
   const markup = messagesTo(worker, user).at(-1)?.reply_markup as InlineKeyboardMarkup | undefined;
 
-  return markup?.inline_keyboard.flat() ?? [];
+  return markup?.inline_keyboard ?? [];
+}
+
+function buttonsOf(worker: Worker, user: TelegramUserFixture) {
+  return keyboardOf(worker, user).flat();
 }
 
 async function tickAt(worker: Worker, moment: string) {
@@ -154,7 +158,26 @@ describe("a Task Reminder", () => {
     expect(textsTo(worker, asya)).toEqual(["📌 Позвонить маме · 5 октября"]);
   });
 
-  test("of a Pet-linked Task also offers to record it", async () => {
+  test("offers a green «Готово», «Отложить» and a link that opens the Task", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Вынести мусор",
+      when: { date: "2026-10-05", ...dateOnly },
+      reminderOffsets: ["at-start"],
+    });
+
+    await tickAt(worker, "2026-10-05T06:00:00Z");
+
+    expect(keyboardOf(worker, denis)).toEqual([
+      [
+        expect.objectContaining({ text: "✅ Готово", style: "success" }),
+        expect.objectContaining({ text: "⏰ Отложить" }),
+      ],
+      [{ text: "Открыть", url: `https://t.me/family_hub_test_bot?startapp=task_${task.id}` }],
+    ]);
+  });
+
+  test("of a Pet-linked Task also offers to record it beside «Открыть»", async () => {
     const worker = await startWithFamily();
     const task = await createTask(worker, {
       title: "Таблетка от глистов",
@@ -165,14 +188,19 @@ describe("a Task Reminder", () => {
 
     await tickAt(worker, "2026-10-05T06:00:00Z");
 
-    expect(buttonsOf(worker, denis).map(({ text }) => text)).toEqual([
-      "✅ Готово",
-      "⏰ Отложить",
-      "📝 Записать",
+    expect(keyboardOf(worker, denis)).toEqual([
+      [
+        expect.objectContaining({ text: "✅ Готово", style: "success" }),
+        expect.objectContaining({ text: "⏰ Отложить" }),
+      ],
+      [
+        {
+          text: "📝 Записать",
+          url: `https://t.me/family_hub_test_bot?startapp=rec_${task.id}_2026-10-05`,
+        },
+        { text: "Открыть", url: `https://t.me/family_hub_test_bot?startapp=task_${task.id}` },
+      ],
     ]);
-    expect(buttonsOf(worker, denis).at(-1)).toMatchObject({
-      url: expect.stringContaining(`startapp=rec_${task.id}_2026-10-05`),
-    });
   });
 
   test("of an archived Pet's Task stays silent", async () => {

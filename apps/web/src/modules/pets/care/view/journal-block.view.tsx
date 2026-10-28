@@ -21,7 +21,7 @@ const WeightBlock = reatomComponent(({ model }: { model: CareModel }) => {
         {ranges.map((range) => (
           <Chip
             key={range}
-            className="h-7 px-3 text-[0.8125rem]"
+            className="min-h-7 px-3 py-1 text-footnote"
             isSelected={range === weight.range}
             onClick={() => {
               model.chooseWeightRange(range);
@@ -34,7 +34,7 @@ const WeightBlock = reatomComponent(({ model }: { model: CareModel }) => {
       {weight.points.length > 1 ? (
         <WeightChart points={weight.points} />
       ) : (
-        <p className="px-4 py-4 text-[0.9375rem] text-muted-foreground">
+        <p className="px-4 py-4 text-subhead text-muted-foreground">
           Для графика нужно хотя бы два взвешивания
         </p>
       )}

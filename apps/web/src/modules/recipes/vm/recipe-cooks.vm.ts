@@ -1,20 +1,23 @@
-import { action, atom, computed, noop, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, noop, wrap } from "@reatom/core";
 import { Temporal } from "temporal-polyfill";
 
 import type { Recipe } from "@family-hub/contract";
 
-import { detached, readOnly } from "@/common/state";
-import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
+import { detached, reatomOptimistic, readOnly, type RollbackFailure } from "@/common/state";
+import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
+import { withCook, withoutCook } from "../recipes.lib.ts";
 import type { RecipesData } from "../recipes.model.ts";
 
 type CookDependencies = {
   api: RecipesApi;
   today: () => string;
   timeZone: () => string;
-  telegram: Pick<Dialogs, "showAlert" | "showPopup">;
+  telegram: Pick<Dialogs, "showPopup"> & { haptics: Haptics };
 };
+
+type Opened = { data: { (): Recipe | undefined; set: (recipe: Recipe) => unknown } };
 
 const middayTime = "12:00";
 
@@ -33,69 +36,87 @@ function cookedAtOf({ today, timeZone }: CookDependencies, date: string): number
 }
 
 // Today by default; an earlier day marks a dinner cooked before it was written down.
-function reatomCookDay({ today }: CookDependencies) {
+function reatomCookDay({ today, telegram }: CookDependencies) {
   const chosenDay = atom<string | undefined>(undefined, "recipes.cooks.chosenDay");
 
   return {
     today: readOnly(today),
     cookDay: computed(() => chosenDay() ?? today(), "recipes.cooks.day"),
     chooseCookDay: action((day: string) => {
+      telegram.haptics.select();
       chosenDay.set(day);
     }, "recipes.chooseCookDay"),
   };
 }
 
-type Change = (doing: (recipe: Recipe) => Promise<unknown>) => Promise<unknown>;
+type Change = (
+  shown: (recipe: Recipe) => Recipe,
+  saving: (recipe: Recipe) => Promise<Recipe>,
+) => Promise<void>;
 
 // A cooked mark is gone for the whole Family once taken away, so it is confirmed first.
 function reatomUncook(dependencies: CookDependencies, change: Change) {
   return action(async (cookId: string) => {
     if (await wrap(isConfirmed(dependencies.telegram, uncookQuestion))) {
-      await wrap(change(async (recipe) => dependencies.api.uncook(recipe.id, cookId)));
+      await wrap(
+        change(
+          (recipe) => withoutCook(recipe, cookId),
+          async (recipe) => dependencies.api.uncook(recipe.id, cookId),
+        ),
+      );
     }
-  }, "recipes.uncook").extend(withAsync());
+  }, "recipes.uncook");
 }
 
-export function reatomRecipeCooks(
-  dependencies: CookDependencies,
-  { data, opened }: { data: RecipesData; opened: () => Recipe | undefined },
-) {
-  const change = action(async (doing: (recipe: Recipe) => Promise<unknown>) => {
-    const recipe = opened();
+type Sources = { data: RecipesData; opened: Opened; failure: RollbackFailure };
 
-    const isSaved =
-      recipe !== undefined &&
-      (await wrap(
-        didSucceedOrAlert(dependencies.telegram, {
-          failure: "Не получилось сохранить готовку. Попробуйте ещё раз.",
-          call: doing(recipe),
-        }),
-      ));
+function reatomCookChange({ data, opened, failure }: Sources) {
+  return reatomOptimistic(
+    async (
+      shown: (recipe: Recipe) => Recipe,
+      saving: (recipe: Recipe) => Promise<Recipe>,
+    ): Promise<void> => {
+      const recipe = opened.data();
 
-    if (isSaved) {
-      data.reload();
-    }
-  }, "recipes.cooks.change").extend(withAsync());
+      if (recipe !== undefined) {
+        opened.data.set(shown(recipe));
+        opened.data.set(await wrap(saving(recipe)));
+        data.reload();
+      }
+    },
+    {
+      name: "recipes.cooks.change",
+      failure,
+      refusal: "Не получилось сохранить готовку. Попробуйте ещё раз.",
+    },
+  );
+}
 
+export function reatomRecipeCooks(dependencies: CookDependencies, sources: Sources) {
+  const { data } = sources;
+  const change = reatomCookChange(sources);
   const uncook = reatomUncook(dependencies, change);
   const { cookDay, ...dayChoice } = reatomCookDay(dependencies);
-  const isCooking = computed(() => !change.ready(), "recipes.cooks.isCooking");
 
   return {
-    isCooking,
     cookDay,
     ...dayChoice,
-    canCook: computed(() => !isCooking() && cookDay() !== "", "recipes.cooks.canCook"),
+    // The mark shows at once; a second tap before it is saved would cook the dinner twice.
+    canCook: computed(() => change.ready() && cookDay() !== "", "recipes.cooks.canCook"),
     ordering: readOnly(data.ordering),
     cook: action(() => {
-      const day = cookDay();
+      const cookedAt = cookedAtOf(dependencies, cookDay());
 
-      change(async (recipe) =>
-        dependencies.api.cook(recipe.id, cookedAtOf(dependencies, day)),
+      dependencies.telegram.haptics.success();
+
+      change(
+        (recipe) => withCook(recipe, cookedAt ?? Date.now()),
+        async (recipe) => dependencies.api.cook(recipe.id, cookedAt),
       ).catch(noop);
     }, "recipes.cook"),
     uncook: detached(uncook, "recipes.uncookMark"),
     toggleForgotten: action(() => {
+      dependencies.telegram.haptics.select();
       data.ordering.set(data.ordering() === "forgotten" ? "title" : "forgotten");
     }, "recipes.toggleForgotten"),
   };

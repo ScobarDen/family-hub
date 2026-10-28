@@ -4,6 +4,7 @@ import { Button, Notice } from "@/common/ui";
 
 import type { JoinFamilyModel, JoinFamilyScreen } from "../vm/join-family.vm.ts";
 import { InviteCard } from "./invite-card.view.tsx";
+import { InviteOpening } from "./invite-opening.view.tsx";
 
 export type JoinFamilyProps = { model: JoinFamilyModel };
 
@@ -53,5 +54,5 @@ export const JoinFamily = reatomComponent(({ model }: JoinFamilyProps) => {
     );
   }
 
-  return <Notice title="Открываем приглашение…" />;
+  return <InviteOpening />;
 }, "JoinFamily");

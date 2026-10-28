@@ -12,13 +12,29 @@ import {
 
 import type { AlbumSummary, Photo } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import { formatCount } from "@/common/format-count";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
-import { detached, readOnly } from "@/common/state";
-import { type Dialogs, didSucceedOrAlert, type PopupParams } from "@/common/telegram";
+import { withoutId } from "@/common/records";
+import {
+  detached,
+  instantly,
+  readOnly,
+  reatomOptimistic,
+  reatomRollbackFailure,
+  type RollbackFailure,
+  type Slide,
+} from "@/common/state";
+import {
+  type ClosingConfirmation,
+  type Dialogs,
+  type Fullscreen,
+  type PopupParams,
+  type Haptics,
+} from "@/common/telegram";
 
 import type { AlbumsApi } from "../albums.api.ts";
 import { subtitleOf, toItem, type AlbumItem, type AlbumView } from "../albums.lib.ts";
@@ -41,12 +57,19 @@ export type AlbumsScreen =
   | { kind: "failed" }
   | { kind: "list"; albums: AlbumItem[]; summary: string }
   | { kind: "album"; album: AlbumView }
-  | { kind: "all"; photos: Photo[] }
+  | { kind: "all"; photos: Photo[] | undefined }
   | { kind: "form"; isCreating: boolean };
 
 type AlbumsDependencies = LiveVersion & {
   api: AlbumsApi;
-  telegram: Dialogs;
+  deviceCache: Pick<DeviceCache, "withDeviceCache">;
+  telegram: Dialogs &
+    Fullscreen &
+    ClosingConfirmation & {
+      haptics: Haptics;
+      canShareMessage: boolean;
+      shareMessage: (preparedMessageId: string) => Promise<boolean>;
+    };
   viewer: () => Viewer;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   wait: (ms: number) => Promise<void>;
@@ -54,6 +77,7 @@ type AlbumsDependencies = LiveVersion & {
   // The Family Owner can connect the photo channel, so a closed upload leads them to it.
   canSetUpPhotos: () => boolean;
   onSetUpPhotos: () => void;
+  slide?: Slide;
 };
 
 type Navigation = { openedId: Atom<string | undefined>; isEditing: BooleanAtom };
@@ -82,7 +106,7 @@ function reatomScreen(
     }
 
     if (data.isAllShown()) {
-      return { kind: "all", photos: data.allPhotos.data() ?? [] };
+      return { kind: "all", photos: data.allPhotos.data() };
     }
 
     const opened = data.opened.data();
@@ -101,35 +125,88 @@ function reatomScreen(
   }, "albums.screen");
 }
 
+// Which screen is shown, apart from the data it shows, so a renamed Album keeps focus where it is.
+function reatomScreenKey({
+  data,
+  navigation,
+  form,
+}: {
+  data: AlbumsData;
+  navigation: Navigation;
+  form: { isCreating: () => boolean };
+}) {
+  return computed(() => {
+    if (navigation.isEditing()) {
+      return form.isCreating() ? "new" : "edit";
+    }
+
+    return data.isAllShown() ? "all" : (navigation.openedId() ?? "list");
+  }, "albums.screenKey");
+}
+
 function reatomRemoval(
   dependencies: AlbumsDependencies,
+  {
+    data,
+    navigation,
+    failure,
+  }: { data: AlbumsData; navigation: Navigation; failure: RollbackFailure },
+) {
+  return reatomOptimistic(
+    async () => {
+      const albumId = navigation.openedId();
+
+      dependencies.telegram.haptics.warning();
+
+      const choice = await wrap(dependencies.telegram.showPopup(deleteQuestion));
+
+      if (albumId === undefined || (choice !== "album-only" && choice !== "with-photos")) {
+        return;
+      }
+
+      data.list.data.set(withoutId(data.list.data() ?? [], albumId));
+      navigation.openedId.set(undefined);
+      await wrap(dependencies.api.remove(albumId, choice));
+      data.reload();
+    },
+    {
+      name: "albums.remove",
+      failure,
+      refusal: "Не получилось удалить альбом. Попробуйте ещё раз.",
+    },
+  );
+}
+
+// «Все фото» belong to no one Album, and a shared photo opens its Album.
+function photoSharing(
+  { api, telegram }: AlbumsDependencies,
   { data, navigation }: { data: AlbumsData; navigation: Navigation },
 ) {
-  return action(async () => {
-    const albumId = navigation.openedId();
-    const choice = await wrap(dependencies.telegram.showPopup(deleteQuestion));
+  function sharedAlbumId() {
+    return data.isAllShown() ? undefined : navigation.openedId();
+  }
 
-    if (albumId === undefined || (choice !== "album-only" && choice !== "with-photos")) {
-      return;
-    }
+  return {
+    isAvailable: () => telegram.canShareMessage && sharedAlbumId() !== undefined,
+    async share(photoId: string) {
+      const albumId = sharedAlbumId();
 
-    const isRemoved = await wrap(
-      didSucceedOrAlert(dependencies.telegram, {
-        failure: "Не получилось удалить альбом. Попробуйте ещё раз.",
-        call: dependencies.api.remove(albumId, choice),
-      }),
-    );
+      if (albumId !== undefined) {
+        const { preparedMessageId } = await wrap(api.sharePhoto(albumId, photoId));
 
-    if (isRemoved) {
-      navigation.openedId.set(undefined);
-      data.reload();
-    }
-  }, "albums.remove").extend(withAsync());
+        await wrap(telegram.shareMessage(preparedMessageId));
+      }
+    },
+  };
 }
 
 // In an Album the viewer's own action picks the photo shown as its cover.
-function reatomAlbumViewer(dependencies: AlbumsDependencies, data: AlbumsData) {
+function reatomAlbumViewer(
+  dependencies: AlbumsDependencies,
+  sources: { data: AlbumsData; navigation: Navigation; failure: RollbackFailure },
+) {
   const { api } = dependencies;
+  const { data } = sources;
   const pickCover = action(async (photoId: string) => {
     const album = data.opened.data();
 
@@ -153,18 +230,26 @@ function reatomAlbumViewer(dependencies: AlbumsDependencies, data: AlbumsData) {
       pickCover(photoId).catch(noop);
     },
     onDeleted: data.reload,
+    failure: sources.failure,
+    sharing: photoSharing(dependencies, sources),
   });
 }
 
 function reatomParts(
   dependencies: AlbumsDependencies,
-  { data, navigation }: { data: AlbumsData; navigation: Navigation },
+  {
+    data,
+    navigation,
+    failure,
+  }: { data: AlbumsData; navigation: Navigation; failure: RollbackFailure },
 ) {
   const { api } = dependencies;
 
   return {
     form: reatomAlbumForm({
       api,
+      haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
       onSaved: (saved) => {
         navigation.isEditing.setFalse();
         navigation.openedId.set(saved.id);
@@ -173,11 +258,22 @@ function reatomParts(
     }),
     batch: reatomBatchUpload({
       ...dependencies,
+      haptics: dependencies.telegram.haptics,
       upload: async (prepared) => api.uploadPhoto(prepared),
       addToAlbum: async (albumId, photo) => api.addPhotos(albumId, [photo.id]),
       onFinished: data.reload,
     }),
-    viewer: reatomAlbumViewer(dependencies, data),
+    viewer: reatomAlbumViewer(dependencies, { data, navigation, failure }),
+  };
+}
+
+function reatomOpening(navigation: Navigation, slide: Slide) {
+  return {
+    open: action((albumId: string) => {
+      slide("forward", () => {
+        navigation.openedId.set(albumId);
+      });
+    }, "albums.open"),
   };
 }
 
@@ -190,10 +286,12 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
     api: dependencies.api,
     openedId: navigation.openedId,
     liveVersion: dependencies.liveVersion,
+    deviceCache: dependencies.deviceCache,
   });
-  const parts = reatomParts(dependencies, { data, navigation });
+  const failure = reatomRollbackFailure("albums.failure", dependencies.telegram.haptics);
+  const parts = reatomParts(dependencies, { data, navigation, failure });
   const screen = reatomScreen(dependencies, { data, navigation, form: parts.form });
-  const remove = reatomRemoval(dependencies, { data, navigation });
+  const remove = reatomRemoval(dependencies, { data, navigation, failure });
 
   return {
     screen,
@@ -204,18 +302,19 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
       dependencies.onSetUpPhotos();
     }, "albums.setUpPhotos"),
     title: computed(() => titleOf(screen()), "albums.title"),
+    screenKey: reatomScreenKey({ data, navigation, form: parts.form }),
     retry: data.reload,
     canGoBack: computed(
       () => navigation.isEditing() || data.isAllShown() || navigation.openedId() !== undefined,
       "albums.canGoBack",
     ),
-    open: action((albumId: string) => {
-      navigation.openedId.set(albumId);
-    }, "albums.open"),
+    ...reatomOpening(navigation, dependencies.slide ?? instantly),
     openAll: action(() => {
       data.isAllShown.setTrue();
     }, "albums.openAll"),
     ...reatomMoves({ data, navigation, form: parts.form, batch: parts.batch }),
+    failure: failure.failure,
+    dismissFailure: failure.dismiss,
     remove: detached(remove, "albums.removeAlbum"),
   };
 }

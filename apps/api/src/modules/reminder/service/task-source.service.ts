@@ -64,18 +64,23 @@ async function recipientsOf({ sources }: ReminderDependencies, { root }: TaskTre
   return root.assignees.length > 0 ? root.assignees.map(({ id }) => id) : owner;
 }
 
-type Sourcing = { offset: ReminderOffset; recipientIds: string[]; chatLink: string | undefined };
+type Sourcing = {
+  offset: ReminderOffset;
+  recipientIds: string[];
+  chatLink: string;
+  openUrl: string;
+};
 
 function taskSource(
   dependencies: ReminderDependencies,
   { tree, date, sourcing }: { tree: TaskTree; date: string; sourcing: Sourcing },
 ): Source {
   const { row } = tree.root;
-  const { offset, recipientIds, chatLink } = sourcing;
+  const { offset, recipientIds, chatLink, openUrl } = sourcing;
   const isTimed = row.time !== null;
 
   function recordUrlOf(occurrence: string): string | undefined {
-    return chatLink === undefined
+    return row.petId === null
       ? undefined
       : `${chatLink}?startapp=${encodeRecordLink({ taskId: row.id, occurrence })}`;
   }
@@ -91,7 +96,10 @@ function taskSource(
     emoji: row.petId === null ? "📌" : "🐾",
     title: (occurrence, timeZone) => titleOf(row, { occurrence, timeZone }),
     buttons: (dispatchId, occurrence) =>
-      reminderButtons(dispatchId, { recordUrl: recordUrlOf(occurrence) }),
+      reminderButtons(dispatchId, {
+        recordUrl: recordUrlOf(occurrence),
+        openUrl,
+      }),
     closesForEveryone: true,
     complete: async (presser, occurrence) => {
       const { status } = await dependencies.tasks.complete(presser, { taskId: row.id, occurrence });
@@ -134,9 +142,14 @@ export async function taskSources(
 
   const { row } = tree.root;
   const recipientIds = await recipientsOf(dependencies, tree);
-  const chatLink = row.petId === null ? undefined : await dependencies.appLinks.chatLink();
+  const chatLink = await dependencies.appLinks.chatLink();
+  const openUrl = await dependencies.appLinks.appLink({ kind: "task", id: row.id });
 
   return row.reminderOffsets.map((offset) =>
-    taskSource(dependencies, { tree, date, sourcing: { offset, recipientIds, chatLink } }),
+    taskSource(dependencies, {
+      tree,
+      date,
+      sourcing: { offset, recipientIds, chatLink, openUrl },
+    }),
   );
 }

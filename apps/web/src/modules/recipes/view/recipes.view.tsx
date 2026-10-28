@@ -1,10 +1,17 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { LoadState } from "@/common/ui";
+import {
+  FailureBar,
+  LoadState,
+  Revealed,
+  SkeletonSection,
+  SkeletonSectionLayout,
+} from "@/common/ui";
 
 import type { RecipesScreen, RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { RecipeDetails } from "./recipe-details.view.tsx";
+import { RecipeFilters } from "./recipe-filters.view.tsx";
 import { RecipeForm } from "./recipe-form.view.tsx";
 import { RecipeList } from "./recipe-list.view.tsx";
 import { RecipeTags } from "./recipe-tags.view.tsx";
@@ -43,15 +50,25 @@ function contentOf({ model }: RecipesProps, screen: RecipesScreen): ReactNode {
     return <RecipeTags model={model} tags={screen.tags} />;
   }
 
-  return (
-    <LoadState
-      failure={screen.kind === "failed" ? "Не получилось загрузить рецепты." : undefined}
-      onRetry={model.retry}
-    />
-  );
+  if (screen.kind === "loading") {
+    return (
+      <SkeletonSectionLayout tabs={2}>
+        <RecipeFilters model={model} tags={[]} />
+        <SkeletonSection rows={5} />
+      </SkeletonSectionLayout>
+    );
+  }
+
+  return <LoadState failure="Не получилось загрузить рецепты." onRetry={model.retry} />;
 }
 
-export const Recipes = reatomComponent(
-  (props: RecipesProps) => contentOf(props, props.model.screen()),
-  "Recipes",
-);
+export const Recipes = reatomComponent((props: RecipesProps) => {
+  const screen = props.model.screen();
+
+  return (
+    <>
+      <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(props, screen)}</Revealed>
+      <FailureBar failure={props.model.failure()} onDismiss={props.model.dismissFailure} />
+    </>
+  );
+}, "Recipes");

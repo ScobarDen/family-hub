@@ -3,10 +3,19 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { movementChange, type Goal } from "@family-hub/contract";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
+import { fakeSlide } from "@/common/state";
+import {
+  fakeDeviceStorage,
+  fakeHaptics,
+  type FakeDeviceStorage,
+  fakeWindow,
+} from "@/common/telegram";
 import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
 
 import { createGoalsApi } from "../goals.api.ts";
+import { totalOf } from "../goals.model.ts";
 import { reatomGoalsScreen } from "./goals.vm.ts";
 
 const turkey: Goal = {
@@ -23,7 +32,18 @@ const turkey: Goal = {
   isAchieved: false,
   completed: null,
   shares: [{ id: "member-1", name: "Денис", contributed: 40_000, withdrawn: 0 }],
-  movements: [],
+  movements: [
+    {
+      id: "movement-1",
+      kind: "contribution",
+      amount: 40_000,
+      date: "2026-10-01",
+      member: { id: "member-1", name: "Денис" },
+      recordedBy: { id: "member-1", name: "Денис" },
+      comment: null,
+      isOwn: true,
+    },
+  ],
 };
 
 const sofa: Goal = {
@@ -44,8 +64,48 @@ const camera: Goal = {
   completed: { at: 0, by: "Ася", outcome: "cancelled" },
 };
 
-function startGoals({ choices = [] as string[] } = {}) {
+type Launch = {
+  choices?: string[];
+  device?: FakeDeviceStorage;
+  goals?: Goal[];
+  answered?: Promise<void>;
+  moving?: "refused" | "unreachable" | Promise<void>;
+};
+
+type Moving = NonNullable<Launch["moving"]>;
+
+async function movementReply(
+  { request, body }: { request: string; body: unknown },
+  moving: Moving,
+): Promise<Response> {
+  if (moving === "unreachable") {
+    throw new TypeError("Failed to fetch");
+  }
+
+  if (moving === "refused") {
+    return Response.json({ code: "BALANCE_NEGATIVE", message: "" }, { status: 409 });
+  }
+
+  await moving;
+
+  if (request.startsWith("DELETE")) {
+    return Response.json({ ...turkey, balance: 0, movements: [], shares: [] });
+  }
+
+  const { amount } = movementChange.parse(body);
+
+  return Response.json({ ...turkey, balance: turkey.balance + amount, isAchieved: true });
+}
+
+function startGoals({
+  choices = [],
+  device = fakeDeviceStorage(),
+  goals = [turkey, sofa, camera],
+  answered = Promise.resolve(),
+  moving = Promise.resolve(),
+}: Launch = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
+  const { slides, slide } = fakeSlide();
   const pending = [...choices];
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
@@ -55,7 +115,9 @@ function startGoals({ choices = [] as string[] } = {}) {
     requests.push({ request, body });
 
     if (request === "GET /api/goals") {
-      return Response.json({ goals: [turkey, sofa, camera], totalSaved: 70_000 });
+      await answered;
+
+      return Response.json({ goals, totalSaved: totalOf(goals) });
     }
 
     if (request === "GET /api/family/members") {
@@ -64,29 +126,30 @@ function startGoals({ choices = [] as string[] } = {}) {
       ]);
     }
 
-    if (request === "POST /api/goals/goal-1/movements") {
-      const { amount } = movementChange.parse(body);
-
-      return Response.json({ ...turkey, balance: turkey.balance + amount, isAchieved: true });
+    if (request.includes("/movements")) {
+      return movementReply({ request, body }, moving);
     }
 
     return Response.json({ ...turkey, completed: { at: 0, by: "Денис", outcome: "fulfilled" } });
   }
 
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch });
+  const haptics = fakeHaptics();
   const model = reatomGoalsScreen({
     api: createGoalsApi(client),
     members: reatomFamilyMembers(createFamilyApi(client)),
-    telegram: { showPopup: async () => pending.shift() },
+    telegram: { ...fakeWindow(), showPopup: async () => pending.shift(), haptics },
     self: () => "member-1",
     today: () => "2026-10-14",
     timeZone: () => "Europe/Moscow",
+    deviceCache: reatomDeviceCache(device.deviceStorage),
+    slide,
   });
 
   model.screen.subscribe(noop);
   model.movementForm.contributors.subscribe(noop);
 
-  return { model, requests };
+  return { model, requests, slides, felt: haptics.felt };
 }
 
 type Model = ReturnType<typeof startGoals>["model"];
@@ -127,6 +190,41 @@ describe("the Goals", () => {
   });
 });
 
+describe("opening a Goal", () => {
+  test("slides its card in", async () => {
+    const { model, slides } = startGoals();
+
+    await loaded(model);
+    model.open("goal-1");
+
+    expect(slides).toEqual(["forward"]);
+    expect(opened(model).goal.title).toBe("Отпуск в Турции");
+  });
+
+  test("keeps its screen key while the Goals load and gives another Goal its own", async () => {
+    let resolve = noop;
+    const answered = new Promise<void>((done) => {
+      resolve = done;
+    });
+    const { model } = startGoals({ goals: [turkey, { ...sofa, title: turkey.title }], answered });
+
+    model.open("goal-1");
+    const loading = model.screenKey();
+
+    resolve();
+    await vi.waitFor(() => {
+      expect(opened(model).goal.title).toBe("Отпуск в Турции");
+    });
+
+    expect(model.screenKey()).toBe(loading);
+
+    model.back();
+    model.open("goal-2");
+
+    expect(model.screenKey()).not.toBe(loading);
+  });
+});
+
 describe("a Goal with a deadline", () => {
   test("says how much to put aside each month", async () => {
     const { model } = startGoals();
@@ -139,8 +237,19 @@ describe("a Goal with a deadline", () => {
 });
 
 describe("a Contribution", () => {
-  test("that reaches the target sets off the salute", async () => {
-    const { model, requests } = startGoals();
+  test("is named by its amount and date for the buttons that change it", async () => {
+    const { model } = startGoals();
+
+    await loaded(model);
+    model.open("goal-1");
+
+    expect(opened(model).goal.movements[0]?.name.replaceAll(/\s/gu, " ")).toBe(
+      "взнос 40 000 ₽ от 1 октября",
+    );
+  });
+
+  test("that reaches the target sets off the salute with a single pulse", async () => {
+    const { model, requests, felt } = startGoals();
 
     await loaded(model);
     model.open("goal-1");
@@ -152,12 +261,110 @@ describe("a Contribution", () => {
     });
 
     expect(opened(model).isCelebrating).toBe(true);
+    expect(felt).toEqual(["success"]);
     expect(requests.at(-1)?.body).toMatchObject({
       kind: "contribution",
       amount: 60_000,
       date: "2026-10-14",
       memberId: "member-1",
     });
+  });
+});
+
+describe("a Movement with a field to fix", () => {
+  test("stays on the form with an error pulse", async () => {
+    const { model, requests, felt } = startGoals();
+
+    await loaded(model);
+    model.open("goal-1");
+    model.addMovement("contribution");
+    model.movementForm.save();
+
+    await vi.waitFor(() => {
+      expect(felt).toEqual(["error"]);
+    });
+    expect(model.screen().kind).toBe("movement-form");
+    expect(requests.filter(({ request }) => request.includes("/movements"))).toEqual([]);
+  });
+});
+
+function balanceOf(model: Model) {
+  const { progress, movements } = opened(model).goal;
+
+  return { progress: progress.replaceAll(/\s/gu, " "), movements: movements.length };
+}
+
+async function addMovement(model: Model, kind: "contribution" | "withdrawal", amount: string) {
+  await loaded(model);
+  model.open("goal-1");
+  model.addMovement(kind);
+  model.movementForm.form.fields.amount.set(amount);
+  model.movementForm.save();
+  await vi.waitFor(() => {
+    expect(model.screen().kind).toBe("goal");
+  });
+}
+
+const moves = [
+  {
+    name: "a Contribution",
+    act: async (model: Model) => addMovement(model, "contribution", "60000"),
+    after: { progress: "100 000 ₽ из 100 000 ₽ · 100%", movements: 2 },
+    tap: "success",
+  },
+  {
+    name: "a Withdrawal",
+    act: async (model: Model) => addMovement(model, "withdrawal", "10000"),
+    after: { progress: "30 000 ₽ из 100 000 ₽ · 30%", movements: 2 },
+    tap: "success",
+  },
+  {
+    name: "deleting a Movement",
+    choices: ["confirm"],
+    act: async (model: Model) => {
+      await loaded(model);
+      model.open("goal-1");
+      model.removeMovement("movement-1");
+    },
+    after: { progress: "0 ₽ из 100 000 ₽ · 0%", movements: 0 },
+    tap: "warning",
+  },
+];
+
+const before = { progress: "40 000 ₽ из 100 000 ₽ · 40%", movements: 1 };
+
+describe.each(moves)("$name", ({ act, after, choices, tap }) => {
+  test("changes the Balance before the server answers, with one pulse at the tap", async () => {
+    const { model, felt } = startGoals({ choices, moving: new Promise(noop) });
+
+    await act(model);
+    await vi.waitFor(() => {
+      expect(balanceOf(model)).toEqual(after);
+    });
+
+    expect(model.failure()).toBeUndefined();
+    expect(felt).toEqual([tap]);
+  });
+
+  test.each([
+    {
+      moving: "refused" as const,
+      said: "Не получилось сохранить. Баланс цели не может уйти в минус.",
+    },
+    {
+      moving: "unreachable" as const,
+      said: "Нет связи — не сохранилось. Проверьте интернет и повторите.",
+    },
+  ])("rolls back with the failure bar when $moving", async ({ moving, said }) => {
+    const { model, felt } = startGoals({ choices, moving });
+
+    await act(model);
+    await vi.waitFor(() => {
+      expect(model.failure()).toBe(said);
+    });
+
+    expect(balanceOf(model)).toEqual(before);
+    expect(felt).toEqual([tap, "error"]);
   });
 });
 
@@ -175,6 +382,34 @@ describe("closing a Goal", () => {
     expect(requests.at(-1)).toEqual({
       request: "POST /api/goals/goal-1/complete",
       body: { outcome: "fulfilled" },
+    });
+  });
+});
+
+describe("launching from the device cache", () => {
+  test("shows the Goals of the last launch until the fresh ones arrive", async () => {
+    const device = fakeDeviceStorage();
+
+    await loaded(startGoals({ device }).model);
+    await vi.waitFor(() => {
+      expect(device.items.has("goals")).toBe(true);
+    });
+    context.reset();
+    let answer = noop;
+    const { model } = startGoals({
+      device,
+      goals: [sofa],
+      answered: new Promise((resolve) => {
+        answer = resolve;
+      }),
+    });
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ active: [{ title: "Отпуск в Турции" }] });
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({ active: [], achieved: [{ title: "Диван" }] });
     });
   });
 });

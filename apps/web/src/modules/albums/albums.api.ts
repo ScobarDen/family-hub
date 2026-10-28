@@ -3,6 +3,7 @@ import {
   deleted,
   albumList,
   photoList,
+  preparedMessage,
   type Album,
   type AlbumChange,
   type AlbumSummary,
@@ -33,6 +34,11 @@ function photoCalls(client: HttpClient) {
 
       return photos.map((each) => resolvedPhoto(each, client.url));
     },
+    sharePhoto: async (albumId: string, photoId: string) =>
+      client.request(`/api/albums/${albumId}/photos/${photoId}/share`, {
+        method: "POST",
+        schema: preparedMessage,
+      }),
   };
 }
 

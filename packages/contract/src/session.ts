@@ -4,13 +4,6 @@ import { familyRequestStatus } from "./family-request.ts";
 import { memberSettings } from "./member.ts";
 import { named } from "./primitive.ts";
 
-export const sessionResponse = z.discriminatedUnion("status", [
-  z.object({ status: z.literal("member"), token: z.string() }),
-  z.object({ status: z.literal("stranger"), familyRequest: familyRequestStatus }),
-]);
-
-export type SessionResponse = z.infer<typeof sessionResponse>;
-
 export const currentMember = z.object({
   member: named,
   family: named,
@@ -19,3 +12,14 @@ export const currentMember = z.object({
 });
 
 export type CurrentMember = z.infer<typeof currentMember>;
+
+export const sessionToken = z.object({ token: z.string() });
+
+export type SessionToken = z.infer<typeof sessionToken>;
+
+export const sessionResponse = z.discriminatedUnion("status", [
+  currentMember.extend(sessionToken.shape).extend({ status: z.literal("member") }),
+  z.object({ status: z.literal("stranger"), familyRequest: familyRequestStatus }),
+]);
+
+export type SessionResponse = z.infer<typeof sessionResponse>;

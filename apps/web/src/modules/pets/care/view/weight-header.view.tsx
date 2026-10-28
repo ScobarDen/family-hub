@@ -12,8 +12,8 @@ export const WeightHeader = reatomComponent(({ model }: { model: CareModel }) =>
   return (
     <div className="flex items-end justify-between gap-3 px-4 pt-4">
       <div className="flex flex-col gap-0.5">
-        <span className="text-[1.75rem] leading-none tracking-tight">{summary?.latest ?? "—"}</span>
-        <span className="text-[0.8125rem] text-muted-foreground">
+        <span className="text-figure tracking-tight">{summary?.latest ?? "—"}</span>
+        <span className="text-footnote text-muted-foreground">
           {summary?.change ?? "Последнее взвешивание"}
         </span>
       </div>

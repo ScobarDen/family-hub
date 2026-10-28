@@ -71,6 +71,27 @@ function isVoiceCommand(message: Message | undefined): message is Message & { vo
   return message?.chat.type === "private" && message.voice !== undefined;
 }
 
+function botCommandOf(message: Message | undefined): string | undefined {
+  return message?.chat.type === "private" && message.text?.startsWith("/") === true
+    ? message.text.split(/\s/u)[0]?.split("@")[0]
+    : undefined;
+}
+
+function handleBotCommand(
+  services: AppServices,
+  { message, background }: { message: Message | undefined; background: Background },
+): void {
+  const botCommand = botCommandOf(message);
+
+  if (message && botCommand === "/remind") {
+    background.waitUntil(services.commands.handleRemind(message));
+  }
+
+  if (message && botCommand === "/today") {
+    background.waitUntil(services.reminders.sendToday(message));
+  }
+}
+
 async function handleUpdate(
   services: AppServices,
   { update, background }: { update: Update; background: Background },
@@ -80,6 +101,8 @@ async function handleUpdate(
   if (isCommand(update.message)) {
     waitUntil(services.commands.handleText(update.message));
   }
+
+  handleBotCommand(services, { message: update.message, background });
 
   if (isVoiceCommand(update.message)) {
     waitUntil(services.commands.handleVoice(update.message));

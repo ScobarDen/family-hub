@@ -7,17 +7,36 @@ import {
   type SetAtom,
   withAsync,
   withAsyncData,
+  withRollback,
   wrap,
 } from "@reatom/core";
 
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import { formatCount } from "@/common/format-count";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
-import { detached, readOnly } from "@/common/state";
-import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
+import { withoutId } from "@/common/records";
+import {
+  detached,
+  instantly,
+  reatomOptimistic,
+  reatomRollbackFailure,
+  readOnly,
+  type RollbackFailure,
+  type Slide,
+} from "@/common/state";
+import {
+  type Confirmation,
+  type ClosingConfirmation,
+  type Dialogs,
+  didSucceedOrAlert,
+  type Fullscreen,
+  isConfirmed,
+  type Haptics,
+} from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import {
@@ -69,11 +88,19 @@ export type RecipesScreen =
 
 type RecipesDependencies = LiveVersion & {
   api: RecipesApi;
-  telegram: Dialogs;
+  deviceCache: Pick<DeviceCache, "withDeviceCache">;
+  telegram: Dialogs &
+    Fullscreen &
+    ClosingConfirmation & {
+      haptics: Haptics;
+      canShareMessage: boolean;
+      shareMessage: (preparedMessageId: string) => Promise<boolean>;
+    };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   today: () => string;
   timeZone: () => string;
+  slide?: Slide;
 };
 
 type Navigation = {
@@ -93,12 +120,16 @@ function reatomOpened(
   api: RecipesApi,
   { data, navigation }: { data: RecipesData; navigation: Navigation },
 ) {
-  return computed(async () => {
+  const opened = computed(async () => {
     data.version();
     const recipeId = navigation.openedId();
 
     return recipeId === undefined ? undefined : wrap(api.get(recipeId));
   }, "recipes.opened").extend(withAsyncData());
+
+  opened.data.extend(withRollback());
+
+  return opened;
 }
 
 type Opened = ReturnType<typeof reatomOpened>;
@@ -148,36 +179,64 @@ function reatomScreen({
   }, "recipes.screen");
 }
 
+type Sources = {
+  data: RecipesData;
+  navigation: Navigation;
+  opened: Opened;
+  failure: RollbackFailure;
+};
+
 function reatomRecipeRemoval(
   { api, telegram }: RecipesDependencies,
-  { data, navigation, opened }: { data: RecipesData; navigation: Navigation; opened: Opened },
+  { data, navigation, opened, failure }: Sources,
 ) {
-  return action(async () => {
-    const recipe = opened.data();
-    const isSure = await wrap(isConfirmed(telegram, deleteQuestion));
+  return reatomOptimistic(
+    async () => {
+      const recipe = opened.data();
+      const isSure = await wrap(isConfirmed(telegram, deleteQuestion));
 
-    if (recipe === undefined || !isSure) {
+      if (recipe === undefined || !isSure) {
+        return;
+      }
+
+      data.list.data.set(withoutId(data.list.data() ?? [], recipe.id));
+      navigation.openedId.set(undefined);
+      await wrap(api.remove(recipe.id));
+    },
+    {
+      name: "recipes.remove",
+      failure,
+      refusal: "Не получилось удалить рецепт. Попробуйте ещё раз.",
+    },
+  );
+}
+
+function reatomRecipeSharing({ api, telegram }: RecipesDependencies, opened: Opened) {
+  const share = action(async () => {
+    const recipe = opened.data();
+
+    if (recipe === undefined) {
       return;
     }
 
-    const isRemoved = await wrap(
+    await wrap(
       didSucceedOrAlert(telegram, {
-        failure: "Не получилось удалить рецепт. Попробуйте ещё раз.",
-        call: api.remove(recipe.id),
+        failure: "Не получилось поделиться рецептом. Попробуйте ещё раз.",
+        call: api
+          .share(recipe.id)
+          .then(async ({ preparedMessageId }) => telegram.shareMessage(preparedMessageId)),
       }),
     );
+  }, "recipes.share").extend(withAsync());
 
-    if (isRemoved) {
-      navigation.openedId.set(undefined);
-      data.reload();
-    }
-  }, "recipes.remove").extend(withAsync());
+  return {
+    canShare: telegram.canShareMessage,
+    isSharing: computed(() => !share.ready(), "recipes.isSharing"),
+    share: detached(share, "recipes.shareRecipe"),
+  };
 }
 
-function reatomRecipeActions(
-  dependencies: RecipesDependencies,
-  sources: { data: RecipesData; navigation: Navigation; opened: Opened },
-) {
+function reatomRecipeActions(dependencies: RecipesDependencies, sources: Sources) {
   const { data, navigation, opened } = sources;
   const { api, telegram } = dependencies;
   const remove = reatomRecipeRemoval(dependencies, sources);
@@ -199,6 +258,7 @@ function reatomRecipeActions(
   }, "recipes.favorite").extend(withAsync());
 
   return {
+    ...reatomRecipeSharing(dependencies, opened),
     remove: detached(remove, "recipes.removeRecipe"),
     toggleFavorite: detached(favorite, "recipes.toggleFavorite"),
     toggleIngredient: action((index: number) => {
@@ -207,7 +267,7 @@ function reatomRecipeActions(
   };
 }
 
-function reatomFilters(data: RecipesData) {
+function reatomFilters(data: RecipesData, haptics: Pick<Haptics, "select">) {
   return {
     text: readOnly(data.text),
     tagId: readOnly(data.tagId),
@@ -216,9 +276,11 @@ function reatomFilters(data: RecipesData) {
       data.text.set(text);
     }, "recipes.search"),
     chooseTag: action((tagId: string | undefined) => {
+      haptics.select();
       data.tagId.set(data.tagId() === tagId ? undefined : tagId);
     }, "recipes.chooseTag"),
     toggleFavorites: action(() => {
+      haptics.select();
       data.isFavorite.set(!data.isFavorite());
     }, "recipes.toggleFavorites"),
     resetFilters: action(() => {
@@ -229,20 +291,30 @@ function reatomFilters(data: RecipesData) {
   };
 }
 
+function reatomOpening(navigation: Navigation, slide: Slide) {
+  return {
+    open: action((recipeId: string) => {
+      slide("forward", () => {
+        navigation.openedId.set(recipeId);
+        navigation.checked.clear();
+      });
+    }, "recipes.open"),
+  };
+}
+
 function reatomMoves({
   navigation,
   opened,
   form,
+  slide,
 }: {
   navigation: Navigation;
   opened: Opened;
   form: ReturnType<typeof reatomRecipeForm>;
+  slide: Slide;
 }) {
   return {
-    open: action((recipeId: string) => {
-      navigation.openedId.set(recipeId);
-      navigation.checked.clear();
-    }, "recipes.open"),
+    ...reatomOpening(navigation, slide),
     add: action(() => {
       form.startCreating();
       navigation.editing.set("recipe");
@@ -268,6 +340,19 @@ function reatomMoves({
   };
 }
 
+// Which screen is shown, apart from the data it shows, so a renamed Recipe keeps focus where it is.
+function reatomScreenKey(navigation: Navigation, form: { isCreating: () => boolean }) {
+  return computed(() => {
+    const editing = navigation.editing();
+
+    if (editing === "recipe") {
+      return form.isCreating() ? "new" : "edit";
+    }
+
+    return editing ?? navigation.openedId() ?? "list";
+  }, "recipes.screenKey");
+}
+
 export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   const navigation: Navigation = {
     openedId: atom<string | undefined>(undefined, "recipes.openedId"),
@@ -278,6 +363,8 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   const opened = reatomOpened(dependencies.api, { data, navigation });
   const form = reatomRecipeForm({
     ...dependencies,
+    haptics: dependencies.telegram.haptics,
+    closingConfirmation: dependencies.telegram,
     onSaved: (saved) => {
       navigation.editing.set(undefined);
       navigation.openedId.set(saved.id);
@@ -285,23 +372,25 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     },
   });
   const screen = reatomScreen({ ...dependencies, data, navigation, opened, form });
+  const failure = reatomRollbackFailure("recipes.failure", dependencies.telegram.haptics);
+  const screenKey = reatomScreenKey(navigation, form);
 
   return {
     screen,
     form,
     photoHint: readOnly(dependencies.photoHint),
     title: computed(() => titleOf(screen()), "recipes.title"),
+    screenKey,
     retry: data.reload,
-    canGoBack: computed(
-      () => navigation.editing() !== undefined || navigation.openedId() !== undefined,
-      "recipes.canGoBack",
-    ),
-    viewer: reatomPhotoViewer({ ...dependencies, onDeleted: data.reload }),
-    ...reatomFilters(data),
-    ...reatomRecipeActions(dependencies, { data, navigation, opened }),
-    ...reatomTagEditing(dependencies, data),
-    ...reatomRecipeCooks(dependencies, { data, opened: () => opened.data() }),
-    ...reatomMoves({ navigation, opened, form }),
+    canGoBack: computed(() => screenKey() !== "list", "recipes.canGoBack"),
+    viewer: reatomPhotoViewer({ ...dependencies, onDeleted: data.reload, failure }),
+    ...reatomFilters(data, dependencies.telegram.haptics),
+    failure: failure.failure,
+    dismissFailure: failure.dismiss,
+    ...reatomRecipeActions(dependencies, { data, navigation, opened, failure }),
+    ...reatomTagEditing(dependencies, { data, failure }),
+    ...reatomRecipeCooks(dependencies, { data, opened, failure }),
+    ...reatomMoves({ navigation, opened, form, slide: dependencies.slide ?? instantly }),
   };
 }
 

@@ -1,12 +1,15 @@
-import { context } from "@reatom/core";
+import { context, noop, sleep } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+
+import { fakeDeviceStorage } from "@/common/telegram";
 
 import {
   cleaning,
   fakeBackend,
+  food,
   groups,
   loaded,
-  settled,
+  rowOf,
   startTasks,
   taskOf,
   vaccination,
@@ -93,7 +96,7 @@ describe("the list of Tasks", () => {
     await loaded(model);
 
     expect(model.screen()).toMatchObject({
-      empty: { title: "Дел нет", hint: "Нажмите «Дело», чтобы добавить первое" },
+      empty: { title: "Дел нет", hint: "Нажмите «Добавить дело», чтобы завести первое" },
     });
   });
 
@@ -109,6 +112,44 @@ describe("the list of Tasks", () => {
   });
 });
 
+describe("opening a Task", () => {
+  test("slides its card in from a row", async () => {
+    const { model, slides } = startTasks();
+
+    await loaded(model);
+    model.openRow(rowOf(model, "Купить корм"));
+
+    expect(slides).toEqual(["forward"]);
+    expect(model.screen()).toMatchObject({ kind: "task", task: { title: "Купить корм" } });
+  });
+
+  test("titles each screen it pushes and the one Back returns to", async () => {
+    const { model } = startTasks();
+
+    await loaded(model);
+    model.openRow(rowOf(model, "Купить корм"));
+    const opened = model.title();
+
+    model.edit();
+    const editing = model.title();
+
+    model.back();
+
+    expect([opened, editing, model.title()]).toEqual(["Купить корм", "Дело", "Купить корм"]);
+  });
+
+  test("by its id, as a link does, lands without a slide", async () => {
+    const { model, slides } = startTasks(fakeBackend([cleaning]));
+
+    model.open("task-cleaning");
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("task");
+    });
+
+    expect(slides).toEqual([]);
+  });
+});
+
 describe("opening a Task by its id", () => {
   test("waits for the list and opens a recurring Task on its next open Occurrence", async () => {
     const { model, backend } = startTasks(fakeBackend([cleaning]));
@@ -119,11 +160,11 @@ describe("opening a Task by its id", () => {
     });
 
     model.toggleOpened();
-    await settled(model);
-
-    expect(backend.sent).toContainEqual({
-      request: "POST /api/tasks/task-cleaning/complete",
-      body: { occurrence: "2026-10-02" },
+    await vi.waitFor(() => {
+      expect(backend.sent).toContainEqual({
+        request: "POST /api/tasks/task-cleaning/complete",
+        body: { occurrence: "2026-10-02" },
+      });
     });
   });
 });
@@ -148,5 +189,60 @@ describe("a Task's Album", () => {
     model.openAlbum("album-1");
 
     expect(openedAlbums).toEqual(["album-1"]);
+  });
+});
+
+async function loadedBefore() {
+  const device = fakeDeviceStorage();
+
+  await loaded(startTasks(fakeBackend([vaccination]), { device }).model);
+  await vi.waitFor(() => {
+    expect(device.items.has("tasks")).toBe(true);
+  });
+  context.reset();
+
+  return device;
+}
+
+describe("launching from the device cache", () => {
+  test("shows the Tasks of the last launch until the fresh ones arrive", async () => {
+    const device = await loadedBefore();
+    let answer = noop;
+    const { model } = startTasks(
+      fakeBackend([food], {
+        answered: new Promise((resolve) => {
+          answer = resolve;
+        }),
+      }),
+      { device },
+    );
+
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({
+        groups: { overdue: [{ title: "Прививка Бьюику" }] },
+      });
+    });
+    answer();
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({
+        groups: { overdue: [], today: [{ title: "Купить корм" }] },
+      });
+    });
+  });
+
+  test("keeps the cached Tasks when the refresh fails", async () => {
+    const device = await loadedBefore();
+    const { model, backend } = startTasks(fakeBackend([], { failing: "GET /api/tasks" }), {
+      device,
+    });
+
+    await vi.waitFor(() => {
+      expect(backend.sent).toContainEqual({ request: "GET /api/tasks", body: undefined });
+    });
+    await sleep(0);
+
+    expect(model.screen()).toMatchObject({
+      groups: { overdue: [{ title: "Прививка Бьюику" }] },
+    });
   });
 });

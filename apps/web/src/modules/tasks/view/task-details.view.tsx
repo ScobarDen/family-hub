@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { Button, CheckButton, FieldError, Section, SectionItem } from "@/common/ui";
+import { Button, CheckButton, Section, SectionItem } from "@/common/ui";
 
 import type { SubtaskRow, TaskDetails as Details } from "../task-details.lib.ts";
 import type { TasksScreenModel } from "../vm/tasks.vm.ts";
@@ -27,7 +27,7 @@ function completionItemOf(completed: string | undefined) {
 
 const TaskHeader = reatomComponent(
   ({ task, model }: DetailsProps) => (
-    <Section footer={<FieldError>{model.failure()}</FieldError>}>
+    <Section>
       <SectionItem
         icon={task.isPrivate ? Lock : undefined}
         title={task.when ?? "Без срока"}
@@ -44,16 +44,10 @@ const TaskHeader = reatomComponent(
       <SectionItem
         {...completionItemOf(task.completed)}
         subtitle={task.completed}
-        disabled={model.isChanging()}
         onClick={model.toggleOpened}
       />
       {task.isRecurring && (
-        <SectionItem
-          icon={CalendarX}
-          title="Пропустить этот раз"
-          disabled={model.isChanging()}
-          onClick={model.skipOccurrence}
-        />
+        <SectionItem icon={CalendarX} title="Пропустить этот раз" onClick={model.skipOccurrence} />
       )}
     </Section>
   ),
@@ -75,7 +69,6 @@ const SubtaskItem = reatomComponent(({ subtask, model }: SubtaskProps) => {
           label={`${subtask.status === "completed" ? "Вернуть в работу" : "Отметить выполненным"}: ${subtask.title}`}
           isChecked={subtask.status === "completed"}
           isAlert={subtask.status === "overdue"}
-          disabled={model.isChanging()}
           onClick={() => {
             model.toggleSubtask(subtask.id);
           }}
@@ -88,8 +81,7 @@ const SubtaskItem = reatomComponent(({ subtask, model }: SubtaskProps) => {
           key={label}
           size="icon"
           variant="ghost"
-          aria-label={label}
-          disabled={model.isChanging()}
+          aria-label={`${label}: ${subtask.title}`}
           onClick={() => {
             onClick(subtask.id);
           }}

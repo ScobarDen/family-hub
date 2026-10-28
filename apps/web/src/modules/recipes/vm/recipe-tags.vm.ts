@@ -2,15 +2,22 @@ import { action, atom, reatomMap, withAsync, wrap } from "@reatom/core";
 
 import { recipeTagNameMaxLength, type RecipeTag } from "@family-hub/contract";
 
-import { detached, readOnly, reatomFailure } from "@/common/state";
-import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
+import { withoutId } from "@/common/records";
+import {
+  detached,
+  readOnly,
+  reatomFailure,
+  reatomOptimistic,
+  type RollbackFailure,
+} from "@/common/state";
+import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import type { RecipesData } from "../recipes.model.ts";
 
 type TagDependencies = {
   api: RecipesApi;
-  telegram: Pick<Dialogs, "showPopup">;
+  telegram: Pick<Dialogs, "showPopup"> & { haptics: Haptics };
 };
 
 const deleteQuestion: Confirmation = {
@@ -66,21 +73,36 @@ function reatomTagTyping(api: RecipesApi, change: Change) {
 }
 
 // The Family's tags: anyone adds, renames or deletes one.
-export function reatomTagEditing({ api, telegram }: TagDependencies, data: RecipesData) {
+export function reatomTagEditing(
+  { api, telegram }: TagDependencies,
+  { data, failure }: { data: RecipesData; failure: RollbackFailure },
+) {
   const change = action(async (doing: () => Promise<unknown>) => {
     await wrap(doing());
     data.reload();
   }, "recipes.tags.change").extend(withAsync());
-  const remove = action(async (tagId: string) => {
-    if (await wrap(isConfirmed(telegram, deleteQuestion))) {
-      await wrap(change(async () => api.removeTag(tagId)));
-    }
-  }, "recipes.tags.removeAsked").extend(withAsync());
+  const remove = reatomOptimistic(
+    async (tagId: string) => {
+      if (!(await wrap(isConfirmed(telegram, deleteQuestion)))) {
+        return;
+      }
+
+      data.tags.data.set(withoutId(data.tags.data() ?? [], tagId));
+      await wrap(api.removeTag(tagId));
+      data.reload();
+    },
+    {
+      name: "recipes.tags.removeAsked",
+      failure,
+      refusal: "Не получилось удалить тег. Попробуйте ещё раз.",
+    },
+  );
 
   return {
     tagFailure: reatomFailure(change, {
       message: "Не получилось сохранить тег. Попробуйте ещё раз.",
       name: "recipes.tags.failure",
+      haptics: telegram.haptics,
     }),
     ...reatomTagTyping(api, change),
     removeTag: detached(remove, "recipes.tags.remove"),

@@ -1,4 +1,6 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+
+import { SignedPhoto } from "@/common/photo";
 
 import { cn } from "./ui.lib.ts";
 
@@ -12,21 +14,14 @@ export function RoundPicture({
   fallback: ReactNode;
   className?: string;
 }) {
-  const [failedPicture, setFailedPicture] = useState<string>();
-
-  if (failedPicture === src) {
-    return fallback;
-  }
-
   return (
-    <img
+    <SignedPhoto
       src={src}
-      alt=""
-      aria-hidden
-      className={cn("size-7 shrink-0 rounded-full object-cover", className)}
-      onError={() => {
-        setFailedPicture(src);
-      }}
+      fallback={fallback}
+      className={cn(
+        "size-7 shrink-0 rounded-full object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10",
+        className,
+      )}
     />
   );
 }

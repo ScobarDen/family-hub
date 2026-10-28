@@ -5,6 +5,7 @@ import type { Pet } from "@family-hub/contract";
 
 import { fillForm, matchingName, reatomSubmitFailure } from "@/common/form";
 import { detached, reatomFailure } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";
@@ -14,6 +15,7 @@ type PetArchiveDependencies = {
   pets: Pick<PetsModel, "keep" | "drop">;
   openedPet: () => Pet | undefined;
   onDeleted: () => void;
+  haptics: Pick<Haptics, "error">;
 };
 
 function reatomDeletion({ api, pets, openedPet, onDeleted }: PetArchiveDependencies) {
@@ -41,7 +43,7 @@ function reatomDeletion({ api, pets, openedPet, onDeleted }: PetArchiveDependenc
 
 // Archiving is any Member's and undone as easily; deleting forever is the Family Owner's alone.
 export function reatomPetArchive(dependencies: PetArchiveDependencies) {
-  const { api, pets, openedPet } = dependencies;
+  const { api, pets, openedPet, haptics } = dependencies;
   const deletion = reatomDeletion(dependencies);
   const toggle = action(async () => {
     const pet = openedPet();
@@ -59,10 +61,12 @@ export function reatomPetArchive(dependencies: PetArchiveDependencies) {
     deletionFailure: reatomSubmitFailure(deletion, {
       message: "Не получилось удалить питомца. Попробуйте ещё раз.",
       name: "pets.archive.deletionFailure",
+      haptics,
     }),
     archiveFailure: reatomFailure(toggle, {
       message: "Не получилось. Попробуйте ещё раз.",
       name: "pets.archive.failure",
+      haptics,
     }),
 
     toggleArchive: detached(toggle, "pets.archive.toggleArchive"),

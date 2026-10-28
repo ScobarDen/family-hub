@@ -3,7 +3,7 @@ import { computed, type Atom, type BooleanAtom } from "@reatom/core";
 import type { Pet } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
-import type { Dialogs } from "@/common/telegram";
+import type { ClosingConfirmation, Dialogs, Fullscreen, Haptics } from "@/common/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import {
@@ -31,7 +31,7 @@ export type PetsDependencies = {
   pets: PetsModel;
   viewer: () => Viewer;
   isFamilyOwner: () => boolean;
-  telegram: Dialogs;
+  telegram: Dialogs & Fullscreen & ClosingConfirmation & { haptics: Haptics };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   tasksOf: (petId: string) => PetTask[];
@@ -95,12 +95,10 @@ export function reatomScreen(
       return editingScreens[current];
     }
 
-    if (dependencies.pets.list.error() !== undefined) {
-      return { kind: "failed" };
-    }
-
     if (dependencies.pets.list.data() === undefined) {
-      return { kind: "loading" };
+      return dependencies.pets.list.error() === undefined
+        ? { kind: "loading" }
+        : { kind: "failed" };
     }
 
     const pet = openedPet();

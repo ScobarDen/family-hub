@@ -3,6 +3,7 @@ import { bindFirst } from "@/common/bind";
 import type { ChangedSource, ReminderDependencies } from "../reminder.types.ts";
 import { handleReminderCallback } from "./callback.service.ts";
 import { deliverDue } from "./delivery.service.ts";
+import { sendToday } from "./digest-source.service.ts";
 import {
   digestChanged,
   membershipChanged,
@@ -17,6 +18,7 @@ export function createReminderService(dependencies: ReminderDependencies) {
       membershipChanged,
       digestChanged,
       zoneChanged,
+      sendToday,
     }),
     deliverDue: async () => deliverDue(dependencies),
     // A Pet's archive also silences or wakes the Reminders of its Tasks.

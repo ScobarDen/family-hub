@@ -51,3 +51,30 @@ export function placedOccurrences(
     { days: { from, to, timeZone }, momentOf: momentOf(task) },
   );
 }
+
+export function withCompletion(task: Task, occurrence: string | null, isCompleted: boolean): Task {
+  const others =
+    task.recurrence === null
+      ? []
+      : task.completions.filter((completion) => completion.occurrence !== occurrence);
+
+  return {
+    ...task,
+    completions: isCompleted ? [...others, { occurrence, at: Date.now(), by: null }] : others,
+  };
+}
+
+export function withSkipped(task: Task, date: string): Task {
+  return { ...task, skippedDates: [...task.skippedDates, date] };
+}
+
+export function withSubtaskCompletion(task: Task, subtaskId: string, isCompleted: boolean): Task {
+  return {
+    ...task,
+    subtasks: task.subtasks.map((subtask) =>
+      subtask.id === subtaskId
+        ? { ...subtask, completed: isCompleted ? { at: Date.now(), by: null } : null }
+        : subtask,
+    ),
+  };
+}

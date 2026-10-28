@@ -1,9 +1,19 @@
-import { action, atom, computed, take, throwAbort, withAsyncData, wrap } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  take,
+  throwAbort,
+  withAsyncData,
+  withRollback,
+  wrap,
+} from "@reatom/core";
 
-import type { FamilyMember, Pet, Task } from "@family-hub/contract";
+import { taskList, type FamilyMember, type Pet, type Task } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
-import { upserted, withoutId } from "@/common/records";
+import { rolledBackById, upserted, withoutId } from "@/common/records";
 
 import type { TasksApi } from "./tasks.api.ts";
 
@@ -65,7 +75,9 @@ export function reatomTasks({
   members,
   pets,
   liveVersion,
-}: { api: TasksApi } & SharedLists & LiveVersion) {
+  deviceCache,
+}: { api: TasksApi; deviceCache: Pick<DeviceCache, "withDeviceCache"> } & SharedLists &
+  LiveVersion) {
   const version = atom(0, "tasks.version");
   const list = computed(async () => {
     version();
@@ -73,6 +85,11 @@ export function reatomTasks({
 
     return wrap(api.list());
   }, "tasks.list").extend(withAsyncData());
+
+  list.data.extend(
+    deviceCache.withDeviceCache({ key: "tasks", schema: taskList, version: 1 }),
+    withRollback({ onRollback: rolledBackById }),
+  );
   const reload = action(() => {
     version.set(version() + 1);
   }, "tasks.reload");

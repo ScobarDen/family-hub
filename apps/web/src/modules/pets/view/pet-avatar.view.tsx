@@ -1,6 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { ImagePlus, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 
+import { SignedPhoto } from "@/common/photo";
 import { Button, FilePick } from "@/common/ui";
 
 import type { PetCard } from "../pets.lib.ts";
@@ -16,7 +17,11 @@ const AvatarImage = reatomComponent(({ src, card, model }: PetAvatarProps & { sr
 
   return (
     <div className="relative">
-      <img src={src} alt={card.name} className="aspect-square w-full rounded-xl object-cover" />
+      <SignedPhoto
+        src={src}
+        alt={card.name}
+        className="aspect-square w-full rounded-xl object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
+      />
       {change !== undefined && (
         <div className="absolute top-2 right-2 flex gap-2 [&_svg]:size-4">
           {isSaving && (

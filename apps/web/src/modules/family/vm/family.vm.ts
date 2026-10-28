@@ -1,4 +1,4 @@
-import { action, atom, computed, reatomBoolean } from "@reatom/core";
+import { action, atom, computed, reatomBoolean, retryComputed } from "@reatom/core";
 
 import { fillForm, reatomSubmitFailure } from "@/common/form";
 import { detached, readOnly } from "@/common/state";
@@ -57,6 +57,7 @@ function reatomDeletionFlow(sources: FamilySources) {
     deletionFailure: reatomSubmitFailure(form, {
       message: "Не получилось удалить семью. Попробуйте ещё раз.",
       name: "family.deletionFailure",
+      haptics: sources.telegram.haptics,
     }),
 
     openDeletion: action(() => {
@@ -89,6 +90,7 @@ export function reatomFamily(dependencies: FamilyDependencies) {
     isBusy: computed(() => !manage.ready() || !leave.ready(), "family.isBusy"),
     ...deletionFlow,
 
+    retry: detached(async () => retryComputed(sources.list), "family.retry"),
     manage: detached(manage, "family.manageOne"),
     leave: detached(leave, "family.leaveFamily"),
   };

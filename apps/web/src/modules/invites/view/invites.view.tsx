@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import { Link, UserPlus } from "lucide-react";
+import { Link, LoaderCircle, UserPlus } from "lucide-react";
 
 import { Button, FieldError, Section, SectionItem } from "@/common/ui";
 
@@ -14,7 +14,12 @@ export const Invites = reatomComponent(({ model }: InvitesProps) => {
     <Section title="Приглашения" footer={<FieldError>{model.failure()}</FieldError>}>
       <SectionItem
         icon={UserPlus}
-        title={isInviting ? "Создаём приглашение…" : "Пригласить в семью"}
+        title="Пригласить в семью"
+        after={
+          isInviting ? (
+            <LoaderCircle aria-hidden className="size-4 animate-spin text-muted-foreground" />
+          ) : undefined
+        }
         disabled={isInviting}
         onClick={model.invite}
       />
@@ -27,6 +32,7 @@ export const Invites = reatomComponent(({ model }: InvitesProps) => {
             <Button
               size="sm"
               variant="ghost"
+              aria-label={`Отозвать: ${invite.title}`}
               onClick={() => {
                 model.revoke(invite.id);
               }}

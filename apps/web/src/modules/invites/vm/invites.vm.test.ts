@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { Invite, InviteCreated, InviteList } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { fakeHaptics, type PopupParams } from "@/common/telegram";
 
 import { createInvitesApi } from "../invites.api.ts";
 import { reatomInvites } from "./invites.vm.ts";
@@ -46,7 +47,7 @@ function fakeBackend({
   return { fetch, requests };
 }
 
-function fakeTelegram({ canShareMessage = true } = {}) {
+function fakeTelegram({ canShareMessage = true, choice = "confirm" } = {}) {
   const calls: string[] = [];
 
   return {
@@ -59,6 +60,12 @@ function fakeTelegram({ canShareMessage = true } = {}) {
     openTelegramLink(url: string) {
       calls.push(`openTelegramLink ${url}`);
     },
+    async showPopup({ title }: PopupParams) {
+      calls.push(`showPopup ${title ?? ""}`);
+
+      return choice;
+    },
+    haptics: fakeHaptics(),
     calls,
   };
 }
@@ -100,7 +107,19 @@ describe("the Member's Invites", () => {
 
     await loaded(model);
 
-    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
+    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября, 15:00" }]);
+  });
+
+  test("tells apart two Invites made on the same day", async () => {
+    const sameDay = { ...older, id: "invite-3", expiresAt: older.expiresAt + 3_600_000 };
+    const model = startInvites(fakeBackend({ list: [sameDay, older] }));
+
+    await loaded(model);
+
+    expect(model.invites().map(({ title }) => title)).toEqual([
+      "Приглашение до 9 октября, 16:00",
+      "Приглашение до 9 октября, 15:00",
+    ]);
   });
 });
 
@@ -115,8 +134,8 @@ describe("inviting", () => {
     expect(backend.requests).toContain("POST /api/invites");
     expect(telegram.calls).toEqual(["shareMessage prepared-1"]);
     expect(model.invites()).toEqual([
-      { id: "invite-2", title: "Приглашение до 11 октября" },
-      { id: "invite-1", title: "Приглашение до 9 октября" },
+      { id: "invite-2", title: "Приглашение до 11 октября, 12:00" },
+      { id: "invite-1", title: "Приглашение до 9 октября, 15:00" },
     ]);
   });
 
@@ -158,17 +177,34 @@ describe("inviting", () => {
 });
 
 describe("revoking", () => {
-  test("removes the Invite at once", async () => {
+  test("asks first and removes the Invite once confirmed", async () => {
     const backend = fakeBackend();
-    const model = startInvites(backend);
+    const telegram = fakeTelegram();
+    const model = startInvites(backend, telegram);
 
     await loaded(model);
     model.revoke("invite-1");
 
-    expect(model.invites()).toEqual([]);
     await vi.waitFor(() => {
       expect(backend.requests).toContain("DELETE /api/invites/invite-1");
     });
+    expect(telegram.calls).toEqual(["showPopup Отозвать приглашение?"]);
+    expect(telegram.haptics.felt).toEqual(["warning"]);
+    expect(model.invites()).toEqual([]);
+  });
+
+  test("keeps the Invite when the confirmation is dismissed", async () => {
+    const backend = fakeBackend();
+    const model = startInvites(backend, fakeTelegram({ choice: "cancel" }));
+
+    await loaded(model);
+    model.revoke("invite-1");
+    await vi.waitFor(() => {
+      expect(model.isRevoking()).toBe(false);
+    });
+
+    expect(backend.requests).not.toContain("DELETE /api/invites/invite-1");
+    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября, 15:00" }]);
   });
 
   test("puts the Invite back when revoking fails", async () => {
@@ -178,9 +214,9 @@ describe("revoking", () => {
     model.revoke("invite-1");
 
     await vi.waitFor(() => {
-      expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября" }]);
+      expect(model.failure()).toBe("Не получилось отозвать приглашение. Попробуйте ещё раз.");
     });
-    expect(model.failure()).toBe("Не получилось отозвать приглашение. Попробуйте ещё раз.");
+    expect(model.invites()).toEqual([{ id: "invite-1", title: "Приглашение до 9 октября, 15:00" }]);
   });
 
   test("keeps it removed when it was already gone on the server", async () => {

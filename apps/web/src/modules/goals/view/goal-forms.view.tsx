@@ -4,11 +4,12 @@ import { goalColor, goalIcon } from "@family-hub/contract";
 
 import {
   Chip,
+  ChipGroup,
   type Choice,
   ChoiceField,
   FormShell,
   IconBadge,
-  Label,
+  PickerField,
   TextAreaField,
   TextField,
   visibilityChoices,
@@ -28,12 +29,12 @@ const CoverPicker = reatomComponent(({ model }: { model: GoalFormModel }) => {
   const cover = model.cover();
 
   return (
-    <div className="flex flex-col gap-2">
-      <Label>Обложка</Label>
-      <div className="flex flex-wrap gap-2">
+    <>
+      <ChipGroup label="Значок" role="radiogroup">
         {goalIcon.options.map((name) => (
           <Chip
             key={name}
+            role="radio"
             className="px-2"
             aria-label={goalIconTitles[name]}
             isSelected={icon() === name}
@@ -44,11 +45,12 @@ const CoverPicker = reatomComponent(({ model }: { model: GoalFormModel }) => {
             <IconBadge icon={goalIcons[name]} tone={cover.color} />
           </Chip>
         ))}
-      </div>
-      <div className="flex flex-wrap gap-2">
+      </ChipGroup>
+      <ChipGroup label="Цвет" role="radiogroup">
         {goalColor.options.map((name) => (
           <Chip
             key={name}
+            role="radio"
             className="px-2"
             aria-label={goalColorTitles[name]}
             isSelected={color() === name}
@@ -59,8 +61,8 @@ const CoverPicker = reatomComponent(({ model }: { model: GoalFormModel }) => {
             <IconBadge icon={goalIcons[cover.icon]} tone={name} />
           </Chip>
         ))}
-      </div>
-    </div>
+      </ChipGroup>
+    </>
   );
 }, "CoverPicker");
 
@@ -76,8 +78,14 @@ export const GoalForm = reatomComponent(
           label="Название"
           placeholder="Отпуск в Турции"
         />
-        <TextField field={fields.target} id="goal-target" label="Цель, ₽" placeholder="150000" />
-        <TextField field={fields.deadline} id="goal-deadline" label="Дедлайн" type="date" />
+        <TextField
+          field={fields.target}
+          id="goal-target"
+          label="Цель, ₽"
+          placeholder="150000"
+          inputMode="numeric"
+        />
+        <PickerField field={fields.deadline} id="goal-deadline" label="Дедлайн" isOptional />
         <CoverPicker model={model} />
         <TextAreaField field={fields.note} id="goal-note" label="Заметка" />
         {model.canChooseVisibility() && (
@@ -96,8 +104,14 @@ export const MovementForm = reatomComponent(
     return (
       <FormShell model={model} onCancel={onCancel}>
         <ChoiceField field={fields.kind} label="Что" choices={kindChoices} />
-        <TextField field={fields.amount} id="movement-amount" label="Сумма, ₽" placeholder="5000" />
-        <TextField field={fields.date} id="movement-date" label="Дата" type="date" />
+        <TextField
+          field={fields.amount}
+          id="movement-amount"
+          label="Сумма, ₽"
+          placeholder="5000"
+          inputMode="numeric"
+        />
+        <PickerField field={fields.date} id="movement-date" label="Дата" />
         {model.hasContributorChoice() && (
           <ChoiceField field={fields.memberId} label="Чей вклад" choices={model.contributors()} />
         )}

@@ -22,6 +22,7 @@ export type MovementItem = {
   id: string;
   title: string;
   subtitle: string;
+  name: string;
   isOwn: boolean;
 };
 
@@ -93,6 +94,7 @@ function statusOf(goal: Goal, viewer: Viewer): string | undefined {
 
 function movementOf(movement: Goal["movements"][number], today: string): MovementItem {
   const sign = movement.kind === "contribution" ? "+" : "−";
+  const date = formatShortDate(movement.date, today);
   const recorder =
     movement.recordedBy.id === movement.member.id
       ? ""
@@ -101,9 +103,8 @@ function movementOf(movement: Goal["movements"][number], today: string): Movemen
   return {
     id: movement.id,
     title: `${sign}${formatRubles(movement.amount)} · ${movement.member.name}`,
-    subtitle: [formatShortDate(movement.date, today) + recorder, movement.comment]
-      .filter((part) => part !== null)
-      .join(" · "),
+    subtitle: [date + recorder, movement.comment].filter((part) => part !== null).join(" · "),
+    name: `${movement.kind === "contribution" ? "взнос" : "снятие"} ${formatRubles(movement.amount)} от ${date}`,
     isOwn: movement.isOwn,
   };
 }
@@ -145,4 +146,49 @@ export function sectionsOf(goals: Goal[]): GoalSections {
     achieved: open.filter(({ isAchieved }) => isAchieved).map(toListItem),
     archive: goals.filter(({ completed }) => completed !== null).map(toListItem),
   };
+}
+
+type Movement = Goal["movements"][number];
+
+function sharesWith(goal: Goal, { kind, amount, member }: Movement, sign: 1 | -1): Goal["shares"] {
+  const shares = goal.shares.some(({ id }) => id === member.id)
+    ? goal.shares
+    : [...goal.shares, { ...member, contributed: 0, withdrawn: 0 }];
+
+  return shares.map((share) =>
+    share.id === member.id
+      ? {
+          ...share,
+          contributed: share.contributed + (kind === "contribution" ? sign * amount : 0),
+          withdrawn: share.withdrawn + (kind === "withdrawal" ? sign * amount : 0),
+        }
+      : share,
+  );
+}
+
+function moved(goal: Goal, movement: Movement, sign: 1 | -1): Goal {
+  const balance =
+    goal.balance + sign * (movement.kind === "contribution" ? 1 : -1) * movement.amount;
+
+  return {
+    ...goal,
+    balance,
+    isAchieved: balance >= goal.target,
+    shares: sharesWith(goal, movement, sign),
+  };
+}
+
+export function withMovement(goal: Goal, movement: Movement): Goal {
+  return { ...moved(goal, movement, 1), movements: [movement, ...goal.movements] };
+}
+
+export function withoutMovement(goal: Goal, movementId: string): Goal {
+  const movement = goal.movements.find(({ id }) => id === movementId);
+
+  return movement === undefined
+    ? goal
+    : {
+        ...moved(goal, movement, -1),
+        movements: goal.movements.filter(({ id }) => id !== movementId),
+      };
 }

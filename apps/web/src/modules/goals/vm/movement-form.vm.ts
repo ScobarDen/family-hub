@@ -1,4 +1,4 @@
-import { action, atom, computed, reatomForm, type Atom } from "@reatom/core";
+import { action, atom, computed, reatomForm, wrap, type Atom } from "@reatom/core";
 import { z } from "zod";
 
 import {
@@ -10,9 +10,11 @@ import {
 } from "@family-hub/contract";
 
 import { reatomEditableRecord } from "@/common/form";
+import type { ClosingConfirmation, Haptics } from "@/common/telegram";
 import type { Choice } from "@/common/ui";
 
 import type { GoalsApi } from "../goals.api.ts";
+import { withMovement } from "../goals.lib.ts";
 import type { GoalsModel } from "../goals.model.ts";
 
 type MovementFormDependencies = {
@@ -20,7 +22,10 @@ type MovementFormDependencies = {
   goals: Pick<GoalsModel, "keep" | "members">;
   today: () => string;
   self: () => string | undefined;
+  haptics: Pick<Haptics, "success" | "error">;
+  closingConfirmation: ClosingConfirmation;
   onSaved: (before: Goal, saved: Goal) => void;
+  onAdding: (before: Goal, change: MovementChange, shown: Goal) => void;
 };
 
 const emptyMovement = { kind: "contribution", amount: "", date: "", memberId: "", comment: "" };
@@ -81,10 +86,37 @@ function valuesOf({ movement }: Edited): MovementValues {
   };
 }
 
+// A Movement not yet saved has no id of its own and offers no editing until the server answers.
+function shownMovement(
+  { goals, self }: MovementFormDependencies,
+  change: MovementChange,
+): Goal["movements"][number] {
+  const members = goals.members.data() ?? [];
+
+  function named(id: string | null | undefined) {
+    const { name = "" } = members.find((member) => member.id === id) ?? {};
+
+    return { id: id ?? "", name };
+  }
+
+  return {
+    id: `unsaved-${String(Date.now())}`,
+    kind: change.kind,
+    amount: change.amount,
+    date: change.date,
+    member: named(change.memberId ?? self()),
+    recordedBy: named(self()),
+    comment: change.comment ?? null,
+    isOwn: false,
+  };
+}
+
 function reatomMovementRecord(
-  { api, goals, today, onSaved }: MovementFormDependencies,
+  dependencies: MovementFormDependencies,
   goal: Atom<Goal | undefined>,
 ) {
+  const { api, goals, today, haptics, closingConfirmation, onSaved, onAdding } = dependencies;
+
   return reatomEditableRecord({
     name: "goals.movementRecord",
     form: (onSubmit) =>
@@ -94,6 +126,8 @@ function reatomMovementRecord(
         onSubmit,
       }),
     failureMessage: "Не получилось сохранить. Баланс цели не может уйти в минус.",
+    haptics,
+    closingConfirmation,
     valuesOf,
     create: async (values): Promise<Saved> => {
       const before = goal();
@@ -102,17 +136,23 @@ function reatomMovementRecord(
         throw new Error("No Goal is open to add the movement to");
       }
 
-      return { before, saved: await api.addMovement(before.id, changeOf(values)) };
+      const change = changeOf(values);
+      const shown = withMovement(before, shownMovement(dependencies, change));
+
+      onAdding(before, change, shown);
+
+      return { before, saved: shown };
     },
-    update: async ({ goal: before, movement }: Edited, values): Promise<Saved> => ({
-      before,
-      saved: await api.updateMovement(
-        { goalId: before.id, movementId: movement.id },
-        changeOf(values),
-      ),
-    }),
-    onSaved: ({ before, saved }) => {
+    update: async ({ goal: before, movement }: Edited, values): Promise<Saved> => {
+      const saved = await wrap(
+        api.updateMovement({ goalId: before.id, movementId: movement.id }, changeOf(values)),
+      );
+
       goals.keep(saved);
+
+      return { before, saved };
+    },
+    onSaved: ({ before, saved }) => {
       onSaved(before, saved);
     },
   });

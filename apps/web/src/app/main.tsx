@@ -3,11 +3,13 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Temporal } from "temporal-polyfill";
 
+import { reatomDeviceCache } from "@/common/device-cache";
 import { deviceTimeZone, today as todayIn } from "@/common/format-date";
 import { createHttpClient } from "@/common/http-client";
 import { openLiveSocket, reatomLiveUpdates } from "@/common/live-updates";
 import { preparePhoto } from "@/common/photo";
 import { reatomTelegram } from "@/common/telegram";
+import { slideScreens } from "@/common/ui";
 import { createVoiceRecorder } from "@/common/voice-recorder";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
@@ -20,6 +22,7 @@ import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import {
   createMemberSettingsApi,
   reatomDigest,
+  reatomHomeScreen,
   reatomNotifications,
   reatomTimeZone,
 } from "@/modules/member-settings";
@@ -39,6 +42,7 @@ import { createTodayApi, reatomToday } from "@/modules/today";
 
 import { reatomNavigation } from "./app.route.ts";
 import { reatomOpener } from "./opener.vm.ts";
+import { reatomPrefetch } from "./prefetch.vm.ts";
 import { App } from "./view/app.view.tsx";
 
 const root = document.getElementById("root");
@@ -52,11 +56,15 @@ const telegram = reatomTelegram(window.Telegram.WebApp);
 const httpClient = createHttpClient({
   baseUrl: import.meta.env.VITE_API_URL ?? window.location.origin,
   fetch: async (input, init) => fetch(input, init),
+  page: document,
+  holdUntilSignedIn: true,
 });
+const deviceCache = reatomDeviceCache(telegram.deviceStorage);
 const session = reatomSession({
   api: createSessionApi(httpClient),
   telegram,
   isJoiningFamily: () => joinFamily.isOpen(),
+  deviceCache,
 });
 const joinFamily = reatomJoinFamily({
   api: createJoinFamilyApi(httpClient),
@@ -77,6 +85,7 @@ const timeZone = reatomTimeZone({
   saved: () => session.member()?.settings.timeZone,
   deviceZone: deviceTimeZone(),
   zones: Intl.supportedValuesOf("timeZone"),
+  haptics: telegram.haptics,
 });
 
 // The zone picked in the Profile wins; the device's is the fallback until the settings arrive.
@@ -113,7 +122,11 @@ const familyApi = createFamilyApi(httpClient);
 // One query each for the Family's Members and Pets, so every picker sees the same list.
 const members = reatomFamilyMembers(familyApi);
 const petsApi = createPetsApi(httpClient);
-const petsModel = reatomPets({ api: petsApi, liveVersion: () => live.versionOf("pet") });
+const petsModel = reatomPets({
+  api: petsApi,
+  liveVersion: () => live.versionOf("pet"),
+  deviceCache,
+});
 
 const tabBarModules = reatomTabBarModules({
   api: createTabBarApi(httpClient),
@@ -126,6 +139,7 @@ const photoStorage = reatomPhotoStorage({
 const albums = reatomAlbumsScreen({
   api: createAlbumsApi(httpClient),
   liveVersion: () => live.versionOf("albums"),
+  deviceCache,
   telegram,
   viewer,
   preparePhoto: prepare,
@@ -135,19 +149,23 @@ const albums = reatomAlbumsScreen({
   onSetUpPhotos: () => {
     navigation.openProfile();
   },
+  slide: slideScreens,
 });
 const recipes = reatomRecipesScreen({
   api: createRecipesApi(httpClient),
   liveVersion: () => live.versionOf("recipes"),
+  deviceCache,
   telegram,
   today,
   timeZone: zone,
   preparePhoto: prepare,
   photoHint: photoStorage.uploadHint,
+  slide: slideScreens,
 });
 const tasks = reatomTasksScreen({
   api: createTasksApi(httpClient),
   liveVersion: () => live.versionOf("tasks"),
+  deviceCache,
   members,
   pets: petsModel.list,
   telegram,
@@ -165,15 +183,18 @@ const tasks = reatomTasksScreen({
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
+  slide: slideScreens,
 });
 const goals = reatomGoalsScreen({
   api: createGoalsApi(httpClient),
   liveVersion: () => live.versionOf("goals"),
+  deviceCache,
   members,
   telegram,
   self,
   today,
   timeZone: zone,
+  slide: slideScreens,
 });
 const pet = reatomPetTab({
   api: petsApi,
@@ -205,11 +226,13 @@ const pet = reatomPetTab({
   onDraftSaved: (draftId) => {
     commandApi.markCreated(draftId).catch(noop);
   },
+  slide: slideScreens,
 });
 const commandSheet = reatomCommandSheet({
   api: commandApi,
   members,
   pets: petsModel.list,
+  telegram,
   onEdit: (opened) => {
     opener.editDraft(opened);
   },
@@ -235,6 +258,7 @@ const microphone = reatomMicrophone({
 const feed = reatomFeed({
   api: createFeedApi(httpClient),
   liveVersion: live.all,
+  deviceCache,
   today,
   timeZone: zone,
   onOpen: (target) => {
@@ -244,8 +268,10 @@ const feed = reatomFeed({
 });
 const todayHub = reatomToday({
   api: createTodayApi(httpClient),
+  deviceCache,
   liveVersion: live.all,
   today,
+  telegram,
   onOpen: (target) => {
     opener.open(target);
   },
@@ -264,6 +290,7 @@ const navigation = reatomNavigation({
   },
   isSignedIn: () => session.member() !== undefined,
   telegram,
+  slide: slideScreens,
   nestedBack: {
     pet,
     tasks,
@@ -275,7 +302,7 @@ const navigation = reatomNavigation({
 const opener = reatomOpener({
   telegram,
   navigation,
-  isSignedIn: () => session.member() !== undefined,
+  isSignedIn: session.isSignedIn,
   pets: pet.pets,
   tasks,
   care: {
@@ -289,6 +316,18 @@ const opener = reatomOpener({
   recipes,
   commandSheet,
 });
+const prefetch = reatomPrefetch({
+  isSignedIn: session.isSignedIn,
+  slots: tabBarModules.modules,
+  today: todayHub.tiles,
+  screens: {
+    tasks: tasks.screen,
+    pet: pet.pets.screen,
+    goals: goals.screen,
+    albums: albums.screen,
+    recipes: recipes.screen,
+  },
+});
 const home = {
   session,
   navigation,
@@ -296,13 +335,14 @@ const home = {
     modules: tabBarModules,
     activeTab: navigation.activeTab,
     onOpen: navigation.openTab,
+    telegram,
     titles: () => {
       const petTitle = petsModel.tabTitle();
 
       return petTitle === undefined ? {} : { pet: petTitle };
     },
   }),
-  tabBarMenu: reatomTabBarMenu({ modules: tabBarModules }),
+  tabBarMenu: reatomTabBarMenu({ modules: tabBarModules, telegram }),
   today: todayHub,
   sections: reatomSections({
     modules: tabBarModules,
@@ -322,7 +362,9 @@ const home = {
   digest: reatomDigest({
     api: memberSettingsApi,
     saved: () => session.member()?.settings.digest,
+    haptics: telegram.haptics,
   }),
+  homeScreen: reatomHomeScreen({ telegram, deviceCache }),
   family: reatomFamily({
     api: familyApi,
     members,
@@ -350,14 +392,17 @@ const home = {
   commandSheet,
 };
 
-telegram.launch();
+telegram.launch(deviceCache.whenRead([session.member, todayHub.header]));
 telegram.followColorScheme(document.documentElement);
 telegram.followPlatform(document.documentElement);
 navigation.start();
+commandSheet.start();
+home.homeScreen.countLaunch().catch(noop);
 opener.launch();
 
 timeZone.keepFollowingDevice();
 session.signIn();
+prefetch().catch(noop);
 joinFamily.load();
 live.start();
 

@@ -12,7 +12,7 @@ export const TagRow = reatomComponent(
   ({ model, tag }: { model: RecipesScreenModel; tag: RecipeTag }) => (
     <div className="flex items-center gap-2 px-4 py-1">
       <Input
-        aria-label="Название тега"
+        aria-label={`Название тега «${tag.name}»`}
         value={model.tagNameOf(tag)}
         onChange={(event) => {
           model.typeTagName(tag.id, event.target.value);
@@ -24,7 +24,7 @@ export const TagRow = reatomComponent(
       <Button
         size="icon-sm"
         variant="ghost"
-        aria-label="Удалить тег"
+        aria-label={`Удалить тег «${tag.name}»`}
         onClick={() => {
           model.removeTag(tag.id);
         }}

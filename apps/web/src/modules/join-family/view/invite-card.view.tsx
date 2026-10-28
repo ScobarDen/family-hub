@@ -12,12 +12,12 @@ export const InviteCard = reatomComponent(({ model, inviterName, familyName }: I
   return (
     <Notice
       title={`${inviterName} зовёт вас в семью «${familyName}»`}
-      description="В Family Hub семья ведёт общие планы, напоминания, рецепты и заботу о питомцах."
+      description="В Family Hub семья ведёт общие дела, цели, рецепты и заботу о питомцах."
     >
       <div className="flex w-full max-w-xs flex-col gap-3">
         <FieldError>{model.failure()}</FieldError>
-        <Button size="lg" disabled={isJoining} onClick={model.join}>
-          {isJoining ? "Вступаем…" : "Вступить"}
+        <Button size="lg" isPending={isJoining} onClick={model.join}>
+          Вступить
         </Button>
       </div>
     </Notice>

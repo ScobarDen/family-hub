@@ -26,6 +26,14 @@ export function formatDay(epochMs: number, { timeZone, today: onDate }: Viewer):
   return formatShortDate(day.toPlainDate().toString(), onDate);
 }
 
+export function formatDayTime(epochMs: number, viewer: Viewer): string {
+  const time = Temporal.Instant.fromEpochMilliseconds(epochMs)
+    .toZonedDateTimeISO(viewer.timeZone)
+    .toPlainTime();
+
+  return `${formatDay(epochMs, viewer)}, ${time.toString({ smallestUnit: "minute" })}`;
+}
+
 export function formatDate(date: string): string {
   return Temporal.PlainDate.from(date).toLocaleString("ru-RU", {
     ...dayAndMonth,
@@ -82,4 +90,43 @@ export function formatAge(birthDate: string, onDate: string): string {
   }
 
   return age.months > 0 ? countOf(age.months, months) : "меньше месяца";
+}
+
+export type PickerType = "date" | "time" | "datetime-local";
+
+const notChosen: Record<PickerType, string> = {
+  date: "Не выбрана",
+  time: "Не выбрано",
+  "datetime-local": "Не выбрано",
+};
+
+// A picked date reads «пт, 30 окт»: Intl's abbreviated month ends with a dot, and only another year is spelled out.
+function formatPickedDate(day: Temporal.PlainDate, onDate: string): string {
+  const words = day
+    .toLocaleString("ru-RU", { weekday: "short", day: "numeric", month: "short" })
+    .replace(".", "");
+
+  return day.year === Temporal.PlainDate.from(onDate).year ? words : `${words} ${day.year}`;
+}
+
+function formatPickedTime(time: Temporal.PlainTime): string {
+  return time.toString({ smallestUnit: "minute" });
+}
+
+export function formatPickedValue(type: PickerType, value: string, onDate: string): string {
+  if (value === "") {
+    return notChosen[type];
+  }
+
+  if (type === "time") {
+    return formatPickedTime(Temporal.PlainTime.from(value));
+  }
+
+  if (type === "date") {
+    return formatPickedDate(Temporal.PlainDate.from(value), onDate);
+  }
+
+  const moment = Temporal.PlainDateTime.from(value);
+
+  return `${formatPickedDate(moment.toPlainDate(), onDate)}, ${formatPickedTime(moment.toPlainTime())}`;
 }

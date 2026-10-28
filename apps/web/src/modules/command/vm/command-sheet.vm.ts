@@ -18,6 +18,7 @@ import {
 
 import { HttpError } from "@/common/http-client";
 import { detached } from "@/common/state";
+import type { Haptics, Telegram } from "@/common/telegram";
 
 import type { CommandApi } from "../command.api.ts";
 
@@ -27,6 +28,9 @@ type CommandSheetDependencies = {
   api: Pick<CommandApi, "send" | "open" | "create" | "pick" | "dismiss">;
   members: { data: () => FamilyMember[] | undefined };
   pets: { data: () => Pet[] | undefined };
+  telegram: Pick<Telegram, "mainButton" | "secondaryButton"> & {
+    haptics: Pick<Haptics, "success" | "error" | "select">;
+  };
   // «Изменить» hands the draft to the module whose form creates that kind of record.
   onEdit: (opened: OpenedDraft) => void;
   onCreated: (created: DraftCreated) => void;
@@ -36,24 +40,36 @@ export type CommandSheet =
   | { kind: "closed" }
   | { kind: "sending" }
   | { kind: "failure"; heard: string | null; message: string }
-  | { kind: "draft"; heard: string | null; preview: DraftPreview; error: string | undefined }
-  | { kind: "created" };
+  | {
+      kind: "draft";
+      heard: string | null;
+      preview: DraftPreview;
+      error: string | undefined;
+      isCreating: boolean;
+    }
+  | { kind: "created"; message: string };
 
 type Phase =
   | { kind: "closed" }
   | { kind: "sending" }
-  | { kind: "outcome"; outcome: CommandOutcome; error?: string }
-  | { kind: "created" };
+  | { kind: "outcome"; outcome: CommandOutcome; error?: string | undefined; isCreating?: boolean }
+  | { kind: "created"; record: DraftCreated["kind"] };
 
 type PhaseAtom = Atom<Phase>;
 
 export const sendFailedText = "Не получилось отправить запись. Попробуйте ещё раз.";
 export const createFailedText = "Не получилось создать. Попробуйте ещё раз или нажмите «Изменить».";
 export const staleDraftText = "Черновик устарел или уже решён — скажите команду ещё раз.";
+const createdTexts: Record<DraftCreated["kind"], string> = {
+  task: "Дело создано",
+  care_entry: "Запись добавлена в журнал",
+};
+
 export const pickFailedText = "Не получилось выбрать. Попробуйте ещё раз.";
 
+// A draft being created is out of reach: no second «Создать», no «Изменить», nothing to drop.
 function draftOf(phase: Phase): (OpenedDraft & { heard: string | null }) | undefined {
-  return phase.kind === "outcome" && phase.outcome.status === "draft"
+  return phase.kind === "outcome" && phase.outcome.status === "draft" && phase.isCreating !== true
     ? {
         draftId: phase.outcome.draftId,
         draft: phase.outcome.draft,
@@ -74,7 +90,7 @@ function failure(message: string): Phase {
   return { kind: "outcome", outcome: { status: "unrecognized", heard: null, message } };
 }
 
-function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseAtom) {
+function reatomRequests({ api, telegram, onEdit }: CommandSheetDependencies, phase: PhaseAtom) {
   const send = action(async (recording: Blob) => {
     phase.set({ kind: "sending" });
 
@@ -85,6 +101,7 @@ function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseA
         throw error;
       }
 
+      telegram.haptics.error();
       phase.set(failure(sendFailedText));
     }
   }, "commandSheet.send").extend(withAbort());
@@ -109,9 +126,9 @@ function reatomRequests({ api, onEdit }: CommandSheetDependencies, phase: PhaseA
   };
 }
 
-function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: PhaseAtom) {
-  // Shown as created at once; a refusal brings the draft back with a word on what to do.
-  const create = action(async () => {
+// A refusal brings the draft back with a word on what to do; a closed sheet stays closed.
+function reatomCreate({ api, telegram, onCreated }: CommandSheetDependencies, phase: PhaseAtom) {
+  return action(async () => {
     const before = phase();
     const opened = draftOf(before);
 
@@ -119,15 +136,32 @@ function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: Ph
       return;
     }
 
-    phase.set({ kind: "created" });
+    const creating: Phase = { ...before, error: undefined, isCreating: true };
+
+    phase.set(creating);
 
     try {
-      onCreated(await wrap(api.create(opened.draftId)));
+      const created = await wrap(api.create(opened.draftId));
+
+      if (phase() === creating) {
+        phase.set({ kind: "created", record: created.kind });
+      }
+
+      telegram.haptics.success();
+      onCreated(created);
     } catch (error) {
-      phase.set({ ...before, error: refusalTextOf(error) });
+      telegram.haptics.error();
+
+      if (phase() === creating) {
+        phase.set({ ...before, error: refusalTextOf(error) });
+      }
     }
   }, "commandSheet.create");
+}
 
+function reatomDecisions(dependencies: CommandSheetDependencies, phase: PhaseAtom) {
+  const { api, telegram } = dependencies;
+  const create = reatomCreate(dependencies, phase);
   const pick = action(async (index: number) => {
     const before = phase();
     const opened = draftOf(before);
@@ -136,11 +170,14 @@ function reatomDecisions({ api, onCreated }: CommandSheetDependencies, phase: Ph
       return;
     }
 
+    telegram.haptics.select();
+
     try {
       const outcome = await wrap(api.pick(opened.draftId, index));
 
       phase.set({ kind: "outcome", outcome: { ...outcome, heard: opened.heard } });
     } catch {
+      telegram.haptics.error();
       phase.set({ ...before, error: pickFailedText });
     }
   }, "commandSheet.pick");
@@ -159,11 +196,12 @@ function reatomLeaving(
     edit: action(() => {
       const opened = draftOf(phase());
 
-      phase.set({ kind: "closed" });
-
-      if (opened !== undefined) {
-        onEdit({ draftId: opened.draftId, draft: opened.draft, phrase: opened.phrase });
+      if (opened === undefined) {
+        return;
       }
+
+      phase.set({ kind: "closed" });
+      onEdit({ draftId: opened.draftId, draft: opened.draft, phrase: opened.phrase });
     }, "commandSheet.edit"),
     // «×» drops a pending draft; once created or failed there is nothing left to drop.
     close: action(() => {
@@ -179,7 +217,11 @@ function reatomLeaving(
   };
 }
 
-function sheetOf(current: Phase, names: FamilyNames): CommandSheet {
+function sheetOf(current: Phase, names: () => FamilyNames): CommandSheet {
+  if (current.kind === "created") {
+    return { kind: "created", message: createdTexts[current.record] };
+  }
+
   if (current.kind !== "outcome") {
     return current;
   }
@@ -190,8 +232,9 @@ function sheetOf(current: Phase, names: FamilyNames): CommandSheet {
     ? {
         kind: "draft",
         heard: outcome.heard,
-        preview: previewOf(outcome.draft, names),
+        preview: previewOf(outcome.draft, names()),
         error: current.error,
+        isCreating: current.isCreating === true,
       }
     : { kind: "failure", heard: outcome.heard, message: outcome.message };
 }
@@ -208,12 +251,36 @@ export function reatomCommandSheet(dependencies: CommandSheetDependencies) {
   );
 
   const { stopSending, ...requests } = reatomRequests(dependencies, phase);
+  const sheet = computed(() => sheetOf(phase(), names), "commandSheet.sheet");
+  const decisions = reatomDecisions(dependencies, phase);
+  const leaving = reatomLeaving(dependencies, { phase, stopSending });
+  const { mainButton, secondaryButton } = dependencies.telegram;
 
   return {
-    sheet: computed(() => sheetOf(phase(), names()), "commandSheet.sheet"),
+    sheet,
+    hasNativeButtons: mainButton.isAvailable,
     ...requests,
-    ...reatomDecisions(dependencies, phase),
-    ...reatomLeaving(dependencies, { phase, stopSending }),
+    ...decisions,
+    ...leaving,
+
+    start(): () => void {
+      const stopMain = mainButton.follow(() => {
+        const current = sheet();
+
+        return current.kind === "draft" && current.preview.canCreate
+          ? { text: "Создать", isInProgress: current.isCreating }
+          : undefined;
+      }, decisions.create);
+      const stopSecondary = secondaryButton.follow(
+        () => (sheet().kind === "draft" ? { text: "Изменить", isInProgress: false } : undefined),
+        leaving.edit,
+      );
+
+      return () => {
+        stopMain();
+        stopSecondary();
+      };
+    },
   };
 }
 

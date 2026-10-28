@@ -20,6 +20,7 @@ export function createFamilyRequestApi(client: HttpClient) {
           client.request("/api/family-requests", {
             method: "POST",
             body: { initData, familyName },
+            withoutSession: true,
             schema: familyRequestCreated,
           }),
         );

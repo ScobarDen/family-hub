@@ -7,7 +7,7 @@ type MonthHeaderProps = { title: string; onPrevious: () => void; onNext: () => v
 export function MonthHeader({ title, onPrevious, onNext }: MonthHeaderProps) {
   return (
     <div className="flex items-center justify-between py-1 pl-3">
-      <h2 className="text-[1.0625rem] font-semibold tracking-tight capitalize">{title}</h2>
+      <h2 className="text-headline font-semibold tracking-tight capitalize">{title}</h2>
       <div className="flex">
         <Button size="icon-lg" variant="ghost" aria-label="Предыдущий месяц" onClick={onPrevious}>
           <ChevronLeft />

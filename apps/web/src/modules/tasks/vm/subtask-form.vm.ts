@@ -4,6 +4,7 @@ import { z } from "zod";
 import { taskTitleMaxLength, type SubtaskChange, type Task } from "@family-hub/contract";
 
 import { reatomEditableRecord } from "@/common/form";
+import type { ClosingConfirmation, Haptics } from "@/common/telegram";
 
 import type { TasksApi } from "../tasks.api.ts";
 import type { TasksModel } from "../tasks.model.ts";
@@ -13,6 +14,8 @@ type SubtaskFormDependencies = {
   api: TasksApi;
   tasks: Pick<TasksModel, "keep" | "members">;
   self: () => string | undefined;
+  haptics: Pick<Haptics, "success" | "error" | "select">;
+  closingConfirmation: ClosingConfirmation;
   onSaved: (task: Task) => void;
 };
 
@@ -44,13 +47,15 @@ function changeOf(values: SubtaskValues, assigneeIds: string[]): SubtaskChange {
 }
 
 function reatomSubtaskRecord(
-  { api, tasks, onSaved }: SubtaskFormDependencies,
+  { api, tasks, haptics, closingConfirmation, onSaved }: SubtaskFormDependencies,
   { task, assigneeIds }: SubtaskPicks,
 ) {
   return reatomEditableRecord({
     name: "tasks.subtaskRecord",
     form: (onSubmit) => reatomForm(emptySubtask, { name: "tasks.subtaskForm", schema, onSubmit }),
     failureMessage: "Не получилось сохранить шаг. Попробуйте ещё раз.",
+    haptics,
+    closingConfirmation,
     valuesOf,
     create: async (values) => {
       const target = task();
@@ -72,7 +77,7 @@ function reatomSubtaskRecord(
 
 // Of a Private Task, only its owner may be assigned.
 function reatomSubtaskAssignees(
-  { tasks, self }: SubtaskFormDependencies,
+  { tasks, self, haptics }: SubtaskFormDependencies,
   { task, assigneeIds }: SubtaskPicks,
 ) {
   return {
@@ -89,6 +94,8 @@ function reatomSubtaskAssignees(
     ),
     toggleAssignee: action((memberId: string) => {
       const chosen = assigneeIds();
+
+      haptics.select();
 
       assigneeIds.set(
         chosen.includes(memberId) ? chosen.filter((id) => id !== memberId) : [...chosen, memberId],

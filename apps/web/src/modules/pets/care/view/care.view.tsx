@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { Wallet } from "lucide-react";
 
 import { PhotoAttachments } from "@/common/photo-attachments";
-import { FieldError, LoadState, Section, SectionItem } from "@/common/ui";
+import { Section, SectionItem, SkeletonSection } from "@/common/ui";
 
 import type { CareModel } from "../vm/care.vm.ts";
 import { CareForm } from "./care-form.view.tsx";
@@ -13,7 +13,7 @@ const YearExpenses = reatomComponent(({ model }: CareProps) => {
   const year = model.year();
 
   if (year === undefined) {
-    return <LoadState />;
+    return <SkeletonSection title="За год" rows={3} />;
   }
 
   return (
@@ -54,15 +54,12 @@ export const Care = reatomComponent(({ model }: CareProps) => {
   }
 
   return (
-    <>
-      <CareForm
-        model={model.form}
-        photos={<PhotoAttachments model={model.attachments} hint={model.photoHint()} />}
-        isReadOnly={model.isReadOnly()}
-        onCancel={model.back}
-        onRemove={model.remove}
-      />
-      <FieldError className="px-4">{model.failure()}</FieldError>
-    </>
+    <CareForm
+      model={model.form}
+      photos={<PhotoAttachments model={model.attachments} hint={model.photoHint()} />}
+      isReadOnly={model.isReadOnly()}
+      onCancel={model.back}
+      onRemove={model.remove}
+    />
   );
 }, "Care");

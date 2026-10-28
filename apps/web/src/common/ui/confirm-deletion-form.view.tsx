@@ -3,6 +3,7 @@ import type { FormEvent, ReactNode } from "react";
 
 import { Button } from "./button.view.tsx";
 import { FieldError } from "./field-error.view.tsx";
+import { LiveRegion } from "./live-region.view.tsx";
 import { Section } from "./section.view.tsx";
 import { TextField } from "./text-field.view.tsx";
 
@@ -31,9 +32,11 @@ export function ConfirmDeletionForm(props: ConfirmDeletionFormProps) {
     <Section {...(title === undefined ? {} : { title })} footer={warning}>
       <form className="flex flex-col gap-3 p-4" onSubmit={submit}>
         <TextField field={field} id={id} label={label} />
-        <FieldError>{failure}</FieldError>
-        <Button type="submit" variant="destructive" disabled={isDeleting}>
-          {isDeleting ? "Удаляем…" : "Удалить навсегда"}
+        <LiveRegion>
+          <FieldError>{failure}</FieldError>
+        </LiveRegion>
+        <Button type="submit" variant="destructive" isPending={isDeleting}>
+          Удалить навсегда
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Отмена

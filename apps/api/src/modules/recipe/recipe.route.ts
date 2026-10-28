@@ -5,6 +5,7 @@ import {
   recipeChange,
   recipeFavorite,
   recipeTagChange,
+  type PreparedMessage,
   type Recipe,
   type RecipeTag,
 } from "@family-hub/contract";
@@ -145,6 +146,13 @@ export const recipeRoute = new Hono<RecipeEnv>()
     );
 
     return result.status === "deleted" ? context.json(result) : refuse(context, result.status);
+  })
+  .post("/api/recipes/:id/share", async (context) => {
+    const result = await context.var.recipes.share(context.var.membership, context.req.param("id"));
+
+    return result.status === "ok"
+      ? context.json<PreparedMessage>({ preparedMessageId: result.preparedMessageId })
+      : refuse(context, result.status);
   })
   .put(
     "/api/recipes/:id/favorite",

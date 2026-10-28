@@ -43,6 +43,15 @@ describe("parsing", () => {
     });
   });
 
+  test.each(["recipe", "album"] as const)(
+    "reads back a %s link, not taken for «Записать»",
+    (kind) => {
+      const id = "0199b4d2-6c00-7abc-8def-0123456789ab";
+
+      expect(parseDeepLink(encodeDeepLink({ kind, id }))).toEqual({ kind, id });
+    },
+  );
+
   test.each([
     ["no payload", undefined],
     ["an empty payload", ""],

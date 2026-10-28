@@ -1,6 +1,13 @@
 import { reatomComponent } from "@reatom/react";
 
-import { type Choice, ChoiceField, FormShell, TextAreaField, TextField } from "@/common/ui";
+import {
+  type Choice,
+  ChoiceField,
+  PickerField,
+  FormShell,
+  TextAreaField,
+  TextField,
+} from "@/common/ui";
 
 import { sexTitles, speciesTitles } from "../pets.config.ts";
 import type { PetProfileFormModel } from "../vm/pet-profile-form.vm.ts";
@@ -25,7 +32,7 @@ export const PetProfileForm = reatomComponent(({ model, onCancel }: PetProfileFo
       <ChoiceField field={fields.species} label="Вид" choices={speciesChoices} />
       <TextField field={fields.breed} id="pet-breed" label="Порода" />
       <ChoiceField field={fields.sex} label="Пол" choices={sexChoices} />
-      <TextField field={fields.birthDate} id="pet-birth-date" label="Дата рождения" type="date" />
+      <PickerField field={fields.birthDate} id="pet-birth-date" label="Дата рождения" isOptional />
       <TextField field={fields.chipNumber} id="pet-chip" label="Номер чипа" />
       <TextAreaField field={fields.notes} id="pet-notes" label="Заметки" />
     </FormShell>

@@ -13,7 +13,7 @@ export type QuickAdd =
 
 export type SectionRow = { module: AppModule; title: string };
 
-export type QuickAddButton = { title: string; target: QuickAdd };
+export type QuickAddButton = { title: string; label: string; target: QuickAdd };
 
 type SectionsDependencies = {
   modules: Pick<TabBarModules, "modules">;
@@ -33,11 +33,21 @@ function rowsOf(modules: AppModule[]) {
 
 function quickAddsOf(goalId: string | undefined): QuickAddButton[] {
   return [
-    { title: "Дело", target: { kind: "new-task" } },
-    { title: "Запись питомцу", target: { kind: "new-care-entry" } },
+    { title: "Дело", label: "Добавить дело", target: { kind: "new-task" } },
+    {
+      title: "Запись питомцу",
+      label: "Добавить запись питомцу",
+      target: { kind: "new-care-entry" },
+    },
     ...(goalId === undefined
       ? []
-      : [{ title: "Взнос", target: { kind: "new-contribution" as const, goalId } }]),
+      : [
+          {
+            title: "Взнос",
+            label: "Добавить взнос",
+            target: { kind: "new-contribution" as const, goalId },
+          },
+        ]),
   ];
 }
 

@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import type { ApiError, FamilyMemberList } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client";
+import { fakeHaptics } from "@/common/telegram";
 import type { PopupParams } from "@/common/telegram";
 
 import { createFamilyApi } from "../family.api.ts";
@@ -43,7 +44,7 @@ function fakeBackend(replies: Record<string, unknown> = {}) {
       : Response.json(reply);
   }
 
-  return { fetch, requests };
+  return { fetch, requests, answers };
 }
 
 function fakeTelegram(choices: string[] = []) {
@@ -59,6 +60,7 @@ function fakeTelegram(choices: string[] = []) {
 
       return pending.shift();
     },
+    haptics: fakeHaptics(),
     calls,
   };
 }
@@ -149,6 +151,20 @@ describe("the Family's Members in the Profile", () => {
     await vi.waitFor(() => {
       expect(model.loadFailure()).toBe("Не получилось загрузить участников.");
     });
+  });
+
+  test("loads the list again on retry", async () => {
+    const backend = fakeBackend({ "GET /api/family/members": new TypeError("Failed to fetch") });
+    const { model } = startFamily({ backend });
+
+    await vi.waitFor(() => {
+      expect(model.loadFailure()).toBeDefined();
+    });
+    backend.answers["GET /api/family/members"] = members;
+    model.retry();
+
+    await loaded(model);
+    expect(model.loadFailure()).toBeUndefined();
   });
 });
 

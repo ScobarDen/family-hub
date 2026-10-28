@@ -1,1 +1,1 @@
-export { upserted, withoutId } from "./records.lib.ts";
+export { rolledBack, rolledBackById, upserted, withoutId } from "./records.lib.ts";

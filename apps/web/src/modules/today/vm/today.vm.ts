@@ -3,16 +3,20 @@ import {
   atom,
   computed,
   noop,
+  peek,
   withAsync,
   withAsyncData,
   wrap,
   type Atom,
 } from "@reatom/core";
+import { z } from "zod";
 
-import type { FeedUpcoming, SlotModule, Today } from "@family-hub/contract";
+import { today, type FeedUpcoming, type SlotModule, type Today } from "@family-hub/contract";
 
+import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
-import { detached, readOnly } from "@/common/state";
+import { detached, reatomRollbackFailure, type RollbackFailure } from "@/common/state";
+import type { Haptics } from "@/common/telegram";
 
 import type { OccurrenceTarget, TodayApi } from "../today.api.ts";
 import { dueRowOf, headerOf, moreOf, nextRowOf, tilesOf, type Tile } from "../today.lib.ts";
@@ -25,7 +29,9 @@ export type TodayTarget =
 
 export type TodayDependencies = LiveVersion & {
   api: TodayApi;
+  deviceCache: Pick<DeviceCache, "withDeviceCache">;
   today: () => string;
+  telegram: { haptics: Pick<Haptics, "success" | "select" | "error"> };
   onOpen: (target: TodayTarget) => void;
   onOpenSection: (module: SlotModule) => void;
   onOpenFeed: () => void;
@@ -44,7 +50,12 @@ type Completing = {
   done: Promise<void>;
 };
 
-type Loaded = { data: () => Today | undefined };
+// The date the Member's day was computed for, so a cached Today from another day is told apart.
+type TodayOn = Today & { date: string };
+
+const todayOn = today.extend({ date: z.string() });
+
+type Loaded = { data: () => TodayOn | undefined };
 
 function targetOf(item: FeedUpcoming): TodayTarget {
   return item.kind === "task"
@@ -65,14 +76,22 @@ function petTargetOf(pet: Today["tiles"]["pet"] | undefined): TodayTarget | unde
   return pet.activeCount === 0 ? { kind: "new-pet" } : undefined;
 }
 
-function reatomData(api: TodayApi, liveVersion: LiveVersion["liveVersion"]) {
+function reatomData({
+  api,
+  liveVersion,
+  deviceCache,
+  today: dateOfToday,
+}: Pick<TodayDependencies, "api" | "liveVersion" | "deviceCache" | "today">) {
   const version = atom(0, "today.version");
-  const data = computed(async () => {
+  const data = computed(async (): Promise<TodayOn> => {
     version();
     liveVersion?.();
+    const date = peek(dateOfToday);
 
-    return wrap(api.load());
+    return { ...(await wrap(api.load())), date };
   }, "today.data").extend(withAsyncData());
+
+  data.data.extend(deviceCache.withDeviceCache({ key: "today", schema: todayOn, version: 1 }));
 
   return {
     data,
@@ -98,13 +117,13 @@ function reatomHidden() {
 
 type CompletionState = ReturnType<typeof reatomHidden> & {
   pending: Atom<Completing | undefined>;
-  failure: Atom<string | undefined>;
+  failure: RollbackFailure;
 };
 
 // The server hears of the tap at once, so closing the app loses nothing; the undo stays offered
 // with no timer, until it is dismissed or the next Occurrence is completed.
 function reatomComplete(
-  { api }: Pick<TodayDependencies, "api">,
+  { api, telegram }: Pick<TodayDependencies, "api" | "telegram">,
   { state, onSettled }: { state: CompletionState; onSettled: () => void },
 ) {
   const { pending, failure, hide, show } = state;
@@ -119,16 +138,17 @@ function reatomComplete(
       done: api.complete(target),
     };
 
-    failure.set(undefined);
+    failure.dismiss();
+    telegram.haptics.success();
     hide(key);
     pending.set(completing);
 
     try {
       await wrap(completing.done);
-    } catch {
+    } catch (error) {
       show(key);
       pending.set(pending() === completing ? undefined : pending());
-      failure.set(`Не получилось отметить «${title}». Попробуйте ещё раз.`);
+      failure.report(error, `Не получилось отметить «${title}». Попробуйте ещё раз.`);
 
       return;
     }
@@ -139,7 +159,7 @@ function reatomComplete(
 
 // The undo reopens the Occurrence once its completion is in.
 function reatomRevert(
-  { api }: Pick<TodayDependencies, "api">,
+  { api, telegram }: Pick<TodayDependencies, "api" | "telegram">,
   { state, onSettled }: { state: CompletionState; onSettled: () => void },
 ) {
   const { pending, failure, show } = state;
@@ -152,13 +172,14 @@ function reatomRevert(
     }
 
     pending.set(undefined);
+    telegram.haptics.select();
     show(completing.key);
 
     try {
       await wrap(completing.done);
       await wrap(api.reopen(completing.target));
-    } catch {
-      failure.set(`Не получилось вернуть «${completing.title}». Попробуйте ещё раз.`);
+    } catch (error) {
+      failure.report(error, `Не получилось вернуть «${completing.title}». Попробуйте ещё раз.`);
     }
 
     onSettled();
@@ -166,13 +187,13 @@ function reatomRevert(
 }
 
 function reatomCompletion(
-  dependencies: Pick<TodayDependencies, "api" | "onOpen">,
+  dependencies: Pick<TodayDependencies, "api" | "onOpen" | "telegram">,
   onSettled: () => void,
 ) {
   const state: CompletionState = {
     ...reatomHidden(),
     pending: atom<Completing | undefined>(undefined, "today.pending"),
-    failure: atom<string | undefined>(undefined, "today.completionFailure"),
+    failure: reatomRollbackFailure("today.completionFailure", dependencies.telegram.haptics),
   };
 
   return {
@@ -196,18 +217,47 @@ function reatomCompletion(
         });
       }
     }, "today.recordCareEntry"),
-    dismissFailure: action(() => {
-      state.failure.set(undefined);
-    }, "today.dismissFailure"),
+    dismissFailure: state.failure.dismiss,
     revert: reatomRevert(dependencies, { state, onSettled }),
   };
 }
 
 type Completion = ReturnType<typeof reatomCompletion>;
 
+// A completed row stays among the rows, marked done, until Today is read again.
+function reatomRows(
+  dependencies: TodayDependencies,
+  {
+    listed,
+    due,
+    hidden,
+  }: { listed: () => FeedUpcoming[]; due: () => FeedUpcoming[]; hidden: () => string[] },
+) {
+  return computed(() => {
+    const shown = new Set(
+      due()
+        .slice(0, shownDue)
+        .map(({ key }) => key),
+    );
+
+    return listed()
+      .filter(({ key }) => shown.has(key) || hidden().includes(key))
+      .map((item) =>
+        dueRowOf(item, { today: dependencies.today(), isDone: hidden().includes(item.key) }),
+      );
+  }, "today.rows");
+}
+
 function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion: Completion) {
+  // Yesterday's rows under today's heading would complete the wrong Occurrence.
+  const isDueOutdated = computed(() => {
+    const loaded = data.data();
+
+    return loaded !== undefined && loaded.date !== dependencies.today();
+  }, "today.isDueOutdated");
+  const listed = computed(() => (isDueOutdated() ? [] : (data.data()?.due ?? [])), "today.listed");
   const due = computed(
-    () => (data.data()?.due ?? []).filter(({ key }) => !completion.hidden().includes(key)),
+    () => listed().filter(({ key }) => !completion.hidden().includes(key)),
     "today.due",
   );
   const tiles = computed((): Tile[] => {
@@ -217,17 +267,12 @@ function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion:
   }, "today.tiles");
 
   return {
+    isDueOutdated,
     header: computed(
-      () => (data.data() === undefined ? undefined : headerOf(due().length)),
+      () => (data.data() === undefined || isDueOutdated() ? undefined : headerOf(due().length)),
       "today.header",
     ),
-    rows: computed(
-      () =>
-        due()
-          .slice(0, shownDue)
-          .map((item) => dueRowOf(item, dependencies.today())),
-      "today.rows",
-    ),
+    rows: reatomRows(dependencies, { listed, due, hidden: completion.hidden }),
     more: computed(() => moreOf(due().length - shownDue), "today.more"),
     next: computed(
       () => (data.data()?.next ?? []).map((item) => nextRowOf(item, dependencies.today())),
@@ -281,7 +326,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
 }
 
 export function reatomToday(dependencies: TodayDependencies) {
-  const { data, reload } = reatomData(dependencies.api, dependencies.liveVersion);
+  const { data, reload } = reatomData(dependencies);
   const completion = reatomCompletion(dependencies, reload);
 
   return {
@@ -294,7 +339,11 @@ export function reatomToday(dependencies: TodayDependencies) {
           : "Не получилось загрузить «Сегодня».",
       "today.loadFailure",
     ),
-    completionFailure: readOnly(completion.failure),
+    // The undo bar and the failure bar share one place; the undo keeps it while it is offered.
+    completionFailure: computed(
+      () => (completion.pending() === undefined ? completion.failure.failure() : undefined),
+      "today.shownFailure",
+    ),
     undo: computed(() => {
       const completing = completion.pending();
 

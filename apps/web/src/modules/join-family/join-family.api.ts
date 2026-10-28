@@ -17,6 +17,7 @@ export function createJoinFamilyApi(client: HttpClient) {
       client.request(`/api/invites/${token}/preview`, {
         method: "POST",
         body: { initData },
+        withoutSession: true,
         schema: invitePreview,
       }),
 
@@ -26,6 +27,7 @@ export function createJoinFamilyApi(client: HttpClient) {
           client.request(`/api/invites/${token}/accept`, {
             method: "POST",
             body: { initData },
+            withoutSession: true,
             schema: inviteAccepted,
           }),
         );

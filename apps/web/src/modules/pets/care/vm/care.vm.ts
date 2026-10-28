@@ -1,4 +1,4 @@
-import { action, atom, type Atom, computed, withAbort, withAsync, wrap } from "@reatom/core";
+import { action, atom, type Atom, computed, withAbort, wrap } from "@reatom/core";
 
 import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hub/contract";
 
@@ -6,8 +6,23 @@ import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
-import { detached, readOnly, reatomFailure } from "@/common/state";
-import { type Dialogs, isConfirmed } from "@/common/telegram";
+import { withoutId } from "@/common/records";
+import {
+  detached,
+  instantly,
+  readOnly,
+  reatomOptimistic,
+  reatomRollbackFailure,
+  type RollbackFailure,
+  type Slide,
+} from "@/common/state";
+import {
+  type ClosingConfirmation,
+  type Dialogs,
+  type Fullscreen,
+  isConfirmed,
+  type Haptics,
+} from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import type { WeightRange } from "../care.config.ts";
@@ -36,7 +51,7 @@ export type CareDependencies = LiveVersion & {
   today: () => string;
   now: () => string;
   timeZone: () => string;
-  telegram: Dialogs;
+  telegram: Dialogs & Fullscreen & ClosingConfirmation & { haptics: Haptics };
   isReadOnly: () => boolean;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   // Why photos cannot be added now, from photo-storage; undefined when they can.
@@ -44,6 +59,7 @@ export type CareDependencies = LiveVersion & {
   onMakeAvatar: (photoId: string) => void;
   onOpenPet: (petId: string) => void;
   onDraftSaved: (draftId: string) => void;
+  slide?: Slide;
 };
 
 // What the pet card's summary leads with; the month reads as nothing spent until it arrives.
@@ -120,25 +136,34 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
   };
 }
 
-function reatomRemove({ api, data, form, screen, telegram }: Sources) {
-  return action(async () => {
-    const entryId = form.editedId();
-    const isSure = await wrap(
-      isConfirmed(telegram, {
-        title: "Удалить запись?",
-        message: "Запись пропадёт из журнала и трат у всей семьи.",
-        button: "Удалить",
-      }),
-    );
+// The entry leaves the journal at once; the expenses are the server's to count, so they follow.
+function reatomRemove({ api, data, form, screen, telegram }: Sources, failure: RollbackFailure) {
+  return reatomOptimistic(
+    async () => {
+      const entryId = form.editedId();
+      const isSure = await wrap(
+        isConfirmed(telegram, {
+          title: "Удалить запись?",
+          message: "Запись пропадёт из журнала и трат у всей семьи.",
+          button: "Удалить",
+        }),
+      );
 
-    if (entryId === undefined || !isSure) {
-      return;
-    }
+      if (entryId === undefined || !isSure) {
+        return;
+      }
 
-    await wrap(api.remove(entryId));
-    data.reload();
-    screen.set("blocks");
-  }, "care.remove").extend(withAsync());
+      data.entries.data.set(withoutId(data.entries.data() ?? [], entryId));
+      screen.set("blocks");
+      await wrap(api.remove(entryId));
+      data.reload();
+    },
+    {
+      name: "care.remove",
+      failure,
+      refusal: "Не получилось удалить запись. Попробуйте ещё раз.",
+    },
+  );
 }
 
 // «Изменить» on a Command Draft lands in the ordinary form, filled in from the draft.
@@ -168,7 +193,10 @@ function reatomOpening({ api, data, form, screen, onOpenPet }: Sources) {
   return { openEntry: detached(openEntry, "care.openEntry") };
 }
 
-function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRange>) {
+function reatomMoves(
+  { data, form, screen, telegram, slide = instantly }: Sources,
+  weightRange: Atom<WeightRange>,
+) {
   return {
     add: action((kind: CareKind) => {
       form.startCreating(kind);
@@ -183,14 +211,17 @@ function reatomMoves({ data, form, screen }: Sources, weightRange: Atom<WeightRa
       const entry = data.entries.data()?.find(({ id }) => id === entryId);
 
       if (entry !== undefined) {
-        form.startEditing(entry);
-        screen.set("form");
+        slide("forward", () => {
+          form.startEditing(entry);
+          screen.set("form");
+        });
       }
     }, "care.edit"),
     openExpenses: action(() => {
       screen.set("expenses");
     }, "care.openExpenses"),
     chooseWeightRange: action((range: WeightRange) => {
+      telegram.haptics.select();
       weightRange.set(range);
     }, "care.chooseWeightRange"),
     back: action(() => {
@@ -241,10 +272,13 @@ function reatomScreen(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
 export function reatomCare(dependencies: CareDependencies) {
   const data = reatomCareData(dependencies);
   const screen = atom<CareScreen["kind"]>("blocks", "care.screenKind");
-  const photos = reatomCarePhotos(dependencies, data);
+  const failure = reatomRollbackFailure("care.failure", dependencies.telegram.haptics);
+  const photos = reatomCarePhotos({ ...dependencies, failure }, data);
   const form = reatomCareForm({
     ...dependencies,
     photos: photos.attachments,
+    haptics: dependencies.telegram.haptics,
+    closingConfirmation: dependencies.telegram,
     onSaved: () => {
       data.reload();
       screen.set("blocks");
@@ -257,17 +291,15 @@ export function reatomCare(dependencies: CareDependencies) {
     screen,
   };
   const weightRange = atom<WeightRange>("quarter", "care.weightRange");
-  const remove = reatomRemove(sources);
+  const remove = reatomRemove(sources, failure);
 
   return {
     screen: reatomScreen(screen, form),
     title: reatomTitle(screen, form),
     canGoBack: computed(() => screen() !== "blocks", "care.canGoBack"),
     isReadOnly: readOnly(dependencies.isReadOnly),
-    failure: reatomFailure(remove, {
-      message: "Не получилось удалить запись. Попробуйте ещё раз.",
-      name: "care.failure",
-    }),
+    failure: failure.failure,
+    dismissFailure: failure.dismiss,
     form,
     ...photos,
     ...reatomSummarizedViews(sources, weightRange),

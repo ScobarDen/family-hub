@@ -1,13 +1,13 @@
 import { type Atom, computed, withAsyncData, wrap } from "@reatom/core";
 
-import type { Dialogs } from "@/common/telegram";
+import type { Dialogs, Haptics } from "@/common/telegram";
 
 import type { FamilyApi } from "../family.api.ts";
 
 export type FamilyDependencies = {
   api: FamilyApi;
   members: FamilyMembers;
-  telegram: Dialogs;
+  telegram: Dialogs & { haptics: Haptics };
   self: () => { memberId: string; familyName: string } | undefined;
   onLeft: () => void;
 };

@@ -128,12 +128,20 @@ type Records = Shared & { links: PhotoLinks };
 // A photo added to a Pet's automatic Album lands in a Care Entry «Заметка» of that Pet.
 function albumServiceOf(
   db: Db,
-  { careEntries, links, clock }: { careEntries: CareEntryService; links: PhotoLinks; clock: Clock },
+  {
+    careEntries,
+    links,
+    shared,
+  }: { careEntries: CareEntryService; links: PhotoLinks; shared: Shared },
 ) {
+  const { clock } = shared;
+
   return createAlbumService({
     albums: createAlbumRepo(db),
     links,
     clock,
+    bot: shared.bot,
+    appLinks: shared.appLinks,
     petNotes: {
       addNote: async (membership, { petId, photoIds }) => {
         await careEntries.create(membership, petId, {
@@ -257,13 +265,13 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     reminders,
     tasks,
     careEntries,
-    albums: albumServiceOf(db, { careEntries, links, clock }),
+    albums: albumServiceOf(db, { careEntries, links, shared }),
     pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders, links }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
     feed,
     today: todayServiceOf(db, { links, clock }),
     goals: createGoalService({ goals: createGoalRepo(db), clock }),
-    recipes: createRecipeService({ recipes: createRecipeRepo(db), links, clock }),
+    recipes: createRecipeService({ recipes: createRecipeRepo(db), links, ...shared }),
     photos: createPhotoService({
       photos: createPhotoRepo(db),
       files: createTelegramPhotoFiles(shared.bot),
