@@ -81,7 +81,7 @@ const SubtaskItem = reatomComponent(({ subtask, model }: SubtaskProps) => {
           key={label}
           size="icon"
           variant="ghost"
-          aria-label={label}
+          aria-label={`${label}: ${subtask.title}`}
           onClick={() => {
             onClick(subtask.id);
           }}

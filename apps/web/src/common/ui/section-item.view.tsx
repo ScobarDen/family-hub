@@ -25,6 +25,7 @@ type SectionItemProps = {
   onClick?: () => void;
   disabled?: boolean;
   isExpanded?: boolean;
+  isPressed?: boolean;
   // A row with a control on its way out, such as a completed Task, folds away instead of vanishing.
   isCollapsed?: boolean;
 };
@@ -117,7 +118,14 @@ function withControl(props: SectionItemProps, control: ReactNode): ReactNode {
 }
 
 function plainRowOf(props: SectionItemProps): ReactNode {
-  const { onClick, disabled = false, isAlert = false, isDestructive = false, isExpanded } = props;
+  const {
+    onClick,
+    disabled = false,
+    isAlert = false,
+    isDestructive = false,
+    isExpanded,
+    isPressed,
+  } = props;
   const content = (
     <>
       {leadingOf({ ...props, isAlert: isAlert || isDestructive })}
@@ -138,6 +146,7 @@ function plainRowOf(props: SectionItemProps): ReactNode {
       )}
       aria-disabled={disabled || undefined}
       aria-expanded={isExpanded}
+      aria-pressed={isPressed}
       onClick={disabled ? undefined : onClick}
     >
       {content}

@@ -105,6 +105,9 @@ With VoiceOver on iOS and TalkBack on Android.
 - [ ] A Task's card shows one failure bar when a change is rolled back, and it is read once.
 - [ ] A field error and a form's failure are read politely after the current speech, not cutting it off.
 - [ ] Saving a Task, a Savings Goal or a care entry with an empty required field moves focus to that field, and the screen reader reads its label, «недопустимое значение» (or the platform's word) and the error text; the first of several invalid fields gets focus. A date field reads its error too. A form the server refused leaves focus on «Сохранить».
+- [ ] Rows that repeat a button name its record: «Удалить взнос 5 000 ₽ от 12 ноября» and «Изменить …» on a movement, «Изменить шаг: …» / «Удалить шаг: …» on a Subtask, «Отозвать: Приглашение до 3 ноября», «Удалить тег «Супы»» and its field «Название тега «Супы»», «Удалить отметку «Приготовили» …» with its day, «Убрать фото 2» on a picked photo. Thumbs read «Открыть фото 2 из 3», and the last one under «+4» reads «Открыть фото 3 из 3, ещё 4 фото»; a Task's Album thumbs read «Открыть альбом».
+- [ ] A Recipe's ingredient reads as a toggle button, pressed once ticked and not pressed again after a second tap.
+- [ ] In a Savings Goal's form the cover reads as two radio groups, «Значок» and «Цвет», each with its chosen option checked.
 - [ ] In the Tasks calendar the screen reader reads a day as «вторник, 20 октября, есть дела» (a day without Tasks drops «есть дела»), today also as the current date and the picked day as pressed; it never reads the weekday header or the dot. Days of the next and previous month read as clearly as this month's.
 
 ### Overlays

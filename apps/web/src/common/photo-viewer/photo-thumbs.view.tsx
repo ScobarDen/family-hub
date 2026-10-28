@@ -9,18 +9,25 @@ type PhotoThumbsProps = {
   // The strip's own layout and the size of one thumb.
   className: string;
   thumbClassName: string;
+  // One name for every thumb when they all do the same, such as opening the Album.
   label?: string;
   // Photos left out of the strip, shown as «+N» over the last one.
   more?: number;
   resolution?: "thumb" | "medium";
 };
 
+function thumbName(position: number, count: number, more: number): string {
+  const name = `Открыть фото ${position} из ${count}`;
+
+  return position === count && more > 0 ? `${name}, ещё ${more} фото` : name;
+}
+
 export function PhotoThumbs({
   photos,
   onOpen,
   className,
   thumbClassName,
-  label = "Открыть фото",
+  label,
   more = 0,
   resolution = "thumb",
 }: PhotoThumbsProps) {
@@ -35,7 +42,7 @@ export function PhotoThumbs({
           key={photo.id}
           type="button"
           className={cn("relative shrink-0 overflow-hidden bg-muted", thumbClassName)}
-          aria-label={label}
+          aria-label={label ?? thumbName(index + 1, photos.length, more)}
           onClick={() => {
             onOpen(photo.id);
           }}

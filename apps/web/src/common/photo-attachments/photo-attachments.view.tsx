@@ -8,7 +8,15 @@ import type { Attachment, PhotoAttachmentsModel } from "./photo-attachments.vm.t
 
 type AttachmentsProps = { model: PhotoAttachmentsModel; hint: string | undefined };
 
-function Tile({ item, onRemove }: { item: Attachment; onRemove: () => void }) {
+function Tile({
+  item,
+  label,
+  onRemove,
+}: {
+  item: Attachment;
+  label: string;
+  onRemove: () => void;
+}) {
   return (
     <div className="relative size-20 overflow-hidden rounded-lg bg-muted">
       {item.status === "ready" && (
@@ -27,7 +35,7 @@ function Tile({ item, onRemove }: { item: Attachment; onRemove: () => void }) {
         size="icon-sm"
         variant="secondary"
         className="absolute top-1 right-1 size-6 rounded-full"
-        aria-label="Убрать фото"
+        aria-label={label}
         onClick={onRemove}
       >
         <X />
@@ -40,10 +48,11 @@ export const PhotoAttachments = reatomComponent(
   ({ model, hint }: AttachmentsProps) => (
     <div className="flex flex-col gap-2">
       <ChipGroup label="Фото">
-        {model.items().map((item) => (
+        {model.items().map((item, index) => (
           <Tile
             key={item.key}
             item={item}
+            label={`Убрать фото ${index + 1}`}
             onRemove={() => {
               model.remove(item.key);
             }}

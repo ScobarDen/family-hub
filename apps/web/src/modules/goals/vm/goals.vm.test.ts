@@ -214,6 +214,17 @@ describe("a Goal with a deadline", () => {
 });
 
 describe("a Contribution", () => {
+  test("is named by its amount and date for the buttons that change it", async () => {
+    const { model } = startGoals();
+
+    await loaded(model);
+    model.open("goal-1");
+
+    expect(opened(model).goal.movements[0]?.name.replaceAll(/\s/gu, " ")).toBe(
+      "взнос 40 000 ₽ от 1 октября",
+    );
+  });
+
   test("that reaches the target sets off the salute with a single pulse", async () => {
     const { model, requests, felt } = startGoals();
 

@@ -22,6 +22,7 @@ export type MovementItem = {
   id: string;
   title: string;
   subtitle: string;
+  name: string;
   isOwn: boolean;
 };
 
@@ -93,6 +94,7 @@ function statusOf(goal: Goal, viewer: Viewer): string | undefined {
 
 function movementOf(movement: Goal["movements"][number], today: string): MovementItem {
   const sign = movement.kind === "contribution" ? "+" : "−";
+  const date = formatShortDate(movement.date, today);
   const recorder =
     movement.recordedBy.id === movement.member.id
       ? ""
@@ -101,9 +103,8 @@ function movementOf(movement: Goal["movements"][number], today: string): Movemen
   return {
     id: movement.id,
     title: `${sign}${formatRubles(movement.amount)} · ${movement.member.name}`,
-    subtitle: [formatShortDate(movement.date, today) + recorder, movement.comment]
-      .filter((part) => part !== null)
-      .join(" · "),
+    subtitle: [date + recorder, movement.comment].filter((part) => part !== null).join(" · "),
+    name: `${movement.kind === "contribution" ? "взнос" : "снятие"} ${formatRubles(movement.amount)} от ${date}`,
     isOwn: movement.isOwn,
   };
 }

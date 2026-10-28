@@ -22,7 +22,7 @@ export const RecipeCooked = reatomComponent(
               <Button
                 size="icon-sm"
                 variant="ghost"
-                aria-label="Удалить отметку «Приготовили»"
+                aria-label={`Удалить отметку «Приготовили» ${cooked.day}`}
                 onClick={() => {
                   model.uncook(cooked.id);
                 }}

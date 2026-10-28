@@ -32,6 +32,7 @@ export const Invites = reatomComponent(({ model }: InvitesProps) => {
             <Button
               size="sm"
               variant="ghost"
+              aria-label={`Отозвать: ${invite.title}`}
               onClick={() => {
                 model.revoke(invite.id);
               }}
