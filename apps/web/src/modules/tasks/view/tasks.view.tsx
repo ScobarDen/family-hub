@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Button, Chip, FailureBar, LoadState, SkeletonSection } from "@/common/ui";
+import { Button, Chip, FailureBar, LoadState, Revealed, SkeletonSection } from "@/common/ui";
 
 import type { TasksScreen, TasksScreenModel } from "../vm/tasks.vm.ts";
 import { TaskCalendar } from "./task-calendar.view.tsx";
@@ -111,7 +111,8 @@ function contentOf(model: TasksScreenModel, screen: TasksScreen): ReactNode {
   return <LoadState failure="Не получилось загрузить дела." onRetry={model.reload} />;
 }
 
-export const Tasks = reatomComponent(
-  ({ model }: TasksProps) => contentOf(model, model.screen()),
-  "Tasks",
-);
+export const Tasks = reatomComponent(({ model }: TasksProps) => {
+  const screen = model.screen();
+
+  return <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(model, screen)}</Revealed>;
+}, "Tasks");

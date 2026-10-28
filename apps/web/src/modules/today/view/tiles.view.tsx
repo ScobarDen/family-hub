@@ -20,7 +20,7 @@ export const Tiles = reatomComponent(
           <button
             key={module}
             type="button"
-            className="flex aspect-square min-w-0 flex-col items-start gap-1 rounded-2xl bg-card p-3 text-left text-card-foreground active:bg-muted"
+            className="flex aspect-square min-w-0 flex-col items-start gap-1 rounded-2xl bg-card p-3 text-left text-card-foreground active:bg-muted press"
             onClick={() => {
               model.openTile(module);
             }}

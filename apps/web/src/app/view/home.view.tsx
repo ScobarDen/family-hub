@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, ViewTransition, type ReactNode } from "react";
 
 import type { AppModule } from "@family-hub/contract";
 
@@ -128,11 +128,16 @@ function contentOf(props: HomeProps): ReactNode {
     : pageOf(props, contents[screen.module](props));
 }
 
+// The navigation names the direction; global/styles.css draws it. Anything else swaps at once.
+const slides = { forward: "slide-forward", back: "slide-back", default: "none" };
+
 // Every screen keeps the tab bar and the microphone: there are no hidden modules any more.
 function screenOf(props: HomeProps): ReactNode {
   return (
     <>
-      {contentOf(props)}
+      <ViewTransition update={slides} default="none">
+        {contentOf(props)}
+      </ViewTransition>
       <TabBar model={props.tabBar} center={<Microphone model={props.microphone} />} />
       <CommandSheet model={props.commandSheet} />
     </>

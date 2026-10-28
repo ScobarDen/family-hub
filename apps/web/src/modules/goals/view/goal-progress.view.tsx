@@ -1,9 +1,16 @@
+import type { CSSProperties } from "react";
+
 import { IconBadge } from "@/common/ui";
 
 import { goalIcons } from "../goals.config.ts";
 import type { GoalDetails } from "../goals.lib.ts";
 
 const lines = ["remaining", "hint", "status", "note"] as const;
+
+// A custom property instead of an inline width, so @starting-style can still fill the bar from zero.
+function progressOf(goal: GoalDetails): Record<string, string> {
+  return { "--progress": `${goal.percent}%` };
+}
 
 export function GoalProgress({ goal }: { goal: GoalDetails }) {
   return (
@@ -20,7 +27,10 @@ export function GoalProgress({ goal }: { goal: GoalDetails }) {
         aria-valuenow={goal.percent}
         className="h-2 overflow-hidden rounded-full bg-muted"
       >
-        <div className="h-full rounded-full bg-primary" style={{ width: `${goal.percent}%` }} />
+        <div
+          className="h-full w-(--progress) rounded-full bg-primary motion-safe:transition-[width] motion-safe:duration-500 motion-safe:ease-out motion-safe:starting:w-0"
+          style={progressOf(goal) satisfies CSSProperties}
+        />
       </div>
       {lines.map(
         (line) =>

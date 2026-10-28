@@ -25,10 +25,24 @@ type SectionItemProps = {
   onClick?: () => void;
   disabled?: boolean;
   isExpanded?: boolean;
+  // A row with a control on its way out, such as a completed Task, folds away instead of vanishing.
+  isCollapsed?: boolean;
 };
 
 export const sectionRowClass =
   "flex min-h-12 w-full items-center gap-3 pl-4 text-left [&+&>[data-slot=item-body]]:border-t";
+
+function collapseClass(isCollapsed: boolean | undefined): string | undefined {
+  if (isCollapsed === undefined) {
+    return undefined;
+  }
+
+  return cn(
+    "max-h-60 overflow-hidden transition-[max-height,min-height,opacity] duration-300 ease-out",
+    isCollapsed &&
+      "max-h-0 min-h-0 opacity-0 delay-200 motion-reduce:[transition:opacity_150ms_ease-out_200ms,max-height_0s_350ms,min-height_0s_350ms]",
+  );
+}
 
 function leadingOf({
   icon,
@@ -81,10 +95,10 @@ function bodyOf(
 }
 
 function withControl(props: SectionItemProps, control: ReactNode): ReactNode {
-  const { onClick } = props;
+  const { onClick, isCollapsed } = props;
 
   return (
-    <div className={sectionRowClass}>
+    <div className={cn(sectionRowClass, collapseClass(isCollapsed))} inert={isCollapsed}>
       {control}
       {onClick === undefined ? (
         bodyOf(props)
@@ -92,7 +106,7 @@ function withControl(props: SectionItemProps, control: ReactNode): ReactNode {
         <button
           type="button"
           data-slot="item-body"
-          className="flex min-w-0 flex-1 self-stretch border-border text-left focus-visible:-outline-offset-2 active:bg-muted"
+          className="flex min-w-0 flex-1 self-stretch border-border text-left focus-visible:-outline-offset-2 active:bg-muted press"
           onClick={onClick}
         >
           {bodyOf(props, false)}
@@ -120,7 +134,7 @@ function plainRowOf(props: SectionItemProps): ReactNode {
       type="button"
       className={cn(
         sectionRowClass,
-        "focus-visible:-outline-offset-2 active:bg-muted aria-disabled:opacity-50",
+        "focus-visible:-outline-offset-2 active:bg-muted aria-disabled:opacity-50 press",
       )}
       aria-disabled={disabled || undefined}
       aria-expanded={isExpanded}

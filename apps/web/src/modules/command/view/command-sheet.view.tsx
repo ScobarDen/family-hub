@@ -1,10 +1,10 @@
 import { reatomComponent } from "@reatom/react";
 import { LoaderCircle, X } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button, FieldError } from "@/common/ui";
 
-import type { CommandSheetModel } from "../vm/command-sheet.vm.ts";
+import type { CommandSheet as SheetState, CommandSheetModel } from "../vm/command-sheet.vm.ts";
 import { DraftPreviewBlock } from "./draft-preview.view.tsx";
 
 export type CommandSheetProps = { model: CommandSheetModel };
@@ -13,9 +13,7 @@ function heardOf(heard: string | null): ReactNode {
   return heard === null ? null : <p className="text-sm text-muted-foreground">«{heard}»</p>;
 }
 
-function contentOf(model: CommandSheetModel): ReactNode {
-  const sheet = model.sheet();
-
+function contentOf(model: CommandSheetModel, sheet: SheetState): ReactNode {
   if (sheet.kind === "sending") {
     return (
       <p className="flex items-center gap-2 text-muted-foreground">
@@ -49,16 +47,26 @@ function contentOf(model: CommandSheetModel): ReactNode {
   );
 }
 
+// The sheet stays mounted and keeps showing its last content while it slides away.
 export const CommandSheet = reatomComponent(({ model }: CommandSheetProps) => {
-  if (model.sheet().kind === "closed") {
-    return null;
+  const sheet = model.sheet();
+  const isOpen = sheet.kind !== "closed";
+  const [shown, setShown] = useState(sheet);
+
+  if (isOpen && shown !== sheet) {
+    setShown(sheet);
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40">
+    <div
+      inert={!isOpen}
+      data-open={isOpen || undefined}
+      className="fixed inset-0 z-50 flex items-end bg-black/40 transition-[opacity,display] transition-discrete duration-150 ease-out not-data-open:hidden not-data-open:opacity-0 data-open:duration-300 starting:opacity-0"
+    >
       <section
         aria-label="Команда"
-        className="relative mx-auto flex w-full max-w-lg flex-col gap-4 rounded-t-2xl bg-background p-4 pr-12 pb-[calc(var(--safe-area-bottom)+1rem)]"
+        data-open={isOpen || undefined}
+        className="relative mx-auto flex w-full max-w-lg flex-col gap-4 rounded-t-2xl bg-background p-4 pr-12 pb-[calc(var(--safe-area-bottom)+1rem)] transition-[translate] duration-150 ease-out data-open:duration-300 motion-safe:not-data-open:translate-y-3 motion-safe:starting:translate-y-full"
       >
         <Button
           variant="ghost"
@@ -69,7 +77,7 @@ export const CommandSheet = reatomComponent(({ model }: CommandSheetProps) => {
         >
           <X className="size-5" />
         </Button>
-        {contentOf(model)}
+        {contentOf(model, shown)}
       </section>
     </div>
   );

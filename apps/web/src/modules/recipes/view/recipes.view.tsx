@@ -1,7 +1,13 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { FailureBar, LoadState, SkeletonSection, SkeletonSectionLayout } from "@/common/ui";
+import {
+  FailureBar,
+  LoadState,
+  Revealed,
+  SkeletonSection,
+  SkeletonSectionLayout,
+} from "@/common/ui";
 
 import type { RecipesScreen, RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { RecipeDetails } from "./recipe-details.view.tsx";
@@ -56,12 +62,13 @@ function contentOf({ model }: RecipesProps, screen: RecipesScreen): ReactNode {
   return <LoadState failure="Не получилось загрузить рецепты." onRetry={model.retry} />;
 }
 
-export const Recipes = reatomComponent(
-  (props: RecipesProps) => (
+export const Recipes = reatomComponent((props: RecipesProps) => {
+  const screen = props.model.screen();
+
+  return (
     <>
-      {contentOf(props, props.model.screen())}
+      <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(props, screen)}</Revealed>
       <FailureBar failure={props.model.failure()} onDismiss={props.model.dismissFailure} />
     </>
-  ),
-  "Recipes",
-);
+  );
+}, "Recipes");

@@ -20,6 +20,7 @@ import {
   Chip,
   FailureBar,
   PersonAvatar,
+  Revealed,
   Section,
   SectionItem,
   SkeletonSection,
@@ -120,14 +121,16 @@ export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
           </Chip>
         ))}
       </div>
-      {placeholderOf(model, blocks.length)}
-      {blocks.map((block) => (
-        <Section key={block.title} title={block.title}>
-          {block.rows.map((row) => (
-            <FeedRowItem key={row.key} row={row} model={model} />
-          ))}
-        </Section>
-      ))}
+      <Revealed isSkeleton={model.isLoading()}>
+        {placeholderOf(model, blocks.length)}
+        {blocks.map((block) => (
+          <Section key={block.title} title={block.title}>
+            {block.rows.map((row) => (
+              <FeedRowItem key={row.key} row={row} model={model} />
+            ))}
+          </Section>
+        ))}
+      </Revealed>
       {model.canLoadMore() && (
         <div className="px-4 pb-6">
           <Button className="w-full" variant="secondary" onClick={model.loadMore}>

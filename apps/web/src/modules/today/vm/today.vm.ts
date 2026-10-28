@@ -224,6 +224,30 @@ function reatomCompletion(
 
 type Completion = ReturnType<typeof reatomCompletion>;
 
+// A completed row stays among the rows, marked done, until Today is read again.
+function reatomRows(
+  dependencies: TodayDependencies,
+  {
+    listed,
+    due,
+    hidden,
+  }: { listed: () => FeedUpcoming[]; due: () => FeedUpcoming[]; hidden: () => string[] },
+) {
+  return computed(() => {
+    const shown = new Set(
+      due()
+        .slice(0, shownDue)
+        .map(({ key }) => key),
+    );
+
+    return listed()
+      .filter(({ key }) => shown.has(key) || hidden().includes(key))
+      .map((item) =>
+        dueRowOf(item, { today: dependencies.today(), isDone: hidden().includes(item.key) }),
+      );
+  }, "today.rows");
+}
+
 function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion: Completion) {
   // Yesterday's rows under today's heading would complete the wrong Occurrence.
   const isDueOutdated = computed(() => {
@@ -231,11 +255,9 @@ function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion:
 
     return loaded !== undefined && loaded.date !== dependencies.today();
   }, "today.isDueOutdated");
+  const listed = computed(() => (isDueOutdated() ? [] : (data.data()?.due ?? [])), "today.listed");
   const due = computed(
-    () =>
-      isDueOutdated()
-        ? []
-        : (data.data()?.due ?? []).filter(({ key }) => !completion.hidden().includes(key)),
+    () => listed().filter(({ key }) => !completion.hidden().includes(key)),
     "today.due",
   );
   const tiles = computed((): Tile[] => {
@@ -250,13 +272,7 @@ function reatomBlocks(dependencies: TodayDependencies, data: Loaded, completion:
       () => (data.data() === undefined || isDueOutdated() ? undefined : headerOf(due().length)),
       "today.header",
     ),
-    rows: computed(
-      () =>
-        due()
-          .slice(0, shownDue)
-          .map((item) => dueRowOf(item, dependencies.today())),
-      "today.rows",
-    ),
+    rows: reatomRows(dependencies, { listed, due, hidden: completion.hidden }),
     more: computed(() => moreOf(due().length - shownDue), "today.more"),
     next: computed(
       () => (data.data()?.next ?? []).map((item) => nextRowOf(item, dependencies.today())),

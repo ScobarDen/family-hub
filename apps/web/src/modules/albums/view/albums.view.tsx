@@ -2,7 +2,13 @@ import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
-import { LoadState, SkeletonPhotoGrid, SkeletonSection, SkeletonSectionLayout } from "@/common/ui";
+import {
+  LoadState,
+  Revealed,
+  SkeletonPhotoGrid,
+  SkeletonSection,
+  SkeletonSectionLayout,
+} from "@/common/ui";
 
 import type { AlbumsScreen, AlbumsScreenModel } from "../vm/albums.vm.ts";
 import { AlbumDetails } from "./album-details.view.tsx";
@@ -58,7 +64,8 @@ function contentOf(model: AlbumsScreenModel, screen: AlbumsScreen): ReactNode {
   return <LoadState failure="Не получилось загрузить альбомы." onRetry={model.retry} />;
 }
 
-export const Albums = reatomComponent(
-  ({ model }: AlbumsProps) => contentOf(model, model.screen()),
-  "Albums",
-);
+export const Albums = reatomComponent(({ model }: AlbumsProps) => {
+  const screen = model.screen();
+
+  return <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(model, screen)}</Revealed>;
+}, "Albums");

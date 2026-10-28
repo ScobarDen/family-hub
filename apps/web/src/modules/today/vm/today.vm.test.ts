@@ -213,7 +213,7 @@ describe("«Сделать сегодня»", () => {
     model.complete("task-1-2026-10-12");
 
     expect(felt).toEqual(["success"]);
-    expect(model.rows()).toEqual([]);
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: true })]);
     expect(model.header()).toBe("День свободен");
     expect(model.undo()).toEqual({ title: "Дело 1", hasPet: false });
     await vi.waitFor(() => {
@@ -228,7 +228,7 @@ describe("«Сделать сегодня»", () => {
     model.dismissUndo();
 
     expect(model.undo()).toBeUndefined();
-    expect(model.rows()).toEqual([]);
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: true })]);
   });
 
   test("offers to record a Pet's Task in its journal from the undo bar", async () => {
@@ -280,7 +280,7 @@ describe("«Сделать сегодня»", () => {
     await vi.waitFor(() => {
       expect(calls).toContain("POST /api/tasks/task-1/subtasks/sub-1/reopen");
     });
-    expect(model.rows()).toHaveLength(1);
+    expect(model.rows()).toEqual([expect.objectContaining({ isDone: false })]);
   });
 
   test("reopens the Occurrence after its completion when the undo is tapped", async () => {
@@ -293,7 +293,7 @@ describe("«Сделать сегодня»", () => {
     model.revert();
 
     expect(felt).toEqual(["success", "select"]);
-    expect(model.rows()).toHaveLength(1);
+    expect(model.rows()).toEqual([expect.objectContaining({ isDone: false })]);
     expect(model.undo()).toBeUndefined();
     await vi.waitFor(() => {
       expect(calls).toContain('POST /api/tasks/task-1/reopen {"occurrence":"2026-10-12"}');
@@ -319,7 +319,7 @@ describe("«Сделать сегодня»", () => {
         "Не получилось отметить «Дело 1». Попробуйте ещё раз.",
       );
     });
-    expect(model.rows()).toHaveLength(1);
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: false })]);
     expect(model.undo()).toBeUndefined();
   });
 
@@ -334,11 +334,11 @@ describe("«Сделать сегодня»", () => {
     });
     model.complete("task-1-2026-10-12");
 
-    expect(model.rows()).toHaveLength(0);
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: true })]);
     await vi.waitFor(() => {
       expect(model.completionFailure()).toBe("Нет связи, не сохранилось");
     });
-    expect(model.rows()).toHaveLength(1);
+    expect(model.rows()).toEqual([expect.objectContaining({ title: "Дело 1", isDone: false })]);
     expect(felt).toEqual(["success", "error"]);
 
     model.dismissFailure();
@@ -361,7 +361,10 @@ describe("«Сделать сегодня»", () => {
     expect(calls.filter((call) => call.startsWith("POST"))).toEqual([
       'POST /api/tasks/task-1/complete {"occurrence":"2026-10-16"}',
     ]);
-    expect(model.rows().map(({ title }) => title)).toEqual(["День рождения Бьюика"]);
+    expect(model.rows().map(({ title, isDone }) => ({ title, isDone }))).toEqual([
+      { title: "День рождения Бьюика", isDone: false },
+      { title: "Дело 1", isDone: true },
+    ]);
   });
 });
 

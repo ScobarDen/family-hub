@@ -44,7 +44,7 @@ export const GoalDetails = reatomComponent((props: DetailsProps) => {
     <>
       {isCelebrating && (
         <p
-          className="px-4 py-2 text-center text-2xl leading-tight font-semibold tracking-tight"
+          className="animate-in px-4 py-2 text-center text-2xl leading-tight font-semibold tracking-tight duration-300 ease-out fade-in motion-safe:zoom-in-75"
           role="status"
         >
           Цель достигнута!

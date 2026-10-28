@@ -102,6 +102,21 @@ Each item on iOS and Android; Telegram Desktop and Web keep no cache between lau
 - [ ] The skeleton shimmers in the theme's colours; with reduced motion turned on in the system it stays a still block.
 - [ ] With the network off on a first launch of a section, the screen shows its failure with «Повторить», and «Повторить» brings the content once the network is back.
 
+### Motion
+
+Each item on iOS and Android, once with the system's reduced motion off and once with it on.
+
+- [ ] Buttons, rows, Today's tiles, chips and the completion circle shrink a little while pressed and spring back; a disabled or spinning button does not move.
+- [ ] Opening a section from «Разделы» or a record from Today or the Feed slides the new screen in from the right; Telegram's Back slides it out to the right, inside a module (a form, a Task's card) too. Opening a record inside a module's own list swaps at once.
+- [ ] A tab-bar tap swaps the screen at once, with no slide.
+- [ ] The command sheet rises from the bottom; «×» lets it sink a little and fade, quicker than it came.
+- [ ] Completing a Task in «Сделать сегодня» turns the circle into a check (it grows out of a blur), then the row folds away and the rows below close the gap; «Отменить» opens it up again. Completing the last one folds the whole card.
+- [ ] The undo and failure bars rise from the bottom as they appear.
+- [ ] On a first launch with the cache cleared, Today's blocks come in one after another, 100 ms apart; every other screen's content fades in over its skeleton. A second launch shows everything at once.
+- [ ] A Savings Goal's bar fills from empty when it opens and grows smoothly after a Contribution; reaching Achieved shows «Цель достигнута!» once with a small zoom.
+- [ ] With reduced motion on, nothing slides, scales or blurs: screens, the sheet, bars and blocks only fade, and completed rows fade before they close.
+- [ ] On a client without View Transitions (Telegram Desktop on an old WebView, or Safari before 18) every screen swaps at once and nothing breaks.
+
 Items for features that are not built yet are skipped until they land.
 
 ## After a production deploy

@@ -1,4 +1,4 @@
-import { action, atom, computed, noop, reatomRoute } from "@reatom/core";
+import { action, atom, computed, noop, reatomRoute, type Atom } from "@reatom/core";
 import { z } from "zod";
 
 import { appModule, type AppModule, type SlotModule } from "@family-hub/contract";
@@ -17,6 +17,10 @@ export type Screen =
 
 type NestedBack = { canGoBack: () => boolean; back: () => void };
 
+export type SlideDirection = "forward" | "back";
+
+type Slide = (direction: SlideDirection, update: () => void) => void;
+
 type NavigationDependencies = {
   base: string;
   slots: () => SlotModule[];
@@ -25,6 +29,8 @@ type NavigationDependencies = {
   // Screens inside a module (a form, a Task's card) step back before the app does.
   nestedBack?: Partial<Record<AppModule, NestedBack>>;
   onTodayShown?: () => void;
+  // A pushed screen and Back slide; a tab switch and a launch swap at once.
+  slide?: Slide;
 };
 
 const moduleParams = z.object({ module: appModule });
@@ -142,7 +148,7 @@ function initialTabOf(screen: Screen, slots: SlotModule[]): TabId {
 // top screen.
 function reatomStack(
   go: (screen: Screen) => void,
-  { screen, slots }: { screen: () => Screen; slots: () => SlotModule[] },
+  { screen, slots, slide }: { screen: () => Screen; slots: () => SlotModule[]; slide: Slide },
 ) {
   const tab = atom<TabId | undefined>(undefined, "navigation.tab");
   const trail = atom<Screen[]>([], "navigation.trail");
@@ -158,9 +164,11 @@ function reatomStack(
       const current = screen();
 
       if (!isSameScreen(current, next)) {
-        tab.set(activeTab());
-        trail.set([...trail(), current]);
-        go(next);
+        slide("forward", () => {
+          tab.set(activeTab());
+          trail.set([...trail(), current]);
+          go(next);
+        });
       }
     }, "navigation.push"),
     openTab: action((next: TabId) => {
@@ -174,13 +182,22 @@ function reatomStack(
       trail.set(place === undefined ? [] : [{ kind: "today" }]);
       go(place === undefined ? { kind: "today" } : placeScreen(place));
     }, "navigation.launch"),
-    pop: action(() => {
-      const previous = trail().at(-1);
+    pop: reatomPop(go, { trail, activeTab, slide }),
+  };
+}
 
+function reatomPop(
+  go: (screen: Screen) => void,
+  { trail, activeTab, slide }: { trail: Atom<Screen[]>; activeTab: () => TabId; slide: Slide },
+) {
+  return action(() => {
+    const previous = trail().at(-1);
+
+    slide("back", () => {
       trail.set(trail().slice(0, -1));
       go(previous ?? rootOf(activeTab()));
-    }, "navigation.pop"),
-  };
+    });
+  }, "navigation.pop");
 }
 
 type Stack = ReturnType<typeof reatomStack>;
@@ -254,7 +271,8 @@ function reatomBack(
   {
     screen,
     nestedBack,
-  }: { screen: () => Screen; nestedBack: NavigationDependencies["nestedBack"] },
+    slide,
+  }: { screen: () => Screen; nestedBack: NavigationDependencies["nestedBack"]; slide: Slide },
   stack: Stack,
 ) {
   return action(() => {
@@ -263,7 +281,7 @@ function reatomBack(
     if (nested === undefined) {
       stack.pop();
     } else {
-      nested.back();
+      slide("back", nested.back);
     }
   }, "navigation.back").extend(() => ({
     isVisible: () =>
@@ -280,11 +298,14 @@ export function reatomNavigation({
   telegram,
   nestedBack,
   onTodayShown = noop,
+  slide = (_direction, update) => {
+    update();
+  },
 }: NavigationDependencies) {
   const routes = reatomRoutes(base);
   const screen = reatomScreen(routes);
-  const stack = reatomStack(goToNotifying(routes, onTodayShown), { screen, slots });
-  const back = reatomBack({ screen, nestedBack }, stack);
+  const stack = reatomStack(goToNotifying(routes, onTodayShown), { screen, slots, slide });
+  const back = reatomBack({ screen, nestedBack, slide }, stack);
   const opening = reatomOpening(stack, { screen, slots });
 
   return {

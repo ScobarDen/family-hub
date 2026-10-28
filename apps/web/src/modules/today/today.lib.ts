@@ -13,6 +13,8 @@ export type DueRow = {
   // A birthday comes and goes by itself, so it only opens.
   canComplete: boolean;
   picture: string | undefined;
+  // A completed row stays to collapse on screen, and opens up again when the undo is tapped.
+  isDone: boolean;
 };
 
 export type NextRow = { key: string; title: string; when: string };
@@ -53,7 +55,10 @@ function whenOf(item: FeedUpcoming, today: string): string {
   return time === null ? day : `${day}, ${time}`;
 }
 
-export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
+export function dueRowOf(
+  item: FeedUpcoming,
+  { today, isDone }: { today: string; isDone: boolean },
+): DueRow {
   return {
     key: item.key,
     module: moduleOfKind[item.kind],
@@ -62,6 +67,7 @@ export function dueRowOf(item: FeedUpcoming, today: string): DueRow {
     isOverdue: item.date < today,
     canComplete: item.kind === "task",
     picture: item.petPicture ?? undefined,
+    isDone,
   };
 }
 

@@ -9,6 +9,7 @@ import { createHttpClient } from "@/common/http-client";
 import { openLiveSocket, reatomLiveUpdates } from "@/common/live-updates";
 import { preparePhoto } from "@/common/photo";
 import { reatomTelegram } from "@/common/telegram";
+import { slideScreens } from "@/common/ui";
 import { createVoiceRecorder } from "@/common/voice-recorder";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
@@ -284,6 +285,7 @@ const navigation = reatomNavigation({
   },
   isSignedIn: () => session.member() !== undefined,
   telegram,
+  slide: slideScreens,
   nestedBack: {
     pet,
     tasks,

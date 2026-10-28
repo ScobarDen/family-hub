@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { ChevronRight } from "lucide-react";
 
 import { sectionIcons } from "@/common/sections";
-import { CheckButton, Section, SectionItem, SkeletonSection } from "@/common/ui";
+import { CheckButton, cn, Section, SectionItem, SkeletonSection } from "@/common/ui";
 
 import type { DueRow } from "../today.lib.ts";
 import type { TodayModel } from "../vm/today.vm.ts";
@@ -21,7 +21,8 @@ function DueItem({ row, model }: RowProps) {
       control={
         <CheckButton
           label={`Отметить выполненным: ${row.title}`}
-          isAlert={row.isOverdue}
+          isChecked={row.isDone}
+          isAlert={row.isOverdue && !row.isDone}
           onClick={() => {
             model.complete(row.key);
           }}
@@ -30,6 +31,7 @@ function DueItem({ row, model }: RowProps) {
       title={row.title}
       subtitle={row.when}
       onClick={open}
+      isCollapsed={row.isDone}
     />
   ) : (
     <SectionItem
@@ -56,18 +58,31 @@ export const DueBlock = reatomComponent(({ model }: { model: TodayModel }) => {
     return null;
   }
 
+  const isAllDone = rows.every(({ isDone }) => isDone);
+
   return (
-    <Section title="Сделать сегодня">
-      {rows.map((row) => (
-        <DueItem key={row.key} row={row} model={model} />
-      ))}
-      {more !== undefined && (
-        <SectionItem
-          title={more}
-          after={<ChevronRight className="size-4 text-muted-foreground" />}
-          onClick={model.openFeed}
-        />
+    <div
+      inert={isAllDone}
+      className={cn(
+        "grid grid-rows-[1fr] transition-[grid-template-rows,opacity] duration-300 ease-out",
+        isAllDone &&
+          "grid-rows-[0fr] opacity-0 delay-200 motion-reduce:[transition:opacity_150ms_ease-out_200ms,grid-template-rows_0s_350ms]",
       )}
-    </Section>
+    >
+      <div className="min-h-0 overflow-hidden">
+        <Section title="Сделать сегодня">
+          {rows.map((row) => (
+            <DueItem key={row.key} row={row} model={model} />
+          ))}
+          {more !== undefined && (
+            <SectionItem
+              title={more}
+              after={<ChevronRight className="size-4 text-muted-foreground" />}
+              onClick={model.openFeed}
+            />
+          )}
+        </Section>
+      </div>
+    </div>
   );
 }, "DueBlock");

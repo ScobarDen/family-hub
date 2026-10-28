@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   FailureBar,
   LoadState,
+  Revealed,
   Skeleton,
   SkeletonSection,
   SkeletonSectionLayout,
@@ -55,12 +56,13 @@ function contentOf(model: GoalsScreenModel, screen: GoalsScreen): ReactNode {
   return <LoadState failure="Не получилось загрузить цели." onRetry={model.retry} />;
 }
 
-export const Goals = reatomComponent(
-  ({ model }: GoalsProps) => (
+export const Goals = reatomComponent(({ model }: GoalsProps) => {
+  const screen = model.screen();
+
+  return (
     <>
-      {contentOf(model, model.screen())}
+      <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(model, screen)}</Revealed>
       <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
     </>
-  ),
-  "Goals",
-);
+  );
+}, "Goals");
