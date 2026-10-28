@@ -1,3 +1,6 @@
+import { effect, noop } from "@reatom/core";
+
+import type { BottomButtonState } from "./telegram.model.ts";
 import type { DeviceStorage } from "./telegram.types.ts";
 
 // Telegram answers storage calls later, never inside the call.
@@ -45,6 +48,44 @@ export function fakeDeviceStorage({
   };
 
   fake.deviceStorage = isSupported ? deviceStorage : undefined;
+
+  return fake;
+}
+
+export type FakeBottomButton = {
+  isAvailable: boolean;
+  follow(state: () => BottomButtonState | undefined, onClick: () => void): () => void;
+  // Every state the button was given, in order; undefined is hidden.
+  states: Array<BottomButtonState | undefined>;
+  click(): void;
+};
+
+export function fakeBottomButton({ isAvailable = true } = {}): FakeBottomButton {
+  let onClick = noop;
+  const fake: FakeBottomButton = {
+    isAvailable,
+    states: [],
+    click: () => {
+      onClick();
+    },
+    follow(state, handler) {
+      if (!isAvailable) {
+        return noop;
+      }
+
+      onClick = handler;
+
+      const shown = effect(() => {
+        fake.states.push(state());
+      }, "fakeBottomButton");
+
+      return () => {
+        shown.unsubscribe();
+        onClick = noop;
+        fake.states.push(undefined);
+      };
+    },
+  };
 
   return fake;
 }

@@ -1,6 +1,7 @@
 import { action, atom, effect, noop, withConnectHook, wrap } from "@reatom/core";
 
 import type {
+  BottomButton,
   ColorScheme,
   HapticImpact,
   PopupParams,
@@ -13,6 +14,8 @@ const writeAccessVersion = "6.9";
 const shareMessageVersion = "8.0";
 const backButtonVersion = "6.1";
 const settingsButtonVersion = "7.0";
+// MainButton is older, but the pair goes native only together so the layout stays one.
+const bottomButtonsVersion = "7.10";
 const hapticsVersion = "6.1";
 const verticalSwipesVersion = "7.7";
 const deviceStorageVersion = "9.0";
@@ -144,6 +147,73 @@ function reatomButton(
   };
 }
 
+export type BottomButtonState = { text: string; isInProgress: boolean };
+
+function reatomBottomButton(
+  webApp: TelegramWebApp,
+  { button, name }: { button: BottomButton; name: string },
+) {
+  const isAvailable = webApp.isVersionAtLeast(bottomButtonsVersion);
+
+  return {
+    isAvailable,
+    follow(state: () => BottomButtonState | undefined, onClick: () => void): () => void {
+      if (!isAvailable) {
+        return noop;
+      }
+
+      button.onClick(onClick);
+
+      const shown = effect(() => {
+        const current = state();
+
+        if (current === undefined) {
+          button.hide();
+
+          return;
+        }
+
+        button.setParams({ text: current.text, is_visible: true });
+
+        if (current.isInProgress) {
+          button.showProgress();
+        } else {
+          button.hideProgress();
+        }
+      }, name);
+
+      return () => {
+        shown.unsubscribe();
+        button.offClick(onClick);
+        button.hide();
+      };
+    },
+  };
+}
+
+function reatomButtons(webApp: TelegramWebApp) {
+  return {
+    backButton: reatomButton(webApp, {
+      button: webApp.BackButton,
+      version: backButtonVersion,
+      name: "telegram.backButton",
+    }),
+    settingsButton: reatomButton(webApp, {
+      button: webApp.SettingsButton,
+      version: settingsButtonVersion,
+      name: "telegram.settingsButton",
+    }),
+    mainButton: reatomBottomButton(webApp, {
+      button: webApp.MainButton,
+      name: "telegram.mainButton",
+    }),
+    secondaryButton: reatomBottomButton(webApp, {
+      button: webApp.SecondaryButton,
+      name: "telegram.secondaryButton",
+    }),
+  };
+}
+
 // Telegram's own placeholder covers reading the first screen from the device, but not for long.
 function reatomLaunch(webApp: TelegramWebApp) {
   function ready() {
@@ -178,16 +248,7 @@ export function reatomTelegram(webApp: TelegramWebApp) {
     startParam: webApp.initDataUnsafe.start_param,
     canShareMessage: webApp.isVersionAtLeast(shareMessageVersion),
     deviceStorage: webApp.isVersionAtLeast(deviceStorageVersion) ? webApp.DeviceStorage : undefined,
-    backButton: reatomButton(webApp, {
-      button: webApp.BackButton,
-      version: backButtonVersion,
-      name: "telegram.backButton",
-    }),
-    settingsButton: reatomButton(webApp, {
-      button: webApp.SettingsButton,
-      version: settingsButtonVersion,
-      name: "telegram.settingsButton",
-    }),
+    ...reatomButtons(webApp),
     launch: reatomLaunch(webApp),
     ...reatomInteractions(webApp),
     // Colours themselves arrive as --tg-theme-* variables; only Tailwind's dark: variant needs the class.

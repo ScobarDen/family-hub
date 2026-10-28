@@ -170,6 +170,10 @@ export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Ed
       start({ kind: "editing", edited }, options.valuesOf(edited));
     }, `${name}.startEditing`),
     save: action(() => {
+      if (!form.submit.ready()) {
+        return;
+      }
+
       form.submit().catch(noop);
     }, `${name}.save`),
   };

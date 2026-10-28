@@ -1,5 +1,6 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
+import { LoaderCircle } from "lucide-react";
 
 import { cn } from "./ui.lib.ts";
 
@@ -34,18 +35,39 @@ const buttonVariants = cva(
   },
 );
 
+type ButtonProps = ButtonPrimitive.Props &
+  VariantProps<typeof buttonVariants> & { isPending?: boolean };
+
+// The label stays, invisible, so the button keeps its width under the spinner.
 function Button({
   className,
   variant = "default",
   size = "default",
+  isPending = false,
+  disabled,
+  children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
   return (
     <ButtonPrimitive
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        isPending && "relative aria-busy:opacity-100",
+      )}
+      disabled={disabled === true || isPending}
+      aria-busy={isPending || undefined}
       {...props}
-    />
+    >
+      {isPending ? (
+        <>
+          <span className="invisible contents">{children}</span>
+          <LoaderCircle aria-hidden className="absolute inset-0 m-auto animate-spin" />
+        </>
+      ) : (
+        children
+      )}
+    </ButtonPrimitive>
   );
 }
 

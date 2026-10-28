@@ -32,8 +32,8 @@ export function ConfirmDeletionForm(props: ConfirmDeletionFormProps) {
       <form className="flex flex-col gap-3 p-4" onSubmit={submit}>
         <TextField field={field} id={id} label={label} />
         <FieldError>{failure}</FieldError>
-        <Button type="submit" variant="destructive" disabled={isDeleting}>
-          {isDeleting ? "Удаляем…" : "Удалить навсегда"}
+        <Button type="submit" variant="destructive" isPending={isDeleting}>
+          Удалить навсегда
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Отмена

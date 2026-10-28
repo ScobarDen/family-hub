@@ -27,12 +27,42 @@ function questionOf(model: CommandSheetModel, question: DraftPreview["question"]
   );
 }
 
+// Telegram's own bottom buttons take «Создать» and «Изменить» where the client has them.
+function actionsOf(
+  model: CommandSheetModel,
+  preview: DraftPreview,
+  isCreating: boolean,
+): ReactNode {
+  return (
+    !model.hasNativeButtons && (
+      <div className="flex gap-2">
+        {preview.canCreate && (
+          <Button size="lg" className="flex-1" isPending={isCreating} onClick={model.create}>
+            Создать
+          </Button>
+        )}
+        <Button
+          size="lg"
+          variant="secondary"
+          className="flex-1"
+          disabled={isCreating}
+          onClick={model.edit}
+        >
+          Изменить
+        </Button>
+      </div>
+    )
+  );
+}
+
 export function DraftPreviewBlock({
   model,
   preview,
+  isCreating,
 }: {
   model: CommandSheetModel;
   preview: DraftPreview;
+  isCreating: boolean;
 }) {
   return (
     <>
@@ -45,16 +75,7 @@ export function DraftPreviewBlock({
         <p className="text-sm text-muted-foreground">{preview.hint}</p>
       )}
       {questionOf(model, preview.question)}
-      <div className="flex gap-2">
-        {preview.canCreate && (
-          <Button size="lg" className="flex-1" onClick={model.create}>
-            Создать
-          </Button>
-        )}
-        <Button size="lg" variant="secondary" className="flex-1" onClick={model.edit}>
-          Изменить
-        </Button>
-      </div>
+      {actionsOf(model, preview, isCreating)}
     </>
   );
 }

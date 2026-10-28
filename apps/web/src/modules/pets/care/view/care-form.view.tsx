@@ -63,8 +63,8 @@ const Actions = reatomComponent(({ model, isReadOnly, onCancel, onRemove }: Acti
 
   return (
     <>
-      <Button type="submit" size="lg" disabled={isSaving}>
-        {isSaving ? "Сохраняем…" : "Сохранить"}
+      <Button type="submit" size="lg" isPending={isSaving}>
+        Сохранить
       </Button>
       {model.editedId() !== undefined && (
         <Button type="button" size="lg" variant="destructive" onClick={onRemove}>

@@ -224,6 +224,7 @@ const commandSheet = reatomCommandSheet({
   api: commandApi,
   members,
   pets: petsModel.list,
+  telegram,
   onEdit: (opened) => {
     opener.editDraft(opened);
   },
@@ -382,6 +383,7 @@ telegram.launch(deviceCache.whenRead([session.member, todayHub.header]));
 telegram.followColorScheme(document.documentElement);
 telegram.followPlatform(document.documentElement);
 navigation.start();
+commandSheet.start();
 opener.launch();
 
 timeZone.keepFollowingDevice();

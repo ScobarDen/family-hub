@@ -16,8 +16,8 @@ export const InviteCard = reatomComponent(({ model, inviterName, familyName }: I
     >
       <div className="flex w-full max-w-xs flex-col gap-3">
         <FieldError>{model.failure()}</FieldError>
-        <Button size="lg" disabled={isJoining} onClick={model.join}>
-          {isJoining ? "Вступаем…" : "Вступить"}
+        <Button size="lg" isPending={isJoining} onClick={model.join}>
+          Вступить
         </Button>
       </div>
     </Notice>

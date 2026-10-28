@@ -131,6 +131,26 @@ describe("an editable record", () => {
     expect(saved).toHaveLength(1);
   });
 
+  test("is sent once however often it is saved while saving", async () => {
+    const { notes, hold, release, requests, saved } = startNotes();
+
+    hold();
+    notes.startCreating({ title: "Корм" });
+    notes.save();
+
+    await vi.waitFor(() => {
+      expect(requests).toHaveLength(1);
+    });
+
+    notes.save();
+    release();
+
+    await vi.waitFor(() => {
+      expect(saved).toHaveLength(1);
+    });
+    expect(requests).toEqual(["create Корм"]);
+  });
+
   test("says the server refused it, but not that a field needs fixing", async () => {
     const refused = startNotes({ failSaving: true });
     const invalid = startNotes();

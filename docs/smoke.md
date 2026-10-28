@@ -68,6 +68,13 @@ Each item on iOS, Android and Telegram Desktop.
 - [ ] While the finger is down, dragging it downwards neither scrolls the page nor closes the Mini App; after release the swipe-to-close works again.
 - [ ] With the microphone refused in the system settings, the button opens the bot chat and says to send a voice message there.
 - [ ] «Изменить» in the sheet opens the Reminder form filled from the draft; «×» closes the sheet.
+- [ ] The draft sheet shows «Создать» and «Изменить» as Telegram's own bottom buttons, not inside the sheet; «Создать» spins in Telegram's progress until «Создано», then both buttons go away; «×» on a draft takes them away too.
+- [ ] On Telegram older than 7.10 (or in Telegram Web K) both buttons sit inside the sheet, and «Создать» shows a spinner the same width as its label.
+
+### Buttons
+
+- [ ] With the network throttled, «Сохранить» in a Task form, «Отправить заявку», «Вступить» and «Удалить навсегда» keep their size, show a spinner over an invisible label, and cannot be pressed again until the answer; the screen reader reads them as busy.
+- [ ] «Пригласить в семью» keeps its title and shows a spinner at the row's end while the Invite is made.
 
 ### Launch from the device cache
 

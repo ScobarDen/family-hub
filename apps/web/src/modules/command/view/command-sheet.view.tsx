@@ -42,7 +42,7 @@ function contentOf(model: CommandSheetModel): ReactNode {
     sheet.kind === "draft" && (
       <>
         {heardOf(sheet.heard)}
-        <DraftPreviewBlock model={model} preview={sheet.preview} />
+        <DraftPreviewBlock model={model} preview={sheet.preview} isCreating={sheet.isCreating} />
         <FieldError>{sheet.error}</FieldError>
       </>
     )

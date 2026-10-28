@@ -31,8 +31,8 @@ export const FormShell = reatomComponent(
       <form className="flex flex-col gap-4 px-5 pb-6" onSubmit={submit}>
         {children}
         <FieldError>{model.failure()}</FieldError>
-        <Button type="submit" size="lg" disabled={isSaving}>
-          {isSaving ? "Сохраняем…" : "Сохранить"}
+        <Button type="submit" size="lg" isPending={isSaving}>
+          Сохранить
         </Button>
         {actions}
         <Button type="button" size="lg" variant="ghost" onClick={onCancel}>
