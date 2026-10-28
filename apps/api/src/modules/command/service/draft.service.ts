@@ -7,10 +7,10 @@ import { dateInZone, type Phrase } from "@family-hub/recurrence";
 import type { Membership } from "@/common/auth";
 import { fallbackTimeZone } from "@/common/clock";
 import type { CommandSource } from "@/common/db";
-import { ignoringBotErrors } from "@/common/telegram";
+import { ignoringBotErrors, strangerText } from "@/common/telegram";
 
 import { previewText } from "../command-preview.lib.ts";
-import { failureTexts, heardText, previewButtons, strangerText } from "../command.lib.ts";
+import { failureTexts, heardText, previewButtons } from "../command.lib.ts";
 import type { FamilyNames } from "../command.repo.ts";
 import type { CommandDependencies } from "../command.types.ts";
 

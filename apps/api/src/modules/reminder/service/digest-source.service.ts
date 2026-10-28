@@ -1,5 +1,10 @@
+import type { Message } from "@grammyjs/types";
+
 import type { FeedUpcoming } from "@family-hub/contract";
-import { daysAfter, occurrenceMoment } from "@family-hub/recurrence";
+import { dateInZone, daysAfter, occurrenceMoment } from "@family-hub/recurrence";
+
+import { fallbackTimeZone } from "@/common/clock";
+import { ignoringBotErrors, strangerText } from "@/common/telegram";
 
 import { formatFloatingDate, openAppButton, snoozeMs, sourceIdOf } from "../reminder.lib.ts";
 import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";
@@ -86,6 +91,39 @@ async function digestSource(
     snoozeMs,
     isSkippedWhenLate: true,
   };
+}
+
+// /today answers even on an empty day, since the Member asked.
+export async function sendToday(
+  dependencies: ReminderDependencies,
+  message: Message,
+): Promise<void> {
+  const { bot, memberships, clock } = dependencies;
+  const chatId = message.chat.id;
+  const membership = message.from && (await memberships.findByTelegramId(message.from.id));
+
+  if (membership === undefined) {
+    await ignoringBotErrors(bot.call("sendMessage", { chat_id: chatId, text: strangerText }));
+
+    return;
+  }
+
+  const day = dateInZone(clock.now(), membership.member.timeZone ?? fallbackTimeZone);
+  const content = await dependencies.digests.contentOf(membership.member.id);
+  const text =
+    (content && digestText(content, day)) ??
+    `☀️ Сводка на ${formatFloatingDate(day)}\n\nНа сегодня ничего нет`;
+
+  await ignoringBotErrors(
+    bot.call("sendMessage", {
+      chat_id: chatId,
+      text,
+      reply_markup: openAppButton({
+        text: "Открыть ленту",
+        url: await dependencies.appLinks.appLink(),
+      }),
+    }),
+  );
 }
 
 // A Member who turned the digest off, or is no longer in the Family, has no digest to send.

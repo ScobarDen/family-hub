@@ -16,8 +16,6 @@ const callbackPattern = new RegExp(
   "u",
 );
 
-export const strangerText =
-  "Family Hub работает по приглашениям: попросите приглашение у своей семьи.";
 export const quotaText =
   "На сегодня команды кончились. Создайте напоминание вручную в приложении — завтра снова можно будет просто написать.";
 const unrecognizedText = [
@@ -29,6 +27,9 @@ const unrecognizedText = [
   "• Бьюик весит 12,4",
 ].join("\n");
 const unsupportedText = "Такое голосом и текстом не умею — только создать дело или запись питомца.";
+
+export const remindUsageText =
+  "Напишите, что напомнить, например: /remind в пятницу в 19:00 оплатить интернет";
 
 export const tooLongText = "Слишком длинно — уложитесь в 30 секунд.";
 const unheardText = "Не расслышал, попробуйте ещё раз.";

@@ -93,7 +93,11 @@ jobs:
             allowed_updates: ["message", "callback_query", "my_chat_member"]
           }')"
           bot setMyCommands "$(jq -n '{
-            commands: [{command: "start", description: "Открыть Family Hub"}]
+            commands: [
+              {command: "start", description: "Открыть Family Hub"},
+              {command: "today", description: "Что на сегодня"},
+              {command: "remind", description: "Напомнить: /remind в пятницу в 19:00 оплатить интернет"}
+            ]
           }')"
           bot setChatMenuButton "$(jq -n '{
             menu_button: {type: "web_app", text: "Открыть", web_app: {url: env.MINI_APP_URL}}
