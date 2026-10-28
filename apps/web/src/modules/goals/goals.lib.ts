@@ -146,3 +146,48 @@ export function sectionsOf(goals: Goal[]): GoalSections {
     archive: goals.filter(({ completed }) => completed !== null).map(toListItem),
   };
 }
+
+type Movement = Goal["movements"][number];
+
+function sharesWith(goal: Goal, { kind, amount, member }: Movement, sign: 1 | -1): Goal["shares"] {
+  const shares = goal.shares.some(({ id }) => id === member.id)
+    ? goal.shares
+    : [...goal.shares, { ...member, contributed: 0, withdrawn: 0 }];
+
+  return shares.map((share) =>
+    share.id === member.id
+      ? {
+          ...share,
+          contributed: share.contributed + (kind === "contribution" ? sign * amount : 0),
+          withdrawn: share.withdrawn + (kind === "withdrawal" ? sign * amount : 0),
+        }
+      : share,
+  );
+}
+
+function moved(goal: Goal, movement: Movement, sign: 1 | -1): Goal {
+  const balance =
+    goal.balance + sign * (movement.kind === "contribution" ? 1 : -1) * movement.amount;
+
+  return {
+    ...goal,
+    balance,
+    isAchieved: balance >= goal.target,
+    shares: sharesWith(goal, movement, sign),
+  };
+}
+
+export function withMovement(goal: Goal, movement: Movement): Goal {
+  return { ...moved(goal, movement, 1), movements: [movement, ...goal.movements] };
+}
+
+export function withoutMovement(goal: Goal, movementId: string): Goal {
+  const movement = goal.movements.find(({ id }) => id === movementId);
+
+  return movement === undefined
+    ? goal
+    : {
+        ...moved(goal, movement, -1),
+        movements: goal.movements.filter(({ id }) => id !== movementId),
+      };
+}

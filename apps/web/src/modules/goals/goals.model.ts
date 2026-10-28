@@ -1,10 +1,10 @@
-import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
+import { action, atom, computed, withAsyncData, withRollback, wrap } from "@reatom/core";
 
-import { goalList, type FamilyMember, type Goal } from "@family-hub/contract";
+import { goalList, type FamilyMember, type Goal, type GoalList } from "@family-hub/contract";
 
 import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
-import { upserted } from "@/common/records";
+import { rolledBackById, upserted } from "@/common/records";
 
 import type { GoalsApi } from "./goals.api.ts";
 
@@ -26,7 +26,10 @@ export function reatomGoals({
     return wrap(api.list());
   }, "goals.list").extend(withAsyncData());
 
-  list.data.extend(deviceCache.withDeviceCache({ key: "goals", schema: goalList, version: 1 }));
+  list.data.extend(
+    deviceCache.withDeviceCache({ key: "goals", schema: goalList, version: 1 }),
+    withRollback({ onRollback: rolledBackList }),
+  );
 
   return {
     list,
@@ -46,6 +49,23 @@ export function reatomGoals({
       }
     }, "goals.keep"),
   };
+}
+
+type ListStates = {
+  beforeState: GoalList;
+  transactionState: GoalList;
+  currentState: GoalList;
+};
+
+// A failed change brings back its own Goal only, keeping one changed meanwhile.
+function rolledBackList({ beforeState, transactionState, currentState }: ListStates) {
+  const goals = rolledBackById({
+    beforeState: beforeState.goals,
+    transactionState: transactionState.goals,
+    currentState: currentState.goals,
+  });
+
+  return { goals, totalSaved: totalOf(goals) };
 }
 
 // Shared Goals and the Member's own Private ones count; a Completed Goal no longer does.

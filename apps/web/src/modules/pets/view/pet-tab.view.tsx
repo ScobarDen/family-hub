@@ -1,12 +1,13 @@
 import { reatomComponent } from "@reatom/react";
+import type { ReactNode } from "react";
+
+import { FailureBar } from "@/common/ui";
 
 import { Care, CareSummary, ExpensesBlock, JournalBlock, PhotosBlock } from "../care/index.ts";
 import type { PetTabModel } from "../vm/pet-tab.vm.ts";
 import { Pets } from "./pets.view.tsx";
 
-export const PetTab = reatomComponent(({ model }: { model: PetTabModel }) => {
-  const { pets, care } = model;
-
+function contentOf({ pets, care, nextVisit }: PetTabModel): ReactNode {
   if (care.canGoBack()) {
     return <Care model={care} />;
   }
@@ -14,7 +15,7 @@ export const PetTab = reatomComponent(({ model }: { model: PetTabModel }) => {
   return (
     <Pets
       model={pets}
-      summary={<CareSummary model={care} nextVisit={model.nextVisit()} />}
+      summary={<CareSummary model={care} nextVisit={nextVisit()} />}
       onAddEntry={() => {
         care.add("note");
       }}
@@ -23,4 +24,14 @@ export const PetTab = reatomComponent(({ model }: { model: PetTabModel }) => {
       photos={<PhotosBlock model={care} />}
     />
   );
-}, "PetTab");
+}
+
+export const PetTab = reatomComponent(
+  ({ model }: { model: PetTabModel }) => (
+    <>
+      {contentOf(model)}
+      <FailureBar failure={model.care.failure()} onDismiss={model.care.dismissFailure} />
+    </>
+  ),
+  "PetTab",
+);

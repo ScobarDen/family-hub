@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { LoadState, SkeletonSection, SkeletonTiles } from "@/common/ui";
+import { FailureBar, LoadState, SkeletonSection, SkeletonTiles } from "@/common/ui";
 
 import type { TodayModel } from "../vm/today.vm.ts";
 import { DueBlock } from "./due-block.view.tsx";
@@ -31,6 +31,7 @@ export const Today = reatomComponent(({ model }: { model: TodayModel }) => {
       <NextBlock model={model} />
       <Tiles model={model} />
       <UndoBar model={model} />
+      <FailureBar failure={model.completionFailure()} onDismiss={model.dismissFailure} />
     </>
   );
 }, "Today");

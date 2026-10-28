@@ -18,6 +18,7 @@ import {
   Button,
   CheckButton,
   Chip,
+  FailureBar,
   PersonAvatar,
   Section,
   SectionItem,
@@ -46,7 +47,6 @@ function checkOf({ row, model }: RowProps) {
       <CheckButton
         label={`Отметить выполненным: ${row.title}`}
         isAlert={row.isOverdue}
-        disabled={model.isChanging()}
         onClick={() => {
           model.complete(row.key);
         }}
@@ -136,6 +136,7 @@ export const Feed = reatomComponent(({ model }: { model: FeedModel }) => {
         </div>
       )}
       <PhotoViewer model={model.viewer} />
+      <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
     </>
   );
 }, "Feed");

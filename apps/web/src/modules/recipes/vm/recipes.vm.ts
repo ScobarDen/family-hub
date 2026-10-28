@@ -7,6 +7,7 @@ import {
   type SetAtom,
   withAsync,
   withAsyncData,
+  withRollback,
   wrap,
 } from "@reatom/core";
 
@@ -17,7 +18,14 @@ import { formatCount } from "@/common/format-count";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
-import { detached, readOnly } from "@/common/state";
+import { withoutId } from "@/common/records";
+import {
+  detached,
+  reatomOptimistic,
+  reatomRollbackFailure,
+  readOnly,
+  type RollbackFailure,
+} from "@/common/state";
 import { type Confirmation, type Dialogs, didSucceedOrAlert, isConfirmed } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
@@ -95,12 +103,16 @@ function reatomOpened(
   api: RecipesApi,
   { data, navigation }: { data: RecipesData; navigation: Navigation },
 ) {
-  return computed(async () => {
+  const opened = computed(async () => {
     data.version();
     const recipeId = navigation.openedId();
 
     return recipeId === undefined ? undefined : wrap(api.get(recipeId));
   }, "recipes.opened").extend(withAsyncData());
+
+  opened.data.extend(withRollback());
+
+  return opened;
 }
 
 type Opened = ReturnType<typeof reatomOpened>;
@@ -150,36 +162,39 @@ function reatomScreen({
   }, "recipes.screen");
 }
 
+type Sources = {
+  data: RecipesData;
+  navigation: Navigation;
+  opened: Opened;
+  failure: RollbackFailure;
+};
+
 function reatomRecipeRemoval(
   { api, telegram }: RecipesDependencies,
-  { data, navigation, opened }: { data: RecipesData; navigation: Navigation; opened: Opened },
+  { data, navigation, opened, failure }: Sources,
 ) {
-  return action(async () => {
-    const recipe = opened.data();
-    const isSure = await wrap(isConfirmed(telegram, deleteQuestion));
+  return reatomOptimistic(
+    async () => {
+      const recipe = opened.data();
+      const isSure = await wrap(isConfirmed(telegram, deleteQuestion));
 
-    if (recipe === undefined || !isSure) {
-      return;
-    }
+      if (recipe === undefined || !isSure) {
+        return;
+      }
 
-    const isRemoved = await wrap(
-      didSucceedOrAlert(telegram, {
-        failure: "Не получилось удалить рецепт. Попробуйте ещё раз.",
-        call: api.remove(recipe.id),
-      }),
-    );
-
-    if (isRemoved) {
+      data.list.data.set(withoutId(data.list.data() ?? [], recipe.id));
       navigation.openedId.set(undefined);
-      data.reload();
-    }
-  }, "recipes.remove").extend(withAsync());
+      await wrap(api.remove(recipe.id));
+    },
+    {
+      name: "recipes.remove",
+      failure,
+      refusal: "Не получилось удалить рецепт. Попробуйте ещё раз.",
+    },
+  );
 }
 
-function reatomRecipeActions(
-  dependencies: RecipesDependencies,
-  sources: { data: RecipesData; navigation: Navigation; opened: Opened },
-) {
+function reatomRecipeActions(dependencies: RecipesDependencies, sources: Sources) {
   const { data, navigation, opened } = sources;
   const { api, telegram } = dependencies;
   const remove = reatomRecipeRemoval(dependencies, sources);
@@ -287,6 +302,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     },
   });
   const screen = reatomScreen({ ...dependencies, data, navigation, opened, form });
+  const failure = reatomRollbackFailure("recipes.failure");
 
   return {
     screen,
@@ -300,9 +316,11 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     ),
     viewer: reatomPhotoViewer({ ...dependencies, onDeleted: data.reload }),
     ...reatomFilters(data),
-    ...reatomRecipeActions(dependencies, { data, navigation, opened }),
+    failure: failure.failure,
+    dismissFailure: failure.dismiss,
+    ...reatomRecipeActions(dependencies, { data, navigation, opened, failure }),
     ...reatomTagEditing(dependencies, data),
-    ...reatomRecipeCooks(dependencies, { data, opened: () => opened.data() }),
+    ...reatomRecipeCooks(dependencies, { data, opened, failure }),
     ...reatomMoves({ navigation, opened, form }),
   };
 }

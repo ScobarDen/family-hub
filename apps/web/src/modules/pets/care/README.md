@@ -7,7 +7,7 @@ A Pet's journal of Care Entries — vaccination, treatment, vet visit, weight, e
 - `api` — `createCareApi(httpClient)`: a Pet's Care Entries, one Care Entry by its id, adding, correcting and deleting one, and the Pet Expenses of a time range summed by category on the server.
 - `petId` — the Pet whose card is open, from the parent `pets` module.
 - `today`, `now`, `timeZone` — the viewer's date, time and zone: «this month» and «this year» are counted in it, and a new entry starts at the current minute.
-- `telegram` — `showPopup` from `common/telegram` for the delete confirmation.
+- `telegram` — `showPopup` from `common/telegram` for the delete confirmation. A confirmed deletion leaves the journal at once, brings the expenses after the server answers and comes back with the failure bar when the server does not take it.
 - `isReadOnly` — whether the open Pet is archived: its journal then shows without any way to write.
 - `preparePhoto` — `preparePhoto` from `common/photo`: reads when a picture was taken from its Exif, then shrinks it to 2560 px as a JPEG; over 10 MB it is refused.
 - `photoHint` — from `photo-storage`: why photos cannot be added now, shown in the form and the «Фото» block.

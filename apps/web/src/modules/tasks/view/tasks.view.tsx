@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Button, Chip, LoadState, SkeletonSection } from "@/common/ui";
+import { Button, Chip, FailureBar, LoadState, SkeletonSection } from "@/common/ui";
 
 import type { TasksScreen, TasksScreenModel } from "../vm/tasks.vm.ts";
 import { TaskCalendar } from "./task-calendar.view.tsx";
@@ -71,6 +71,7 @@ function browsing(model: TasksScreenModel, content: ReactNode) {
       </div>
       {content}
       <UndoBar model={model} />
+      <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
     </>
   );
 }
@@ -89,6 +90,8 @@ function contentOf(model: TasksScreenModel, screen: TasksScreen): ReactNode {
       <>
         <TaskDetails task={screen.task} model={model} />
         <UndoBar model={model} />
+        <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
+        <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
       </>
     );
   }

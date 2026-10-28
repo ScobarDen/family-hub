@@ -131,12 +131,18 @@ const wallpaperTask: Task = {
   subtasks: [],
 };
 
-type Launch = { device?: FakeDeviceStorage; page?: FeedPage; answered?: Promise<void> };
+type Launch = {
+  device?: FakeDeviceStorage;
+  page?: FeedPage;
+  answered?: Promise<void>;
+  completion?: "refused" | "unreachable" | Promise<void>;
+};
 
 function startFeed({
   device = fakeDeviceStorage(),
   page = firstPage,
   answered = Promise.resolve(),
+  completion = Promise.resolve(),
 }: Launch = {}) {
   const requests: string[] = [];
   const opened: FeedTarget[] = [];
@@ -157,6 +163,16 @@ function startFeed({
 
       return Response.json(page);
     }
+
+    if (completion === "unreachable") {
+      throw new TypeError("Failed to fetch");
+    }
+
+    if (completion === "refused") {
+      return Response.json({ code: "INTERNAL", message: "" }, { status: 500 });
+    }
+
+    await completion;
 
     return Response.json(wallpaperTask);
   }
@@ -300,6 +316,33 @@ describe("the Feed", () => {
     });
 
     expect(requests).toContain('POST /api/tasks/task-1/complete {"occurrence":"2026-10-12"}');
+  });
+
+  test("takes a completed line away before the server answers", async () => {
+    const { model } = startFeed({ completion: new Promise(noop) });
+
+    await loaded(model);
+    model.complete("task-1-2026-10-12");
+
+    expect(model.blocks()[0]?.title).toBe("Предстоит");
+    expect(model.failure()).toBeUndefined();
+  });
+
+  test.each([
+    { completion: "refused" as const, said: "Не получилось отметить. Попробуйте ещё раз." },
+    { completion: "unreachable" as const, said: "Нет связи, не сохранилось" },
+  ])("brings the line back with the failure bar when $completion", async ({ completion, said }) => {
+    const { model } = startFeed({ completion });
+
+    await loaded(model);
+    const before = shape(model);
+
+    model.complete("task-1-2026-10-12");
+    await vi.waitFor(() => {
+      expect(model.failure()).toBe(said);
+    });
+
+    expect(shape(model)).toEqual(before);
   });
 
   test("opens the Task of a line ahead and of a completed one, and a birthday's Pet", async () => {

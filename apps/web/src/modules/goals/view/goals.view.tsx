@@ -1,7 +1,13 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { LoadState, Skeleton, SkeletonSection, SkeletonSectionLayout } from "@/common/ui";
+import {
+  FailureBar,
+  LoadState,
+  Skeleton,
+  SkeletonSection,
+  SkeletonSectionLayout,
+} from "@/common/ui";
 
 import type { GoalsScreen, GoalsScreenModel } from "../vm/goals.vm.ts";
 import { GoalDetails } from "./goal-details.view.tsx";
@@ -50,6 +56,11 @@ function contentOf(model: GoalsScreenModel, screen: GoalsScreen): ReactNode {
 }
 
 export const Goals = reatomComponent(
-  ({ model }: GoalsProps) => contentOf(model, model.screen()),
+  ({ model }: GoalsProps) => (
+    <>
+      {contentOf(model, model.screen())}
+      <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
+    </>
+  ),
   "Goals",
 );

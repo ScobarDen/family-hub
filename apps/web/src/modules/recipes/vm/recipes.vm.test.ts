@@ -27,9 +27,20 @@ const lasagna: Recipe = {
 
 const borscht: Recipe = { ...lasagna, id: "recipe-2", title: "Борщ", tags: [] };
 
+const cookedLasagna: Recipe = {
+  ...lasagna,
+  cookedCount: 1,
+  lastCookedAt: Date.parse("2026-10-18T09:00:00Z"),
+  cooks: [{ id: "cook-1", at: Date.parse("2026-10-18T09:00:00Z"), memberName: "Ася", isOwn: true }],
+};
+
 function replyOf(url: URL, method: string, body: unknown): unknown {
   if (url.pathname === "/api/recipe-tags") {
     return lasagna.tags;
+  }
+
+  if (url.pathname === "/api/recipes/recipe-1" && method === "DELETE") {
+    return { status: "deleted" };
   }
 
   if (url.pathname !== "/api/recipes") {
@@ -45,14 +56,39 @@ function replyOf(url: URL, method: string, body: unknown): unknown {
 
 type Launch = {
   failing?: string;
+  unreachable?: string;
+  held?: string;
+  opened?: Recipe;
   popup?: string;
   device?: FakeDeviceStorage;
   book?: Recipe[];
   answered?: Promise<void>;
 };
 
+async function troubleOf(
+  request: string,
+  { failing, unreachable, held }: Pick<Launch, "failing" | "unreachable" | "held">,
+): Promise<Response | undefined> {
+  if (request === failing) {
+    return Response.json({}, { status: 500 });
+  }
+
+  if (request === unreachable) {
+    throw new TypeError("Failed to fetch");
+  }
+
+  if (request === held) {
+    await new Promise(noop);
+  }
+
+  return undefined;
+}
+
 function startRecipes({
-  failing = "",
+  failing,
+  unreachable,
+  held,
+  opened,
   popup = "confirm",
   device = fakeDeviceStorage(),
   book = [borscht, lasagna],
@@ -67,8 +103,14 @@ function startRecipes({
 
     requests.push({ request, body });
 
-    if (request === failing) {
-      return Response.json({}, { status: 500 });
+    const trouble = await troubleOf(request, { failing, unreachable, held });
+
+    if (trouble !== undefined) {
+      return trouble;
+    }
+
+    if (request === "GET /api/recipes/recipe-1") {
+      return Response.json(opened ?? lasagna);
     }
 
     if (request === "GET /api/recipes") {
@@ -160,22 +202,6 @@ describe("the Recipes", () => {
     expect(model.screen()).toMatchObject({ checked: [] });
   });
 
-  test("stay open with a word when one cannot be deleted", async () => {
-    const { model, alerts } = startRecipes({ failing: "DELETE /api/recipes/recipe-1" });
-
-    await listed(model);
-    model.open("recipe-1");
-    await vi.waitFor(() => {
-      expect(model.screen().kind).toBe("recipe");
-    });
-    model.remove();
-    await vi.waitFor(() => {
-      expect(alerts).toEqual(["Не получилось удалить рецепт. Попробуйте ещё раз."]);
-    });
-
-    expect(model.screen().kind).toBe("recipe");
-  });
-
   test("are written with their tags and opened once saved", async () => {
     const { model, requests } = startRecipes();
 
@@ -255,7 +281,7 @@ describe("cooking a Recipe", () => {
     model.chooseCookDay("2026-10-21");
     model.cook();
     await vi.waitFor(() => {
-      expect(model.isCooking()).toBe(false);
+      expect(model.canCook()).toBe(true);
     });
     model.chooseCookDay("2026-10-18");
     model.cook();
@@ -284,12 +310,93 @@ describe("cooking a Recipe", () => {
       model.uncook("cook-1");
       await sleep(0);
       await vi.waitFor(() => {
-        expect(model.isCooking()).toBe(false);
+        expect(model.canCook()).toBe(true);
       });
 
       expect(requests.some(({ request }) => request.startsWith("DELETE"))).toBe(isDeleted);
     },
   );
+});
+
+async function openLasagna(model: Model) {
+  await listed(model);
+  model.open("recipe-1");
+  await vi.waitFor(() => {
+    expect(model.screen().kind).toBe("recipe");
+  });
+}
+
+function cooksOf(model: Model) {
+  const screen = model.screen();
+
+  return screen.kind === "recipe" ? screen.recipe.cooks.length : undefined;
+}
+
+const writes = [
+  {
+    name: "Cooked",
+    request: "POST /api/recipes/recipe-1/cooked",
+    act: async (model: Model) => {
+      await openLasagna(model);
+      model.cook();
+    },
+    observe: cooksOf,
+    before: 0,
+    after: 1,
+  },
+  {
+    name: "taking a Cooked mark away",
+    request: "DELETE /api/recipes/recipe-1/cooked/cook-1",
+    opened: cookedLasagna,
+    act: async (model: Model) => {
+      await openLasagna(model);
+      model.uncook("cook-1");
+    },
+    observe: cooksOf,
+    before: 1,
+    after: 0,
+  },
+  {
+    name: "deleting a Recipe",
+    request: "DELETE /api/recipes/recipe-1",
+    act: async (model: Model) => {
+      await openLasagna(model);
+      model.remove();
+    },
+    observe: titles,
+    before: ["Борщ", "Лазанья"],
+    after: ["Борщ"],
+  },
+];
+
+describe.each(writes)("$name", ({ request, opened, act, observe, before, after }) => {
+  test("shows before the server answers", async () => {
+    const { model } = startRecipes({ held: request, opened });
+
+    await act(model);
+    await vi.waitFor(() => {
+      expect(observe(model)).toEqual(after);
+    });
+
+    expect(model.failure()).toBeUndefined();
+  });
+
+  test.each([
+    {
+      option: "failing",
+      said: expect.stringMatching(/^Не получилось .+ Попробуйте ещё раз\.$/u) as unknown,
+    },
+    { option: "unreachable", said: "Нет связи, не сохранилось" },
+  ])("rolls back with the failure bar when $option", async ({ option, said }) => {
+    const { model } = startRecipes({ [option]: request, opened });
+
+    await act(model);
+    await vi.waitFor(() => {
+      expect(model.failure()).toEqual(said);
+    });
+
+    expect(observe(model)).toEqual(before);
+  });
 });
 
 function relaunch(device: FakeDeviceStorage) {

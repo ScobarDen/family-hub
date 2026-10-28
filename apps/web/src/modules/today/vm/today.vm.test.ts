@@ -74,6 +74,7 @@ function answerOf(
 
 type Launch = {
   failing?: string;
+  unreachable?: string;
   device?: FakeDeviceStorage;
   today?: string;
   isOffline?: boolean;
@@ -81,7 +82,13 @@ type Launch = {
 
 function startToday(
   answer: Partial<Today> = {},
-  { failing, device = fakeDeviceStorage(), today = "2026-10-16", isOffline = false }: Launch = {},
+  {
+    failing,
+    unreachable,
+    device = fakeDeviceStorage(),
+    today = "2026-10-16",
+    isOffline = false,
+  }: Launch = {},
 ) {
   const calls: string[] = [];
   const payload: Today = { due: [], next: [], tiles: quiet, ...answer };
@@ -95,6 +102,10 @@ function startToday(
           .filter((part) => typeof part === "string")
           .join(" "),
       );
+
+      if (path === unreachable) {
+        throw new TypeError("Failed to fetch");
+      }
 
       return isOffline ? new Promise<Response>(noop) : answerOf(path, { payload, failing });
     },
@@ -306,6 +317,28 @@ describe("«Сделать сегодня»", () => {
     });
     expect(model.rows()).toHaveLength(1);
     expect(model.undo()).toBeUndefined();
+  });
+
+  test("brings the row back and says there is no network when the request never arrives", async () => {
+    const { model } = startToday(
+      { due: [taskDue(1, "2026-10-12")] },
+      { unreachable: "/api/tasks/task-1/complete" },
+    );
+
+    await vi.waitFor(() => {
+      expect(model.rows()).toHaveLength(1);
+    });
+    model.complete("task-1-2026-10-12");
+
+    expect(model.rows()).toHaveLength(0);
+    await vi.waitFor(() => {
+      expect(model.completionFailure()).toBe("Нет связи, не сохранилось");
+    });
+    expect(model.rows()).toHaveLength(1);
+
+    model.dismissFailure();
+
+    expect(model.completionFailure()).toBeUndefined();
   });
 
   test("does not complete a birthday", async () => {

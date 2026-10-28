@@ -15,4 +15,4 @@ The Goal and movement forms are `reatomEditableRecord`s from `common/form`: they
 - `self` — the session Member's id: a Private Goal takes only its owner's money.
 - `today`, `timeZone` — the viewer's date for the monthly hint and new movements, and the zone «Исполнена …» is shown in; the Member's own zone, the device's until it is known.
 
-The server owns the rules: a Balance never drops below zero, Achieved follows the Balance both ways, a Shared Goal never turns Private and a Completed Goal refuses every change. `reatomGoalsScreen` goes to the navigation as the goals module's `nestedBack`.
+A new Contribution or Withdrawal and a deleted Movement change the Balance, Achieved and the shares at once and roll back with the failure bar when the server does not take them; the new Movement offers no editing until it is saved. Editing a Movement waits for the server. The server owns the rules: a Balance never drops below zero, Achieved follows the Balance both ways, a Shared Goal never turns Private and a Completed Goal refuses every change. `reatomGoalsScreen` goes to the navigation as the goals module's `nestedBack`.

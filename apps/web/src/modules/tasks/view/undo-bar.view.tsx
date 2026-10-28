@@ -1,5 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 
+import { floatingBarClass } from "@/common/ui";
+
 import type { TasksScreenModel } from "../vm/tasks.vm.ts";
 
 // The live region stays mounted, so a screen reader announces the text when it appears; the page
@@ -10,10 +12,7 @@ export const UndoBar = reatomComponent(({ model }: { model: TasksScreenModel }) 
   return (
     <div role="status" className="contents">
       {undo !== undefined && (
-        <div
-          data-undo
-          className="fixed inset-x-4 bottom-[calc(var(--safe-area-bottom)+6rem)] z-50 mx-auto flex max-w-lg flex-wrap items-center gap-x-1 rounded-2xl border border-transparent bg-foreground py-2 pr-2 pl-4 text-background shadow-lg"
-        >
+        <div data-undo className={floatingBarClass}>
           <span className="min-w-0 flex-1 basis-40 leading-snug break-words">
             Выполнено: «{undo.title}»
           </span>

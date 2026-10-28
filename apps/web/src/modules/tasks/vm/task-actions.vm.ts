@@ -1,11 +1,17 @@
-import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, atom, computed, noop, wrap, type Atom } from "@reatom/core";
 
 import type { Task } from "@family-hub/contract";
 
-import { reatomFailure } from "@/common/state";
+import { withoutId } from "@/common/records";
+import { reatomOptimistic, reatomRollbackFailure } from "@/common/state";
 import { type Confirmation, type Dialogs, isConfirmed } from "@/common/telegram";
 
-import { completionOf } from "../occurrences.lib.ts";
+import {
+  completionOf,
+  withCompletion,
+  withSkipped,
+  withSubtaskCompletion,
+} from "../occurrences.lib.ts";
 import type { TaskOccurrence, TasksApi } from "../tasks.api.ts";
 import type { TasksModel } from "../tasks.model.ts";
 
@@ -56,12 +62,19 @@ async function isSure(dependencies: TaskActionsDependencies, kind: keyof typeof 
 }
 
 function reatomChange() {
-  return action(async (change: () => Promise<void>) => {
-    await wrap(change());
-  }, "tasks.change").extend(withAsync());
+  const failure = reatomRollbackFailure("tasks.failure");
+
+  return {
+    failure,
+    change: reatomOptimistic(async (change: () => Promise<void>) => change(), {
+      name: "tasks.change",
+      failure,
+      refusal: "Не получилось сохранить. Попробуйте ещё раз.",
+    }),
+  };
 }
 
-type Change = ReturnType<typeof reatomChange>;
+type Change = ReturnType<typeof reatomChange>["change"];
 
 type UndoAtom = Atom<Undo | undefined>;
 
@@ -77,7 +90,11 @@ async function toggleCompletion(
     return;
   }
 
-  if (completionOf(task, target.occurrence) !== undefined) {
+  const isCompleted = completionOf(task, target.occurrence) !== undefined;
+
+  dependencies.tasks.keep(withCompletion(task, target.occurrence, !isCompleted));
+
+  if (isCompleted) {
     undo.set(undefined);
     await wrap(keep(dependencies, dependencies.api.reopen(target)));
 
@@ -119,10 +136,15 @@ function reatomUndoBar(dependencies: TaskActionsDependencies, change: Change, un
     undoCompletion: action(() => {
       const target = undo();
 
+      const task = target && taskOf(dependencies, target.taskId);
+
       undo.set(undefined);
 
-      if (target !== undefined) {
-        change(async () => keep(dependencies, dependencies.api.reopen(target))).catch(noop);
+      if (target !== undefined && task !== undefined) {
+        change(async () => {
+          dependencies.tasks.keep(withCompletion(task, target.occurrence, false));
+          await wrap(keep(dependencies, dependencies.api.reopen(target)));
+        }).catch(noop);
       }
     }, "tasks.undoCompletion"),
     dismissUndo: action(() => {
@@ -144,18 +166,25 @@ function reatomOccurrenceChanges(dependencies: TaskActionsDependencies, change: 
   return {
     skipOccurrence: action(() => {
       onOpened(dependencies, change, async ({ taskId, occurrence }) => {
-        if (occurrence !== null && (await wrap(isSure(dependencies, "skip")))) {
-          await wrap(keep(dependencies, dependencies.api.skip(taskId, occurrence)));
+        const task = taskOf(dependencies, taskId);
+
+        if (
+          task !== undefined &&
+          occurrence !== null &&
+          (await wrap(isSure(dependencies, "skip")))
+        ) {
+          dependencies.tasks.keep(withSkipped(task, occurrence));
           dependencies.onClosed();
+          await wrap(keep(dependencies, dependencies.api.skip(taskId, occurrence)));
         }
       });
     }, "tasks.skipOccurrence"),
     removeTask: action(() => {
       onOpened(dependencies, change, async ({ taskId }) => {
         if (await wrap(isSure(dependencies, "delete"))) {
-          await wrap(dependencies.api.remove(taskId));
           dependencies.tasks.drop(taskId);
           dependencies.onClosed();
+          await wrap(dependencies.api.remove(taskId));
         }
       });
     }, "tasks.removeTask"),
@@ -166,13 +195,19 @@ function reatomSubtaskChanges(dependencies: TaskActionsDependencies, change: Cha
   return {
     toggleSubtask: action((subtaskId: string) => {
       onOpened(dependencies, change, async ({ taskId }) => {
-        const subtask = taskOf(dependencies, taskId)?.subtasks.find(({ id }) => id === subtaskId);
+        const task = taskOf(dependencies, taskId);
+        const subtask = task?.subtasks.find(({ id }) => id === subtaskId);
         const target = { taskId, subtaskId };
 
+        if (task === undefined || subtask === undefined) {
+          return;
+        }
+
+        dependencies.tasks.keep(withSubtaskCompletion(task, subtaskId, subtask.completed === null));
         await wrap(
           keep(
             dependencies,
-            subtask?.completed === null
+            subtask.completed === null
               ? dependencies.api.completeSubtask(target)
               : dependencies.api.reopenSubtask(target),
           ),
@@ -181,7 +216,10 @@ function reatomSubtaskChanges(dependencies: TaskActionsDependencies, change: Cha
     }, "tasks.toggleSubtask"),
     removeSubtask: action((subtaskId: string) => {
       onOpened(dependencies, change, async ({ taskId }) => {
-        if (await wrap(isSure(dependencies, "removeSubtask"))) {
+        const task = taskOf(dependencies, taskId);
+
+        if (task !== undefined && (await wrap(isSure(dependencies, "removeSubtask")))) {
+          dependencies.tasks.keep({ ...task, subtasks: withoutId(task.subtasks, subtaskId) });
           await wrap(keep(dependencies, dependencies.api.removeSubtask({ taskId, subtaskId })));
         }
       });
@@ -209,15 +247,16 @@ async function recordOccurrence(
 }
 
 export function reatomTaskActions(dependencies: TaskActionsDependencies) {
-  const change = reatomChange();
+  const { change, failure } = reatomChange();
   const undo = atom<Undo | undefined>(undefined, "tasks.undo");
 
   return {
-    failure: reatomFailure(change, {
-      message: "Не получилось сохранить. Попробуйте ещё раз.",
-      name: "tasks.failure",
-    }),
-    isChanging: computed(() => !change.ready(), "tasks.isChanging"),
+    // The undo bar and the failure bar share one place; the undo keeps it while it is offered.
+    failure: computed(
+      () => (undo() === undefined ? failure.failure() : undefined),
+      "tasks.shownFailure",
+    ),
+    dismissFailure: failure.dismiss,
     ...reatomCompletion(dependencies, change, undo),
     ...reatomUndoBar(dependencies, change, undo),
     ...reatomOccurrenceChanges(dependencies, change),

@@ -5,6 +5,7 @@ export { ChoiceField, type Choice } from "./choice-field.view.tsx";
 export { ConfirmDeletionForm } from "./confirm-deletion-form.view.tsx";
 export { ChipGroup } from "./chip-group.view.tsx";
 export { Chip, chipClass } from "./chip.view.tsx";
+export { FailureBar, floatingBarClass } from "./failure-bar.view.tsx";
 export { FieldError } from "./field-error.view.tsx";
 export { FilePick } from "./file-pick.view.tsx";
 export { FormShell } from "./form-shell.view.tsx";

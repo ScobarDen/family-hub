@@ -28,7 +28,6 @@ export const MovementRow = reatomComponent(({ movement, model, isReadOnly }: Mov
             size="icon-sm"
             variant="ghost"
             aria-label={label}
-            disabled={model.isChanging()}
             onClick={() => {
               onClick(movement.id);
             }}

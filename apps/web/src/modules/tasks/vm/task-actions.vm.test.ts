@@ -11,7 +11,6 @@ import {
   groups,
   loaded,
   rowOf,
-  settled,
   startTasks,
   vacation,
   vaccination,
@@ -23,29 +22,196 @@ beforeEach(() => {
   context.reset();
 });
 
+type Model = ReturnType<typeof startTasks>["model"];
+
+function sentOf(backend: ReturnType<typeof fakeBackend>) {
+  return backend.sent.map(({ request }) => request);
+}
+
+function stepsOf(model: Model) {
+  const screen = model.screen();
+
+  return screen.kind === "task" ? screen.task.stepsTitle : screen.kind;
+}
+
+const steps: Task["subtasks"] = [
+  { id: "sub-1", title: "Билеты", date: null, assignees: [], completed: null },
+  { id: "sub-2", title: "Отель", date: null, assignees: [], completed: null },
+];
+
+type Write = {
+  name: string;
+  tasks?: Task[];
+  confirmed?: boolean;
+  pattern: string;
+  act: (model: Model) => void;
+  observe: (model: Model) => unknown;
+  before: unknown;
+  after: unknown;
+};
+
+const writes: Write[] = [
+  {
+    name: "completing an Occurrence",
+    pattern: "POST /api/tasks/:id/complete",
+    act: (model) => {
+      model.toggle(rowOf(model, "Отпуск"));
+    },
+    observe: (model) => rowOf(model, "Отпуск").status,
+    before: "open",
+    after: "completed",
+  },
+  {
+    name: "un-completing an Occurrence",
+    pattern: "POST /api/tasks/:id/reopen",
+    act: (model) => {
+      model.toggle(rowOf(model, "Паспорт"));
+    },
+    observe: (model) => rowOf(model, "Паспорт").status,
+    before: "completed",
+    after: "open",
+  },
+  {
+    name: "skipping an Occurrence",
+    tasks: [cleaning],
+    confirmed: true,
+    pattern: "POST /api/tasks/:id/skip",
+    act: (model) => {
+      model.openRow(rowOf(model, "Уборка", "2026-10-09"));
+      model.skipOccurrence();
+    },
+    observe: (model) =>
+      model.screen().kind === "list" ? groups(model).overdue.map((row) => row.key) : "details",
+    before: ["task-cleaning-2026-10-02", "task-cleaning-2026-10-09"],
+    after: ["task-cleaning-2026-10-02"],
+  },
+  {
+    name: "deleting a Task",
+    confirmed: true,
+    pattern: "DELETE /api/tasks/:id",
+    act: (model) => {
+      model.open("task-vacation");
+      model.removeTask();
+    },
+    observe: (model) =>
+      model.screen().kind === "list"
+        ? Object.values(groups(model))
+            .flat()
+            .some((row) => row.title === "Отпуск")
+        : "details",
+    before: true,
+    after: false,
+  },
+  {
+    name: "completing a Subtask",
+    tasks: [{ ...vacation, subtasks: steps }],
+    pattern: "POST /api/tasks/:id/subtasks/:sub/complete",
+    act: (model) => {
+      model.open("task-vacation");
+      model.toggleSubtask("sub-1");
+    },
+    observe: stepsOf,
+    before: "Шаги · 0 из 2",
+    after: "Шаги · 1 из 2",
+  },
+  {
+    name: "un-completing a Subtask",
+    tasks: [
+      {
+        ...vacation,
+        subtasks: steps.map((step, index) =>
+          index === 0 ? { ...step, completed: { at: doneAt, by: "Ася" } } : step,
+        ),
+      },
+    ],
+    pattern: "POST /api/tasks/:id/subtasks/:sub/reopen",
+    act: (model) => {
+      model.open("task-vacation");
+      model.toggleSubtask("sub-1");
+    },
+    observe: stepsOf,
+    before: "Шаги · 1 из 2",
+    after: "Шаги · 0 из 2",
+  },
+  {
+    name: "deleting a Subtask",
+    tasks: [{ ...vacation, subtasks: steps }],
+    confirmed: true,
+    pattern: "DELETE /api/tasks/:id/subtasks/:sub",
+    act: (model) => {
+      model.open("task-vacation");
+      model.removeSubtask("sub-1");
+    },
+    observe: stepsOf,
+    before: "Шаги · 0 из 2",
+    after: "Шаги · 0 из 1",
+  },
+];
+
+function startWrite(write: Write, options: Parameters<typeof fakeBackend>[1]) {
+  return startTasks(fakeBackend(write.tasks, options), {
+    telegram: fakeTelegram(write.confirmed === true ? ["confirm"] : []),
+  });
+}
+
+describe.each(writes)("$name", (write) => {
+  test("shows the change before the server answers", async () => {
+    let answer = noop;
+    const written = new Promise<void>((resolve) => {
+      answer = resolve;
+    });
+    const { model, backend } = startWrite(write, { written });
+
+    await loaded(model);
+    write.act(model);
+    await vi.waitFor(() => {
+      expect(write.observe(model)).toEqual(write.after);
+    });
+
+    expect(sentOf(backend)).toContainEqual(expect.stringMatching(/^(POST|DELETE) /u));
+    expect(model.failure()).toBeUndefined();
+    answer();
+  });
+
+  test.each([
+    { cause: "the server refuses it", option: "failing", said: failure },
+    { cause: "there is no network", option: "unreachable", said: "Нет связи, не сохранилось" },
+  ])("rolls back with the failure bar when $cause", async ({ option, said }) => {
+    const { model } = startWrite(write, { [option]: write.pattern });
+
+    await loaded(model);
+    write.act(model);
+    await vi.waitFor(() => {
+      expect(model.failure()).toBe(said);
+    });
+
+    expect(write.observe(model)).toEqual(write.before);
+  });
+});
+
 describe("completing a Task", () => {
   test("completes with one tap and takes it back from the undo bar", async () => {
     const { model, backend } = startTasks();
 
     await loaded(model);
     model.toggle(rowOf(model, "Отпуск"));
-    await settled(model);
-
-    expect(groups(model).completed.map(({ title }) => title)).toContain("Отпуск");
-    expect(model.undo()).toMatchObject({
-      taskId: "task-vacation",
-      title: "Отпуск",
-      petId: undefined,
+    await vi.waitFor(() => {
+      expect(model.undo()).toMatchObject({
+        taskId: "task-vacation",
+        title: "Отпуск",
+        petId: undefined,
+      });
     });
 
-    model.undoCompletion();
-    await settled(model);
+    expect(groups(model).completed.map(({ title }) => title)).toContain("Отпуск");
 
-    expect(backend.sent.map(({ request }) => request)).toContain(
-      "POST /api/tasks/task-vacation/reopen",
-    );
+    model.undoCompletion();
+
     expect(groups(model).undated).toMatchObject([{ title: "Отпуск" }]);
     expect(model.undo()).toBeUndefined();
+    await vi.waitFor(() => {
+      expect(sentOf(backend)).toContain("POST /api/tasks/task-vacation/reopen");
+    });
   });
 
   test("offers to record a Pet's Task in its journal from the undo bar", async () => {
@@ -53,9 +219,9 @@ describe("completing a Task", () => {
 
     await loaded(model);
     model.toggle(rowOf(model, "Прививка Бьюику"));
-    await settled(model);
-
-    expect(model.undo()).toMatchObject({ petId: "pet-1" });
+    await vi.waitFor(() => {
+      expect(model.undo()).toMatchObject({ petId: "pet-1" });
+    });
 
     model.recordCareEntry();
 
@@ -75,65 +241,49 @@ describe("completing a Task", () => {
     });
 
     model.toggle(rowOf(model, "Уборка", "2026-10-16"));
-    await settled(model);
 
-    expect(backend.sent).toContainEqual({
-      request: "POST /api/tasks/task-cleaning/complete",
-      body: { occurrence: "2026-10-16" },
-    });
     expect(groups(model)).toMatchObject({
       overdue: [{ occurrence: "2026-10-02" }, { occurrence: "2026-10-09" }],
       today: [],
       completed: [{ occurrence: "2026-10-16" }],
     });
+    await vi.waitFor(() => {
+      expect(backend.sent).toContainEqual({
+        request: "POST /api/tasks/task-cleaning/complete",
+        body: { occurrence: "2026-10-16" },
+      });
+    });
   });
 
-  test("keeps the row open and offers no undo when the completion fails", async () => {
+  test("rolls back only its own change when another tap came meanwhile", async () => {
+    const { model } = startTasks(
+      fakeBackend(undefined, { unreachable: "POST /api/tasks/:id/reopen" }),
+    );
+
+    await loaded(model);
+    model.toggle(rowOf(model, "Паспорт"));
+    model.toggle(rowOf(model, "Отпуск"));
+    await vi.waitFor(() => {
+      expect(rowOf(model, "Паспорт").status).toBe("completed");
+    });
+
+    expect(rowOf(model, "Отпуск").status).toBe("completed");
+  });
+
+  test("hides the failure bar when dismissed", async () => {
     const { model } = startTasks(
       fakeBackend(undefined, { failing: "POST /api/tasks/:id/complete" }),
     );
 
     await loaded(model);
     model.toggle(rowOf(model, "Отпуск"));
-    await settled(model);
-
-    expect(model.failure()).toBe(failure);
-    expect(rowOf(model, "Отпуск").status).toBe("open");
-    expect(model.undo()).toBeUndefined();
-  });
-
-  test("keeps a Completed row Completed when reopening it fails", async () => {
-    const { model } = startTasks(fakeBackend(undefined, { failing: "POST /api/tasks/:id/reopen" }));
-
-    await loaded(model);
-    model.toggle(rowOf(model, "Паспорт"));
-    await settled(model);
-
-    expect(model.failure()).toBe(failure);
-    expect(rowOf(model, "Паспорт").status).toBe("completed");
-    expect(model.undo()).toBeUndefined();
-  });
-
-  test("skips one Occurrence of a recurring Task after asking", async () => {
-    const { model, backend } = startTasks(fakeBackend([cleaning]), {
-      telegram: fakeTelegram(["confirm"]),
-    });
-
-    await loaded(model);
-    model.openRow(rowOf(model, "Уборка", "2026-10-09"));
-
-    expect(model.screen()).toMatchObject({ kind: "task", task: { isRecurring: true } });
-
-    model.skipOccurrence();
     await vi.waitFor(() => {
-      expect(model.screen().kind).toBe("list");
+      expect(model.failure()).toBe(failure);
     });
 
-    expect(backend.sent).toContainEqual({
-      request: "POST /api/tasks/task-cleaning/skip",
-      body: { date: "2026-10-09" },
-    });
-    expect(groups(model).overdue).toMatchObject([{ occurrence: "2026-10-02" }]);
+    model.dismissFailure();
+
+    expect(model.failure()).toBeUndefined();
   });
 
   test("keeps a completion made while the list was refetching", async () => {
@@ -161,7 +311,9 @@ describe("completing a Task", () => {
     isHolding = true;
     model.reload();
     model.toggle(rowOf(model, "Отпуск"));
-    await settled(model);
+    await vi.waitFor(() => {
+      expect(model.undo()).toMatchObject({ title: "Отпуск" });
+    });
     release();
 
     await vi.waitFor(() => {
@@ -180,9 +332,7 @@ describe("the bot's «Записать»", () => {
       expect(recorded).toEqual([{ petId: "pet-1", title: "Прививка Бьюику" }]);
     });
 
-    expect(backend.sent.map(({ request }) => request)).toContain(
-      "POST /api/tasks/task-vaccination/complete",
-    );
+    expect(sentOf(backend)).toContain("POST /api/tasks/task-vaccination/complete");
     expect(model.undo()).toBeUndefined();
   });
 
@@ -198,16 +348,16 @@ describe("the bot's «Записать»", () => {
       expect(recorded).toEqual([{ petId: "pet-1", title: "Прививка Бьюику" }]);
     });
 
-    expect(backend.sent.map(({ request }) => request)).toEqual(["GET /api/tasks"]);
+    expect(sentOf(backend)).toEqual(["GET /api/tasks"]);
   });
 
   test("does nothing for a Task without a Pet", async () => {
     const { model, backend, recorded } = startTasks();
 
     model.recordOccurrence({ taskId: "task-repair", occurrence: "2026-10-20" });
-    await settled(model);
+    await loaded(model);
 
-    expect(backend.sent.map(({ request }) => request)).toEqual(["GET /api/tasks"]);
+    expect(sentOf(backend)).toEqual(["GET /api/tasks"]);
     expect(recorded).toEqual([]);
   });
 
@@ -217,9 +367,10 @@ describe("the bot's «Записать»", () => {
     );
 
     model.recordOccurrence({ taskId: "task-vaccination", occurrence: "2026-10-12" });
-    await settled(model);
+    await vi.waitFor(() => {
+      expect(model.failure()).toBe(failure);
+    });
 
-    expect(model.failure()).toBe(failure);
     expect(recorded).toEqual([]);
   });
 
@@ -227,9 +378,10 @@ describe("the bot's «Записать»", () => {
     const { model, recorded } = startTasks(fakeBackend(undefined, { failing: "GET /api/tasks" }));
 
     model.recordOccurrence({ taskId: "task-vaccination", occurrence: "2026-10-12" });
-    await settled(model);
+    await vi.waitFor(() => {
+      expect(model.screen().kind).toBe("failed");
+    });
 
-    expect(model.screen().kind).toBe("failed");
     expect(recorded).toEqual([]);
   });
 });
@@ -253,26 +405,21 @@ describe("Subtasks", () => {
   });
 
   test("completes the Task once its last Subtask is completed", async () => {
-    const steps: Task["subtasks"] = [
-      { id: "sub-1", title: "Билеты", date: null, assignees: [], completed: null },
-      { id: "sub-2", title: "Отель", date: null, assignees: [], completed: null },
-    ];
     const { model } = startTasks(fakeBackend([{ ...vacation, subtasks: steps }]));
 
     await loaded(model);
     model.open("task-vacation");
     model.toggleSubtask("sub-1");
-    await settled(model);
 
     expect(model.screen()).toMatchObject({
       task: { stepsTitle: "Шаги · 1 из 2", completed: undefined },
     });
 
     model.toggleSubtask("sub-2");
-    await settled(model);
-
-    expect(model.screen()).toMatchObject({
-      task: { stepsTitle: "Шаги · 2 из 2", completed: expect.stringContaining("Выполнено") },
+    await vi.waitFor(() => {
+      expect(model.screen()).toMatchObject({
+        task: { stepsTitle: "Шаги · 2 из 2", completed: expect.stringContaining("Выполнено") },
+      });
     });
   });
 

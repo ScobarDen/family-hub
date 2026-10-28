@@ -26,7 +26,18 @@ const turkey: Goal = {
   isAchieved: false,
   completed: null,
   shares: [{ id: "member-1", name: "Денис", contributed: 40_000, withdrawn: 0 }],
-  movements: [],
+  movements: [
+    {
+      id: "movement-1",
+      kind: "contribution",
+      amount: 40_000,
+      date: "2026-10-01",
+      member: { id: "member-1", name: "Денис" },
+      recordedBy: { id: "member-1", name: "Денис" },
+      comment: null,
+      isOwn: true,
+    },
+  ],
 };
 
 const sofa: Goal = {
@@ -52,13 +63,40 @@ type Launch = {
   device?: FakeDeviceStorage;
   goals?: Goal[];
   answered?: Promise<void>;
+  moving?: "refused" | "unreachable" | Promise<void>;
 };
+
+type Moving = NonNullable<Launch["moving"]>;
+
+async function movementReply(
+  { request, body }: { request: string; body: unknown },
+  moving: Moving,
+): Promise<Response> {
+  if (moving === "unreachable") {
+    throw new TypeError("Failed to fetch");
+  }
+
+  if (moving === "refused") {
+    return Response.json({ code: "BALANCE_NEGATIVE", message: "" }, { status: 409 });
+  }
+
+  await moving;
+
+  if (request.startsWith("DELETE")) {
+    return Response.json({ ...turkey, balance: 0, movements: [], shares: [] });
+  }
+
+  const { amount } = movementChange.parse(body);
+
+  return Response.json({ ...turkey, balance: turkey.balance + amount, isAchieved: true });
+}
 
 function startGoals({
   choices = [],
   device = fakeDeviceStorage(),
   goals = [turkey, sofa, camera],
   answered = Promise.resolve(),
+  moving = Promise.resolve(),
 }: Launch = {}) {
   const requests: Array<{ request: string; body: unknown }> = [];
   const pending = [...choices];
@@ -81,10 +119,8 @@ function startGoals({
       ]);
     }
 
-    if (request === "POST /api/goals/goal-1/movements") {
-      const { amount } = movementChange.parse(body);
-
-      return Response.json({ ...turkey, balance: turkey.balance + amount, isAchieved: true });
+    if (request.includes("/movements")) {
+      return movementReply({ request, body }, moving);
     }
 
     return Response.json({ ...turkey, completed: { at: 0, by: "Денис", outcome: "fulfilled" } });
@@ -176,6 +212,78 @@ describe("a Contribution", () => {
       date: "2026-10-14",
       memberId: "member-1",
     });
+  });
+});
+
+function balanceOf(model: Model) {
+  const { progress, movements } = opened(model).goal;
+
+  return { progress: progress.replaceAll(/\s/gu, " "), movements: movements.length };
+}
+
+async function addMovement(model: Model, kind: "contribution" | "withdrawal", amount: string) {
+  await loaded(model);
+  model.open("goal-1");
+  model.addMovement(kind);
+  model.movementForm.form.fields.amount.set(amount);
+  model.movementForm.save();
+  await vi.waitFor(() => {
+    expect(model.screen().kind).toBe("goal");
+  });
+}
+
+const moves = [
+  {
+    name: "a Contribution",
+    act: async (model: Model) => addMovement(model, "contribution", "60000"),
+    after: { progress: "100 000 ₽ из 100 000 ₽ · 100%", movements: 2 },
+  },
+  {
+    name: "a Withdrawal",
+    act: async (model: Model) => addMovement(model, "withdrawal", "10000"),
+    after: { progress: "30 000 ₽ из 100 000 ₽ · 30%", movements: 2 },
+  },
+  {
+    name: "deleting a Movement",
+    choices: ["confirm"],
+    act: async (model: Model) => {
+      await loaded(model);
+      model.open("goal-1");
+      model.removeMovement("movement-1");
+    },
+    after: { progress: "0 ₽ из 100 000 ₽ · 0%", movements: 0 },
+  },
+];
+
+const before = { progress: "40 000 ₽ из 100 000 ₽ · 40%", movements: 1 };
+
+describe.each(moves)("$name", ({ act, after, choices }) => {
+  test("changes the Balance before the server answers", async () => {
+    const { model } = startGoals({ choices, moving: new Promise(noop) });
+
+    await act(model);
+    await vi.waitFor(() => {
+      expect(balanceOf(model)).toEqual(after);
+    });
+
+    expect(model.failure()).toBeUndefined();
+  });
+
+  test.each([
+    {
+      moving: "refused" as const,
+      said: "Не получилось сохранить. Баланс цели не может уйти в минус.",
+    },
+    { moving: "unreachable" as const, said: "Нет связи, не сохранилось" },
+  ])("rolls back with the failure bar when $moving", async ({ moving, said }) => {
+    const { model } = startGoals({ choices, moving });
+
+    await act(model);
+    await vi.waitFor(() => {
+      expect(model.failure()).toBe(said);
+    });
+
+    expect(balanceOf(model)).toEqual(before);
   });
 });
 

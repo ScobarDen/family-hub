@@ -195,12 +195,47 @@ function subtaskRoutes(save: Save): Record<string, Route> {
       }),
     "POST /api/tasks/:id/subtasks/:sub/complete": (_body, { taskId, subtaskId }) =>
       save(taskId, (task) => completedSubtask(task, subtaskId)),
+    "POST /api/tasks/:id/subtasks/:sub/reopen": (_body, { taskId, subtaskId }) =>
+      save(taskId, (task) => ({
+        ...task,
+        subtasks: task.subtasks.map((each) =>
+          each.id === subtaskId ? { ...each, completed: null } : each,
+        ),
+      })),
+    "DELETE /api/tasks/:id/subtasks/:sub": (_body, { taskId, subtaskId }) =>
+      save(taskId, (task) => ({
+        ...task,
+        subtasks: task.subtasks.filter(({ id }) => id !== subtaskId),
+      })),
   };
+}
+
+type BackendOptions = {
+  failing?: string;
+  unreachable?: string;
+  answered?: Promise<void>;
+  written?: Promise<void>;
+};
+
+async function reach(
+  pattern: string,
+  { unreachable, answered, written }: Omit<BackendOptions, "failing">,
+): Promise<void> {
+  await (pattern === "GET /api/tasks" ? answered : written);
+
+  if (unreachable === pattern) {
+    throw new TypeError("Failed to fetch");
+  }
 }
 
 export function fakeBackend(
   initial: Task[] = [vaccination, food, repair, vacation, passport],
-  { failing, answered = Promise.resolve() }: { failing?: string; answered?: Promise<void> } = {},
+  {
+    failing,
+    unreachable,
+    answered = Promise.resolve(),
+    written = Promise.resolve(),
+  }: BackendOptions = {},
 ) {
   let tasks = initial;
   const sent: Sent[] = [];
@@ -214,6 +249,7 @@ export function fakeBackend(
   const routes: Record<string, Route> = {
     "GET /api/tasks": () => tasks,
     "GET /api/albums": () => [],
+    "DELETE /api/tasks/:id": () => ({ status: "deleted" }),
     ...editRoutes(save),
     ...occurrenceRoutes(save),
     ...subtaskRoutes(save),
@@ -227,9 +263,7 @@ export function fakeBackend(
 
     sent.push({ request, body });
 
-    if (pattern === "GET /api/tasks") {
-      await answered;
-    }
+    await reach(pattern, { unreachable, answered, written });
 
     if (failing === pattern) {
       return Response.json({ code: "INTERNAL", message: "" }, { status: serverError });
@@ -298,12 +332,6 @@ type Model = ReturnType<typeof startTasks>["model"];
 export async function loaded(model: Model) {
   await vi.waitFor(() => {
     expect(model.screen().kind).toBe("list");
-  });
-}
-
-export async function settled(model: Model) {
-  await vi.waitFor(() => {
-    expect(model.isChanging()).toBe(false);
   });
 }
 

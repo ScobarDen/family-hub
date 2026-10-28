@@ -15,7 +15,7 @@ import { today, type FeedUpcoming, type SlotModule, type Today } from "@family-h
 
 import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
-import { detached, readOnly } from "@/common/state";
+import { detached, reatomRollbackFailure, type RollbackFailure } from "@/common/state";
 
 import type { OccurrenceTarget, TodayApi } from "../today.api.ts";
 import { dueRowOf, headerOf, moreOf, nextRowOf, tilesOf, type Tile } from "../today.lib.ts";
@@ -115,7 +115,7 @@ function reatomHidden() {
 
 type CompletionState = ReturnType<typeof reatomHidden> & {
   pending: Atom<Completing | undefined>;
-  failure: Atom<string | undefined>;
+  failure: RollbackFailure;
 };
 
 // The server hears of the tap at once, so closing the app loses nothing; the undo stays offered
@@ -136,16 +136,16 @@ function reatomComplete(
       done: api.complete(target),
     };
 
-    failure.set(undefined);
+    failure.dismiss();
     hide(key);
     pending.set(completing);
 
     try {
       await wrap(completing.done);
-    } catch {
+    } catch (error) {
       show(key);
       pending.set(pending() === completing ? undefined : pending());
-      failure.set(`Не получилось отметить «${title}». Попробуйте ещё раз.`);
+      failure.report(error, `Не получилось отметить «${title}». Попробуйте ещё раз.`);
 
       return;
     }
@@ -174,8 +174,8 @@ function reatomRevert(
     try {
       await wrap(completing.done);
       await wrap(api.reopen(completing.target));
-    } catch {
-      failure.set(`Не получилось вернуть «${completing.title}». Попробуйте ещё раз.`);
+    } catch (error) {
+      failure.report(error, `Не получилось вернуть «${completing.title}». Попробуйте ещё раз.`);
     }
 
     onSettled();
@@ -189,7 +189,7 @@ function reatomCompletion(
   const state: CompletionState = {
     ...reatomHidden(),
     pending: atom<Completing | undefined>(undefined, "today.pending"),
-    failure: atom<string | undefined>(undefined, "today.completionFailure"),
+    failure: reatomRollbackFailure("today.completionFailure"),
   };
 
   return {
@@ -213,9 +213,7 @@ function reatomCompletion(
         });
       }
     }, "today.recordCareEntry"),
-    dismissFailure: action(() => {
-      state.failure.set(undefined);
-    }, "today.dismissFailure"),
+    dismissFailure: state.failure.dismiss,
     revert: reatomRevert(dependencies, { state, onSettled }),
   };
 }
@@ -321,7 +319,11 @@ export function reatomToday(dependencies: TodayDependencies) {
           : "Не получилось загрузить «Сегодня».",
       "today.loadFailure",
     ),
-    completionFailure: readOnly(completion.failure),
+    // The undo bar and the failure bar share one place; the undo keeps it while it is offered.
+    completionFailure: computed(
+      () => (completion.pending() === undefined ? completion.failure.failure() : undefined),
+      "today.shownFailure",
+    ),
     undo: computed(() => {
       const completing = completion.pending();
 

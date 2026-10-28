@@ -88,7 +88,23 @@ const answers: Partial<Record<string, () => Response>> = {
   "GET /api/pets/pet-2/care-entries": () => Response.json([buickVaccine]),
 };
 
-function fakeBackend() {
+type Removing = "refused" | "unreachable" | Promise<void>;
+
+async function removal(removing: Removing): Promise<Response> {
+  if (removing === "unreachable") {
+    throw new TypeError("Failed to fetch");
+  }
+
+  if (removing === "refused") {
+    return Response.json({ code: "CARE_ENTRY_NOT_FOUND", message: "" }, { status: 404 });
+  }
+
+  await removing;
+
+  return Response.json({ status: "deleted" });
+}
+
+function fakeBackend(removing: Removing = Promise.resolve()) {
   const requests: Array<{ request: string; body: unknown }> = [];
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
@@ -102,7 +118,7 @@ function fakeBackend() {
     }
 
     if (request.startsWith("DELETE")) {
-      return Response.json({ status: "deleted" });
+      return removal(removing);
     }
 
     const answer = answers[request];
@@ -130,8 +146,8 @@ const tooLarge = new Blob(["too large"]);
 // A connected Photo Storage leaves nothing to explain.
 const connectedStorage: string | undefined = undefined;
 
-function startCare(choices: string[] = []) {
-  const backend = fakeBackend();
+function startCare(choices: string[] = [], removing?: Removing) {
+  const backend = fakeBackend(removing);
   const avatars: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const pending = [...choices];
@@ -382,6 +398,44 @@ describe("the entry form", () => {
     expect(backend.requests.map(({ request }) => request)).toContain(
       "DELETE /api/care-entries/entry-2",
     );
+  });
+});
+
+function journalIds(model: Model) {
+  return model.journal().map(({ id }) => id);
+}
+
+describe("deleting a Care Entry", () => {
+  test("leaves the journal before the server answers", async () => {
+    const { model } = startCare(["confirm"], new Promise(noop));
+
+    await loaded(model);
+    model.edit("entry-2");
+    model.remove();
+    await vi.waitFor(() => {
+      expect(model.canGoBack()).toBe(false);
+    });
+
+    expect(journalIds(model)).not.toContain("entry-2");
+    expect(model.failure()).toBeUndefined();
+  });
+
+  test.each([
+    { removing: "refused" as const, said: "Не получилось удалить запись. Попробуйте ещё раз." },
+    { removing: "unreachable" as const, said: "Нет связи, не сохранилось" },
+  ])("comes back with the failure bar when $removing", async ({ removing, said }) => {
+    const { model } = startCare(["confirm"], removing);
+
+    await loaded(model);
+    const before = journalIds(model);
+
+    model.edit("entry-2");
+    model.remove();
+    await vi.waitFor(() => {
+      expect(model.failure()).toBe(said);
+    });
+
+    expect(journalIds(model)).toEqual(before);
   });
 });
 

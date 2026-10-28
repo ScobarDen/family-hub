@@ -1,6 +1,7 @@
-import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
+import { action, atom, computed, withAsyncData, withRollback, wrap } from "@reatom/core";
 
 import type { LiveVersion } from "@/common/live-updates";
+import { rolledBackById } from "@/common/records";
 
 import type { CareApi } from "./care.api.ts";
 import { monthRange, yearRange } from "./care.lib.ts";
@@ -22,15 +23,18 @@ export function reatomCareData({
   liveVersion,
 }: CareModelDependencies) {
   const version = atom(0, "care.version");
+  const entries = computed(async () => {
+    version();
+    liveVersion?.();
+    const id = petId();
+
+    return id === undefined ? [] : wrap(api.list(id));
+  }, "care.entries").extend(withAsyncData());
+
+  entries.data.extend(withRollback({ onRollback: rolledBackById }));
 
   return {
-    entries: computed(async () => {
-      version();
-      liveVersion?.();
-      const id = petId();
-
-      return id === undefined ? [] : wrap(api.list(id));
-    }, "care.entries").extend(withAsyncData()),
+    entries,
 
     month: computed(async () => {
       version();

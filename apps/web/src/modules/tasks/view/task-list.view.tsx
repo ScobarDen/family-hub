@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Cake, ChevronDown, ChevronUp } from "lucide-react";
 
-import { FieldError, Section, SectionItem } from "@/common/ui";
+import { Section, SectionItem } from "@/common/ui";
 
 import type { ListRow, TaskGroups } from "../task-rows.lib.ts";
 import type { TasksScreen, TasksScreenModel } from "../vm/tasks.vm.ts";
@@ -36,7 +36,6 @@ function ListItem({ row, onOpenPet, ...rowProps }: RowProps & { row: ListRow }) 
 export const TaskList = reatomComponent(({ model, screen }: ListProps) => {
   const { groups, empty } = screen;
   const rowProps = {
-    disabled: model.isChanging(),
     onToggle: model.toggle,
     onOpen: model.openRow,
     onOpenPet: model.openPet,
@@ -44,7 +43,6 @@ export const TaskList = reatomComponent(({ model, screen }: ListProps) => {
 
   return (
     <>
-      <FieldError>{model.failure()}</FieldError>
       {empty !== undefined && (
         <Section>
           <SectionItem title={empty.title} subtitle={empty.hint} />

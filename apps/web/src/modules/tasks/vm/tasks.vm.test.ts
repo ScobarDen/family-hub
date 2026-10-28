@@ -9,7 +9,6 @@ import {
   food,
   groups,
   loaded,
-  settled,
   startTasks,
   taskOf,
   vaccination,
@@ -122,11 +121,11 @@ describe("opening a Task by its id", () => {
     });
 
     model.toggleOpened();
-    await settled(model);
-
-    expect(backend.sent).toContainEqual({
-      request: "POST /api/tasks/task-cleaning/complete",
-      body: { occurrence: "2026-10-02" },
+    await vi.waitFor(() => {
+      expect(backend.sent).toContainEqual({
+        request: "POST /api/tasks/task-cleaning/complete",
+        body: { occurrence: "2026-10-02" },
+      });
     });
   });
 });

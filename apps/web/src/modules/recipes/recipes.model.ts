@@ -6,6 +6,7 @@ import {
   reatomBoolean,
   reatomEnum,
   withAsyncData,
+  withRollback,
   wrap,
 } from "@reatom/core";
 
@@ -13,6 +14,7 @@ import { recipeList, recipeTagList, type Recipe } from "@family-hub/contract";
 
 import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
+import { rolledBackById } from "@/common/records";
 import { readOnly } from "@/common/state";
 
 import type { RecipesApi } from "./recipes.api.ts";
@@ -47,6 +49,24 @@ function reatomQuery() {
   };
 }
 
+function reatomTags(
+  { api, liveVersion, deviceCache }: RecipesDataDependencies,
+  version: () => number,
+) {
+  const tags = computed(async () => {
+    version();
+    liveVersion?.();
+
+    return wrap(api.tags());
+  }, "recipes.tags").extend(withAsyncData());
+
+  tags.data.extend(
+    deviceCache.withDeviceCache({ key: "recipe-tags", schema: recipeTagList, version: 1 }),
+  );
+
+  return tags;
+}
+
 // The list follows the search text, the tag chip and «⭐»; every change reloads it from the server.
 export function reatomRecipesData({ api, liveVersion, deviceCache }: RecipesDataDependencies) {
   const version = atom(0, "recipes.version");
@@ -59,12 +79,7 @@ export function reatomRecipesData({ api, liveVersion, deviceCache }: RecipesData
       api.list({ text: text(), tagId: tagId(), isFavorite: isFavorite(), sort: ordering() }),
     );
   }, "recipes.list").extend(withAsyncData());
-  const tags = computed(async () => {
-    version();
-    liveVersion?.();
-
-    return wrap(api.tags());
-  }, "recipes.tags").extend(withAsyncData());
+  const tags = reatomTags({ api, liveVersion, deviceCache }, version);
 
   // The next launch opens on the whole book in its usual order, so a search keeps the last one.
   list.data.extend(
@@ -74,9 +89,7 @@ export function reatomRecipesData({ api, liveVersion, deviceCache }: RecipesData
       version: 1,
       cachedPart: (recipes) => (peek(isWholeBook) ? cardsOf(recipes) : undefined),
     }),
-  );
-  tags.data.extend(
-    deviceCache.withDeviceCache({ key: "recipe-tags", schema: recipeTagList, version: 1 }),
+    withRollback({ onRollback: rolledBackById }),
   );
 
   return {
@@ -87,7 +100,6 @@ export function reatomRecipesData({ api, liveVersion, deviceCache }: RecipesData
     ordering,
     list,
     tags,
-
     reload: action(() => {
       version.set(version() + 1);
     }, "recipes.reload"),

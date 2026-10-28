@@ -1,4 +1,4 @@
-import { action, atom, type Atom, computed, withAbort, withAsync, wrap } from "@reatom/core";
+import { action, atom, type Atom, computed, withAbort, wrap } from "@reatom/core";
 
 import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hub/contract";
 
@@ -6,7 +6,14 @@ import { formatDay } from "@/common/format-date";
 import { formatRubles } from "@/common/format-money";
 import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
-import { detached, readOnly, reatomFailure } from "@/common/state";
+import { withoutId } from "@/common/records";
+import {
+  detached,
+  readOnly,
+  reatomOptimistic,
+  reatomRollbackFailure,
+  type RollbackFailure,
+} from "@/common/state";
 import { type Dialogs, isConfirmed } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
@@ -120,25 +127,34 @@ function reatomViews(sources: Sources, weightRange: Atom<WeightRange>) {
   };
 }
 
-function reatomRemove({ api, data, form, screen, telegram }: Sources) {
-  return action(async () => {
-    const entryId = form.editedId();
-    const isSure = await wrap(
-      isConfirmed(telegram, {
-        title: "Удалить запись?",
-        message: "Запись пропадёт из журнала и трат у всей семьи.",
-        button: "Удалить",
-      }),
-    );
+// The entry leaves the journal at once; the expenses are the server's to count, so they follow.
+function reatomRemove({ api, data, form, screen, telegram }: Sources, failure: RollbackFailure) {
+  return reatomOptimistic(
+    async () => {
+      const entryId = form.editedId();
+      const isSure = await wrap(
+        isConfirmed(telegram, {
+          title: "Удалить запись?",
+          message: "Запись пропадёт из журнала и трат у всей семьи.",
+          button: "Удалить",
+        }),
+      );
 
-    if (entryId === undefined || !isSure) {
-      return;
-    }
+      if (entryId === undefined || !isSure) {
+        return;
+      }
 
-    await wrap(api.remove(entryId));
-    data.reload();
-    screen.set("blocks");
-  }, "care.remove").extend(withAsync());
+      data.entries.data.set(withoutId(data.entries.data() ?? [], entryId));
+      screen.set("blocks");
+      await wrap(api.remove(entryId));
+      data.reload();
+    },
+    {
+      name: "care.remove",
+      failure,
+      refusal: "Не получилось удалить запись. Попробуйте ещё раз.",
+    },
+  );
 }
 
 // «Изменить» on a Command Draft lands in the ordinary form, filled in from the draft.
@@ -257,17 +273,16 @@ export function reatomCare(dependencies: CareDependencies) {
     screen,
   };
   const weightRange = atom<WeightRange>("quarter", "care.weightRange");
-  const remove = reatomRemove(sources);
+  const failure = reatomRollbackFailure("care.failure");
+  const remove = reatomRemove(sources, failure);
 
   return {
     screen: reatomScreen(screen, form),
     title: reatomTitle(screen, form),
     canGoBack: computed(() => screen() !== "blocks", "care.canGoBack"),
     isReadOnly: readOnly(dependencies.isReadOnly),
-    failure: reatomFailure(remove, {
-      message: "Не получилось удалить запись. Попробуйте ещё раз.",
-      name: "care.failure",
-    }),
+    failure: failure.failure,
+    dismissFailure: failure.dismiss,
     form,
     ...photos,
     ...reatomSummarizedViews(sources, weightRange),

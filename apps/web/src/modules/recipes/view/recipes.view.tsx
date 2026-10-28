@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { LoadState, SkeletonSection, SkeletonSectionLayout } from "@/common/ui";
+import { FailureBar, LoadState, SkeletonSection, SkeletonSectionLayout } from "@/common/ui";
 
 import type { RecipesScreen, RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { RecipeDetails } from "./recipe-details.view.tsx";
@@ -57,6 +57,11 @@ function contentOf({ model }: RecipesProps, screen: RecipesScreen): ReactNode {
 }
 
 export const Recipes = reatomComponent(
-  (props: RecipesProps) => contentOf(props, props.model.screen()),
+  (props: RecipesProps) => (
+    <>
+      {contentOf(props, props.model.screen())}
+      <FailureBar failure={props.model.failure()} onDismiss={props.model.dismissFailure} />
+    </>
+  ),
   "Recipes",
 );
