@@ -1,5 +1,7 @@
 import { Children, useState, type ReactNode } from "react";
 
+import { hasSlid } from "./ui.lib.ts";
+
 type RevealedProps = {
   isSkeleton: boolean;
   entrance?: "fade" | "stagger";
@@ -9,8 +11,8 @@ type RevealedProps = {
 const staggerMs = 100;
 
 // Skeletons are aria-hidden, so the one hidden line is what a screen reader finds while loading.
-// Content that replaces a skeleton comes in gently; content already at hand from the device cache
-// or an earlier visit shows at once.
+// Content that replaces a skeleton at launch comes in gently; content already at hand from the device
+// cache or an earlier visit, or loaded after the Member has moved on, shows at once.
 export function Revealed({ isSkeleton, entrance = "fade", children }: RevealedProps) {
   const [hadSkeleton, setHadSkeleton] = useState(isSkeleton);
 
@@ -27,7 +29,7 @@ export function Revealed({ isSkeleton, entrance = "fade", children }: RevealedPr
     );
   }
 
-  if (!hadSkeleton) {
+  if (!hadSkeleton || hasSlid()) {
     return children;
   }
 

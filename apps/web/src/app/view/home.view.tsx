@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import { useEffect, ViewTransition, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 
 import type { AppModule } from "@family-hub/contract";
 
@@ -128,16 +128,11 @@ function contentOf(props: HomeProps): ReactNode {
     : pageOf(props, contents[screen.module](props));
 }
 
-// The navigation names the direction; global/styles.css draws it. Anything else swaps at once.
-const slides = { forward: "slide-forward", back: "slide-back", default: "none" };
-
 // Every screen keeps the tab bar and the microphone: there are no hidden modules any more.
 function screenOf(props: HomeProps): ReactNode {
   return (
     <>
-      <ViewTransition update={slides} default="none">
-        {contentOf(props)}
-      </ViewTransition>
+      <div data-screen>{contentOf(props)}</div>
       <TabBar model={props.tabBar} center={<Microphone model={props.microphone} />} />
       <CommandSheet model={props.commandSheet} />
     </>
@@ -168,7 +163,7 @@ export const Home = reatomComponent((props: HomeProps) => {
   }, [screenKey]);
 
   return (
-    <main className="min-h-svh bg-secondary pt-safe-top pb-safe-bottom has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]">
+    <main className="min-h-svh overflow-x-clip bg-secondary pt-safe-top pb-safe-bottom has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]">
       {screenOf(props)}
     </main>
   );
