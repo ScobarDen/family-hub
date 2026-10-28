@@ -1,12 +1,13 @@
 import type * as React from "react";
 
+import { LiveRegion } from "./live-region.view.tsx";
 import { cn } from "./ui.lib.ts";
 
 function FieldError({ className, children, ...props }: React.ComponentProps<"div">) {
   const isEmpty = children === undefined || children === null || children === "";
 
   return (
-    <div role="status" className="contents">
+    <LiveRegion>
       {!isEmpty && (
         <div
           data-slot="field-error"
@@ -16,7 +17,7 @@ function FieldError({ className, children, ...props }: React.ComponentProps<"div
           {children}
         </div>
       )}
-    </div>
+    </LiveRegion>
   );
 }
 

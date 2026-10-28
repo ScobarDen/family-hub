@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { floatingBarClass } from "@/common/ui";
+import { floatingBarClass, LiveRegion } from "@/common/ui";
 
 import type { TasksScreenModel } from "../vm/tasks.vm.ts";
 
@@ -10,7 +10,7 @@ export const UndoBar = reatomComponent(({ model }: { model: TasksScreenModel }) 
   const undo = model.undo();
 
   return (
-    <div role="status" className="contents">
+    <LiveRegion className="absolute">
       {undo !== undefined && (
         <div data-undo className={floatingBarClass}>
           <span className="min-w-0 flex-1 basis-40 leading-snug break-words">
@@ -39,6 +39,6 @@ export const UndoBar = reatomComponent(({ model }: { model: TasksScreenModel }) 
           </button>
         </div>
       )}
-    </div>
+    </LiveRegion>
   );
 }, "UndoBar");

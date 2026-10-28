@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { Mic } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
-import { cn } from "@/common/ui";
+import { cn, LiveRegion } from "@/common/ui";
 
 import type { MicrophoneModel } from "../vm/microphone.vm.ts";
 
@@ -36,13 +36,13 @@ export const Microphone = reatomComponent(({ model }: MicrophoneProps) => {
 
   return (
     <div className="relative flex flex-col items-center">
-      <span role="status" className="contents">
+      <LiveRegion className="absolute bottom-full mb-2">
         {(isRecording || hint !== undefined) && (
-          <span className="absolute bottom-full mb-2 rounded-full bg-foreground px-3 py-1 w-max max-w-[calc(100vw-2rem)] text-center text-xs font-medium text-background">
-            {isRecording ? `● ${model.timer()}` : hint}
+          <span className="block w-max max-w-[calc(100vw-2rem)] rounded-full bg-foreground px-3 py-1 text-center text-xs font-medium text-background">
+            {isRecording ? <span aria-hidden>● {model.timer()}</span> : hint}
           </span>
         )}
-      </span>
+      </LiveRegion>
       <button
         type="button"
         aria-label="Удерживайте и говорите"

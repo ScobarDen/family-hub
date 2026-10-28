@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { RotateCw, Upload } from "lucide-react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { LiveRegion, Section, SectionItem } from "@/common/ui";
 
 import type { BatchUploadModel } from "../vm/batch-upload.vm.ts";
 
@@ -9,7 +9,10 @@ export const UploadProgress = reatomComponent(({ model }: { model: BatchUploadMo
   const failed = model.failedCount();
 
   return (
-    <div role="status" className="contents">
+    <>
+      <LiveRegion className="sr-only">
+        {model.isActive() && [model.title(), model.failedNote()].filter(Boolean).join(". ")}
+      </LiveRegion>
       {model.isActive() && (
         <Section
           footer={
@@ -22,6 +25,6 @@ export const UploadProgress = reatomComponent(({ model }: { model: BatchUploadMo
           )}
         </Section>
       )}
-    </div>
+    </>
   );
 }, "UploadProgress");

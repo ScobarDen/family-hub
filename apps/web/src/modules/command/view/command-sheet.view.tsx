@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { LoaderCircle, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { Button, FieldError, ModalDialog } from "@/common/ui";
+import { Button, FieldError, LiveRegion, ModalDialog } from "@/common/ui";
 
 import type { CommandSheet as SheetState, CommandSheetModel } from "../vm/command-sheet.vm.ts";
 import { DraftPreviewBlock } from "./draft-preview.view.tsx";
@@ -79,9 +79,7 @@ export const CommandSheet = reatomComponent(({ model }: CommandSheetProps) => {
         >
           <X className="size-5" />
         </Button>
-        <div role="status" className="contents">
-          {contentOf(model, shown)}
-        </div>
+        <LiveRegion className="flex flex-col gap-4">{contentOf(model, shown)}</LiveRegion>
       </div>
     </ModalDialog>
   );

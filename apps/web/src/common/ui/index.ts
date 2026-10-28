@@ -14,6 +14,7 @@ export { FormShell } from "./form-shell.view.tsx";
 export { IconBadge } from "./icon-badge.view.tsx";
 export { Input } from "./input.view.tsx";
 export { Label } from "./label.view.tsx";
+export { LiveRegion } from "./live-region.view.tsx";
 export { LoadState } from "./load-state.view.tsx";
 export { ModalDialog } from "./modal-dialog.view.tsx";
 export { Notice } from "./notice.view.tsx";

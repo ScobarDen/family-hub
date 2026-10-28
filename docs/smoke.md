@@ -70,7 +70,7 @@ Each item on iOS, Android and Telegram Desktop.
 - [ ] While the finger is down, dragging it downwards neither scrolls the page nor closes the Mini App; after release the swipe-to-close works again.
 - [ ] With the microphone refused in the system settings, the button opens the bot chat and says to send a voice message there.
 - [ ] «Изменить» in the sheet opens the Reminder form filled from the draft; «×» closes the sheet.
-- [ ] The draft sheet shows «Создать» and «Изменить» as Telegram's own bottom buttons, not inside the sheet; «Создать» spins in Telegram's progress until «Создано», then both buttons go away; «×» on a draft takes them away too.
+- [ ] The draft sheet shows «Создать» and «Изменить» as Telegram's own bottom buttons, not inside the sheet; «Создать» spins in Telegram's progress until «Дело создано» or «Запись добавлена в журнал», then both buttons go away; «×» on a draft takes them away too.
 - [ ] On Telegram older than 7.10 (or in Telegram Web K) both buttons sit inside the sheet, and «Создать» shows a spinner the same width as its label.
 
 ### Buttons
@@ -108,14 +108,14 @@ On iOS and Android at 320px and 375px wide, in the light and the dark theme.
 
 With VoiceOver on iOS and TalkBack on Android.
 
-- [ ] Holding the microphone announces the recording; a refused or first hold announces its hint.
-- [ ] After release the screen reader reads the recognised draft, then «Создано» after «Создать», or the Command's failure, each once.
+- [ ] Holding the microphone reads it as pressed and never reads the ticking timer; a refused or first hold announces its hint.
+- [ ] After release the screen reader reads the recognised draft, then «Дело создано» or «Запись добавлена в журнал» after «Создать», or the Command's failure, each once.
 - [ ] Reaching a Savings Goal's target reads «Цель достигнута!» once.
 - [ ] Uploading photos to an Album reads the count as it grows; the row shows an upload icon, not an empty circle.
 - [ ] A Task's card shows one failure bar when a change is rolled back, and it is read once.
 - [ ] A field error and a form's failure are read politely after the current speech, not cutting it off.
 - [ ] Saving a Task, a Savings Goal or a care entry with an empty required field moves focus to that field, and the screen reader reads its label, «недопустимое значение» (or the platform's word) and the error text; the first of several invalid fields gets focus. A date field reads its error too. A form the server refused leaves focus on «Сохранить».
-- [ ] Rows that repeat a button name its record: «Удалить взнос 5 000 ₽ от 12 ноября» and «Изменить …» on a movement, «Изменить шаг: …» / «Удалить шаг: …» on a Subtask, «Отозвать: Приглашение до 3 ноября», «Удалить тег «Супы»» and its field «Название тега «Супы»», «Удалить отметку «Приготовили» …» with its day, «Убрать фото 2» on a picked photo. Thumbs read «Открыть фото 2 из 3», and the last one under «+4» reads «Открыть фото 3 из 3, ещё 4 фото»; a Task's Album thumbs read «Открыть альбом».
+- [ ] Rows that repeat a button name its record: «Удалить взнос 5 000 ₽ от 12 ноября» and «Изменить …» on a movement, «Изменить шаг: …» / «Удалить шаг: …» on a Subtask, «Отозвать: Приглашение до 3 ноября», «Удалить тег «Супы»» and its field «Название тега «Супы»», «Удалить отметку «Приготовили» …» with its day, «Убрать фото 2» on a picked photo. Thumbs read «Открыть фото 2 из 3», and in a strip of three under «+4» they count all seven: the last reads «Открыть фото 3 из 7, ещё 4 фото»; a Task's Album thumbs read «Открыть альбом».
 - [ ] A Recipe's ingredient reads as a toggle button, pressed once ticked and not pressed again after a second tap.
 - [ ] In a Savings Goal's form the cover reads as two radio groups, «Значок» and «Цвет», each with its chosen option checked.
 - [ ] In the Tasks calendar the screen reader reads a day as «вторник, 20 октября, есть дела» (a day without Tasks drops «есть дела»), today also as the current date and the picked day as pressed; it never reads the weekday header or the dot. Days of the next and previous month read as clearly as this month's.

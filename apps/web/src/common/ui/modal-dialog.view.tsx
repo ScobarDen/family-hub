@@ -33,8 +33,9 @@ export function ModalDialog({ isOpen, onClose, className, ...props }: ModalDialo
         "fixed inset-0 z-50 m-0 size-full max-h-none max-w-none overscroll-contain border-0 bg-transparent p-0 text-inherit backdrop:bg-transparent",
         className,
       )}
-      onClose={() => {
-        if (isOpen) {
+      onClose={(event) => {
+        // `close` fires a task later: a dialog shown again by then is not the one that closed.
+        if (isOpen && !event.currentTarget.open) {
           onClose();
         }
       }}

@@ -16,10 +16,10 @@ type PhotoThumbsProps = {
   resolution?: "thumb" | "medium";
 };
 
-function thumbName(position: number, count: number, more: number): string {
-  const name = `Открыть фото ${position} из ${count}`;
+function thumbName(position: number, shown: number, more: number): string {
+  const name = `Открыть фото ${position} из ${shown + more}`;
 
-  return position === count && more > 0 ? `${name}, ещё ${more} фото` : name;
+  return position === shown && more > 0 ? `${name}, ещё ${more} фото` : name;
 }
 
 export function PhotoThumbs({

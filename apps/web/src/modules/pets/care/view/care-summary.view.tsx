@@ -14,11 +14,13 @@ export const CareSummary = reatomComponent(({ model, nextVisit }: CareSummaryPro
   ];
 
   return (
-    <dl className="mx-4 mb-5 grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-2 rounded-2xl bg-card p-3 text-card-foreground">
+    <dl className="mx-4 mb-5 flex flex-wrap gap-2 rounded-2xl bg-card p-3 text-card-foreground">
       {facts.map(({ label, value }) => (
-        <div key={label} className="flex min-w-0 flex-col gap-0.5">
+        <div key={label} className="flex flex-1 basis-24 flex-col gap-0.5">
           <dt className="text-footnote text-muted-foreground">{label}</dt>
-          <dd className="mt-auto text-value font-semibold">{value}</dd>
+          <dd className="mt-auto text-value font-semibold whitespace-nowrap tabular-nums">
+            {value}
+          </dd>
         </div>
       ))}
     </dl>

@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { floatingBarClass } from "@/common/ui";
+import { floatingBarClass, LiveRegion } from "@/common/ui";
 
 import type { TodayModel } from "../vm/today.vm.ts";
 
@@ -31,7 +31,7 @@ export const UndoBar = reatomComponent(({ model }: { model: TodayModel }) => {
   const undo = model.undo();
 
   return (
-    <div role="status" className="contents">
+    <LiveRegion className="absolute">
       {undo !== undefined && (
         <div data-undo className={floatingBarClass}>
           <span className="min-w-0 flex-1 basis-40 leading-snug break-words">
@@ -40,6 +40,6 @@ export const UndoBar = reatomComponent(({ model }: { model: TodayModel }) => {
           <UndoActions model={model} hasPet={undo.hasPet} />
         </div>
       )}
-    </div>
+    </LiveRegion>
   );
 }, "UndoBar");

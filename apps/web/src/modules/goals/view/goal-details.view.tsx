@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/common/ui";
+import { LiveRegion, PrimaryButton, Section, SectionItem, SectionLayout } from "@/common/ui";
 
 import type { GoalDetails as Details } from "../goals.lib.ts";
 import type { GoalsScreenModel } from "../vm/goals.vm.ts";
@@ -42,13 +42,13 @@ export const GoalDetails = reatomComponent((props: DetailsProps) => {
 
   return (
     <>
-      <div role="status" className="contents">
+      <LiveRegion>
         {isCelebrating && (
           <p className="animate-in px-4 py-2 text-center text-2xl leading-tight font-semibold tracking-tight duration-300 ease-out fade-in motion-safe:zoom-in-75">
             Цель достигнута!
           </p>
         )}
-      </div>
+      </LiveRegion>
       <SectionLayout
         summary={
           <Section>
