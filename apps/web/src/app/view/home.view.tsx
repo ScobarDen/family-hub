@@ -144,10 +144,18 @@ function screenOf(props: HomeProps): ReactNode {
   );
 }
 
-// A push inside a module keeps the module and changes only its title.
+const moduleScreenKeys: Record<AppModule, (props: HomeProps) => string> = {
+  feed: () => "feed",
+  tasks: ({ tasks }) => tasks.screenKey(),
+  pet: ({ pet }) => pet.screenKey(),
+  goals: ({ goals }) => goals.screenKey(),
+  albums: ({ albums }) => albums.screenKey(),
+  recipes: ({ recipes }) => recipes.screenKey(),
+};
+
 function screenKeyOf(props: HomeProps, screen: Screen): string {
   return screen.kind === "module"
-    ? `${screen.module}:${screen.petId ?? ""}:${contents[screen.module](props).title}`
+    ? `${screen.module}:${screen.petId ?? ""}:${moduleScreenKeys[screen.module](props)}`
     : screen.kind;
 }
 

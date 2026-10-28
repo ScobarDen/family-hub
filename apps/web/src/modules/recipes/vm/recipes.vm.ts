@@ -340,6 +340,19 @@ function reatomMoves({
   };
 }
 
+// Which screen is shown, apart from the data it shows, so a renamed Recipe keeps focus where it is.
+function reatomScreenKey(navigation: Navigation, form: { isCreating: () => boolean }) {
+  return computed(() => {
+    const editing = navigation.editing();
+
+    if (editing === "recipe") {
+      return form.isCreating() ? "new" : "edit";
+    }
+
+    return editing ?? navigation.openedId() ?? "list";
+  }, "recipes.screenKey");
+}
+
 export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   const navigation: Navigation = {
     openedId: atom<string | undefined>(undefined, "recipes.openedId"),
@@ -360,17 +373,16 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   });
   const screen = reatomScreen({ ...dependencies, data, navigation, opened, form });
   const failure = reatomRollbackFailure("recipes.failure", dependencies.telegram.haptics);
+  const screenKey = reatomScreenKey(navigation, form);
 
   return {
     screen,
     form,
     photoHint: readOnly(dependencies.photoHint),
     title: computed(() => titleOf(screen()), "recipes.title"),
+    screenKey,
     retry: data.reload,
-    canGoBack: computed(
-      () => navigation.editing() !== undefined || navigation.openedId() !== undefined,
-      "recipes.canGoBack",
-    ),
+    canGoBack: computed(() => screenKey() !== "list", "recipes.canGoBack"),
     viewer: reatomPhotoViewer({ ...dependencies, onDeleted: data.reload, failure }),
     ...reatomFilters(data, dependencies.telegram.haptics),
     failure: failure.failure,

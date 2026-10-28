@@ -287,6 +287,18 @@ function titleOf(screen: GoalsScreen): string {
   return "Цели";
 }
 
+// Which screen is shown, apart from the data it shows, so a renamed Goal keeps focus where it is.
+function reatomScreenKey({ editing, openedGoalId }: Navigation, { goalForm, movementForm }: Forms) {
+  return computed(() => {
+    const current = editing();
+    const isCreating = current === "goal" ? goalForm.isCreating() : movementForm.isCreating();
+
+    return current === undefined
+      ? (openedGoalId() ?? "list")
+      : `${current}:${isCreating ? "new" : "edit"}`;
+  }, "goals.screenKey");
+}
+
 type GoalsInput = Omit<GoalsDependencies, "goals"> &
   LiveVersion & {
     members: { data: () => FamilyMember[] | undefined };
@@ -324,6 +336,7 @@ export function reatomGoalsScreen(input: GoalsInput) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "goals.title"),
+    screenKey: reatomScreenKey(navigation, forms),
     retry: dependencies.goals.reload,
     canGoBack: computed(
       () => navigation.editing() !== undefined || openedGoal() !== undefined,

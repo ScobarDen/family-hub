@@ -349,6 +349,18 @@ function tasksOfPet(tasks: TasksModel, viewer: () => Viewer) {
   };
 }
 
+// Which screen is shown, apart from the data it shows, so a renamed Task keeps focus where it is.
+function reatomScreenKey({ editing, opened }: Navigation, { taskForm, subtaskForm }: Forms) {
+  return computed(() => {
+    const current = editing();
+    const isCreating = current === "task" ? taskForm.isCreating() : subtaskForm.isCreating();
+
+    return current === undefined
+      ? (opened()?.taskId ?? "list")
+      : `${current}:${isCreating ? "new" : "edit"}`;
+  }, "tasks.screenKey");
+}
+
 export function reatomTasksScreen(input: TasksDependencies) {
   const tasks = reatomTasks(input);
   const dependencies = { ...input, tasks };
@@ -371,6 +383,7 @@ export function reatomTasksScreen(input: TasksDependencies) {
   return {
     screen,
     title: computed(() => titleOf(screen()), "tasks.title"),
+    screenKey: reatomScreenKey(navigation, forms),
     view: navigation.view,
     scope: navigation.scope,
     reload: tasks.reload,

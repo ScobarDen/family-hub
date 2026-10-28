@@ -200,6 +200,29 @@ describe("opening a Goal", () => {
     expect(slides).toEqual(["forward"]);
     expect(opened(model).goal.title).toBe("Отпуск в Турции");
   });
+
+  test("keeps its screen key while the Goals load and gives another Goal its own", async () => {
+    let resolve = noop;
+    const answered = new Promise<void>((done) => {
+      resolve = done;
+    });
+    const { model } = startGoals({ goals: [turkey, { ...sofa, title: turkey.title }], answered });
+
+    model.open("goal-1");
+    const loading = model.screenKey();
+
+    resolve();
+    await vi.waitFor(() => {
+      expect(opened(model).goal.title).toBe("Отпуск в Турции");
+    });
+
+    expect(model.screenKey()).toBe(loading);
+
+    model.back();
+    model.open("goal-2");
+
+    expect(model.screenKey()).not.toBe(loading);
+  });
 });
 
 describe("a Goal with a deadline", () => {

@@ -125,6 +125,25 @@ function reatomScreen(
   }, "albums.screen");
 }
 
+// Which screen is shown, apart from the data it shows, so a renamed Album keeps focus where it is.
+function reatomScreenKey({
+  data,
+  navigation,
+  form,
+}: {
+  data: AlbumsData;
+  navigation: Navigation;
+  form: { isCreating: () => boolean };
+}) {
+  return computed(() => {
+    if (navigation.isEditing()) {
+      return form.isCreating() ? "new" : "edit";
+    }
+
+    return data.isAllShown() ? "all" : (navigation.openedId() ?? "list");
+  }, "albums.screenKey");
+}
+
 function reatomRemoval(
   dependencies: AlbumsDependencies,
   {
@@ -283,6 +302,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
       dependencies.onSetUpPhotos();
     }, "albums.setUpPhotos"),
     title: computed(() => titleOf(screen()), "albums.title"),
+    screenKey: reatomScreenKey({ data, navigation, form: parts.form }),
     retry: data.reload,
     canGoBack: computed(
       () => navigation.isEditing() || data.isAllShown() || navigation.openedId() !== undefined,

@@ -39,6 +39,12 @@ export function reatomPetTab({ careApi, ...dependencies }: PetTabDependencies) {
     pets,
     care,
     title: computed(() => care.title() ?? pets.title(), "petTab.title"),
+    screenKey: computed(() => {
+      const screen = care.screen();
+      const careKey = screen.kind === "form" && !screen.isCreating ? "edit" : screen.kind;
+
+      return `${pets.screenKey()}:${careKey}`;
+    }, "petTab.screenKey"),
     nextVisit: computed(() => {
       const screen = pets.screen();
 
