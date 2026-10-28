@@ -27,9 +27,7 @@ export function TabButton({ tab, onOpen }: TabButtonProps) {
           aria-hidden
         />
       </span>
-      <span className="max-w-full truncate text-tab-label font-medium group-aria-[current=page]:font-semibold">
-        {tab.title}
-      </span>
+      <span className="max-w-full truncate text-tab-label font-medium">{tab.title}</span>
     </button>
   );
 }

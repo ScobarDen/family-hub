@@ -3,6 +3,7 @@ import { useEffect, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "./button.view.tsx";
 import { FieldError } from "./field-error.view.tsx";
+import { LiveRegion } from "./live-region.view.tsx";
 import { useFocusOnInvalid } from "./ui.lib.ts";
 
 type Savable = {
@@ -37,7 +38,9 @@ export const FormShell = reatomComponent(
     return (
       <form ref={form} className="flex flex-col gap-4 px-5 pb-6" onSubmit={submit}>
         {children}
-        <FieldError>{model.failure()}</FieldError>
+        <LiveRegion>
+          <FieldError>{model.failure()}</FieldError>
+        </LiveRegion>
         <Button type="submit" size="lg" isPending={isSaving}>
           Сохранить
         </Button>

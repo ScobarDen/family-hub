@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 import { CalendarDays, Clock, X } from "lucide-react";
-import type { ComponentProps, MouseEvent } from "react";
+import type { ComponentProps, KeyboardEvent } from "react";
 
 import { deviceTimeZone, formatPickedValue, type PickerType, today } from "@/common/format-date";
 
@@ -26,10 +26,36 @@ type PickerInputProps = Pick<
 
 // showPicker throws inside a cross-origin iframe (Telegram Web) and is missing in older WebViews;
 // there the indicator, stretched invisibly over the whole input, still opens the picker on a tap.
-function openPicker(event: MouseEvent<HTMLInputElement>) {
+function openPicker(event: { currentTarget: HTMLInputElement }) {
   try {
     event.currentTarget.showPicker();
   } catch {}
+}
+
+function openPickerByKey(event: KeyboardEvent<HTMLInputElement>) {
+  if (event.key !== "Enter" && event.key !== " ") {
+    return;
+  }
+
+  event.preventDefault();
+  openPicker(event);
+}
+
+function ClearButton({ label, onClear }: { label: string; onClear: (value: "") => void }) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      className="relative -mr-3 ml-auto shrink-0"
+      aria-label={label}
+      onClick={() => {
+        onClear("");
+      }}
+    >
+      <X />
+    </Button>
+  );
 }
 
 export const PickerInput = reatomComponent(
@@ -52,24 +78,14 @@ export const PickerInput = reatomComponent(
           value={value}
           className="absolute inset-0 size-full cursor-pointer opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:size-full [&::-webkit-calendar-picker-indicator]:cursor-pointer"
           onClick={openPicker}
+          onKeyDown={openPickerByKey}
           onChange={(event) => {
             onValueChange(event.target.value);
           }}
           {...input}
         />
         {clearLabel !== undefined && value !== "" && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="relative -mr-3 ml-auto shrink-0"
-            aria-label={clearLabel}
-            onClick={() => {
-              onValueChange("");
-            }}
-          >
-            <X />
-          </Button>
+          <ClearButton label={clearLabel} onClear={onValueChange} />
         )}
       </div>
     );

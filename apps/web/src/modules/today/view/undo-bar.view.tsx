@@ -25,21 +25,20 @@ function UndoActions({ model, hasPet }: { model: TodayModel; hasPet: boolean }) 
   );
 }
 
-// The live region stays mounted, so a screen reader announces the text when it appears; the page
-// makes room for the bar through `data-undo`.
+// Only the text sits in the live region, mounted before it appears, so the buttons are not read
+// with it; the page makes room for the bar through `data-undo`.
 export const UndoBar = reatomComponent(({ model }: { model: TodayModel }) => {
   const undo = model.undo();
 
   return (
-    <LiveRegion className="absolute">
-      {undo !== undefined && (
-        <div data-undo className={floatingBarClass}>
-          <span className="min-w-0 flex-1 basis-40 leading-snug break-words">
-            Выполнено: «{undo.title}»
-          </span>
-          <UndoActions model={model} hasPet={undo.hasPet} />
-        </div>
-      )}
-    </LiveRegion>
+    <div
+      data-undo={undo !== undefined || undefined}
+      className={undo === undefined ? "absolute" : floatingBarClass}
+    >
+      <LiveRegion className="min-w-0 flex-1 basis-40 leading-snug break-words">
+        {undo !== undefined && `Выполнено: «${undo.title}»`}
+      </LiveRegion>
+      {undo !== undefined && <UndoActions model={model} hasPet={undo.hasPet} />}
+    </div>
   );
 }, "UndoBar");

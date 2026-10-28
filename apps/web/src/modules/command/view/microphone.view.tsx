@@ -30,6 +30,15 @@ function talkKeysOf(model: MicrophoneModel) {
   };
 }
 
+function Recording({ timer }: { timer: string }) {
+  return (
+    <>
+      <span className="sr-only">Идёт запись</span>
+      <span aria-hidden>● {timer}</span>
+    </>
+  );
+}
+
 export const Microphone = reatomComponent(({ model }: MicrophoneProps) => {
   const isRecording = model.state() === "recording";
   const hint = model.hint();
@@ -39,7 +48,7 @@ export const Microphone = reatomComponent(({ model }: MicrophoneProps) => {
       <LiveRegion className="absolute bottom-full mb-2">
         {(isRecording || hint !== undefined) && (
           <span className="block w-max max-w-[calc(100vw-2rem)] rounded-full bg-foreground px-3 py-1 text-center text-xs font-medium text-background">
-            {isRecording ? <span aria-hidden>● {model.timer()}</span> : hint}
+            {isRecording ? <Recording timer={model.timer()} /> : hint}
           </span>
         )}
       </LiveRegion>

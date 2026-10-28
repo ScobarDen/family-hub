@@ -38,7 +38,7 @@ const buttonVariants = cva(
 type ButtonProps = ButtonPrimitive.Props &
   VariantProps<typeof buttonVariants> & { isPending?: boolean };
 
-// The label stays, invisible, so the button keeps its width under the spinner.
+// The label stays, transparent, so the button keeps its width and its accessible name under the spinner.
 function Button({
   className,
   variant = "default",
@@ -53,15 +53,16 @@ function Button({
       data-slot="button"
       className={cn(
         buttonVariants({ variant, size, className }),
-        isPending && "relative aria-busy:opacity-100",
+        isPending && "relative aria-busy:pointer-events-none aria-busy:opacity-100",
       )}
       disabled={disabled === true || isPending}
+      focusableWhenDisabled={isPending}
       aria-busy={isPending || undefined}
       {...props}
     >
       {isPending ? (
         <>
-          <span className="invisible contents">{children}</span>
+          <span className="contents text-transparent">{children}</span>
           <LoaderCircle aria-hidden className="absolute inset-0 m-auto animate-spin" />
         </>
       ) : (

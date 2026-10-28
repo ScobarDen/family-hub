@@ -8,6 +8,7 @@ type RevealedProps = {
 
 const staggerMs = 100;
 
+// Skeletons are aria-hidden, so the one hidden line is what a screen reader finds while loading.
 // Content that replaces a skeleton comes in gently; content already at hand from the device cache
 // or an earlier visit shows at once.
 export function Revealed({ isSkeleton, entrance = "fade", children }: RevealedProps) {
@@ -17,7 +18,16 @@ export function Revealed({ isSkeleton, entrance = "fade", children }: RevealedPr
     setHadSkeleton(true);
   }
 
-  if (isSkeleton || !hadSkeleton) {
+  if (isSkeleton) {
+    return (
+      <>
+        <span className="sr-only">Загружаем…</span>
+        {children}
+      </>
+    );
+  }
+
+  if (!hadSkeleton) {
     return children;
   }
 
