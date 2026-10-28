@@ -1,12 +1,12 @@
 import { wrap } from "@reatom/core";
 
-import { currentMember, sessionResponse, type SessionResponse } from "@family-hub/contract";
+import { currentMember, sessionResponse } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client";
 
 export function createSessionApi(client: HttpClient) {
   return {
-    async signIn(initData: string): Promise<SessionResponse> {
+    async signIn(initData: string) {
       const session = await wrap(
         client.request("/api/session", {
           method: "POST",
@@ -15,13 +15,14 @@ export function createSessionApi(client: HttpClient) {
         }),
       );
 
-      if (session.status === "member") {
-        client.token.set(session.token);
+      if (session.status === "stranger") {
+        return session;
       }
 
-      return session;
+      client.token.set(session.token);
+
+      return { status: session.status, member: currentMember.parse(session) };
     },
-    currentMember: async () => client.request("/api/me", { schema: currentMember }),
     isSessionLost: client.isSessionLost,
   };
 }

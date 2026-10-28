@@ -1,5 +1,6 @@
-import { atom, context } from "@reatom/core";
+import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { z } from "zod";
 
 import type { CurrentMember, SessionResponse } from "@family-hub/contract";
 
@@ -23,9 +24,11 @@ const denis: CurrentMember = {
   },
 };
 
+const signedIn: SessionResponse = { status: "member", token, ...denis };
+
 const silence = Symbol("silence");
 
-type Reply = SessionResponse | CurrentMember | number | Error | typeof silence;
+type Reply = SessionResponse | number | Error | typeof silence;
 
 async function respond(reply: Reply, signal: AbortSignal | null | undefined): Promise<Response> {
   if (reply === silence) {
@@ -45,7 +48,7 @@ async function respond(reply: Reply, signal: AbortSignal | null | undefined): Pr
     : Response.json(reply);
 }
 
-function fakeBackend(replies: { session: Reply; me?: Reply }) {
+function fakeBackend(replies: { session: Reply; later?: Reply }) {
   const requests: string[] = [];
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
@@ -57,7 +60,7 @@ function fakeBackend(replies: { session: Reply; me?: Reply }) {
 
     const isAuthorized = new Headers(init.headers).get("authorization") === `Bearer ${token}`;
 
-    return respond(isAuthorized ? (replies.me ?? denis) : 401, init.signal);
+    return respond(isAuthorized ? (replies.later ?? 401) : 401, init.signal);
   }
 
   return { fetch, requests };
@@ -86,7 +89,10 @@ function startSession(
     timeoutMs: 50,
   });
 
-  return reatomSession({ api: createSessionApi(client), telegram, isJoiningFamily });
+  return Object.assign(
+    reatomSession({ api: createSessionApi(client), telegram, isJoiningFamily }),
+    { client },
+  );
 }
 
 async function signIn(session: ReturnType<typeof startSession>) {
@@ -102,7 +108,7 @@ beforeEach(() => {
 
 describe("signing in", () => {
   test("greets a Member by name with their Family", async () => {
-    const session = startSession(fakeBackend({ session: { status: "member", token } }));
+    const session = startSession(fakeBackend({ session: signedIn }));
 
     await signIn(session);
 
@@ -113,8 +119,17 @@ describe("signing in", () => {
     });
   });
 
+  test("signs in with a single request", async () => {
+    const backend = fakeBackend({ session: signedIn });
+    const session = startSession(backend);
+
+    await signIn(session);
+
+    expect(backend.requests).toEqual(["/api/session"]);
+  });
+
   test("hands the signed-in Member's settings to the rest of the app", async () => {
-    const session = startSession(fakeBackend({ session: { status: "member", token } }));
+    const session = startSession(fakeBackend({ session: signedIn }));
 
     expect(session.member()).toBeUndefined();
     await signIn(session);
@@ -133,7 +148,7 @@ describe("signing in", () => {
   });
 
   test("asks to open the app from Telegram when there is no initData", async () => {
-    const backend = fakeBackend({ session: { status: "member", token } });
+    const backend = fakeBackend({ session: signedIn });
     const session = startSession(backend, fakeTelegram(""));
 
     await signIn(session);
@@ -164,7 +179,7 @@ test("signs in on retry once the backend is back", async () => {
   const session = startSession(fakeBackend(replies));
 
   await signIn(session);
-  replies.session = { status: "member", token };
+  replies.session = signedIn;
   await signIn(session);
 
   expect(session.screen()).toEqual({ kind: "member", memberName: "Денис", familyName: "Гущины" });
@@ -180,9 +195,10 @@ describe("a lost session", () => {
   });
 
   test("asks to restart the app when a later request gets 401", async () => {
-    const session = startSession(fakeBackend({ session: { status: "member", token }, me: 401 }));
+    const session = startSession(fakeBackend({ session: signedIn, later: 401 }));
 
     await signIn(session);
+    await session.client.request("/api/today", { schema: z.unknown() }).catch(noop);
 
     expect(session.screen()).toEqual({ kind: "restart" });
   });
@@ -253,7 +269,7 @@ describe("the stranger screen", () => {
 
     await signIn(session);
     session.requestFamily();
-    replies.session = { status: "member", token };
+    replies.session = signedIn;
     session.signIn();
 
     await vi.waitFor(() => {
@@ -311,7 +327,7 @@ describe("opening the app from an Invite", () => {
     const session = startSession(fakeBackend(replies), fakeTelegram(), isJoiningFamily);
 
     await signIn(session);
-    replies.session = { status: "member", token };
+    replies.session = signedIn;
     isJoiningFamily.set(false);
     session.signIn();
 

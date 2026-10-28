@@ -30,6 +30,13 @@ async function getMe(worker: Worker, token: string) {
   return worker.request("/api/me", { headers: { authorization: `Bearer ${token}` } });
 }
 
+async function renew(worker: Worker, token: string) {
+  return worker.request("/api/session/renew", {
+    method: "POST",
+    headers: { authorization: `Bearer ${token}` },
+  });
+}
+
 async function startWithFamily() {
   const worker = startWorker({ now });
   const family = await worker.addFamily({
@@ -41,15 +48,14 @@ async function startWithFamily() {
 }
 
 describe("signing in with initData", () => {
-  test("a Member gets a session that knows who they are", async () => {
+  test("a Member gets a session together with who they are", async () => {
     const { worker, familyId, ownerId } = await startWithFamily();
 
     const response = await postSession(worker, initDataFor(worker));
-    const session = await response.json<{ status: string; token: string }>();
-    const me = await getMe(worker, session.token);
 
-    expect(session.status).toBe("member");
-    expect(await me.json()).toEqual({
+    expect(await response.json()).toEqual({
+      status: "member",
+      token: expect.any(String),
       member: { id: ownerId, name: "Денис" },
       family: { id: familyId, name: "Гущины" },
       isFamilyOwner: true,
@@ -67,9 +73,17 @@ describe("signing in with initData", () => {
 
     await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
 
-    const me = await getMe(worker, await signIn(worker, asya));
+    const response = await postSession(worker, initDataFor(worker, asya));
 
-    expect(await me.json()).toMatchObject({ isFamilyOwner: false });
+    expect(await response.json()).toMatchObject({ isFamilyOwner: false });
+  });
+
+  test("the session token knows who the Member is", async () => {
+    const { worker, ownerId } = await startWithFamily();
+
+    const me = await getMe(worker, await signIn(worker));
+
+    expect(await me.json()).toMatchObject({ member: { id: ownerId } });
   });
 
   test("initData with a forged user is rejected", async () => {
@@ -219,6 +233,49 @@ describe("a session", () => {
     await worker.leaveFamily(asyaId);
 
     const response = await getMe(worker, token);
+
+    expect(response.status).toBe(401);
+  });
+});
+
+describe("renewing a session", () => {
+  test("gives a still-valid token a fresh one that lasts another 24 hours", async () => {
+    const { worker } = await startWithFamily();
+    const token = await signIn(worker);
+
+    worker.clock.set("2026-10-05T08:00:00Z");
+
+    const response = await renew(worker, token);
+    const renewed = await response.json<{ token: string }>();
+
+    worker.clock.set("2026-10-06T07:59:00Z");
+
+    const me = await getMe(worker, renewed.token);
+
+    expect(response.status).toBe(200);
+    expect(me.status).toBe(200);
+  });
+
+  test("is refused once the token has expired", async () => {
+    const { worker } = await startWithFamily();
+    const token = await signIn(worker);
+
+    worker.clock.set("2026-10-05T09:00:01Z");
+
+    const response = await renew(worker, token);
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toMatchObject({ code: "UNAUTHENTICATED" });
+  });
+
+  test("is refused to a Member who left the Family", async () => {
+    const { worker, familyId } = await startWithFamily();
+    const asyaId = await worker.addMember(familyId, { telegramId: asya.id, name: "Ася" });
+    const token = await signIn(worker, asya);
+
+    await worker.leaveFamily(asyaId);
+
+    const response = await renew(worker, token);
 
     expect(response.status).toBe(401);
   });

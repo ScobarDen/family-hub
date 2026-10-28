@@ -3,6 +3,7 @@ import {
   defaultTabBar,
   slotModule,
   tabBarSlots,
+  type CurrentMember,
   type DigestSettings,
   type FamilyMemberList,
   type MemberSettings,
@@ -61,7 +62,12 @@ function settingsFrom(row: MemberSettingsRow | undefined): MemberSettings {
 
 export function createMemberService({ members, clock, schedule }: MemberServiceDependencies) {
   return {
-    settings: async ({ member }: Membership) => settingsFrom(await members.settingsOf(member.id)),
+    current: async ({ member, family, isFamilyOwner }: Membership): Promise<CurrentMember> => ({
+      member: { id: member.id, name: member.name },
+      family,
+      isFamilyOwner,
+      settings: settingsFrom(await members.settingsOf(member.id)),
+    }),
 
     allowMessages: async (telegramId: number) => members.allowMessages(telegramId, clock.now()),
 

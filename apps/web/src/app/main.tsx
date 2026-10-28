@@ -52,6 +52,7 @@ const telegram = reatomTelegram(window.Telegram.WebApp);
 const httpClient = createHttpClient({
   baseUrl: import.meta.env.VITE_API_URL ?? window.location.origin,
   fetch: async (input, init) => fetch(input, init),
+  page: document,
 });
 const session = reatomSession({
   api: createSessionApi(httpClient),

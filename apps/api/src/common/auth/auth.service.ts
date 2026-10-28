@@ -6,7 +6,7 @@ import { verifyInitData, type TelegramUser } from "./lib/init-data.lib.ts";
 import { createSessionTokens } from "./lib/session-token.lib.ts";
 
 type SignInResult =
-  | { status: "member"; token: string }
+  | { status: "member"; token: string; membership: Membership }
   | { status: "stranger"; telegramId: number }
   | { status: "invalid" };
 
@@ -67,8 +67,11 @@ export function createAuthService({
       return {
         status: "member",
         token: await sessionTokens.sign(membership.member.id, clock.now()),
+        membership,
       };
     },
+
+    renew: async ({ member }: Membership) => sessionTokens.sign(member.id, clock.now()),
 
     async authenticate(token: string): Promise<Membership | undefined> {
       const memberId = await sessionTokens.read(token, clock.now());

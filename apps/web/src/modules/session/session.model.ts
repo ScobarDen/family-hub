@@ -15,12 +15,6 @@ export function reatomSignIn({ api, initData }: { api: SessionApi; initData: str
       return { status: "outside-telegram" };
     }
 
-    const session = await wrap(api.signIn(initData));
-
-    if (session.status === "stranger") {
-      return session;
-    }
-
-    return { status: "member", member: await wrap(api.currentMember()) };
+    return wrap(api.signIn(initData));
   }, "session.signIn").extend(withAsyncData());
 }

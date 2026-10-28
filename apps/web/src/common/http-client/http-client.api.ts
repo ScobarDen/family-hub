@@ -1,9 +1,11 @@
-import { abortVar, atom, noop, reatomBoolean, wrap } from "@reatom/core";
+import { abortVar, action, atom, noop, reatomBoolean, withChangeHook, wrap } from "@reatom/core";
 import type { z } from "zod";
 
-import { apiError, type ErrorCode } from "@family-hub/contract";
+import { apiError, sessionToken, type ErrorCode } from "@family-hub/contract";
 
 const unauthorizedStatus = 401;
+// Half the Worker's 24-hour token: an app back on screen renews well before the token expires.
+const renewAfterMs = 43_200_000;
 // Telegram WebViews on a bad network can leave a request pending indefinitely.
 const defaultTimeoutMs = 15_000;
 
@@ -44,10 +46,15 @@ async function errorCodeOf(response: Response): Promise<ErrorCode | undefined> {
 
 type Fetch = (input: URL, init: RequestInit) => Promise<Response>;
 
+type Page = EventTarget & { readonly visibilityState: DocumentVisibilityState };
+
 type HttpClientOptions = {
   baseUrl: string;
   fetch: Fetch;
   timeoutMs?: number;
+  // The token renews when this page comes back on screen.
+  page?: Page;
+  now?: () => number;
 };
 
 type RequestOptions<Schema extends z.ZodType> = {
@@ -96,12 +103,46 @@ async function fetchUntilAborted(
   }
 }
 
-export function createHttpClient({
-  baseUrl,
-  fetch,
-  timeoutMs = defaultTimeoutMs,
-}: HttpClientOptions) {
-  const token = atom<string | undefined>(undefined, "httpClient.token");
+function reatomSessionToken(now: () => number) {
+  const issuedAt = atom(0, "httpClient.tokenIssuedAt");
+  const token = atom<string | undefined>(undefined, "httpClient.token").extend(
+    withChangeHook(() => {
+      issuedAt.set(now());
+    }),
+  );
+
+  return { token, isStale: () => token() !== undefined && now() - issuedAt() >= renewAfterMs };
+}
+
+type Renewal = {
+  page: Page;
+  session: ReturnType<typeof reatomSessionToken>;
+  request: <Schema extends z.ZodType>(
+    path: string,
+    options: RequestOptions<Schema>,
+  ) => Promise<z.infer<Schema>>;
+};
+
+function renewOnReturn({ page, session, request }: Renewal): void {
+  const renew = action(async () => {
+    const renewed = await wrap(
+      request("/api/session/renew", { method: "POST", schema: sessionToken }),
+    );
+
+    session.token.set(renewed.token);
+  }, "httpClient.renew");
+
+  page.addEventListener("visibilitychange", () => {
+    if (page.visibilityState === "visible" && session.isStale()) {
+      // A renewal that fails on the network is tried again the next time the app comes back.
+      renew().catch(noop);
+    }
+  });
+}
+
+export function createHttpClient(options: HttpClientOptions) {
+  const { baseUrl, fetch, timeoutMs = defaultTimeoutMs, page, now = Date.now } = options;
+  const session = reatomSessionToken(now);
   const isSessionLost = reatomBoolean(false, "httpClient.isSessionLost");
 
   async function request<Schema extends z.ZodType>(
@@ -113,7 +154,7 @@ export function createHttpClient({
         url: new URL(path, baseUrl),
         init: {
           method,
-          headers: headersFor(body, token()),
+          headers: headersFor(body, session.token()),
           body: body === undefined || isRaw(body) ? body : JSON.stringify(body),
         },
         timeoutMs,
@@ -135,12 +176,16 @@ export function createHttpClient({
     return schema.parse(await wrap(response.json()));
   }
 
+  if (page !== undefined) {
+    renewOnReturn({ page, session, request });
+  }
+
   // The Worker hands out its own paths, such as signed photo links; the browser needs them whole.
   function url(path: string): string {
     return new URL(path, baseUrl).toString();
   }
 
-  return { request, url, token, isSessionLost };
+  return { request, url, token: session.token, isSessionLost };
 }
 
 export type HttpClient = ReturnType<typeof createHttpClient>;
