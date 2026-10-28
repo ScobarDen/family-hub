@@ -42,14 +42,13 @@ export const GoalDetails = reatomComponent((props: DetailsProps) => {
 
   return (
     <>
-      {isCelebrating && (
-        <p
-          className="animate-in px-4 py-2 text-center text-2xl leading-tight font-semibold tracking-tight duration-300 ease-out fade-in motion-safe:zoom-in-75"
-          role="status"
-        >
-          Цель достигнута!
-        </p>
-      )}
+      <div role="status" className="contents">
+        {isCelebrating && (
+          <p className="animate-in px-4 py-2 text-center text-2xl leading-tight font-semibold tracking-tight duration-300 ease-out fade-in motion-safe:zoom-in-75">
+            Цель достигнута!
+          </p>
+        )}
+      </div>
       <SectionLayout
         summary={
           <Section>

@@ -91,7 +91,6 @@ function contentOf(model: TasksScreenModel, screen: TasksScreen): ReactNode {
         <TaskDetails task={screen.task} model={model} />
         <UndoBar model={model} />
         <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
-        <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
       </>
     );
   }

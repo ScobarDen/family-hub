@@ -36,14 +36,13 @@ export const Microphone = reatomComponent(({ model }: MicrophoneProps) => {
 
   return (
     <div className="relative flex flex-col items-center">
-      {(isRecording || hint !== undefined) && (
-        <span
-          role="status"
-          className="absolute bottom-full mb-2 rounded-full bg-foreground px-3 py-1 w-max max-w-[calc(100vw-2rem)] text-center text-xs font-medium text-background"
-        >
-          {isRecording ? `● ${model.timer()}` : hint}
-        </span>
-      )}
+      <span role="status" className="contents">
+        {(isRecording || hint !== undefined) && (
+          <span className="absolute bottom-full mb-2 rounded-full bg-foreground px-3 py-1 w-max max-w-[calc(100vw-2rem)] text-center text-xs font-medium text-background">
+            {isRecording ? `● ${model.timer()}` : hint}
+          </span>
+        )}
+      </span>
       <button
         type="button"
         aria-label="Удерживайте и говорите"

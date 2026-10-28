@@ -78,6 +78,17 @@ Each item on iOS, Android and Telegram Desktop.
 - [ ] With the network throttled, «Сохранить» in a Task form, «Отправить заявку», «Вступить» and «Удалить навсегда» keep their size, show a spinner over an invisible label, and cannot be pressed again until the answer; the screen reader reads them as busy.
 - [ ] «Пригласить в семью» keeps its title and shows a spinner at the row's end while the Invite is made.
 
+### Announcements
+
+With VoiceOver on iOS and TalkBack on Android.
+
+- [ ] Holding the microphone announces the recording; a refused or first hold announces its hint.
+- [ ] After release the screen reader reads the recognised draft, then «Создано» after «Создать», or the Command's failure, each once.
+- [ ] Reaching a Savings Goal's target reads «Цель достигнута!» once.
+- [ ] Uploading photos to an Album reads the count as it grows; the row shows an upload icon, not an empty circle.
+- [ ] A Task's card shows one failure bar when a change is rolled back, and it is read once.
+- [ ] A field error and a form's failure are read politely after the current speech, not cutting it off.
+
 ### Date and time fields
 
 Each item on iOS and Android, in the light and the dark theme.

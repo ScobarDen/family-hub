@@ -77,7 +77,9 @@ export const CommandSheet = reatomComponent(({ model }: CommandSheetProps) => {
         >
           <X className="size-5" />
         </Button>
-        {contentOf(model, shown)}
+        <div role="status" className="contents">
+          {contentOf(model, shown)}
+        </div>
       </section>
     </div>
   );
