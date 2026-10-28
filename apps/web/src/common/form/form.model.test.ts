@@ -2,7 +2,7 @@ import { context, noop, reatomForm } from "@reatom/core";
 import { beforeEach, describe, expect, expectTypeOf, test, vi } from "vite-plus/test";
 import { z } from "zod";
 
-import { fakeHaptics } from "@/common/telegram";
+import { fakeHaptics, fakeWindow } from "@/common/telegram";
 
 import { reatomEditableRecord } from "./form.model.ts";
 
@@ -36,6 +36,7 @@ function startNotes({ failSaving = false } = {}) {
   }
 
   const haptics = fakeHaptics();
+  const frame = fakeWindow();
   const notes = reatomEditableRecord({
     name: "test.notes",
     form: (onSubmit) =>
@@ -49,6 +50,7 @@ function startNotes({ failSaving = false } = {}) {
       ),
     failureMessage,
     haptics,
+    closingConfirmation: frame,
     valuesOf: (note: Note) => ({ title: note.title }),
     valuesOfDraft: (draft: { title: string | null }) => ({ title: draft.title ?? "" }),
     create: async ({ title }, { phrase: said }) =>
@@ -68,6 +70,7 @@ function startNotes({ failSaving = false } = {}) {
   return {
     notes,
     felt: haptics.felt,
+    closing: frame.calls,
     requests,
     saved,
     settledDrafts,
@@ -203,6 +206,58 @@ describe("an editable record", () => {
   });
 });
 
+describe("closing confirmation", () => {
+  const on = "enableClosingConfirmation";
+  const off = "disableClosingConfirmation";
+
+  test("is on while the form has unsaved changes and off once it is saved", async () => {
+    const { notes, closing } = startNotes();
+
+    notes.startCreating({ title: "" });
+    notes.confirmClosingWhileDirty();
+    notes.form.fields.title.change("Корм Бьюику");
+    await vi.waitFor(() => {
+      expect(closing).toEqual([off, on]);
+    });
+    notes.save();
+
+    await vi.waitFor(() => {
+      expect(closing).toEqual([off, on, off]);
+    });
+  });
+
+  test("goes off when the form starts over", async () => {
+    const { notes, closing } = startNotes();
+
+    notes.startCreating({ title: "" });
+    notes.confirmClosingWhileDirty();
+    notes.form.fields.title.change("Корм Бьюику");
+    await vi.waitFor(() => {
+      expect(closing).toEqual([off, on]);
+    });
+    notes.startEditing({ id: "note-1", title: "Корм" });
+
+    await vi.waitFor(() => {
+      expect(closing).toEqual([off, on, off]);
+    });
+  });
+
+  test("goes off when the form leaves the screen with changes", async () => {
+    const { notes, closing } = startNotes();
+
+    notes.startCreating({ title: "" });
+    const leave = notes.confirmClosingWhileDirty();
+
+    notes.form.fields.title.change("Корм Бьюику");
+    await vi.waitFor(() => {
+      expect(closing).toEqual([off, on]);
+    });
+    leave();
+
+    expect(closing).toEqual([off, on, off]);
+  });
+});
+
 describe("a record without drafts", () => {
   test("is created and updated, and offers no start from a draft", async () => {
     const requests: string[] = [];
@@ -211,6 +266,7 @@ describe("a record without drafts", () => {
       form: (onSubmit) => reatomForm({ title: "" }, { name: "test.plainNotes.form", onSubmit }),
       failureMessage,
       haptics: fakeHaptics(),
+      closingConfirmation: fakeWindow(),
       valuesOf: (note: Note) => ({ title: note.title }),
       create: async ({ title }) => {
         requests.push(`create ${title}`);

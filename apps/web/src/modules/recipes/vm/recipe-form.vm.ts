@@ -14,7 +14,7 @@ import { reatomEditableRecord } from "@/common/form";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoAttachments } from "@/common/photo-attachments";
 import { readOnly } from "@/common/state";
-import type { Haptics } from "@/common/telegram";
+import type { ClosingConfirmation, Haptics } from "@/common/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 
@@ -23,6 +23,7 @@ type RecipeFormDependencies = {
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   haptics: Pick<Haptics, "success" | "error" | "select">;
+  closingConfirmation: ClosingConfirmation;
   onSaved: (saved: Recipe) => void;
 };
 
@@ -54,7 +55,7 @@ function reatomTagChoice(chosen: Atom<string[]>, haptics: Pick<Haptics, "select"
 }
 
 function reatomRecipeRecord(
-  { api, haptics, onSaved }: RecipeFormDependencies,
+  { api, haptics, closingConfirmation, onSaved }: RecipeFormDependencies,
   { chosenTags, photos }: { chosenTags: Atom<string[]>; photos: { photoIds: () => string[] } },
 ) {
   function changeOf(values: RecipeValues): RecipeChange {
@@ -66,6 +67,7 @@ function reatomRecipeRecord(
     form: (onSubmit) => reatomForm(emptyRecipe, { name: "recipes.form", schema, onSubmit }),
     failureMessage: "Не получилось сохранить рецепт. Попробуйте ещё раз.",
     haptics,
+    closingConfirmation,
     valuesOf,
     create: async (values) => api.create(changeOf(values)),
     update: async (recipe: Recipe, values) => api.update(recipe.id, changeOf(values)),

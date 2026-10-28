@@ -28,8 +28,10 @@ import {
 } from "@/common/state";
 import {
   type Confirmation,
+  type ClosingConfirmation,
   type Dialogs,
   didSucceedOrAlert,
+  type Fullscreen,
   isConfirmed,
   type Haptics,
 } from "@/common/telegram";
@@ -85,11 +87,13 @@ export type RecipesScreen =
 type RecipesDependencies = LiveVersion & {
   api: RecipesApi;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
-  telegram: Dialogs & {
-    haptics: Haptics;
-    canShareMessage: boolean;
-    shareMessage: (preparedMessageId: string) => Promise<boolean>;
-  };
+  telegram: Dialogs &
+    Fullscreen &
+    ClosingConfirmation & {
+      haptics: Haptics;
+      canShareMessage: boolean;
+      shareMessage: (preparedMessageId: string) => Promise<boolean>;
+    };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   today: () => string;
@@ -334,6 +338,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   const form = reatomRecipeForm({
     ...dependencies,
     haptics: dependencies.telegram.haptics,
+    closingConfirmation: dependencies.telegram,
     onSaved: (saved) => {
       navigation.editing.set(undefined);
       navigation.openedId.set(saved.id);

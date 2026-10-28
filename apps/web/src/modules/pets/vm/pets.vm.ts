@@ -47,6 +47,7 @@ function reatomForms(
       ...dependencies,
       today: () => dependencies.viewer().today,
       haptics,
+      closingConfirmation: dependencies.telegram,
       onSaved,
     }),
     memoForm: reatomPetMemoForm({ ...dependencies, haptics, onSaved }),

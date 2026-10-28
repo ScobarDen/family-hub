@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import type { FormEvent, ReactNode } from "react";
+import { useEffect, type FormEvent, type ReactNode } from "react";
 
 import { careKindTitles } from "@family-hub/contract";
 
@@ -82,6 +82,8 @@ const Actions = reatomComponent(({ model, isReadOnly, onCancel, onRemove }: Acti
 export const CareForm = reatomComponent(({ photos, ...props }: CareFormProps) => {
   const { model, isReadOnly } = props;
   const { fields } = model.form;
+
+  useEffect(() => model.confirmClosingWhileDirty(), [model]);
 
   function submit(event: FormEvent) {
     event.preventDefault();

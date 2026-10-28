@@ -119,7 +119,7 @@ export const PhotoViewer = reatomComponent(({ model, pickAction }: ViewerProps) 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black pt-safe-top pb-safe-bottom text-white">
+    <div className="fixed inset-0 z-50 flex flex-col bg-black pt-safe-top pr-[var(--tg-safe-area-inset-right,0px)] pb-safe-bottom pl-[var(--tg-safe-area-inset-left,0px)] text-white">
       <ViewerBar
         model={model}
         pickAction={pickAction}

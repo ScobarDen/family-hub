@@ -19,7 +19,14 @@ import type { LiveVersion } from "@/common/live-updates";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { detached, readOnly } from "@/common/state";
-import { type Dialogs, didSucceedOrAlert, type PopupParams, type Haptics } from "@/common/telegram";
+import {
+  type ClosingConfirmation,
+  type Dialogs,
+  didSucceedOrAlert,
+  type Fullscreen,
+  type PopupParams,
+  type Haptics,
+} from "@/common/telegram";
 
 import type { AlbumsApi } from "../albums.api.ts";
 import { subtitleOf, toItem, type AlbumItem, type AlbumView } from "../albums.lib.ts";
@@ -48,11 +55,13 @@ export type AlbumsScreen =
 type AlbumsDependencies = LiveVersion & {
   api: AlbumsApi;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
-  telegram: Dialogs & {
-    haptics: Haptics;
-    canShareMessage: boolean;
-    shareMessage: (preparedMessageId: string) => Promise<boolean>;
-  };
+  telegram: Dialogs &
+    Fullscreen &
+    ClosingConfirmation & {
+      haptics: Haptics;
+      canShareMessage: boolean;
+      shareMessage: (preparedMessageId: string) => Promise<boolean>;
+    };
   viewer: () => Viewer;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   wait: (ms: number) => Promise<void>;
@@ -203,6 +212,7 @@ function reatomParts(
     form: reatomAlbumForm({
       api,
       haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
       onSaved: (saved) => {
         navigation.isEditing.setFalse();
         navigation.openedId.set(saved.id);

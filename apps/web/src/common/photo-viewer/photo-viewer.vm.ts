@@ -1,4 +1,4 @@
-import { action, atom, computed, withAsync, wrap } from "@reatom/core";
+import { action, atom, computed, withAsync, withChangeHook, wrap } from "@reatom/core";
 
 import type { Photo } from "@family-hub/contract";
 
@@ -7,13 +7,14 @@ import {
   type Confirmation,
   type Dialogs,
   didSucceedOrAlert,
+  type Fullscreen,
   isConfirmed,
   type Haptics,
 } from "@/common/telegram";
 
 export type PhotoViewerDependencies = {
   api: { deletePhoto: (photoId: string) => Promise<unknown> };
-  telegram: Dialogs & { haptics: Haptics };
+  telegram: Dialogs & Fullscreen & { haptics: Haptics };
   // A module's own action on the photo shown, such as making it a Pet's avatar.
   onPick?: (photoId: string) => void;
   onDeleted: () => void;
@@ -106,8 +107,20 @@ function reatomPhotoSharing(
   }, "photoViewer.share").extend(withAsync());
 }
 
+function reatomOpened(telegram: Fullscreen) {
+  return atom<Opened | undefined>(undefined, "photoViewer.opened").extend(
+    withChangeHook((current, previous) => {
+      if (previous === undefined && current !== undefined) {
+        telegram.requestFullscreen();
+      } else if (previous !== undefined && current === undefined) {
+        telegram.exitFullscreen();
+      }
+    }),
+  );
+}
+
 export function reatomPhotoViewer(dependencies: PhotoViewerDependencies) {
-  const opened = atom<Opened | undefined>(undefined, "photoViewer.opened");
+  const opened = reatomOpened(dependencies.telegram);
   const remove = reatomPhotoRemoval(dependencies, opened);
   const share = reatomPhotoSharing(dependencies, opened);
 

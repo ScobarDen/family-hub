@@ -5,7 +5,12 @@ import { movementChange, type Goal } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
+import {
+  fakeDeviceStorage,
+  fakeHaptics,
+  type FakeDeviceStorage,
+  fakeWindow,
+} from "@/common/telegram";
 import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
 
 import { createGoalsApi } from "../goals.api.ts";
@@ -131,7 +136,7 @@ function startGoals({
   const model = reatomGoalsScreen({
     api: createGoalsApi(client),
     members: reatomFamilyMembers(createFamilyApi(client)),
-    telegram: { showPopup: async () => pending.shift(), haptics },
+    telegram: { ...fakeWindow(), showPopup: async () => pending.shift(), haptics },
     self: () => "member-1",
     today: () => "2026-10-14",
     timeZone: () => "Europe/Moscow",

@@ -27,7 +27,13 @@ import {
   reatomRollbackFailure,
   type RollbackFailure,
 } from "@/common/state";
-import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
+import {
+  type ClosingConfirmation,
+  type Confirmation,
+  type Dialogs,
+  isConfirmed,
+  type Haptics,
+} from "@/common/telegram";
 
 import type { GoalsApi } from "../goals.api.ts";
 import {
@@ -52,7 +58,7 @@ export type GoalsScreen =
 type GoalsDependencies = {
   api: GoalsApi;
   goals: GoalsModel;
-  telegram: Pick<Dialogs, "showPopup"> & { haptics: Haptics };
+  telegram: Pick<Dialogs, "showPopup"> & ClosingConfirmation & { haptics: Haptics };
   self: () => string | undefined;
   today: () => string;
   timeZone: () => string;
@@ -102,6 +108,7 @@ function reatomForms(
     goalForm: reatomGoalForm({
       ...dependencies,
       haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
       onSaved: (saved) => {
         editing.set(undefined);
         openedGoalId.set(saved.id);
@@ -111,6 +118,7 @@ function reatomForms(
     movementForm: reatomMovementForm({
       ...dependencies,
       haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
       onSaved: (before, saved) => {
         editing.set(undefined);
         isCelebrating.set(!before.isAchieved && saved.isAchieved);

@@ -38,6 +38,8 @@ export type HapticImpact = "light" | "medium" | "heavy" | "rigid" | "soft";
 
 export type HapticNotification = "success" | "warning" | "error";
 
+export type HomeScreenStatus = "unsupported" | "unknown" | "added" | "missed";
+
 type StorageCallback<Result> = (error: string | null, result?: Result) => void;
 
 export type DeviceStorage = {
@@ -60,6 +62,12 @@ export type TelegramWebApp = {
   requestWriteAccess(callback?: (isAllowed: boolean) => void): void;
   shareMessage(preparedMessageId: string, callback?: (isSent: boolean) => void): void;
   openTelegramLink(url: string): void;
+  addToHomeScreen(): void;
+  checkHomeScreenStatus(callback?: (status: HomeScreenStatus) => void): void;
+  requestFullscreen(): void;
+  exitFullscreen(): void;
+  enableClosingConfirmation(): void;
+  disableClosingConfirmation(): void;
   HapticFeedback: {
     impactOccurred(style: HapticImpact): void;
     notificationOccurred(type: HapticNotification): void;

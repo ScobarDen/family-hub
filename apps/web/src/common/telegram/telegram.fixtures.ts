@@ -1,8 +1,8 @@
 import { effect, noop } from "@reatom/core";
 
-import type { Haptics } from "./telegram.lib.ts";
+import type { ClosingConfirmation, Fullscreen, Haptics, HomeScreen } from "./telegram.lib.ts";
 import type { BottomButtonState } from "./telegram.model.ts";
-import type { DeviceStorage } from "./telegram.types.ts";
+import type { DeviceStorage, HomeScreenStatus } from "./telegram.types.ts";
 
 // Telegram answers storage calls later, never inside the call.
 function answer(callback: (() => void) | undefined): void {
@@ -118,5 +118,34 @@ export function fakeHaptics(): FakeHaptics {
     impact: (style) => {
       record(`impact ${style}`);
     },
+  };
+}
+
+// Records home screen, full screen and closing confirmation calls in order.
+export type FakeWindow = HomeScreen & Fullscreen & ClosingConfirmation & { calls: string[] };
+
+export function fakeWindow({
+  homeScreenStatus = "missed",
+}: { homeScreenStatus?: HomeScreenStatus } = {}): FakeWindow {
+  const calls: string[] = [];
+
+  function record(call: string): () => void {
+    return () => {
+      calls.push(call);
+    };
+  }
+
+  return {
+    calls,
+    addToHomeScreen: record("addToHomeScreen"),
+    checkHomeScreenStatus: async () => {
+      calls.push("checkHomeScreenStatus");
+
+      return homeScreenStatus;
+    },
+    requestFullscreen: record("requestFullscreen"),
+    exitFullscreen: record("exitFullscreen"),
+    enableClosingConfirmation: record("enableClosingConfirmation"),
+    disableClosingConfirmation: record("disableClosingConfirmation"),
   };
 }

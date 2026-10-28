@@ -6,6 +6,7 @@ import type {
   ColorScheme,
   HapticImpact,
   HapticNotification,
+  HomeScreenStatus,
   PopupParams,
   TelegramButton,
   TelegramWebApp,
@@ -21,6 +22,9 @@ const bottomButtonsVersion = "7.10";
 const hapticsVersion = "6.1";
 const verticalSwipesVersion = "7.7";
 const deviceStorageVersion = "9.0";
+const homeScreenVersion = "8.0";
+const fullscreenVersion = "8.0";
+const closingConfirmationVersion = "6.2";
 const readyAfterMs = 300;
 const sameHapticGapMs = 80;
 
@@ -155,11 +159,64 @@ function createHaptics(webApp: TelegramWebApp): Haptics {
   };
 }
 
+function reatomHomeScreen(webApp: TelegramWebApp) {
+  const isAvailable = webApp.isVersionAtLeast(homeScreenVersion);
+
+  return {
+    addToHomeScreen: action(() => {
+      if (isAvailable) {
+        webApp.addToHomeScreen();
+      }
+    }, "telegram.addToHomeScreen"),
+    checkHomeScreenStatus: action(async (): Promise<HomeScreenStatus> => {
+      if (!isAvailable) {
+        return "unsupported";
+      }
+
+      return wrap(
+        new Promise<HomeScreenStatus>((resolve) => {
+          webApp.checkHomeScreenStatus(resolve);
+        }),
+      );
+    }, "telegram.checkHomeScreenStatus"),
+  };
+}
+
+function reatomWindow(webApp: TelegramWebApp) {
+  const hasFullscreen = webApp.isVersionAtLeast(fullscreenVersion);
+  const hasClosingConfirmation = webApp.isVersionAtLeast(closingConfirmationVersion);
+
+  return {
+    requestFullscreen: action(() => {
+      if (hasFullscreen) {
+        webApp.requestFullscreen();
+      }
+    }, "telegram.requestFullscreen"),
+    exitFullscreen: action(() => {
+      if (hasFullscreen) {
+        webApp.exitFullscreen();
+      }
+    }, "telegram.exitFullscreen"),
+    enableClosingConfirmation: action(() => {
+      if (hasClosingConfirmation) {
+        webApp.enableClosingConfirmation();
+      }
+    }, "telegram.enableClosingConfirmation"),
+    disableClosingConfirmation: action(() => {
+      if (hasClosingConfirmation) {
+        webApp.disableClosingConfirmation();
+      }
+    }, "telegram.disableClosingConfirmation"),
+  };
+}
+
 function reatomInteractions(webApp: TelegramWebApp) {
   return {
     ...reatomDialogs(webApp),
     ...reatomPrompts(webApp),
     ...reatomGestures(webApp),
+    ...reatomHomeScreen(webApp),
+    ...reatomWindow(webApp),
     haptics: createHaptics(webApp),
   };
 }

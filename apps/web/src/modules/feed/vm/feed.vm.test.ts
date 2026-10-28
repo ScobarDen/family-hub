@@ -5,7 +5,12 @@ import type { FeedPage, FeedUpcoming, Photo, Task } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
+import {
+  fakeDeviceStorage,
+  fakeHaptics,
+  type FakeDeviceStorage,
+  fakeWindow,
+} from "@/common/telegram";
 
 import { createFeedApi } from "../feed.api.ts";
 import { reatomFeed, type FeedTarget } from "./feed.vm.ts";
@@ -185,7 +190,7 @@ function startFeed({
     onOpen: (target) => {
       opened.push(target);
     },
-    telegram: { showPopup: async () => noChoice, showAlert: noop, haptics },
+    telegram: { ...fakeWindow(), showPopup: async () => noChoice, showAlert: noop, haptics },
     deviceCache: reatomDeviceCache(device.deviceStorage),
   });
 

@@ -21,6 +21,7 @@ import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import {
   createMemberSettingsApi,
   reatomDigest,
+  reatomHomeScreen,
   reatomNotifications,
   reatomTimeZone,
 } from "@/modules/member-settings";
@@ -356,6 +357,7 @@ const home = {
     saved: () => session.member()?.settings.digest,
     haptics: telegram.haptics,
   }),
+  homeScreen: reatomHomeScreen({ telegram, deviceCache }),
   family: reatomFamily({
     api: familyApi,
     members,
@@ -388,6 +390,7 @@ telegram.followColorScheme(document.documentElement);
 telegram.followPlatform(document.documentElement);
 navigation.start();
 commandSheet.start();
+home.homeScreen.countLaunch().catch(noop);
 opener.launch();
 
 timeZone.keepFollowingDevice();

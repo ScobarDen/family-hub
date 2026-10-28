@@ -3,7 +3,7 @@ import { computed, type Atom, type BooleanAtom } from "@reatom/core";
 import type { Pet } from "@family-hub/contract";
 
 import type { PreparedPhoto } from "@/common/photo";
-import type { Dialogs, Haptics } from "@/common/telegram";
+import type { ClosingConfirmation, Dialogs, Fullscreen, Haptics } from "@/common/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import {
@@ -31,7 +31,7 @@ export type PetsDependencies = {
   pets: PetsModel;
   viewer: () => Viewer;
   isFamilyOwner: () => boolean;
-  telegram: Dialogs & { haptics: Haptics };
+  telegram: Dialogs & Fullscreen & ClosingConfirmation & { haptics: Haptics };
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   photoHint: () => string | undefined;
   tasksOf: (petId: string) => PetTask[];

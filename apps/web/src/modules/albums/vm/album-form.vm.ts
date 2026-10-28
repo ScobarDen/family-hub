@@ -10,13 +10,14 @@ import {
 } from "@family-hub/contract";
 
 import { reatomEditableRecord } from "@/common/form";
-import type { Haptics } from "@/common/telegram";
+import type { ClosingConfirmation, Haptics } from "@/common/telegram";
 
 import type { AlbumsApi } from "../albums.api.ts";
 
 type AlbumFormDependencies = {
   api: AlbumsApi;
   haptics: Pick<Haptics, "success" | "error">;
+  closingConfirmation: ClosingConfirmation;
   onSaved: (saved: Album) => void;
 };
 
@@ -35,12 +36,18 @@ function changeOf(values: AlbumValues, coverPhotoId: string | null): AlbumChange
   return albumChange.parse({ ...values, coverPhotoId });
 }
 
-export function reatomAlbumForm({ api, haptics, onSaved }: AlbumFormDependencies) {
+export function reatomAlbumForm({
+  api,
+  haptics,
+  closingConfirmation,
+  onSaved,
+}: AlbumFormDependencies) {
   const record = reatomEditableRecord({
     name: "albums.record",
     form: (onSubmit) => reatomForm(emptyAlbum, { name: "albums.form", schema, onSubmit }),
     failureMessage: "Не получилось сохранить альбом. Попробуйте ещё раз.",
     haptics,
+    closingConfirmation,
     valuesOf: (album: Album) => ({ title: album.title, description: album.description ?? "" }),
     create: async (values) => api.create(changeOf(values, null)),
     update: async (album: Album, values) =>

@@ -14,7 +14,13 @@ import {
   reatomRollbackFailure,
   type RollbackFailure,
 } from "@/common/state";
-import { type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
+import {
+  type ClosingConfirmation,
+  type Dialogs,
+  type Fullscreen,
+  isConfirmed,
+  type Haptics,
+} from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
 import type { WeightRange } from "../care.config.ts";
@@ -43,7 +49,7 @@ export type CareDependencies = LiveVersion & {
   today: () => string;
   now: () => string;
   timeZone: () => string;
-  telegram: Dialogs & { haptics: Haptics };
+  telegram: Dialogs & Fullscreen & ClosingConfirmation & { haptics: Haptics };
   isReadOnly: () => boolean;
   preparePhoto: (file: Blob) => Promise<PreparedPhoto>;
   // Why photos cannot be added now, from photo-storage; undefined when they can.
@@ -263,6 +269,7 @@ export function reatomCare(dependencies: CareDependencies) {
     ...dependencies,
     photos: photos.attachments,
     haptics: dependencies.telegram.haptics,
+    closingConfirmation: dependencies.telegram,
     onSaved: () => {
       data.reload();
       screen.set("blocks");

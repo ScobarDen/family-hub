@@ -10,7 +10,7 @@ import {
 } from "@family-hub/contract";
 
 import { reatomEditableRecord } from "@/common/form";
-import type { Haptics } from "@/common/telegram";
+import type { ClosingConfirmation, Haptics } from "@/common/telegram";
 import type { Choice } from "@/common/ui";
 
 import type { GoalsApi } from "../goals.api.ts";
@@ -23,6 +23,7 @@ type MovementFormDependencies = {
   today: () => string;
   self: () => string | undefined;
   haptics: Pick<Haptics, "success" | "error">;
+  closingConfirmation: ClosingConfirmation;
   onSaved: (before: Goal, saved: Goal) => void;
   onAdding: (before: Goal, change: MovementChange, shown: Goal) => void;
 };
@@ -114,7 +115,7 @@ function reatomMovementRecord(
   dependencies: MovementFormDependencies,
   goal: Atom<Goal | undefined>,
 ) {
-  const { api, goals, today, haptics, onSaved, onAdding } = dependencies;
+  const { api, goals, today, haptics, closingConfirmation, onSaved, onAdding } = dependencies;
 
   return reatomEditableRecord({
     name: "goals.movementRecord",
@@ -126,6 +127,7 @@ function reatomMovementRecord(
       }),
     failureMessage: "Не получилось сохранить. Баланс цели не может уйти в минус.",
     haptics,
+    closingConfirmation,
     valuesOf,
     create: async (values): Promise<Saved> => {
       const before = goal();

@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import type { FormEvent, ReactNode } from "react";
+import { useEffect, type FormEvent, type ReactNode } from "react";
 
 import { Button } from "./button.view.tsx";
 import { FieldError } from "./field-error.view.tsx";
@@ -8,6 +8,7 @@ type Savable = {
   save: () => void;
   isSaving: () => boolean;
   failure: () => string | undefined;
+  confirmClosingWhileDirty?: () => () => void;
 };
 
 type FormShellProps = {
@@ -21,6 +22,8 @@ type FormShellProps = {
 export const FormShell = reatomComponent(
   ({ model, onCancel, actions, children }: FormShellProps) => {
     const isSaving = model.isSaving();
+
+    useEffect(() => model.confirmClosingWhileDirty?.(), [model]);
 
     function submit(event: FormEvent) {
       event.preventDefault();

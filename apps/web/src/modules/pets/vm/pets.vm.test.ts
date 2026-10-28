@@ -13,7 +13,7 @@ import {
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
-import { fakeDeviceStorage, fakeHaptics } from "@/common/telegram";
+import { fakeDeviceStorage, fakeHaptics, fakeWindow } from "@/common/telegram";
 
 import { createPetsApi } from "../pets.api.ts";
 import type { PetTask } from "../pets.lib.ts";
@@ -168,6 +168,7 @@ function startPets(
     viewer: () => ({ today: "2026-10-11", timeZone: "Europe/Moscow" }),
     isFamilyOwner: () => isFamilyOwner,
     telegram: {
+      ...fakeWindow(),
       showPopup: async () => choices.shift(),
       showAlert: (message) => {
         alerts.push(message);

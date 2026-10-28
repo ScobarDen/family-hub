@@ -16,7 +16,7 @@ import type { DeviceCache } from "@/common/device-cache";
 import type { Viewer } from "@/common/format-date";
 import type { LiveVersion } from "@/common/live-updates";
 import { detached } from "@/common/state";
-import type { Dialogs, Haptics } from "@/common/telegram";
+import type { ClosingConfirmation, Dialogs, Haptics } from "@/common/telegram";
 
 import { detailsOf, type TaskDetails } from "../task-details.lib.ts";
 import {
@@ -51,7 +51,7 @@ type TasksDependencies = SharedLists &
   LiveVersion & {
     api: TasksApi;
     deviceCache: Pick<DeviceCache, "withDeviceCache">;
-    telegram: Pick<Dialogs, "showPopup"> & { haptics: Haptics };
+    telegram: Pick<Dialogs, "showPopup"> & ClosingConfirmation & { haptics: Haptics };
     self: () => string | undefined;
     viewer: () => Viewer;
     onOpenAlbum: (albumId: string) => void;
@@ -98,12 +98,14 @@ function reatomForms(
     taskForm: reatomTaskForm({
       ...dependencies,
       haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
       timeZone: () => dependencies.viewer().timeZone,
       onSaved,
     }),
     subtaskForm: reatomSubtaskForm({
       ...dependencies,
       haptics: dependencies.telegram.haptics,
+      closingConfirmation: dependencies.telegram,
       onSaved,
     }),
   };

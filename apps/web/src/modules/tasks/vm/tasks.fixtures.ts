@@ -14,7 +14,12 @@ import {
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
+import {
+  fakeDeviceStorage,
+  fakeHaptics,
+  type FakeDeviceStorage,
+  fakeWindow,
+} from "@/common/telegram";
 
 import type { TaskRow } from "../task-rows.lib.ts";
 import { createTasksApi } from "../tasks.api.ts";
@@ -281,6 +286,7 @@ export function fakeTelegram(choices: string[] = []) {
   const pending = [...choices];
 
   return {
+    ...fakeWindow(),
     async showPopup() {
       return pending.shift();
     },

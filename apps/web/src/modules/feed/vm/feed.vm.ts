@@ -16,7 +16,7 @@ import type { LiveVersion } from "@/common/live-updates";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
 import { rolledBack } from "@/common/records";
 import { detached, reatomOptimistic, reatomRollbackFailure, readOnly } from "@/common/state";
-import type { Dialogs, Haptics } from "@/common/telegram";
+import type { Dialogs, Fullscreen, Haptics } from "@/common/telegram";
 
 import type { FeedApi } from "../feed.api.ts";
 import {
@@ -41,7 +41,7 @@ export type FeedDependencies = LiveVersion & {
   today: () => string;
   timeZone: () => string;
   onOpen: (target: FeedTarget) => void;
-  telegram: Dialogs & { haptics: Haptics };
+  telegram: Dialogs & Fullscreen & { haptics: Haptics };
 };
 
 export const feedFilters: Array<{ value: FeedFilter; title: string }> = [

@@ -5,7 +5,12 @@ import type { Album, Photo } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
+import {
+  fakeDeviceStorage,
+  fakeHaptics,
+  type FakeDeviceStorage,
+  fakeWindow,
+} from "@/common/telegram";
 
 import { createAlbumsApi } from "../albums.api.ts";
 import { reatomAlbumsScreen } from "./albums.vm.ts";
@@ -121,6 +126,7 @@ function startAlbums({
   const model = reatomAlbumsScreen({
     api: createAlbumsApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: {
+      ...fakeWindow(),
       showPopup: async () => "cancel",
       showAlert: noop,
       haptics,

@@ -1,6 +1,6 @@
 import { isAbort, wrap } from "@reatom/core";
 
-import type { HapticImpact, PopupParams } from "./telegram.types.ts";
+import type { HapticImpact, HomeScreenStatus, PopupParams } from "./telegram.types.ts";
 
 // Which action gets which feedback: docs/haptics.md.
 export type Haptics = {
@@ -9,6 +9,18 @@ export type Haptics = {
   warning: () => void;
   error: () => void;
   impact: (style: HapticImpact) => void;
+};
+
+export type HomeScreen = {
+  addToHomeScreen: () => void;
+  checkHomeScreenStatus: () => Promise<HomeScreenStatus>;
+};
+
+export type Fullscreen = { requestFullscreen: () => void; exitFullscreen: () => void };
+
+export type ClosingConfirmation = {
+  enableClosingConfirmation: () => void;
+  disableClosingConfirmation: () => void;
 };
 
 export type Dialogs = {

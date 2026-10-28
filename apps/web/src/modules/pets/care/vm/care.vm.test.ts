@@ -5,7 +5,7 @@ import type { CareEntry, CommandPhrase, ExpenseSummary, Photo } from "@family-hu
 
 import { createHttpClient } from "@/common/http-client";
 import { PhotoTooLargeError } from "@/common/photo";
-import { fakeHaptics } from "@/common/telegram";
+import { fakeHaptics, fakeWindow } from "@/common/telegram";
 
 import { createCareApi } from "../care.api.ts";
 import { reatomCare } from "./care.vm.ts";
@@ -160,7 +160,12 @@ function startCare(choices: string[] = [], removing?: Removing) {
     today: () => "2026-10-11",
     now: () => "2026-10-11T18:30",
     timeZone: () => "Europe/Moscow",
-    telegram: { showPopup: async () => pending.shift(), showAlert: noop, haptics: fakeHaptics() },
+    telegram: {
+      ...fakeWindow(),
+      showPopup: async () => pending.shift(),
+      showAlert: noop,
+      haptics: fakeHaptics(),
+    },
     isReadOnly: () => isArchived(),
     onDraftSaved: noop,
     preparePhoto: async (file) => {

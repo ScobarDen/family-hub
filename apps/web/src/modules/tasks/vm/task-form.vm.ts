@@ -16,7 +16,7 @@ import {
 } from "@family-hub/contract";
 
 import { reatomEditableRecord, type DraftOpening } from "@/common/form";
-import type { Haptics } from "@/common/telegram";
+import type { ClosingConfirmation, Haptics } from "@/common/telegram";
 import type { AvatarMember, Choice } from "@/common/ui";
 
 import type { TasksApi } from "../tasks.api.ts";
@@ -35,6 +35,7 @@ type TaskFormDependencies = {
   self: () => string | undefined;
   timeZone: () => string;
   haptics: Pick<Haptics, "success" | "error" | "select">;
+  closingConfirmation: ClosingConfirmation;
   onSaved: (task: Task) => void;
   onDraftSaved: (draftId: string) => void;
 };
@@ -116,6 +117,7 @@ function reatomTaskRecord(dependencies: TaskFormDependencies, picks: Picks) {
     form: (onSubmit) => reatomForm(emptyTask, { name: "tasks.taskForm", schema, onSubmit }),
     failureMessage: "Не получилось сохранить дело. Попробуйте ещё раз.",
     haptics: dependencies.haptics,
+    closingConfirmation: dependencies.closingConfirmation,
     valuesOf,
     valuesOfDraft,
     create: async (values, { phrase }) =>

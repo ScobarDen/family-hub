@@ -17,6 +17,7 @@ import type { InvitesModel } from "@/modules/invites";
 import {
   NotificationsBanner,
   type DigestModel,
+  type HomeScreenModel,
   type NotificationsModel,
   type TimeZoneModel,
 } from "@/modules/member-settings";
@@ -49,6 +50,7 @@ export type HomeProps = {
   notifications: NotificationsModel;
   timeZone: TimeZoneModel;
   digest: DigestModel;
+  homeScreen: HomeScreenModel;
   family: FamilyModel;
   invites: InvitesModel;
   pet: PetTabModel;

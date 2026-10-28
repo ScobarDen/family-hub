@@ -27,6 +27,12 @@ function fakeWebApp({ version = "9.0" } = {}) {
     requestWriteAccess: noop,
     shareMessage: noop,
     openTelegramLink: noop,
+    addToHomeScreen: () => calls.push("addToHomeScreen"),
+    checkHomeScreenStatus: (callback) => callback?.("missed"),
+    requestFullscreen: () => calls.push("requestFullscreen"),
+    exitFullscreen: () => calls.push("exitFullscreen"),
+    enableClosingConfirmation: () => calls.push("enableClosingConfirmation"),
+    disableClosingConfirmation: () => calls.push("disableClosingConfirmation"),
     HapticFeedback: {
       impactOccurred: (style) => calls.push(`impact ${style}`),
       notificationOccurred: (type) => calls.push(type),
@@ -135,6 +141,51 @@ describe("haptics", () => {
 
     haptics.success();
     haptics.select();
+
+    expect(calls).toEqual([]);
+  });
+});
+
+describe("home screen, full screen and closing confirmation", () => {
+  test("reach Telegram on a client that has them", async () => {
+    const { webApp, calls } = fakeWebApp({ version: "8.0" });
+    const telegram = reatomTelegram(webApp);
+
+    telegram.addToHomeScreen();
+    telegram.requestFullscreen();
+    telegram.exitFullscreen();
+    telegram.enableClosingConfirmation();
+    telegram.disableClosingConfirmation();
+
+    expect(calls).toEqual([
+      "addToHomeScreen",
+      "requestFullscreen",
+      "exitFullscreen",
+      "enableClosingConfirmation",
+      "disableClosingConfirmation",
+    ]);
+    await expect(telegram.checkHomeScreenStatus()).resolves.toBe("missed");
+  });
+
+  test("stay silent on a client older than 8.0, and the home screen reads as unsupported", async () => {
+    const { webApp, calls } = fakeWebApp({ version: "7.10" });
+    const telegram = reatomTelegram(webApp);
+
+    telegram.addToHomeScreen();
+    telegram.requestFullscreen();
+    telegram.exitFullscreen();
+    telegram.enableClosingConfirmation();
+
+    expect(calls).toEqual(["enableClosingConfirmation"]);
+    await expect(telegram.checkHomeScreenStatus()).resolves.toBe("unsupported");
+  });
+
+  test("leaves closing confirmation off on a client older than 6.2", () => {
+    const { webApp, calls } = fakeWebApp({ version: "6.1" });
+    const telegram = reatomTelegram(webApp);
+
+    telegram.enableClosingConfirmation();
+    telegram.disableClosingConfirmation();
 
     expect(calls).toEqual([]);
   });

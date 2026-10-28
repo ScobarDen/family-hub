@@ -5,7 +5,12 @@ import { recipeChange, type Recipe } from "@family-hub/contract";
 
 import { reatomDeviceCache } from "@/common/device-cache";
 import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, type FakeDeviceStorage, fakeHaptics } from "@/common/telegram";
+import {
+  fakeDeviceStorage,
+  type FakeDeviceStorage,
+  fakeHaptics,
+  fakeWindow,
+} from "@/common/telegram";
 
 import { createRecipesApi } from "../recipes.api.ts";
 import { reatomRecipesScreen } from "./recipes.vm.ts";
@@ -133,6 +138,7 @@ function startRecipes({
   const model = reatomRecipesScreen({
     api: createRecipesApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: {
+      ...fakeWindow(),
       showPopup: async () => popup,
       showAlert(message: string) {
         alerts.push(message);
