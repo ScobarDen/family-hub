@@ -14,7 +14,7 @@ export const NotificationsBanner = reatomComponent(({ model }: NotificationsBann
 
   return (
     <aside className="mx-4 mb-6 flex items-center gap-3 rounded-xl bg-card p-3 android:rounded-2xl">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-white">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-badge-orange text-white">
         <BellOff className="size-5" />
       </span>
       <div className="flex flex-1 flex-col">

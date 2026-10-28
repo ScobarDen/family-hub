@@ -20,7 +20,10 @@ function Tile({
   return (
     <div className="relative size-20 overflow-hidden rounded-lg bg-muted">
       {item.status === "ready" && (
-        <SignedPhoto src={item.photo.urls.thumb} className="size-full object-cover" />
+        <SignedPhoto
+          src={item.photo.urls.thumb}
+          className="size-full rounded-[inherit] object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
+        />
       )}
       {item.status === "uploading" && (
         <LoaderCircle className="absolute inset-0 m-auto animate-spin text-muted-foreground" />

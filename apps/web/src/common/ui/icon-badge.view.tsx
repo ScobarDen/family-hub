@@ -3,14 +3,14 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "./ui.lib.ts";
 
 const tones = {
-  blue: "bg-sky-600",
-  green: "bg-green-600",
-  orange: "bg-orange-600",
-  red: "bg-red-500",
-  violet: "bg-violet-500",
-  teal: "bg-teal-600",
-  pink: "bg-pink-500",
-  gray: "bg-gray-500",
+  blue: "bg-badge-blue",
+  green: "bg-badge-green",
+  orange: "bg-badge-orange",
+  red: "bg-badge-red",
+  violet: "bg-badge-violet",
+  teal: "bg-badge-teal",
+  pink: "bg-badge-pink",
+  gray: "bg-badge-gray",
 } as const;
 
 export type IconTone = keyof typeof tones;

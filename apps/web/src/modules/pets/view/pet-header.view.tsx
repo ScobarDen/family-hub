@@ -18,7 +18,7 @@ function isWide(value: string): boolean {
 export function PetHeader({ card, avatar, onEdit }: PetHeaderProps) {
   return (
     <section className="px-4 pb-7">
-      <div className="overflow-hidden rounded-2xl bg-card">
+      <div className="overflow-hidden rounded-[2rem] bg-card">
         {avatar}
         <div className="flex items-start gap-3 px-4 pt-4 pb-3">
           {/* The screen's title already names the Pet, so the card opens with what it is. */}

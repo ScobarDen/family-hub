@@ -20,7 +20,7 @@ const AvatarImage = reatomComponent(({ src, card, model }: PetAvatarProps & { sr
       <SignedPhoto
         src={src}
         alt={card.name}
-        className="aspect-square w-full rounded-xl object-cover"
+        className="aspect-square w-full rounded-xl object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
       />
       {change !== undefined && (
         <div className="absolute top-2 right-2 flex gap-2 [&_svg]:size-4">

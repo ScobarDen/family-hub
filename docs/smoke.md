@@ -183,7 +183,16 @@ Each item on iOS and Android, once with the system's reduced motion off and once
 - [ ] On a first launch with the cache cleared, Today's blocks come in one after another, 100 ms apart; every other screen's content fades in over its skeleton. A second launch shows everything at once.
 - [ ] A Savings Goal's bar fills from empty when it opens and grows smoothly after a Contribution; reaching Achieved shows «Цель достигнута!» once with a small zoom.
 - [ ] With reduced motion on, nothing slides, scales or blurs: screens, the sheet, bars and blocks only fade, and completed rows fade before they close.
+- [ ] With reduced motion on, a switch in «Настройки» jumps to its new side without sliding; with it off the thumb slides.
 - [ ] On a client without View Transitions (Telegram Desktop on an old WebView, or Safari before 18) every screen swaps at once and nothing breaks.
+
+### Photos and badges
+
+In the light and the dark theme.
+
+- [ ] Every content photo — Album covers, photo strips in the Feed, Albums, a Pet's care and a Recipe, the Pet avatar, round Pet pictures in rows and on Today, photos attached to a form — has the same faint 1px edge, black in light and white in dark, following its corners.
+- [ ] The Pet card's corners run parallel to the avatar's inside it: the card's corner is visibly rounder by the 16px inset.
+- [ ] The notifications banner's bell and every coloured icon badge (Savings Goal covers in the list, the form and the progress card, Settings rows) read clearly white on their colour.
 
 Items for features that are not built yet are skipped until they land.
 

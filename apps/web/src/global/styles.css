@@ -51,6 +51,15 @@
   --section-goals: oklch(0.52 0.15 300);
   --section-albums: oklch(0.52 0.085 200);
   --section-recipes: oklch(0.52 0.1 85);
+  /* Tailwind's 600 step: the step at which a white icon keeps 3:1 on every hue (orange and green fail at 500). */
+  --badge-blue: oklch(0.588 0.158 241.966);
+  --badge-green: oklch(0.627 0.194 149.214);
+  --badge-orange: oklch(0.646 0.222 41.116);
+  --badge-red: oklch(0.577 0.245 27.325);
+  --badge-violet: oklch(0.541 0.281 293.009);
+  --badge-teal: oklch(0.6 0.118 184.704);
+  --badge-pink: oklch(0.592 0.249 0.584);
+  --badge-gray: oklch(0.446 0.03 256.802);
   --safe-area-top: calc(
     var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)
   );
@@ -105,6 +114,14 @@
   --color-section-goals: var(--section-goals);
   --color-section-albums: var(--section-albums);
   --color-section-recipes: var(--section-recipes);
+  --color-badge-blue: var(--badge-blue);
+  --color-badge-green: var(--badge-green);
+  --color-badge-orange: var(--badge-orange);
+  --color-badge-red: var(--badge-red);
+  --color-badge-violet: var(--badge-violet);
+  --color-badge-teal: var(--badge-teal);
+  --color-badge-pink: var(--badge-pink);
+  --color-badge-gray: var(--badge-gray);
   --spacing-safe-top: var(--safe-area-top);
   --spacing-safe-bottom: var(--safe-area-bottom);
   --font-sans: -apple-system, system-ui, "Roboto", "Segoe UI", sans-serif;
