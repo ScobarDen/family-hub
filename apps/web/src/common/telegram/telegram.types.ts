@@ -28,6 +28,15 @@ export type PopupParams = { title?: string; message: string; buttons: PopupButto
 
 export type HapticImpact = "light" | "medium" | "heavy" | "rigid" | "soft";
 
+type StorageCallback<Result> = (error: string | null, result?: Result) => void;
+
+export type DeviceStorage = {
+  setItem(key: string, value: string, callback?: StorageCallback<boolean>): void;
+  getItem(key: string, callback: StorageCallback<string | null>): void;
+  removeItem(key: string, callback?: StorageCallback<boolean>): void;
+  clear(callback?: StorageCallback<boolean>): void;
+};
+
 export type TelegramWebApp = {
   initData: string;
   initDataUnsafe: { start_param?: string };
@@ -44,6 +53,7 @@ export type TelegramWebApp = {
   HapticFeedback: { impactOccurred(style: HapticImpact): void };
   enableVerticalSwipes(): void;
   disableVerticalSwipes(): void;
+  DeviceStorage: DeviceStorage;
   BackButton: TelegramButton;
   SettingsButton: TelegramButton;
   onEvent(event: WebAppEvent, handler: () => void): void;

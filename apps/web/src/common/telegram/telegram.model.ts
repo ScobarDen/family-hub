@@ -15,6 +15,7 @@ const backButtonVersion = "6.1";
 const settingsButtonVersion = "7.0";
 const hapticsVersion = "6.1";
 const verticalSwipesVersion = "7.7";
+const deviceStorageVersion = "9.0";
 
 type PlatformLook = "ios" | "android";
 
@@ -158,6 +159,7 @@ export function reatomTelegram(webApp: TelegramWebApp) {
     // Display-only like the rest of initDataUnsafe: the server reads the signed initData.
     startParam: webApp.initDataUnsafe.start_param,
     canShareMessage: webApp.isVersionAtLeast(shareMessageVersion),
+    deviceStorage: webApp.isVersionAtLeast(deviceStorageVersion) ? webApp.DeviceStorage : undefined,
     backButton: reatomButton(webApp, {
       button: webApp.BackButton,
       version: backButtonVersion,
