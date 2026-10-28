@@ -1,6 +1,6 @@
 # tab-bar
 
-The bottom tab bar and «Разделы». The bar is `Сегодня · slot · microphone · slot · Разделы`: only the two slots are the Member's choice (Дела and Питомцы until they change them), a floating pill on Android and glass on iOS, with the centre free for the microphone (`center`). «Разделы» lists all six modules, the Feed included, the slotted ones in their own group with «Настроить»; it offers «Быстро добавить» and «Семья и настройки». «Настроить» opens the slot setup.
+The bottom tab bar and «Разделы». The bar is `Сегодня · slot · microphone · slot · Разделы`: only the two slots are the Member's choice (Дела and Питомцы until they change them), a floating pill on Android and glass on iOS, with the centre free for the microphone (`center`). Each tab is its icon over its title; the open one also gets a pill behind the icon and a bolder title, so it does not rely on colour. «Разделы» lists all six modules, the Feed included, the slotted ones in their own group with «Настроить»; it offers «Быстро добавить» and «Семья и настройки». «Настроить» opens the slot setup.
 
 ## Injected
 

@@ -78,6 +78,13 @@ Each item on iOS, Android and Telegram Desktop.
 - [ ] With the network throttled, «Сохранить» in a Task form, «Отправить заявку», «Вступить» and «Удалить навсегда» keep their size, show a spinner over an invisible label, and cannot be pressed again until the answer; the screen reader reads them as busy.
 - [ ] «Пригласить в семью» keeps its title and shows a spinner at the row's end while the Invite is made.
 
+### Tab bar
+
+On iOS and Android at 320px wide, in the light and the dark theme.
+
+- [ ] Every tab shows its title under the icon; «Сегодня» and «Разделы» fit whole beside the microphone, and the screen reader reads each tab by that title, the open one as current.
+- [ ] With the screen in greyscale (Accessibility → Colour filters), the open tab still stands out by the pill behind its icon and its bolder title.
+
 ### Announcements
 
 With VoiceOver on iOS and TalkBack on Android.
