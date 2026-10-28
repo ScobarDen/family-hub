@@ -104,6 +104,7 @@ With VoiceOver on iOS and TalkBack on Android.
 - [ ] Uploading photos to an Album reads the count as it grows; the row shows an upload icon, not an empty circle.
 - [ ] A Task's card shows one failure bar when a change is rolled back, and it is read once.
 - [ ] A field error and a form's failure are read politely after the current speech, not cutting it off.
+- [ ] In the Tasks calendar the screen reader reads a day as «вторник, 20 октября, есть дела» (a day without Tasks drops «есть дела»), today also as the current date and the picked day as pressed; it never reads the weekday header or the dot. Days of the next and previous month read as clearly as this month's.
 
 ### Overlays
 

@@ -53,6 +53,19 @@ describe("the calendar", () => {
     expect(felt).toEqual(["select", "select"]);
   });
 
+  test("names each day aloud with its weekday, month and whether anything is on it", async () => {
+    const { model } = startTasks();
+
+    await loaded(model);
+    model.showView("calendar");
+
+    const labels = new Map(model.grid().map(({ date, label }) => [date, label]));
+
+    expect(labels.get("2026-10-20")).toBe("вторник, 20 октября, есть дела");
+    expect(labels.get("2026-10-21")).toBe("среда, 21 октября");
+    expect(labels.get("2026-11-01")).toBe("воскресенье, 1 ноября");
+  });
+
   test("remembers the list or the calendar for the next opening", () => {
     const first = startTasks();
 

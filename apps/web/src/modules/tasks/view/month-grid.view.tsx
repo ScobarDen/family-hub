@@ -31,6 +31,7 @@ export const MonthGrid = reatomComponent(({ model }: { model: TasksScreenModel }
           {weekdays.map(({ title, isWeekend }) => (
             <span
               key={title}
+              aria-hidden
               className={cn(
                 "pb-1 text-xs text-muted-foreground",
                 isWeekend && "font-semibold text-foreground",

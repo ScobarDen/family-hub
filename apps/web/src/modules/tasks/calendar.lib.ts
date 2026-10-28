@@ -37,6 +37,7 @@ export type DayCell = {
   isInMonth: boolean;
   isToday: boolean;
   hasItems: boolean;
+  label: string;
 };
 
 const daysPerWeek = 7;
@@ -110,13 +111,16 @@ export function monthGrid(
     date = date.add({ days: 1 })
   ) {
     const iso = date.toString();
+    const hasItems = busy.has(iso);
+    const name = date.toLocaleString("ru-RU", { weekday: "long", day: "numeric", month: "long" });
 
     cells.push({
       date: iso,
       day: date.day,
       isInMonth: iso.startsWith(month),
       isToday: iso === today,
-      hasItems: busy.has(iso),
+      hasItems,
+      label: hasItems ? `${name}, есть дела` : name,
     });
   }
 
