@@ -3,6 +3,8 @@ import { beforeEach, expect, test, vi } from "vite-plus/test";
 
 import type { Photo } from "@family-hub/contract";
 
+import { HttpError } from "@/common/http-client";
+import { reatomRollbackFailure } from "@/common/state";
 import { fakeHaptics, fakeWindow } from "@/common/telegram";
 
 import { reatomPhotoViewer } from "./photo-viewer.vm.ts";
@@ -18,20 +20,29 @@ function photoOf(id: string): Photo {
 
 const photos = [photoOf("photo-1"), photoOf("photo-2")];
 
-function startViewer() {
+function startViewer({
+  deletePhoto = async () => ({}),
+}: { deletePhoto?: () => Promise<unknown> } = {}) {
   const frame = fakeWindow();
+  const haptics = fakeHaptics();
+  const failure = reatomRollbackFailure("test.failure", haptics);
   const model = reatomPhotoViewer({
-    api: { deletePhoto: async () => ({}) },
+    api: { deletePhoto },
     telegram: {
       ...frame,
       showPopup: async () => "confirm",
       showAlert: noop,
-      haptics: fakeHaptics(),
+      haptics,
     },
     onDeleted: noop,
+    failure,
   });
 
-  return { model, frame };
+  return { model, frame, failure: failure.failure, felt: haptics.felt };
+}
+
+function positionOf(model: ReturnType<typeof startViewer>["model"]) {
+  return model.current()?.position;
 }
 
 beforeEach(() => {
@@ -64,3 +75,49 @@ test("leaves full screen when the last photo is deleted", async () => {
     expect(frame.calls).toEqual(["requestFullscreen", "exitFullscreen"]);
   });
 });
+
+test("drops a deleted photo before the server answers", async () => {
+  const { model, failure, felt } = startViewer({ deletePhoto: async () => new Promise(noop) });
+
+  model.open(photos, "photo-1");
+  model.remove();
+
+  await vi.waitFor(() => {
+    expect(model.current()?.photo?.id).toBe("photo-2");
+  });
+  expect(positionOf(model)).toBe("1 / 1");
+  expect(failure()).toBeUndefined();
+  expect(felt).toEqual(["warning"]);
+});
+
+test.each([
+  {
+    trouble: "refused",
+    error: new HttpError(500),
+    said: "Не получилось удалить фото. Попробуйте ещё раз.",
+  },
+  {
+    trouble: "unreachable",
+    error: new TypeError("Failed to fetch"),
+    said: "Нет связи, не сохранилось",
+  },
+])(
+  "puts a photo back with the failure bar and an error pulse when $trouble",
+  async ({ error, said }) => {
+    const { model, failure, felt } = startViewer({
+      deletePhoto: async () => {
+        throw error;
+      },
+    });
+
+    model.open(photos, "photo-1");
+    model.remove();
+
+    await vi.waitFor(() => {
+      expect(failure()).toBe(said);
+    });
+    expect(model.current()?.photo?.id).toBe("photo-1");
+    expect(positionOf(model)).toBe("1 / 2");
+    expect(felt).toEqual(["warning", "error"]);
+  },
+);

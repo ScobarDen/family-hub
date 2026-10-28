@@ -4,6 +4,7 @@ import {
   computed,
   reatomBoolean,
   withAsyncData,
+  withRollback,
   wrap,
   type Atom,
 } from "@reatom/core";
@@ -12,6 +13,7 @@ import { albumList } from "@family-hub/contract";
 
 import type { DeviceCache } from "@/common/device-cache";
 import type { LiveVersion } from "@/common/live-updates";
+import { rolledBackById } from "@/common/records";
 
 import type { AlbumsApi } from "./albums.api.ts";
 
@@ -36,7 +38,10 @@ export function reatomAlbumsData({
     return wrap(api.list());
   }, "albums.list").extend(withAsyncData());
 
-  list.data.extend(deviceCache.withDeviceCache({ key: "albums", schema: albumList, version: 1 }));
+  list.data.extend(
+    deviceCache.withDeviceCache({ key: "albums", schema: albumList, version: 1 }),
+    withRollback({ onRollback: rolledBackById }),
+  );
 
   return {
     isAllShown,

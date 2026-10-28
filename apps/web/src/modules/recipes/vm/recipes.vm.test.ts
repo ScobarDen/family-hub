@@ -400,6 +400,12 @@ function cooksOf(model: Model) {
   return screen.kind === "recipe" ? screen.recipe.cooks.length : undefined;
 }
 
+function tagNames(model: Model) {
+  const screen = model.screen();
+
+  return screen.kind === "list" ? screen.tags.map(({ name }) => name) : [];
+}
+
 const writes = [
   {
     name: "Cooked",
@@ -436,6 +442,20 @@ const writes = [
     observe: titles,
     before: ["Борщ", "Лазанья"],
     after: ["Борщ"],
+    felt: ["warning"],
+  },
+  {
+    name: "deleting a tag",
+    request: "DELETE /api/recipe-tags/tag-1",
+    act: async (model: Model) => {
+      await vi.waitFor(() => {
+        expect(tagNames(model)).toEqual(["Паста"]);
+      });
+      model.removeTag("tag-1");
+    },
+    observe: tagNames,
+    before: ["Паста"],
+    after: [],
     felt: ["warning"],
   },
 ];
@@ -494,7 +514,9 @@ describe("launching from the device cache", () => {
     const device = fakeDeviceStorage();
 
     await listed(startRecipes({ device }).model);
-    await settle();
+    await vi.waitFor(() => {
+      expect(device.items.has("recipes")).toBe(true);
+    });
     const { model, answer } = relaunch(device);
 
     await vi.waitFor(() => {
@@ -510,9 +532,10 @@ describe("launching from the device cache", () => {
     const device = fakeDeviceStorage();
 
     await listed(startRecipes({ device }).model);
-    await settle();
+    await vi.waitFor(() => {
+      expect(device.items.get("recipes")).toContain("Лазанья");
+    });
 
-    expect(device.items.get("recipes")).toContain("Лазанья");
     expect(device.items.get("recipes")).not.toContain(lasagna.method);
   });
 
@@ -525,7 +548,7 @@ describe("launching from the device cache", () => {
     await vi.waitFor(() => {
       expect(titles(model)).toEqual(["Лазанья"]);
     });
-    await settle();
+    await sleep(0);
     const relaunched = relaunch(device);
 
     await vi.waitFor(() => {
@@ -533,9 +556,3 @@ describe("launching from the device cache", () => {
     });
   });
 });
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
-}

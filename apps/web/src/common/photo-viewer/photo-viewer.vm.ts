@@ -1,8 +1,16 @@
-import { action, atom, computed, withAsync, withChangeHook, wrap } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  withAsync,
+  withChangeHook,
+  withRollback,
+  wrap,
+} from "@reatom/core";
 
 import type { Photo } from "@family-hub/contract";
 
-import { detached } from "@/common/state";
+import { detached, reatomOptimistic, type RollbackFailure } from "@/common/state";
 import {
   type Confirmation,
   type Dialogs,
@@ -18,6 +26,7 @@ export type PhotoViewerDependencies = {
   // A module's own action on the photo shown, such as making it a Pet's avatar.
   onPick?: (photoId: string) => void;
   onDeleted: () => void;
+  failure: RollbackFailure;
   sharing?: { isAvailable: () => boolean; share: (photoId: string) => Promise<unknown> };
 };
 
@@ -62,29 +71,29 @@ function reatomPhotoRemoval(
   dependencies: PhotoViewerDependencies,
   opened: ReturnType<typeof atom<Opened | undefined>>,
 ) {
-  return action(async () => {
-    const current = opened();
-    const photo = photoAt(current);
+  return reatomOptimistic(
+    async () => {
+      const current = opened();
+      const photo = photoAt(current);
 
-    if (current === undefined || photo === undefined) {
-      return;
-    }
+      if (current === undefined || photo === undefined) {
+        return;
+      }
 
-    const isSure = await wrap(isConfirmed(dependencies.telegram, deleteQuestion));
-    const isDeleted =
-      isSure &&
-      (await wrap(
-        didSucceedOrAlert(dependencies.telegram, {
-          failure: "Не получилось удалить фото. Попробуйте ещё раз.",
-          call: dependencies.api.deletePhoto(photo.id),
-        }),
-      ));
+      if (!(await wrap(isConfirmed(dependencies.telegram, deleteQuestion)))) {
+        return;
+      }
 
-    if (isDeleted) {
-      dependencies.onDeleted();
       opened.set(without(current, photo.id));
-    }
-  }, "photoViewer.remove").extend(withAsync());
+      await wrap(dependencies.api.deletePhoto(photo.id));
+      dependencies.onDeleted();
+    },
+    {
+      name: "photoViewer.remove",
+      failure: dependencies.failure,
+      refusal: "Не получилось удалить фото. Попробуйте ещё раз.",
+    },
+  );
 }
 
 function reatomPhotoSharing(
@@ -107,8 +116,13 @@ function reatomPhotoSharing(
   }, "photoViewer.share").extend(withAsync());
 }
 
+// A failed deletion brings the photo back only to a viewer nobody has moved or closed since.
 function reatomOpened(telegram: Fullscreen) {
   return atom<Opened | undefined>(undefined, "photoViewer.opened").extend(
+    withRollback({
+      onRollback: ({ beforeState, transactionState, currentState }) =>
+        currentState === transactionState ? beforeState : currentState,
+    }),
     withChangeHook((current, previous) => {
       if (previous === undefined && current !== undefined) {
         telegram.requestFullscreen();

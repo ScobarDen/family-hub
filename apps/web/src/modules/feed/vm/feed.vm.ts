@@ -271,6 +271,7 @@ export function reatomFeed(dependencies: FeedDependencies) {
     viewer: reatomPhotoViewer({
       ...dependencies,
       onDeleted: pages.reload,
+      failure,
     }),
   };
 }

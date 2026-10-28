@@ -61,7 +61,23 @@ type Launch = {
   answered?: Promise<void>;
   photosAnswered?: Promise<void>;
   isShareUnsupported?: boolean;
+  popup?: string;
+  deletion?: "held" | "failing" | "unreachable";
 };
+
+async function deletionAnswer(deletion: Launch["deletion"]): Promise<Response> {
+  if (deletion === "held") {
+    await new Promise(noop);
+  }
+
+  if (deletion === "unreachable") {
+    throw new TypeError("Failed to fetch");
+  }
+
+  return deletion === "failing"
+    ? Response.json({}, { status: 500 })
+    : Response.json({ status: "deleted" });
+}
 
 function startAlbums({
   uploads = [],
@@ -71,6 +87,8 @@ function startAlbums({
   answered = Promise.resolve(),
   photosAnswered = Promise.resolve(),
   isShareUnsupported,
+  popup,
+  deletion,
 }: Launch = {}) {
   const requests: string[] = [];
   const shared: string[] = [];
@@ -82,7 +100,11 @@ function startAlbums({
   let release: () => void = noop;
   let gate: Promise<void> = Promise.resolve();
 
-  async function read(url: URL): Promise<Response> {
+  async function read(url: URL, init: RequestInit): Promise<Response> {
+    if (init.method === "DELETE") {
+      return deletionAnswer(deletion);
+    }
+
     if (url.pathname === "/api/photos") {
       await photosAnswered;
 
@@ -121,7 +143,7 @@ function startAlbums({
       return answerOf(pendingAdditions.shift() ?? "ok", () => albumOf("album-1"));
     }
 
-    return read(url);
+    return read(url, init);
   }
 
   const haptics = fakeHaptics();
@@ -129,7 +151,7 @@ function startAlbums({
     api: createAlbumsApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: {
       ...fakeWindow(),
-      showPopup: async () => "cancel",
+      showPopup: async () => popup ?? "cancel",
       showAlert: noop,
       haptics,
       canShareMessage: isShareUnsupported !== true,
@@ -218,6 +240,42 @@ describe("opening an Album", () => {
 
     expect(started.slides).toEqual(["forward"]);
   });
+});
+
+describe("deleting an Album", () => {
+  const albums = [albumOf("album-1"), albumOf("album-2")];
+
+  test("drops it from the list before the server answers", async () => {
+    const started = startAlbums({ albums, popup: "album-only", deletion: "held" });
+
+    await openAlbum(started, "album-1");
+    started.model.remove();
+    await vi.waitFor(() => {
+      expect(titles(started.model)).toEqual(["Альбом album-2"]);
+    });
+
+    expect(started.model.failure()).toBeUndefined();
+    expect(started.felt).toEqual(["warning"]);
+  });
+
+  test.each([
+    { deletion: "failing", said: "Не получилось удалить альбом. Попробуйте ещё раз." },
+    { deletion: "unreachable", said: "Нет связи, не сохранилось" },
+  ] as const)(
+    "puts it back with the failure bar and an error pulse when $deletion",
+    async ({ deletion, said }) => {
+      const started = startAlbums({ albums, popup: "with-photos", deletion });
+
+      await openAlbum(started, "album-1");
+      started.model.remove();
+      await vi.waitFor(() => {
+        expect(started.model.failure()).toBe(said);
+      });
+
+      expect(titles(started.model)).toEqual(["Альбом album-1", "Альбом album-2"]);
+      expect(started.felt).toEqual(["warning", "error"]);
+    },
+  );
 });
 
 describe("all photos", () => {
@@ -419,7 +477,9 @@ describe("launching from the device cache", () => {
     await vi.waitFor(() => {
       expect(titles(first.model)).toHaveLength(2);
     });
-    await settle();
+    await vi.waitFor(() => {
+      expect(device.items.has("albums")).toBe(true);
+    });
     context.reset();
     let answer = noop;
     const { model } = startAlbums({
@@ -439,9 +499,3 @@ describe("launching from the device cache", () => {
     });
   });
 });
-
-async function settle(): Promise<void> {
-  await new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
-}

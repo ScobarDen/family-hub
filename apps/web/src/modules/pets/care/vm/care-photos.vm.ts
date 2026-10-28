@@ -5,7 +5,7 @@ import { careEntryPhotoMax, type Photo } from "@family-hub/contract";
 import type { PreparedPhoto } from "@/common/photo";
 import { reatomPhotoAttachments } from "@/common/photo-attachments";
 import { reatomPhotoViewer } from "@/common/photo-viewer";
-import { readOnly } from "@/common/state";
+import { readOnly, type RollbackFailure } from "@/common/state";
 import type { Dialogs, Fullscreen, Haptics } from "@/common/telegram";
 
 import type { CareApi } from "../care.api.ts";
@@ -19,6 +19,7 @@ type CarePhotosDependencies = {
   photoHint: () => string | undefined;
   onMakeAvatar: (photoId: string) => void;
   isReadOnly: () => boolean;
+  failure: RollbackFailure;
 };
 
 export function reatomCarePhotos(dependencies: CarePhotosDependencies, data: CareData) {

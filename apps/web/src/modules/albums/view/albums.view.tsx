@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
 import {
+  FailureBar,
   LoadState,
   Revealed,
   SkeletonPhotoGrid,
@@ -67,5 +68,10 @@ function contentOf(model: AlbumsScreenModel, screen: AlbumsScreen): ReactNode {
 export const Albums = reatomComponent(({ model }: AlbumsProps) => {
   const screen = model.screen();
 
-  return <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(model, screen)}</Revealed>;
+  return (
+    <>
+      <Revealed isSkeleton={screen.kind === "loading"}>{contentOf(model, screen)}</Revealed>
+      <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />
+    </>
+  );
 }, "Albums");

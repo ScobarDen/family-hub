@@ -62,6 +62,7 @@ function reatomTags(
 
   tags.data.extend(
     deviceCache.withDeviceCache({ key: "recipe-tags", schema: recipeTagList, version: 1 }),
+    withRollback({ onRollback: rolledBackById }),
   );
 
   return tags;

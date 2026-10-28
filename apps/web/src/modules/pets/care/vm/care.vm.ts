@@ -272,7 +272,8 @@ function reatomScreen(screen: Atom<CareScreen["kind"]>, form: CareFormModel) {
 export function reatomCare(dependencies: CareDependencies) {
   const data = reatomCareData(dependencies);
   const screen = atom<CareScreen["kind"]>("blocks", "care.screenKind");
-  const photos = reatomCarePhotos(dependencies, data);
+  const failure = reatomRollbackFailure("care.failure", dependencies.telegram.haptics);
+  const photos = reatomCarePhotos({ ...dependencies, failure }, data);
   const form = reatomCareForm({
     ...dependencies,
     photos: photos.attachments,
@@ -290,7 +291,6 @@ export function reatomCare(dependencies: CareDependencies) {
     screen,
   };
   const weightRange = atom<WeightRange>("quarter", "care.weightRange");
-  const failure = reatomRollbackFailure("care.failure", dependencies.telegram.haptics);
   const remove = reatomRemove(sources, failure);
 
   return {
