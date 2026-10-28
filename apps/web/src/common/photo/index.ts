@@ -7,3 +7,4 @@ export {
   resolvedUrls,
   type PreparedPhoto,
 } from "./photo.lib.ts";
+export { SignedPhoto } from "./photo.view.tsx";

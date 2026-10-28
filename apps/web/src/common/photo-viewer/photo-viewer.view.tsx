@@ -1,7 +1,8 @@
 import { reatomComponent } from "@reatom/react";
-import { ChevronLeft, ChevronRight, Trash2, X, type LucideIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, ImageOff, Trash2, X, type LucideIcon } from "lucide-react";
 import { useRef, type PointerEvent } from "react";
 
+import { SignedPhoto } from "@/common/photo";
 import { Button } from "@/common/ui";
 
 import type { PhotoViewerModel } from "./photo-viewer.vm.ts";
@@ -111,7 +112,11 @@ export const PhotoViewer = reatomComponent(({ model, pickAction }: ViewerProps) 
         onPointerDown={swipe.onPointerDown}
         onPointerUp={swipe.onPointerUp}
       >
-        <img src={photo.urls.full} alt="" className="max-h-full max-w-full object-contain" />
+        <SignedPhoto
+          src={photo.urls.full}
+          className="max-h-full max-w-full object-contain"
+          fallback={<ImageOff aria-hidden className="size-12 text-white/50" />}
+        />
         <StepButtons model={model} />
       </div>
     </div>

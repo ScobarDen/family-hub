@@ -1,5 +1,6 @@
 import type { Photo } from "@family-hub/contract";
 
+import { SignedPhoto } from "@/common/photo";
 import { cn } from "@/common/ui";
 
 type PhotoThumbsProps = {
@@ -39,9 +40,8 @@ export function PhotoThumbs({
             onOpen(photo.id);
           }}
         >
-          <img
+          <SignedPhoto
             src={photo.urls[resolution]}
-            alt=""
             loading="lazy"
             className="size-full object-cover"
           />

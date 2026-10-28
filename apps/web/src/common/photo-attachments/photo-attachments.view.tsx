@@ -1,6 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
 
+import { SignedPhoto } from "@/common/photo";
 import { Button, ChipGroup, FilePick } from "@/common/ui";
 
 import type { Attachment, PhotoAttachmentsModel } from "./photo-attachments.vm.ts";
@@ -11,7 +12,7 @@ function Tile({ item, onRemove }: { item: Attachment; onRemove: () => void }) {
   return (
     <div className="relative size-20 overflow-hidden rounded-lg bg-muted">
       {item.status === "ready" && (
-        <img src={item.photo.urls.thumb} alt="" className="size-full object-cover" />
+        <SignedPhoto src={item.photo.urls.thumb} className="size-full object-cover" />
       )}
       {item.status === "uploading" && (
         <LoaderCircle className="absolute inset-0 m-auto animate-spin text-muted-foreground" />

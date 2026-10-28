@@ -78,6 +78,7 @@ Each item on iOS and Android; Telegram Desktop and Web keep no cache between lau
 - [ ] A launch the next day shows «Сделать сегодня» as a skeleton until the new Today arrives, while «Впереди» and the tiles show at once.
 - [ ] Opening an Invite link into another Family goes straight to the invitation, without the old Family's shell.
 - [ ] After leaving the Family (or being removed), the next launch shows the stranger screen without the old Family's data.
+- [ ] A launch from a cache older than the photo links' lifetime (or with a photo link edited to fail in DevTools) shows a same-size placeholder in place of every photo — thumbs, Album covers, the Pet avatar, the viewer — never a broken icon or a shifted row; fresh data brings the photos back.
 
 Items for features that are not built yet are skipped until they land.
 

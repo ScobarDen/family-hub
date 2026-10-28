@@ -1,5 +1,6 @@
 import { Images } from "lucide-react";
 
+import { SignedPhoto } from "@/common/photo";
 import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/common/ui";
 
 import type { AlbumItem } from "../albums.lib.ts";
@@ -26,9 +27,8 @@ function albumsOf({ model, albums }: AlbumListProps) {
                     <Images className="size-5 text-muted-foreground" />
                   </span>
                 ) : (
-                  <img
+                  <SignedPhoto
                     src={album.cover}
-                    alt=""
                     className="size-12 rounded-lg object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
                   />
                 )
