@@ -234,7 +234,9 @@ function reatomButton(
         return noop;
       }
 
-      button.onClick(onClick);
+      const handler = wrap(onClick);
+
+      button.onClick(handler);
 
       const visibility = effect(() => {
         if (isVisible()) {
@@ -246,7 +248,7 @@ function reatomButton(
 
       return () => {
         visibility.unsubscribe();
-        button.offClick(onClick);
+        button.offClick(handler);
         button.hide();
       };
     },
@@ -268,7 +270,9 @@ function reatomBottomButton(
         return noop;
       }
 
-      button.onClick(onClick);
+      const handler = wrap(onClick);
+
+      button.onClick(handler);
 
       const shown = effect(() => {
         const current = state();
@@ -290,7 +294,7 @@ function reatomBottomButton(
 
       return () => {
         shown.unsubscribe();
-        button.offClick(onClick);
+        button.offClick(handler);
         button.hide();
       };
     },

@@ -1,4 +1,4 @@
-import { atom, computed, context, noop, sleep, withAsyncData, wrap } from "@reatom/core";
+import { atom, computed, context, noop, withAsyncData, wrap } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { SlotModule } from "@family-hub/contract";
@@ -18,20 +18,21 @@ function startPrefetch(slots: SlotModule[] = ["goals", "pet"]) {
     }, `test.${name}`).extend(withAsyncData()).data;
   }
 
+  const screens = {
+    tasks: screenOf("tasks"),
+    pet: screenOf("pet"),
+    goals: screenOf("goals"),
+    albums: screenOf("albums"),
+    recipes: screenOf("recipes"),
+  };
   const prefetch = reatomPrefetch({
     isSignedIn: () => signedIn(),
     slots: () => slots,
     today: screenOf("today"),
-    screens: {
-      tasks: screenOf("tasks"),
-      pet: screenOf("pet"),
-      goals: screenOf("goals"),
-      albums: screenOf("albums"),
-      recipes: screenOf("recipes"),
-    },
+    screens,
   });
 
-  return { prefetch, signedIn, loaded };
+  return { prefetch, signedIn, loaded, screens };
 }
 
 beforeEach(() => {
@@ -40,16 +41,19 @@ beforeEach(() => {
 
 describe("prefetching after sign-in", () => {
   test("loads Today and both tab-bar slots once the Member is signed in", async () => {
-    const { prefetch, signedIn, loaded } = startPrefetch();
+    const { prefetch, signedIn, loaded, screens } = startPrefetch();
 
     prefetch().catch(noop);
-    await sleep(0);
-    expect(loaded).toEqual([]);
+    screens.tasks();
+    await vi.waitFor(() => {
+      expect(loaded).toContain("tasks");
+    });
+    expect(loaded).toEqual(["tasks"]);
 
     signedIn.set(true);
 
     await vi.waitFor(() => {
-      expect(loaded.toSorted()).toEqual(["goals", "pet", "today"]);
+      expect(loaded.toSorted()).toEqual(["goals", "pet", "tasks", "today"]);
     });
   });
 

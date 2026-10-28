@@ -156,12 +156,15 @@ function renewOnReturn({ page, session, request }: Renewal): void {
     session.token.set(renewed.token);
   }, "httpClient.renew").extend(withAsync());
 
-  page.addEventListener("visibilitychange", () => {
-    if (page.visibilityState === "visible" && session.isStale() && renew.pending() === 0) {
-      // A renewal that fails on the network is tried again the next time the app comes back.
-      renew().catch(noop);
-    }
-  });
+  page.addEventListener(
+    "visibilitychange",
+    wrap(() => {
+      if (page.visibilityState === "visible" && session.isStale() && renew.pending() === 0) {
+        // A renewal that fails on the network is tried again the next time the app comes back.
+        renew().catch(noop);
+      }
+    }),
+  );
 }
 
 export function createHttpClient(options: HttpClientOptions) {
