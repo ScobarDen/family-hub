@@ -22,7 +22,7 @@ export function PetHeader({ card, avatar, onEdit }: PetHeaderProps) {
         {avatar}
         <div className="flex items-start gap-3 px-4 pt-4 pb-3">
           {/* The screen's title already names the Pet, so the card opens with what it is. */}
-          <p className="min-w-0 flex-1 self-center text-[1.0625rem] font-medium">{card.subtitle}</p>
+          <p className="min-w-0 flex-1 self-center text-headline font-medium">{card.subtitle}</p>
           {onEdit !== undefined && (
             <Button size="icon" variant="ghost" aria-label="Изменить" onClick={onEdit}>
               <Pencil />
@@ -36,7 +36,7 @@ export function PetHeader({ card, avatar, onEdit }: PetHeaderProps) {
                 key={fact.label}
                 className={cn("flex min-w-0 flex-col gap-0.5", isWide(fact.value) && "col-span-2")}
               >
-                <dt className="text-[0.8125rem] text-muted-foreground">{fact.label}</dt>
+                <dt className="text-footnote text-muted-foreground">{fact.label}</dt>
                 <dd className="break-words tabular-nums">{fact.value}</dd>
               </div>
             ))}

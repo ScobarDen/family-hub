@@ -1,7 +1,14 @@
 import { batch } from "@reatom/core";
 import { clsx, type ClassValue } from "clsx";
 import { addTransitionType, startTransition, useEffect, useRef, type RefObject } from "react";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// Without the scale tailwind-merge takes `text-footnote` for a colour and drops `text-foreground` beside it.
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: { text: ["tab-label", "footnote", "subhead", "headline", "value", "title", "figure"] },
+  },
+});
 
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));

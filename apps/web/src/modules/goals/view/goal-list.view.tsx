@@ -39,8 +39,8 @@ export const GoalList = reatomComponent(
     <SectionLayout
       summary={
         <div className="flex flex-col gap-0.5 px-5 pb-4">
-          <span className="text-xl leading-tight font-semibold">{screen.total}</span>
-          <span className="text-[0.9375rem] text-muted-foreground">
+          <span className="text-figure tracking-tight">{screen.total}</span>
+          <span className="text-subhead text-muted-foreground">
             Накоплено в общих целях и ваших личных, без закрытых
           </span>
         </div>

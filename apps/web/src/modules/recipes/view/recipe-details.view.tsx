@@ -78,9 +78,7 @@ export const RecipeDetails = reatomComponent((props: DetailsProps) => {
                 model.viewer.open(recipe.photos, photoId);
               }}
             />
-            <p className="px-5 pb-4 text-[0.9375rem] text-muted-foreground">
-              {recipe.cookedSummary}
-            </p>
+            <p className="px-5 pb-4 text-subhead text-muted-foreground">{recipe.cookedSummary}</p>
           </>
         }
         action={<CookForm model={model} />}

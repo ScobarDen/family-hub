@@ -94,6 +94,16 @@ On iOS and Android at 320px wide, with a Pet, an Album and a Recipe tag each nam
 - [ ] On Tasks, «Список · Календарь» and «Все · Мои» stay whole on screen; «Все · Мои» moves to a second row on the right when they do not fit on one.
 - [ ] A Pet's card with month spending of «12 345 ₽» shows the figures in two columns, never splitting a number across lines; at 375px wide they are three columns again.
 
+### Type scale
+
+On iOS and Android at 320px and 375px wide, in the light and the dark theme.
+
+- [ ] Every screen's title and the full-screen notices (the stranger screen, an Invite, a lost session) share one size.
+- [ ] Goals' total, a Pet's month spending and its last weight show in one large figure size; the Goals total fits on one line above its description.
+- [ ] A Pet's card, Today's tiles and a Savings Goal's «… из …» keep their figures as before, with nothing wrapping that did not wrap.
+- [ ] Section headers, row subtitles, the Tasks calendar and agenda, the tab bar labels and the digest preview look as before.
+- [ ] With the network throttled, the skeleton lines of a section's rows and of the Pets, Goals, Recipes and Albums heads sit at the height of the text that replaces them, without the layout jumping.
+
 ### Announcements
 
 With VoiceOver on iOS and TalkBack on Android.

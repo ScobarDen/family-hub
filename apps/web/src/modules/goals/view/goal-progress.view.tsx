@@ -17,7 +17,7 @@ export function GoalProgress({ goal }: { goal: GoalDetails }) {
     <div className="flex flex-col gap-2 px-4 py-3">
       <div className="flex items-center gap-3">
         <IconBadge icon={goalIcons[goal.icon]} tone={goal.color} />
-        <span className="text-xl leading-tight font-semibold">{goal.subtitle}</span>
+        <span className="text-value font-semibold">{goal.subtitle}</span>
       </div>
       <div
         role="progressbar"

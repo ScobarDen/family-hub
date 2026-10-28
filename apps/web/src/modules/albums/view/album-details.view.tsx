@@ -24,7 +24,7 @@ const coverAction = { label: "Сделать обложкой", icon: ImageUp };
 // Without Photo Storage the hint takes the button's place and says why.
 function summaryOf({ album }: DetailsProps, hint: string | undefined) {
   return (
-    <div className="flex flex-col gap-1 px-5 pb-4 text-[0.9375rem]">
+    <div className="flex flex-col gap-1 px-5 pb-4 text-subhead">
       <span>{album.subtitle}</span>
       {album.description !== null && (
         <span className="text-muted-foreground">{album.description}</span>

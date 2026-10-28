@@ -30,13 +30,13 @@ const DigestTime = reatomComponent(
 const DigestPreview = reatomComponent(
   ({ model }: DigestProps) => (
     <div className="border-t border-border px-4 pt-3 pb-4 pl-14">
-      <div className="flex max-w-72 flex-col gap-1 rounded-2xl rounded-bl-md bg-secondary px-3.5 py-2.5 text-[0.9375rem]">
+      <div className="flex max-w-72 flex-col gap-1 rounded-2xl rounded-bl-md bg-secondary px-3.5 py-2.5 text-subhead">
         <span className="font-medium">Сводка на сегодня</span>
         <span>Просрочено: что не успели раньше</span>
         <span>Сегодня: дела и дни рождения</span>
         <span className="self-end text-xs text-muted-foreground">{model.time()}</span>
       </div>
-      <p className="pt-2 text-[0.8125rem] text-muted-foreground">
+      <p className="pt-2 text-footnote text-muted-foreground">
         В день, когда нечего сказать, бот промолчит
       </p>
     </div>

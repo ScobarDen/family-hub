@@ -30,7 +30,7 @@ function SectionRows({ model, rows }: { model: SectionsModel; rows: SectionRow[]
 const QuickAdds = reatomComponent(
   ({ model }: { model: SectionsModel }) => (
     <section className="flex flex-col gap-2 px-4 pb-7">
-      <h2 className="px-1 text-[0.9375rem] font-semibold tracking-tight">Быстро добавить</h2>
+      <h2 className="px-1 text-subhead font-semibold tracking-tight">Быстро добавить</h2>
       <div className="flex flex-wrap gap-2">
         {model.quickAdds().map(({ title, label, target }) => (
           <Chip

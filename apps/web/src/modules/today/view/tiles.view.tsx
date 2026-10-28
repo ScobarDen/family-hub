@@ -26,13 +26,13 @@ export const Tiles = reatomComponent(
             }}
           >
             {picture === undefined ? icon : <RoundPicture src={picture} fallback={icon} />}
-            <span className="w-full text-[0.8125rem] font-medium break-words hyphens-auto">
+            <span className="w-full text-footnote font-medium break-words hyphens-auto">
               {title}
             </span>
             <span
               aria-hidden={value === undefined}
               className={cn(
-                "text-xl leading-none font-semibold",
+                "text-value leading-none font-semibold",
                 isAlert ? "text-destructive-text" : value === undefined && "text-muted-foreground",
               )}
             >

@@ -19,10 +19,10 @@ export type GoalsProps = { model: GoalsScreenModel };
 
 const summary = (
   <div className="flex flex-col gap-0.5 px-5 pb-4">
-    <span className="flex h-[1.5625rem] items-center">
+    <span className="flex h-lh items-center text-figure">
       <Skeleton className="h-5 w-28" />
     </span>
-    <span className="flex h-[calc(0.9375rem*1.5)] items-center">
+    <span className="flex h-lh items-center text-subhead">
       <Skeleton className="h-3.5 w-4/5" />
     </span>
   </div>

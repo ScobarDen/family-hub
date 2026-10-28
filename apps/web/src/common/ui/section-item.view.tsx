@@ -85,7 +85,7 @@ function bodyOf(
           {title}
         </span>
         {subtitle !== undefined && (
-          <span className="text-[0.8125rem] leading-snug whitespace-pre-line text-muted-foreground">
+          <span className="text-footnote leading-snug whitespace-pre-line text-muted-foreground">
             {subtitle}
           </span>
         )}

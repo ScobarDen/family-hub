@@ -12,10 +12,10 @@ export function SkeletonSection({ title, rows }: { title?: string; rows: number 
             data-slot="item-body"
             className="flex min-h-12 flex-1 flex-col justify-center gap-0.5 border-border py-2.5 pr-4"
           >
-            <span className="flex h-[1.375rem] items-center">
+            <span className="flex h-lh items-center leading-snug">
               <Skeleton className="h-3.5 w-3/5" />
             </span>
-            <span className="flex h-[calc(0.8125rem*1.375)] items-center">
+            <span className="flex h-lh items-center text-footnote leading-snug">
               <Skeleton className="h-3 w-2/5" />
             </span>
           </span>

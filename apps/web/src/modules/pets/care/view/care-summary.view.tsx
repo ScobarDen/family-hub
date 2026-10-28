@@ -17,8 +17,8 @@ export const CareSummary = reatomComponent(({ model, nextVisit }: CareSummaryPro
     <dl className="mx-4 mb-5 grid grid-cols-[repeat(auto-fit,minmax(6rem,1fr))] gap-2 rounded-2xl bg-card p-3 text-card-foreground">
       {facts.map(({ label, value }) => (
         <div key={label} className="flex min-w-0 flex-col gap-0.5">
-          <dt className="text-[0.8125rem] text-muted-foreground">{label}</dt>
-          <dd className="mt-auto text-xl leading-tight font-semibold">{value}</dd>
+          <dt className="text-footnote text-muted-foreground">{label}</dt>
+          <dd className="mt-auto text-value font-semibold">{value}</dd>
         </div>
       ))}
     </dl>

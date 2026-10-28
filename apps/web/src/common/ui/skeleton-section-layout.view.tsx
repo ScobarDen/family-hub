@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Skeleton } from "./skeleton.view.tsx";
 
 const summaryLine = (
-  <div className="box-content flex h-[calc(0.9375rem*1.5)] items-center px-5 pb-4">
+  <div className="box-content flex h-lh items-center text-subhead px-5 pb-4">
     <Skeleton className="h-3.5 w-32" />
   </div>
 );
