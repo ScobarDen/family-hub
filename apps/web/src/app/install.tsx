@@ -15,9 +15,14 @@ const page = reatomInstallPage({
   appUrl: new URL(import.meta.env.BASE_URL, window.location.origin).href,
 });
 
-if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-  document.documentElement.classList.add("dark");
+const darkScheme = window.matchMedia("(prefers-color-scheme: dark)");
+
+function followColorScheme() {
+  document.documentElement.classList.toggle("dark", darkScheme.matches);
 }
+
+followColorScheme();
+darkScheme.addEventListener("change", followColorScheme);
 
 page.start();
 

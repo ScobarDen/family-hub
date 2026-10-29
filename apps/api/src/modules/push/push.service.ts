@@ -2,7 +2,6 @@ import type { PushMessage, PushSubscriptionChange } from "@family-hub/contract";
 
 import { bindFirst } from "@/common/bind.lib.ts";
 import type { Clock } from "@/common/clock.lib.ts";
-import { httpStatus } from "@/common/errors.lib.ts";
 import { deviceLifetimeMs, type Membership } from "@/modules/auth";
 
 import type { PushRepo, SubscriptionRow } from "./push.repo.ts";
@@ -21,24 +20,21 @@ type PushServiceDependencies = {
   publicKey: string;
 };
 
-const goneStatuses = new Set<number>([httpStatus.notFound, httpStatus.gone]);
-const acceptedStatusMax = 299;
-
 // A push service that fails is logged and counted out; it never stops the other Devices or the bot.
 async function isDeliveredTo(
   { transport, subscriptions }: PushServiceDependencies,
   { row, payload }: { row: SubscriptionRow; payload: string },
 ): Promise<boolean> {
   try {
-    const status = await transport.send(row, payload);
+    const outcome = await transport.send(row, payload);
 
-    if (goneStatuses.has(status)) {
+    if (outcome === "gone") {
       await subscriptions.remove(row.memberId, row.deviceId);
-    } else if (status > acceptedStatusMax) {
-      console.error("Push refused", { deviceId: row.deviceId, status });
+    } else if (outcome === "refused") {
+      console.error("Push refused", { deviceId: row.deviceId });
     }
 
-    return status <= acceptedStatusMax;
+    return outcome === "accepted";
   } catch (error) {
     console.error("Push not sent", { deviceId: row.deviceId, error });
 

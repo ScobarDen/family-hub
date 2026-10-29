@@ -17,7 +17,7 @@ const phone: Device = {
 };
 const laptop: Device = { ...phone, id: "device-laptop", label: "Edge · Windows" };
 
-function startDevices({ answer = "confirm" }: { answer?: string } = {}) {
+function startDevices({ answers = ["confirm"] }: { answers?: string[] } = {}) {
   const requests: string[] = [];
   let devices = [phone, laptop];
 
@@ -39,7 +39,7 @@ function startDevices({ answer = "confirm" }: { answer?: string } = {}) {
       createHttpClient({ baseUrl: "https://api.family-hub.test", fetch }),
     ),
     currentDeviceId: () => "device-phone",
-    telegram: { showPopup: async () => answer, haptics: fakeHaptics() },
+    telegram: { showPopup: async () => answers.shift() ?? "confirm", haptics: fakeHaptics() },
     viewer: () => ({ timeZone: "Europe/Moscow", today: "2026-10-29" }),
     onSignedOut: signedOut,
   });
@@ -68,15 +68,15 @@ describe("the Devices in the settings", () => {
     expect(model.devices()).toEqual([
       {
         id: "device-phone",
-        label: "Chrome · Android",
-        lastUsed: expect.stringContaining("28"),
-        isCurrent: true,
+        title: "Chrome · Android — это устройство",
+        lastUsed: "Заходили 28 октября",
+        signOutLabel: "Выйти на этом устройстве",
       },
       {
         id: "device-laptop",
-        label: "Edge · Windows",
-        lastUsed: expect.stringContaining("28"),
-        isCurrent: false,
+        title: "Edge · Windows",
+        lastUsed: "Заходили 28 октября",
+        signOutLabel: "Выйти на устройстве Edge · Windows",
       },
     ]);
   });
@@ -105,13 +105,15 @@ describe("the Devices in the settings", () => {
   });
 
   test("keep a Device when the Member changes their mind", async () => {
-    const { model, requests } = startDevices({ answer: "cancel" });
+    const { model, requests } = startDevices({ answers: ["cancel", "confirm"] });
 
     await listed(model);
     model.revoke("device-laptop");
-    await Promise.resolve();
+    model.revoke("device-laptop");
 
-    expect(requests).toEqual(["GET /api/devices"]);
-    expect(model.devices()).toHaveLength(2);
+    await vi.waitFor(() => {
+      expect(model.devices()).toHaveLength(1);
+    });
+    expect(requests).toEqual(["GET /api/devices", "DELETE /api/devices/device-laptop"]);
   });
 });

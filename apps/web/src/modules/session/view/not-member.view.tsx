@@ -2,9 +2,9 @@ import { Send } from "lucide-react";
 
 import { Button, Notice } from "@/modules/ui";
 
-type NotMemberProps = { botUsername: string; onSignOut: () => void };
+type NotMemberProps = { botUrl: string; onSignOut: () => void };
 
-export function NotMember({ botUsername, onSignOut }: NotMemberProps) {
+export function NotMember({ botUrl, onSignOut }: NotMemberProps) {
   return (
     <Notice
       title="Приложение — для участников семьи"
@@ -14,7 +14,7 @@ export function NotMember({ botUsername, onSignOut }: NotMemberProps) {
         <Button
           size="lg"
           nativeButton={false}
-          render={<a href={`https://t.me/${botUsername}`} target="_blank" rel="noreferrer" />}
+          render={<a href={botUrl} target="_blank" rel="noreferrer" />}
         >
           <Send data-icon="inline-start" />
           Открыть бота

@@ -7,7 +7,7 @@ import { isConfirmed, type Dialogs, type Haptics } from "@/modules/telegram";
 
 import type { MemberSettingsApi } from "../member-settings.api.ts";
 
-export type DeviceItem = { id: string; label: string; lastUsed: string; isCurrent: boolean };
+export type DeviceItem = { id: string; title: string; lastUsed: string; signOutLabel: string };
 
 type DevicesDependencies = {
   api: Pick<MemberSettingsApi, "listDevices" | "revokeDevice">;
@@ -51,32 +51,36 @@ function reatomRevoke(
     }
 
     list.data.set(withoutId(list.data() ?? [], deviceId));
-  }, "devices.revoke").extend(withAsync());
+  }, "devices.revokeDevice").extend(withAsync());
 }
 
 // Where the Member is signed in to the Installed App, the most recently used first.
 export function reatomDevices(dependencies: DevicesDependencies) {
   const list = reatomList(dependencies.api);
-  const revoke = reatomRevoke(dependencies, list);
+  const revokeDevice = reatomRevoke(dependencies, list);
 
   return {
     devices: computed(
       (): DeviceItem[] =>
-        (list.data() ?? []).map(({ id, label, lastUsedAt }) => ({
-          id,
-          label,
-          lastUsed: `Заходили ${formatDay(lastUsedAt, dependencies.viewer())}`,
-          isCurrent: id === dependencies.currentDeviceId(),
-        })),
+        (list.data() ?? []).map(({ id, label, lastUsedAt }) => {
+          const isCurrent = id === dependencies.currentDeviceId();
+
+          return {
+            id,
+            title: isCurrent ? `${label} — это устройство` : label,
+            lastUsed: `Заходили ${formatDay(lastUsedAt, dependencies.viewer())}`,
+            signOutLabel: isCurrent ? "Выйти на этом устройстве" : `Выйти на устройстве ${label}`,
+          };
+        }),
       "devices.items",
     ),
-    failure: reatomFailure(revoke, {
+    failure: reatomFailure(revokeDevice, {
       message: "Не получилось выйти на устройстве. Попробуйте ещё раз.",
       name: "devices.failure",
       haptics: dependencies.telegram.haptics,
     }),
 
-    revoke: detached(revoke, "devices.revokeOne"),
+    revoke: detached(revokeDevice, "devices.revoke"),
   };
 }
 

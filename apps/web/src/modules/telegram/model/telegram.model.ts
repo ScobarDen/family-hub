@@ -1,6 +1,6 @@
 import { action, atom, effect, reatomBoolean, noop, withConnectHook, wrap } from "@reatom/core";
 
-import type { Haptics } from "./telegram.lib.ts";
+import type { Haptics } from "../telegram.lib.ts";
 import type {
   BottomButton,
   ColorScheme,
@@ -10,7 +10,7 @@ import type {
   PopupParams,
   TelegramButton,
   TelegramWebApp,
-} from "./telegram.types.ts";
+} from "../telegram.types.ts";
 
 type WebAppEvent = Parameters<TelegramWebApp["onEvent"]>[0];
 const writeAccessVersion = "6.9";

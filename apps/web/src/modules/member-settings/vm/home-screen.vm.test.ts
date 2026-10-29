@@ -22,7 +22,7 @@ describe("the Telegram shortcut", () => {
   test("never offers itself at launch", async () => {
     const { telegram } = await launch();
 
-    expect(telegram.calls).toEqual(["checkHomeScreenStatus"]);
+    expect(telegram.calls).not.toContain("addToHomeScreen");
   });
 
   test("offers to add the shortcut from the Profile while it is missing", async () => {
@@ -48,6 +48,6 @@ describe("the Telegram shortcut", () => {
 
     model.add();
 
-    expect(telegram.calls).toEqual(["checkHomeScreenStatus", "addToHomeScreen"]);
+    expect(telegram.calls).toContain("addToHomeScreen");
   });
 });

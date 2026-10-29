@@ -6,9 +6,9 @@ Outside Telegram this is the Installed App «Домовой» ([ADR 0014](../../
 
 ## Injected
 
-- `api` — `createSessionApi(httpClient, localStorage)`: exchanges raw `initData` for the session token (kept by the HTTP client in memory, which renews it, [ADR 0013](../../../../../docs/adr/0013-the-session-token-renews-while-the-app-stays-open.md)) and the current Member in one response; in the Installed App it signs in with Telegram Login or the kept Device instead, and `reauthenticate` is what the HTTP client calls on a 401.
+- `api` — `createSessionApi(httpClient, localStorage)`: exchanges raw `initData` for the session token (kept by the HTTP client in memory, which renews it, [ADR 0013](../../../../../docs/adr/0013-the-session-token-renews-while-the-app-stays-open.md)) and the current Member in one response; in the Installed App it signs in with `signInWithLogin` or the kept Device (`signInWithDevice`) instead, and `reauthenticate` is what the HTTP client calls on a 401.
 - `botUsername` — `VITE_BOT_USERNAME`, the bot whose Telegram Login the Installed App shows.
-- `telegram` — `initData`, `startParam` and `showAlert` from `modules/telegram`.
+- `telegram` — `initData`, `isInTelegram`, `startParam` and `showAlert` from `modules/telegram`; the Telegram Login widget comes from there too. Outside Telegram «Перезапустите приложение» names «Домовой».
 - `deviceCache` — `modules/device-cache`: the Member last signed in on this device, whose shell (`member`) shows while sign-in runs; without it the screen is a skeleton. A launch from an Invite ignores it. Sign-in returning another Member or Family keeps the cache only for the new one, a stranger clears it, a 401 leaves it ([ADR 0012](../../../../../docs/adr/0012-screens-render-from-a-device-cache-before-sign-in.md)). `isSignedIn` tells the cached shell from a signed-in Member.
 
 `session.model.ts` holds the sign-in itself as a Reatom async action (`withAsyncData`); the ViewModel turns its data, its error and the HTTP client's `isSessionLost` into one screen, and hands the signed-in Member with their settings out as `member`. `app/main.tsx` builds the model with `reatomSession({ api, telegram, isJoiningFamily, deviceCache })`, calls `signIn()` and renders `<Session model={…} />`.

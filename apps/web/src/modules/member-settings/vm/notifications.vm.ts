@@ -4,7 +4,7 @@ import { detached } from "@/modules/changes";
 
 type NotificationsDependencies = {
   canMessage: () => boolean | undefined;
-  telegram: { requestWriteAccess: () => Promise<boolean> };
+  telegram: { isInTelegram: boolean; requestWriteAccess: () => Promise<boolean> };
 };
 
 export function reatomNotifications({ canMessage, telegram }: NotificationsDependencies) {
@@ -17,7 +17,12 @@ export function reatomNotifications({ canMessage, telegram }: NotificationsDepen
   }, "notifications.request").extend(withAsync());
 
   return {
-    isOff: computed(() => canMessage() === false && !isAllowedNow(), "notifications.isOff"),
+    // Outside Telegram the bot's write access cannot be asked for, and Push stands in for it.
+    isShown: telegram.isInTelegram,
+    isOff: computed(
+      () => telegram.isInTelegram && canMessage() === false && !isAllowedNow(),
+      "notifications.isOff",
+    ),
     isEnabling: computed(() => !request.ready(), "notifications.isEnabling"),
 
     enable: detached(request, "notifications.enable"),

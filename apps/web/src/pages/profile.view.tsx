@@ -41,11 +41,8 @@ export function ProfilePage({ memberName, familyName, ...models }: ProfilePagePr
     <>
       <ScreenTitle title={memberName} subtitle={familyName} />
       <Section title="Уведомления">
-        {models.push === undefined ? (
-          <NotificationsSetting model={models.notifications} />
-        ) : (
-          <PushSetting model={models.push} />
-        )}
+        <NotificationsSetting model={models.notifications} />
+        <PushSetting model={models.push} />
         <DigestSetting model={models.digest} />
         <ReminderChannelSetting model={models.reminderChannel} />
       </Section>

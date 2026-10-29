@@ -19,7 +19,7 @@ export const InstallEntry = reatomComponent(({ model }: InstallEntryProps) => {
       subtitle="Отдельный значок и Push, без Telegram"
       after={
         <Button size="sm" onClick={model.open}>
-          Открыть
+          Установить
         </Button>
       }
     />

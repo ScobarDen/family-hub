@@ -8,6 +8,10 @@ import type { NotificationsModel } from "../vm/notifications.vm.ts";
 export type NotificationsSettingProps = { model: NotificationsModel };
 
 export const NotificationsSetting = reatomComponent(({ model }: NotificationsSettingProps) => {
+  if (!model.isShown) {
+    return null;
+  }
+
   const isOff = model.isOff();
 
   return (

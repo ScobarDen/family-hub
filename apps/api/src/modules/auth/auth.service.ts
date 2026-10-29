@@ -16,7 +16,7 @@ type SignInResult =
   | { status: "stranger"; telegramId: number }
   | { status: "invalid" };
 
-type DeviceSignInResult =
+type LoginSignInResult =
   | {
       status: "member";
       token: string;
@@ -26,7 +26,7 @@ type DeviceSignInResult =
   | { status: "stranger" }
   | { status: "invalid" };
 
-type DeviceSessionResult =
+type DeviceSignInResult =
   | { status: "member"; token: string; membership: Membership }
   | { status: "stranger" }
   | { status: "invalid" };
@@ -83,7 +83,7 @@ async function signInWithLogin(
   context: AuthContext,
   login: TelegramWidgetLogin,
   userAgent: string | undefined,
-): Promise<DeviceSignInResult> {
+): Promise<LoginSignInResult> {
   const { memberships, clock, botToken, sessionTokens } = context;
   const now = clock.now();
   const user = await verifyTelegramLogin({ login, botToken, now });
@@ -114,7 +114,7 @@ async function signInWithLogin(
 async function signInWithDevice(
   { devices, memberships, clock, sessionTokens }: AuthContext,
   credential: string,
-): Promise<DeviceSessionResult> {
+): Promise<DeviceSignInResult> {
   const now = clock.now();
   const device = await devices.findByCredentialHash(await credentialHashOf(credential));
 

@@ -11,7 +11,7 @@ import {
   type Deleted,
   type DeviceList,
   type DeviceSession,
-  type DeviceSignIn,
+  type LoginSession,
   type FamilyRequestStatus,
   type SessionResponse,
   type SessionToken,
@@ -123,7 +123,7 @@ export const sessionRoute = new Hono<SessionEnv>()
         return refuse(context, "stranger");
       }
 
-      return context.json<DeviceSignIn>({
+      return context.json<LoginSession>({
         token: result.token,
         device: result.device,
         ...(await context.var.members.current(result.membership)),

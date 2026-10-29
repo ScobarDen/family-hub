@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type { DeviceSignIn, ReminderChannel, Task, TaskChange } from "@family-hub/contract";
+import type { LoginSession, ReminderChannel, Task, TaskChange } from "@family-hub/contract";
 
 import { signTelegramLogin } from "./init-data.ts";
 import { denis, request, startWorker } from "./worker-harness.ts";
@@ -25,7 +25,7 @@ async function startWithFamily() {
 
 type Worker = Awaited<ReturnType<typeof startWithFamily>>;
 
-async function signInDevice(worker: Worker): Promise<DeviceSignIn> {
+async function signInDevice(worker: Worker): Promise<LoginSession> {
   const response = await worker.request("/api/session/telegram-login", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -38,7 +38,7 @@ async function signInDevice(worker: Worker): Promise<DeviceSignIn> {
     ),
   });
 
-  return response.json<DeviceSignIn>();
+  return response.json<LoginSession>();
 }
 
 function subscriptionOf(endpoint: string) {
@@ -143,25 +143,34 @@ describe("a push subscription", () => {
     expect(response.status).toBe(400);
   });
 
-  test("deleted, or gone with its revoked Device, gets no more Push", async () => {
+  test("deleted gets no more Push", async () => {
     const worker = await startWithFamily();
-    const first = await subscribe(worker, phone);
-    const second = await subscribe(worker, laptop);
+    const deleted = await subscribe(worker, phone);
 
-    await worker.request(`/api/devices/${first.device.id}/push`, {
+    await subscribe(worker, laptop);
+    await worker.request(`/api/devices/${deleted.device.id}/push`, {
       method: "DELETE",
-      headers: { authorization: `Bearer ${first.token}` },
+      headers: { authorization: `Bearer ${deleted.token}` },
     });
-    await worker.request(`/api/devices/${second.device.id}`, {
-      method: "DELETE",
-      headers: { authorization: `Bearer ${second.token}` },
-    });
-    await chooseChannel(worker, "push");
     await remindTomorrow(worker, "Вынести мусор");
     await tickAt(worker, "2026-10-02T06:00:00Z");
 
-    expect(taskPushes(worker)).toEqual([]);
-    expect(botTexts(worker)).toEqual(["📌 Вынести мусор · 2 октября"]);
+    expect(taskPushes(worker).map(({ endpoint }) => endpoint)).toEqual([laptop]);
+  });
+
+  test("gone with its revoked Device gets no more Push", async () => {
+    const worker = await startWithFamily();
+    const revoked = await subscribe(worker, phone);
+
+    await subscribe(worker, laptop);
+    await worker.request(`/api/devices/${revoked.device.id}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${revoked.token}` },
+    });
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    expect(taskPushes(worker).map(({ endpoint }) => endpoint)).toEqual([laptop]);
   });
 });
 
@@ -227,10 +236,10 @@ describe("a Reminder", () => {
 
     await subscribe(worker, phone);
     await chooseChannel(worker, "push");
-    worker.push.answer(phone, 410);
+    worker.push.answer(phone, "gone");
     await remindTomorrow(worker, "Вынести мусор");
     await tickAt(worker, "2026-10-02T06:00:00Z");
-    worker.push.answer(phone, 201);
+    worker.push.answer(phone, "accepted");
     await remindTomorrow(worker, "Полить цветы");
     await tickAt(worker, "2026-10-02T06:01:00Z");
 
@@ -256,7 +265,7 @@ describe("a Reminder", () => {
     const worker = await startWithFamily();
 
     await subscribe(worker, phone);
-    worker.push.answer(phone, 500);
+    worker.push.answer(phone, "refused");
     await remindTomorrow(worker, "Вынести мусор");
     await tickAt(worker, "2026-10-02T06:00:00Z");
 
@@ -268,10 +277,10 @@ describe("a Reminder", () => {
 
     await subscribe(worker, phone);
     await chooseChannel(worker, "push");
-    worker.push.answer(phone, 500);
+    worker.push.answer(phone, "refused");
     await remindTomorrow(worker, "Вынести мусор");
     await tickAt(worker, "2026-10-02T06:00:00Z");
-    worker.push.answer(phone, 201);
+    worker.push.answer(phone, "accepted");
     await remindTomorrow(worker, "Полить цветы");
     await tickAt(worker, "2026-10-02T06:01:00Z");
 

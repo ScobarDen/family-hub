@@ -5,7 +5,7 @@ import {
   currentMember,
   deleted,
   deviceSession,
-  deviceSignIn,
+  loginSession,
   sessionResponse,
   type TelegramWidgetLogin,
 } from "@family-hub/contract";
@@ -52,7 +52,19 @@ function deviceStoreOf(storage: DeviceStorage) {
 
 type DeviceStore = ReturnType<typeof deviceStoreOf>;
 
-async function signInWithLogin(
+async function deviceOutcomeOf(signingIn: Promise<DeviceOutcome>): Promise<DeviceOutcome> {
+  try {
+    return await wrap(signingIn);
+  } catch (error) {
+    if (refusalOf(error, { NOT_A_MEMBER: true }) === true) {
+      return { status: "not-member" };
+    }
+
+    throw error;
+  }
+}
+
+async function loginOutcomeOf(
   { client, devices }: { client: HttpClient; devices: DeviceStore },
   login: TelegramWidgetLogin,
 ): Promise<DeviceOutcome> {
@@ -61,7 +73,7 @@ async function signInWithLogin(
       method: "POST",
       body: login,
       withoutSession: true,
-      schema: deviceSignIn,
+      schema: loginSession,
     }),
   );
 
@@ -71,7 +83,7 @@ async function signInWithLogin(
 }
 
 // A refused Device is forgotten, and the Installed App goes back to its sign-in screen.
-async function signInWithDevice({
+async function keptDeviceOutcomeOf({
   client,
   devices,
 }: {
@@ -106,30 +118,12 @@ async function signInWithDevice({
   }
 }
 
-function signInAsDeviceOf(client: HttpClient, devices: DeviceStore) {
-  return async (login?: TelegramWidgetLogin): Promise<DeviceOutcome> => {
-    try {
-      return await wrap(
-        login === undefined
-          ? signInWithDevice({ client, devices })
-          : signInWithLogin({ client, devices }, login),
-      );
-    } catch (error) {
-      if (refusalOf(error, { NOT_A_MEMBER: true }) === true) {
-        return { status: "not-member" };
-      }
-
-      throw error;
-    }
-  };
-}
-
 // Requests that get 401 together share one sign-in instead of each starting its own.
-function reauthenticateOf(signInAsDevice: ReturnType<typeof signInAsDeviceOf>) {
+function reauthenticateOf(signInWithDevice: () => Promise<DeviceOutcome>) {
   let pending: Promise<string | undefined> | undefined;
 
   return async (): Promise<string | undefined> => {
-    pending ??= signInAsDevice()
+    pending ??= signInWithDevice()
       .then((outcome) => (outcome.status === "member" ? outcome.token : undefined))
       .catch(noop)
       .finally(() => {
@@ -151,7 +145,10 @@ async function revokeDevice(client: HttpClient, deviceId: string): Promise<void>
 
 export function createSessionApi(client: HttpClient, storage: DeviceStorage) {
   const devices = deviceStoreOf(storage);
-  const signInAsDevice = signInAsDeviceOf(client, devices);
+
+  async function signInWithDevice(): Promise<DeviceOutcome> {
+    return deviceOutcomeOf(keptDeviceOutcomeOf({ client, devices }));
+  }
 
   return {
     async signIn(initData: string) {
@@ -168,9 +165,11 @@ export function createSessionApi(client: HttpClient, storage: DeviceStorage) {
         ? session
         : { status: session.status, member: currentMember.parse(session), token: session.token };
     },
-    signInAsDevice,
+    signInWithLogin: async (login: TelegramWidgetLogin): Promise<DeviceOutcome> =>
+      deviceOutcomeOf(loginOutcomeOf({ client, devices }, login)),
+    signInWithDevice,
     // A 401 on the way is tried once more through the Device; nothing is kept on failure.
-    reauthenticate: reauthenticateOf(signInAsDevice),
+    reauthenticate: reauthenticateOf(signInWithDevice),
     currentDeviceId: () => devices.read()?.id,
     async signOut() {
       const device = devices.read();

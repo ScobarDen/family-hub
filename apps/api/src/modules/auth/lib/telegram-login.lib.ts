@@ -1,7 +1,8 @@
 import type { TelegramWidgetLogin } from "@family-hub/contract";
 
 import { telegramLoginMaxAgeMs } from "../auth.config.ts";
-import { hexToBytes, hmacKey, isFreshAuthDate, type TelegramUser } from "./init-data.lib.ts";
+import type { TelegramUser } from "./init-data.lib.ts";
+import { hexToBytes, hmacKey, isFreshAuthDate } from "./telegram-signature.lib.ts";
 
 const encoder = new TextEncoder();
 

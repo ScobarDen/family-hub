@@ -46,15 +46,21 @@ export function tamperUser(initData: string, user: TelegramUserFixture): string 
 }
 
 // What the Telegram Login widget hands the page: the user's fields, auth_date and the hash keyed
-// by SHA-256 of the bot token.
-export function signTelegramLogin({ botToken, user, authDate }: SignInitDataOptions) {
+// by SHA-256 of the bot token, or, to forge one, by the WebAppData HMAC that signs initData.
+export function signTelegramLogin(
+  { botToken, user, authDate }: SignInitDataOptions,
+  { keyedAs = "login" }: { keyedAs?: "login" | "initData" } = {},
+) {
   const { allows_write_to_pm: _ignored, ...fields } = user;
   const login = { ...fields, auth_date: Math.floor(Date.parse(authDate) / 1000) };
   const dataCheckString = Object.entries(login)
     .map(([key, value]) => `${key}=${String(value)}`)
     .toSorted()
     .join("\n");
-  const secret = createHash("sha256").update(botToken).digest();
+  const secret =
+    keyedAs === "login"
+      ? createHash("sha256").update(botToken).digest()
+      : hmac("WebAppData", botToken);
 
   return { ...login, hash: hmac(secret, dataCheckString).toString("hex") };
 }

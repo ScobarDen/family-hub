@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import type { DeviceList, DeviceSignIn } from "@family-hub/contract";
+import type { DeviceList, LoginSession } from "@family-hub/contract";
 
 import { signTelegramLogin, type TelegramUserFixture } from "./init-data.ts";
 import { asya, denis, request, startWorker } from "./worker-harness.ts";
@@ -26,7 +26,7 @@ async function postLogin(worker: Worker, login: unknown) {
 async function signIn(worker: Worker, user: TelegramUserFixture = denis) {
   const response = await postLogin(worker, loginOf(worker, user));
 
-  return response.json<DeviceSignIn>();
+  return response.json<LoginSession>();
 }
 
 async function deviceStatus(worker: Worker, credential: string): Promise<number> {
@@ -85,9 +85,12 @@ describe("signing in with Telegram Login", () => {
 
   test("a login signed the initData way is refused", async () => {
     const { worker } = await startWithFamily();
-    const login = loginOf(worker);
+    const login = signTelegramLogin(
+      { botToken: worker.env.BOT_TOKEN, user: denis, authDate: worker.clock.iso() },
+      { keyedAs: "initData" },
+    );
 
-    const response = await postLogin(worker, { ...login, hash: "ab".repeat(32) });
+    const response = await postLogin(worker, login);
 
     expect(response.status).toBe(401);
   });
@@ -133,8 +136,28 @@ describe("a Device", () => {
 
     worker.clock.set("2027-04-01T09:00:00Z");
     expect(await deviceStatus(worker, device.credential)).toBe(401);
+  });
+
+  test("once expired stays dead, even if the clock is set back", async () => {
+    const { worker } = await startWithFamily();
+    const { device } = await signIn(worker);
+
     worker.clock.set("2027-01-02T09:00:00Z");
+    await postDevice(worker, device.credential);
+    worker.clock.set("2027-01-01T09:00:00Z");
+
     expect(await deviceStatus(worker, device.credential)).toBe(401);
+  });
+
+  test("counts renewing its session as use", async () => {
+    const { worker } = await startWithFamily();
+    const { token, device } = await signIn(worker);
+
+    worker.clock.set("2026-10-05T08:00:00Z");
+    await worker.request("/api/session/renew", withToken(token, { method: "POST" }));
+    worker.clock.set("2027-01-02T09:00:00Z");
+
+    expect(await deviceStatus(worker, device.credential)).toBe(200);
   });
 
   test("an unknown credential is refused", async () => {

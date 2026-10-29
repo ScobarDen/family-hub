@@ -144,5 +144,6 @@ describe("Push on this Device", () => {
 
     expect(model.state()).toBe("needs-install");
     expect(model.hint()).toContain("«Домой»");
+    expect(model.canToggle()).toBe(false);
   });
 });

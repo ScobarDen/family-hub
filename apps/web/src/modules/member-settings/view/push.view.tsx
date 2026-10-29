@@ -5,9 +5,14 @@ import { FieldError, SectionItem, Switch } from "@/modules/ui";
 
 import type { PushModel } from "../vm/push.vm.ts";
 
-export type PushSettingProps = { model: PushModel };
+// No Push model where the bot reaches the Member instead: inside Telegram.
+export type PushSettingProps = { model: PushModel | undefined };
 
 export const PushSetting = reatomComponent(({ model }: PushSettingProps) => {
+  if (model === undefined) {
+    return null;
+  }
+
   const state = model.state();
 
   if (state === "unsupported") {
@@ -22,10 +27,10 @@ export const PushSetting = reatomComponent(({ model }: PushSettingProps) => {
         title="Push на этом устройстве"
         subtitle={model.hint()}
         after={
-          (state === "on" || state === "off" || state === "denied") && (
+          model.canToggle() && (
             <Switch
               aria-label="Push на этом устройстве"
-              checked={state === "on"}
+              checked={model.isOn()}
               disabled={model.isSwitching()}
               onCheckedChange={(isChecked) => {
                 model.toggle(isChecked);

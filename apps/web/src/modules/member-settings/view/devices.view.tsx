@@ -17,16 +17,17 @@ export const Devices = reatomComponent(({ model }: DevicesProps) => {
 
   return (
     <Section title="Устройства">
-      {devices.map(({ id, label, lastUsed, isCurrent }) => (
+      {devices.map(({ id, title, lastUsed, signOutLabel }) => (
         <SectionItem
           key={id}
           icon={MonitorSmartphone}
-          title={isCurrent ? `${label} — это устройство` : label}
+          title={title}
           subtitle={lastUsed}
           after={
             <Button
               size="sm"
               variant="secondary"
+              aria-label={signOutLabel}
               onClick={() => {
                 model.revoke(id);
               }}

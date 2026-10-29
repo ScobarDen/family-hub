@@ -75,6 +75,7 @@ function fakeTelegram(launchInitData = initData, startParameter?: string) {
 
   return {
     initData: launchInitData,
+    isInTelegram: true,
     startParam: startParameter,
     showAlert(message: string) {
       alerts.push(message);

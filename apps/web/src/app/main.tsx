@@ -371,9 +371,8 @@ const home = {
     onConfigure: navigation.openTabBarMenu,
     onOpenSettings: navigation.openProfile,
   }),
-  // Outside Telegram the bot's write access cannot be asked for, and Push stands in for it.
   notifications: reatomNotifications({
-    canMessage: () => (browser === undefined ? session.member()?.settings.canMessage : undefined),
+    canMessage: () => session.member()?.settings.canMessage,
     telegram,
   }),
   timeZone,

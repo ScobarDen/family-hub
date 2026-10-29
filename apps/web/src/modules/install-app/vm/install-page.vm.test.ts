@@ -1,13 +1,13 @@
 import { context } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { fakeBrowserPlatform } from "@/modules/browser-platform";
+import { fakeBrowserPlatform, type FakeBrowserPlatformOptions } from "@/modules/browser-platform";
 
 import { reatomInstallPage } from "./install-page.vm.ts";
 
 const appUrl = "https://scobarden.github.io/family-hub/";
 
-function startPage(options: Parameters<typeof fakeBrowserPlatform>[0] = {}) {
+function startPage(options: FakeBrowserPlatformOptions = {}) {
   const browser = fakeBrowserPlatform(options);
   const model = reatomInstallPage({ platform: browser.platform, appUrl });
 

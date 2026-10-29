@@ -3,4 +3,4 @@ export { createWebPushTransport } from "./push.api.ts";
 export { createPushRepo } from "./push.repo.ts";
 export { pushRoute } from "./push.route.ts";
 export { createPushService, type PushService } from "./push.service.ts";
-export type { PushTarget, PushTransport } from "./push.types.ts";
+export type { PushOutcome, PushTarget, PushTransport } from "./push.types.ts";

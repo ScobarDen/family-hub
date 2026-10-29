@@ -9,9 +9,9 @@ import { InstallEntry } from "./install-entry.view.tsx";
 
 export type AppSettingProps = { installEntry: InstallEntryModel; homeScreen: HomeScreenModel };
 
-// The Installed App and the Telegram shortcut side by side; inside the Installed App neither shows.
+// The Installed App and the Telegram shortcut side by side; both exist only inside Telegram.
 export const AppSetting = reatomComponent(({ installEntry, homeScreen }: AppSettingProps) => {
-  if (!installEntry.isShown && homeScreen.entry() === undefined) {
+  if (!installEntry.isShown) {
     return null;
   }
 

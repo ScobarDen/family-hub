@@ -1,6 +1,7 @@
-import { action, atom, noop, wrap } from "@reatom/core";
+import { action, atom, noop } from "@reatom/core";
 
-import { browserStandInVersions } from "./telegram.model.ts";
+import { shareOrCopy } from "@/modules/browser-platform";
+
 import type {
   BottomButton,
   ColorScheme,
@@ -8,10 +9,11 @@ import type {
   PopupParams,
   TelegramButton,
   TelegramWebApp,
-} from "./telegram.types.ts";
+} from "../telegram.types.ts";
+import { browserStandInVersions } from "./telegram.model.ts";
 
 // The URL parameter a Push or a link opens a record with, in place of `start_param`.
-export const deepLinkParameter = "open";
+const deepLinkParameter = "open";
 
 const storagePrefix = "family-hub:";
 const darkScheme = "(prefers-color-scheme: dark)";
@@ -118,30 +120,6 @@ function reatomBrowserBack() {
 
 export type BrowserBack = Pick<ReturnType<typeof reatomBrowserBack>, "isVisible" | "press">;
 
-function isDismissed(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
-}
-
-// The system share sheet, or the clipboard where there is none; a dismissed sheet is no failure.
-async function shareOrCopy(window: BrowserWindow, { text, url }: { text: string; url: string }) {
-  const { share, clipboard } = window.navigator;
-
-  try {
-    if (share !== undefined) {
-      await wrap(share.call(window.navigator, { text, url }));
-
-      return;
-    }
-  } catch (error) {
-    if (isDismissed(error)) {
-      return;
-    }
-  }
-
-  await wrap(clipboard?.writeText(`${text} ${url}`.trim()) ?? Promise.resolve());
-  window.alert("Ссылка скопирована");
-}
-
 function openLinkOf(window: BrowserWindow) {
   return (link: string) => {
     const target = new URL(link);
@@ -152,10 +130,10 @@ function openLinkOf(window: BrowserWindow) {
       return;
     }
 
-    shareOrCopy(window, {
-      text: target.searchParams.get("text") ?? "",
-      url: target.searchParams.get("url") ?? "",
-    }).catch(noop);
+    const text = target.searchParams.get("text") ?? "";
+    const url = target.searchParams.get("url") ?? "";
+
+    shareOrCopy(window, { data: { text, url }, link: `${text} ${url}`.trim() }).catch(noop);
   };
 }
 

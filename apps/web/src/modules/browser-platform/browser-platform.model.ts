@@ -26,26 +26,49 @@ function isDismissed(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
 }
 
-// A dismissed share sheet is no failure; anything else falls back to sharing or copying the link.
-async function shareFileIn(window: Window, url: string): Promise<void> {
+type ShareWindow = Pick<Window, "alert"> & {
+  navigator: {
+    share?: (data: ShareData) => Promise<void>;
+    clipboard?: Pick<Clipboard, "writeText">;
+  };
+};
+
+// The system share sheet, or the clipboard where there is none or it fails; a dismissed sheet is
+// no failure.
+export async function shareOrCopy(
+  window: ShareWindow,
+  { data, link }: { data: ShareData; link: string },
+): Promise<void> {
+  const { share, clipboard } = window.navigator;
+
   try {
-    const blob = await wrap(fetch(url).then(async (response) => response.blob()));
-    const file = new File([blob], "family-hub.jpg", { type: blob.type });
-    const data: ShareData = window.navigator.canShare({ files: [file] })
-      ? { files: [file] }
-      : { url };
+    if (share !== undefined) {
+      await wrap(share.call(window.navigator, data));
 
-    await wrap(window.navigator.share(data));
-
-    return;
+      return;
+    }
   } catch (error) {
     if (isDismissed(error)) {
       return;
     }
   }
 
-  await wrap(window.navigator.clipboard.writeText(url));
+  await wrap(clipboard?.writeText(link) ?? Promise.resolve());
   window.alert("Ссылка скопирована");
+}
+
+async function photoShareOf(window: Window, url: string): Promise<ShareData> {
+  const blob = await wrap(fetch(url).then(async (response) => response.blob()));
+  const file = new File([blob], "family-hub.jpg", { type: blob.type });
+
+  return window.navigator.canShare({ files: [file] }) ? { files: [file] } : { url };
+}
+
+// A photo that cannot be fetched is shared as its link.
+async function shareFileIn(window: Window, url: string): Promise<void> {
+  const data = await wrap(photoShareOf(window, url).catch(() => ({ url })));
+
+  await wrap(shareOrCopy(window, { data, link: url }));
 }
 
 // Chromium fires its install prompt once, early, and only to whoever listens by then.

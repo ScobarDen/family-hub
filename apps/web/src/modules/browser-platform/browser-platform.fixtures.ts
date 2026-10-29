@@ -18,7 +18,7 @@ export const fakePushSubscription: PushSubscriptionChange = {
   },
 };
 
-type FakeBrowserPlatformOptions = {
+export type FakeBrowserPlatformOptions = {
   isIos?: boolean;
   isStandalone?: boolean;
   pushAvailability?: PushAvailability;

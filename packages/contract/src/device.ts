@@ -24,11 +24,11 @@ export const deviceSession = currentMember.extend(sessionToken.shape);
 
 export type DeviceSession = z.infer<typeof deviceSession>;
 
-export const deviceSignIn = deviceSession.extend({
+export const loginSession = deviceSession.extend({
   device: z.object({ id: z.string(), credential: z.string() }),
 });
 
-export type DeviceSignIn = z.infer<typeof deviceSignIn>;
+export type LoginSession = z.infer<typeof loginSession>;
 
 export const device = z.object({
   id: z.string(),

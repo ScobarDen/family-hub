@@ -5,7 +5,7 @@ import { z } from "zod";
 import type {
   CurrentMember,
   DeviceSession,
-  DeviceSignIn,
+  LoginSession,
   ErrorCode,
   TelegramWidgetLogin,
 } from "@family-hub/contract";
@@ -44,7 +44,7 @@ const deviceKey = "family-hub:device";
 type Refusal = { status: number; code: ErrorCode };
 
 type Replies = {
-  login?: DeviceSignIn | Refusal;
+  login?: LoginSession | Refusal;
   device?: DeviceSession | Refusal | "offline";
   // What a session request answers to each token, in turn.
   today?: number[];
@@ -92,7 +92,11 @@ function fakeBackend(replies: Replies) {
   return { fetch, requests };
 }
 
-function startInstalledApp(backend: ReturnType<typeof fakeBackend>, storage = memoryStorage()) {
+function startInstalledApp(
+  backend: ReturnType<typeof fakeBackend>,
+  storage = memoryStorage(),
+  cache = fakeDeviceStorage(),
+) {
   const client = createHttpClient({
     baseUrl: "https://api.family-hub.test",
     fetch: backend.fetch,
@@ -103,9 +107,9 @@ function startInstalledApp(backend: ReturnType<typeof fakeBackend>, storage = me
   const api = createSessionApi(client, storage);
   const session = reatomSession({
     api,
-    telegram: { initData: "", startParam: undefined, showAlert: noop },
+    telegram: { initData: "", isInTelegram: false, startParam: undefined, showAlert: noop },
     isJoiningFamily: atom(false, "test.isJoiningFamily"),
-    deviceCache: reatomDeviceCache(fakeDeviceStorage().deviceStorage),
+    deviceCache: reatomDeviceCache(cache.deviceStorage),
     botUsername: "family_hub_bot",
   });
 
@@ -163,12 +167,16 @@ describe("the Installed App's first launch", () => {
   });
 
   test("ignores what is not a Telegram Login", async () => {
-    const backend = fakeBackend({});
+    const backend = fakeBackend({ login: { ...denis, token: "token-1", device } });
     const session = startInstalledApp(backend);
 
     session.loginWith({ id: "not a number" });
+    session.loginWith(login);
 
-    expect(backend.requests).toEqual([]);
+    await vi.waitFor(() => {
+      expect(session.screen()).toEqual(member);
+    });
+    expect(backend.requests).toEqual(["/api/session/telegram-login"]);
   });
 });
 
@@ -285,5 +293,20 @@ describe("a later launch", () => {
     expect(session.screen()).toEqual({ kind: "signed-out" });
     expect(session.storage.items.has(deviceKey)).toBe(false);
     expect(backend.requests).toContain("/api/devices/device-1");
+  });
+
+  test("forgets the signed-out Member's cached data", async () => {
+    const backend = fakeBackend({ device: { ...denis, token: "token-1" } });
+    const cache = fakeDeviceStorage();
+    const session = startInstalledApp(backend, storageWithDevice(), cache);
+
+    session.signIn();
+    await settled(session);
+    await vi.waitFor(() => {
+      expect(cache.items.size).toBeGreaterThan(0);
+    });
+    await session.signOut();
+
+    expect(cache.items.size).toBe(0);
   });
 });

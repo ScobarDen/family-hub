@@ -8,6 +8,7 @@
 
 /* telegram-web-app.js keeps the --tg-* variables in sync with themeParams; fallbacks cover older clients and a plain browser. */
 :root {
+  color-scheme: light;
   --radius: 0.75rem;
   --background: var(--tg-theme-bg-color, #ffffff);
   --foreground: var(--tg-theme-text-color, #000000);
@@ -73,6 +74,7 @@
 
 /* Telegram sets its theme inline on <html>, which wins; these colour the Installed App. */
 .dark {
+  color-scheme: dark;
   --tg-theme-bg-color: #1c1c1e;
   --tg-theme-text-color: #ffffff;
   --tg-theme-hint-color: #98989e;

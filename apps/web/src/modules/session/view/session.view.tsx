@@ -44,9 +44,7 @@ const screens: Record<SessionScreen["kind"], (props: SessionProps) => ReactNode>
   "signed-out": ({ model }) => (
     <TelegramLogin botUsername={model.botUsername} onLogin={model.loginWith} />
   ),
-  "not-member": ({ model }) => (
-    <NotMember botUsername={model.botUsername} onSignOut={model.signOutHere} />
-  ),
+  "not-member": ({ model }) => <NotMember botUrl={model.botUrl} onSignOut={model.signOutHere} />,
   failed: ({ model }) => (
     <Notice title="Не получилось войти" description="Проверьте соединение и попробуйте ещё раз.">
       <Button size="lg" onClick={model.signIn}>
@@ -55,10 +53,10 @@ const screens: Record<SessionScreen["kind"], (props: SessionProps) => ReactNode>
     </Notice>
   ),
   "signing-in": () => <SigningIn />,
-  restart: () => (
+  restart: ({ model }) => (
     <Notice
       title="Перезапустите приложение"
-      description="Сессия устарела. Закройте Family Hub и откройте его снова."
+      description={`Сессия устарела. Закройте ${model.appName} и откройте его снова.`}
     />
   ),
 };

@@ -79,10 +79,10 @@ async function turnOff({ api, platform, isOn }: PushSwitch, device: string) {
 
 export function reatomPush({ api, platform, deviceId, haptics }: PushDependencies) {
   const permission = atom(platform.pushPermission(), "push.permission");
-  const isOn = atom(false, "push.isOn");
+  const isOn = atom(false, "push.isSubscribed");
   const pushSwitch = { api, platform, permission, isOn };
 
-  const toggle = action(async (isWanted: boolean) => {
+  const switchPush = action(async (isWanted: boolean) => {
     const device = deviceId();
 
     if (device === undefined) {
@@ -90,8 +90,8 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
     }
 
     await wrap(isWanted ? turnOn(pushSwitch, device) : turnOff(pushSwitch, device));
-  }, "push.toggle").extend(withAsync());
-  const detachedToggle = detached(toggle, "push.switch");
+  }, "push.switch").extend(withAsync());
+  const detachedSwitch = detached(switchPush, "push.switchDetached");
   const state = computed(
     () => stateOf(platform, { permission: permission(), isOn: isOn() }),
     "push.state",
@@ -100,8 +100,10 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
   return {
     state,
     hint: computed(() => hints[state()], "push.hint"),
-    isSwitching: computed(() => !toggle.ready(), "push.isSwitching"),
-    failure: reatomFailure(toggle, {
+    canToggle: computed(() => ["on", "off", "denied"].includes(state()), "push.canToggle"),
+    isOn: computed(() => state() === "on", "push.isOn"),
+    isSwitching: computed(() => !switchPush.ready(), "push.isSwitching"),
+    failure: reatomFailure(switchPush, {
       message: "Не получилось переключить Push. Попробуйте ещё раз.",
       name: "push.failure",
       haptics,
@@ -113,10 +115,10 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
       isOn.set(await wrap(platform.hasPushSubscription()));
     }, "push.load"),
     toggle: action((isWanted: boolean) => {
-      if (toggle.ready()) {
-        detachedToggle(isWanted);
+      if (switchPush.ready()) {
+        detachedSwitch(isWanted);
       }
-    }, "push.toggle.once"),
+    }, "push.toggle"),
   };
 }
 

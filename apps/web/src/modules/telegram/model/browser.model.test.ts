@@ -6,6 +6,27 @@ import { reatomTelegram } from "./telegram.model.ts";
 
 type Listener = () => void;
 
+function memoryStorage(): Storage {
+  const items = new Map<string, string>();
+
+  return {
+    get length() {
+      return items.size;
+    },
+    key: (index) => [...items.keys()][index] ?? null,
+    getItem: (key) => items.get(key) ?? null,
+    setItem: (key, value) => {
+      items.set(key, value);
+    },
+    removeItem: (key) => {
+      items.delete(key);
+    },
+    clear: () => {
+      items.clear();
+    },
+  };
+}
+
 function fakeBrowser({
   search = "",
   isDark = false,
@@ -52,7 +73,7 @@ function fakeBrowser({
 
       return null;
     },
-    localStorage: globalThis.localStorage,
+    localStorage: memoryStorage(),
     addEventListener: noop,
     removeEventListener: noop,
   } as unknown as BrowserWindow;
@@ -129,24 +150,25 @@ describe("the Installed App's stand-in for Telegram", () => {
     expect(telegram.startParam).toBe("task_0192f0a0");
   });
 
-  test("shows its own back button where Telegram's Back would be", () => {
+  test("shows its own back button while a screen asks for Back, and passes its press on", () => {
     const { telegram, back } = telegramIn(fakeBrowser());
     const pressed = vi.fn<() => void>();
-    const shown = { current: false };
-    const stop = telegram.backButton.follow(() => shown.current, pressed);
-
-    expect(back.isVisible()).toBe(false);
-
-    stop();
-    shown.current = true;
-    const restarted = telegram.backButton.follow(() => shown.current, pressed);
-
-    expect(back.isVisible()).toBe(true);
+    const stop = telegram.backButton.follow(() => true, pressed);
 
     back.press();
 
+    expect(back.isVisible()).toBe(true);
     expect(pressed).toHaveBeenCalledOnce();
-    restarted();
+    stop();
+  });
+
+  test("hides its own back button once no screen asks for Back", () => {
+    const { telegram, back } = telegramIn(fakeBrowser());
+    const stop = telegram.backButton.follow(() => true, noop);
+
+    stop();
+
+    expect(back.isVisible()).toBe(false);
   });
 
   test("hides what only makes sense in Telegram", async () => {

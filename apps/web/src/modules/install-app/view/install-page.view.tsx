@@ -1,5 +1,5 @@
 import { reatomComponent } from "@reatom/react";
-import { Download, Share, SquarePlus } from "lucide-react";
+import { Download, LoaderCircle, Share, SquarePlus } from "lucide-react";
 
 import { Button, Notice } from "@/modules/ui";
 
@@ -18,7 +18,7 @@ function IosSteps() {
     <ol className="flex max-w-xs flex-col gap-3 text-left">
       <li className="flex items-center gap-3">
         <Share aria-hidden className="shrink-0 text-primary" />
-        Нажмите «Поделиться» внизу Safari
+        Нажмите «Поделиться» в Safari: на iPhone внизу, на iPad вверху
       </li>
       <li className="flex items-center gap-3">
         <SquarePlus aria-hidden className="shrink-0 text-primary" />
@@ -28,11 +28,19 @@ function IosSteps() {
   );
 }
 
+const opening = (
+  <div aria-busy="true">
+    <Notice title="Открываем Домового">
+      <LoaderCircle aria-hidden className="size-8 animate-spin text-primary" />
+    </Notice>
+  </div>
+);
+
 export const InstallPage = reatomComponent(({ model }: InstallPageProps) => {
   const screen = model.screen();
 
   if (screen.kind === "opening") {
-    return <Notice title="Открываем Домового" />;
+    return opening;
   }
 
   if (screen.kind === "installed") {
