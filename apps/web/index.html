@@ -8,6 +8,23 @@
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1621" />
     <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
     <link rel="apple-touch-icon" href="%BASE_URL%icons/apple-touch-icon.png" />
+    <script>
+      // Outside Telegram the first paint already wears the page's colour, so iOS shows no white
+      // flash at launch; in dark the iOS status bar turns see-through over that page.
+      if (!location.hash.includes("tgWebAppData")) {
+        const isDark = matchMedia("(prefers-color-scheme: dark)").matches;
+
+        document.documentElement.style.background = isDark ? "#0e1621" : "#efeff3";
+
+        if (isDark) {
+          const statusBar = document.createElement("meta");
+
+          statusBar.name = "apple-mobile-web-app-status-bar-style";
+          statusBar.content = "black-translucent";
+          document.head.append(statusBar);
+        }
+      }
+    </script>
     <script src="https://telegram.org/js/telegram-web-app.js?59"></script>
     <link rel="stylesheet" href="/src/global/styles.css" />
   </head>

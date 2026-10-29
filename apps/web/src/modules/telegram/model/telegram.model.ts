@@ -27,8 +27,8 @@ const fullscreenVersion = "8.0";
 const closingConfirmationVersion = "6.2";
 const readyAfterMs = 300;
 
-// What the Installed App's browser stands in for: its own back button, closing confirmation and
-// storage; haptics share the back button's version and do nothing there.
+// What the Installed App's browser stands in for: Back through the system's back gesture, closing
+// confirmation and storage; haptics share Back's version and do nothing there.
 export const browserStandInVersions: ReadonlySet<string> = new Set([
   backButtonVersion,
   closingConfirmationVersion,

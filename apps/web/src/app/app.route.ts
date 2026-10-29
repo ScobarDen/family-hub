@@ -342,7 +342,6 @@ export function reatomNavigation({
   return {
     screen,
     activeTab: stack.activeTab,
-    hasProfileButton: !telegram.settingsButton.isAvailable,
     ...reatomShown(screen),
     canGoBack: computed(() => back.isVisible(), "navigation.canGoBack"),
     back,

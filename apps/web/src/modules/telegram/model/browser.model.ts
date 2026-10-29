@@ -1,4 +1,4 @@
-import { action, atom, noop } from "@reatom/core";
+import { action, noop } from "@reatom/core";
 
 import { shareOrCopy } from "@/modules/browser-platform";
 
@@ -28,6 +28,7 @@ export type BrowserWindow = Pick<
   Window,
   "alert" | "confirm" | "open" | "localStorage" | "addEventListener" | "removeEventListener"
 > & {
+  history: Pick<History, "pushState" | "back">;
   location: Pick<Location, "search">;
   matchMedia: (
     query: string,
@@ -118,34 +119,93 @@ function storageOver(storage: Storage): DeviceStorage {
   };
 }
 
-// The app's own «назад» in place of Telegram's: shown and pressed through the same interface.
-function reatomBrowserBack() {
-  const isVisible = atom(false, "browser.backButton.isVisible");
+const edgeWidthPx = 24;
+const swipeDistancePx = 70;
+// A swipe counts as sideways while it climbs less than half its width.
+const swipeSlope = 0.5;
+
+// iOS gives an installed web app no back swipe, so a swipe from the left edge stands in for it.
+function followEdgeSwipe(window: BrowserWindow, goBack: () => void): void {
+  let start: Touch | undefined;
+
+  window.addEventListener("touchstart", (event) => {
+    const touch = event.touches[0];
+
+    start = touch !== undefined && touch.clientX < edgeWidthPx ? touch : undefined;
+  });
+  window.addEventListener("touchend", (event) => {
+    const touch = event.changedTouches[0];
+
+    if (start !== undefined && touch !== undefined) {
+      const across = touch.clientX - start.clientX;
+
+      if (
+        across > swipeDistancePx &&
+        Math.abs(touch.clientY - start.clientY) < across * swipeSlope
+      ) {
+        goBack();
+      }
+    }
+
+    start = undefined;
+  });
+}
+
+type BackEntry = { isAsked: boolean; hasEntry: boolean; isDropping: boolean };
+
+function keepEntry(window: BrowserWindow, entry: BackEntry): void {
+  if (entry.isAsked && !entry.hasEntry) {
+    window.history.pushState({ back: true }, "");
+    entry.hasEntry = true;
+  }
+}
+
+// Leaving the last screen that asked for Back takes its entry off, which must press nothing.
+function dropEntry(window: BrowserWindow, entry: BackEntry): void {
+  if (entry.hasEntry) {
+    entry.hasEntry = false;
+    entry.isDropping = true;
+    window.history.back();
+  }
+}
+
+// Telegram's Back becomes the system's: while a screen asks for it, a history entry waits for the
+// back gesture, and its pop presses Back.
+function reatomBrowserBack(window: BrowserWindow) {
   const handlers = new Set<() => void>();
+  const entry: BackEntry = { isAsked: false, hasEntry: false, isDropping: false };
+  const press = action(() => {
+    for (const handler of handlers) {
+      handler();
+    }
+  }, "browser.backButton.press");
+
+  window.addEventListener("popstate", () => {
+    if (entry.isDropping) {
+      entry.isDropping = false;
+
+      return;
+    }
+
+    entry.hasEntry = false;
+    press();
+    keepEntry(window, entry);
+  });
+
   const button: TelegramButton = {
     show: () => {
-      isVisible.set(true);
+      entry.isAsked = true;
+      keepEntry(window, entry);
     },
     hide: () => {
-      isVisible.set(false);
+      entry.isAsked = false;
+      dropEntry(window, entry);
     },
-    onClick: (handler) => {
-      handlers.add(handler);
-    },
-    offClick: (handler) => {
-      handlers.delete(handler);
-    },
+    onClick: (handler) => handlers.add(handler),
+    offClick: (handler) => handlers.delete(handler),
   };
 
-  return {
-    button,
-    isVisible,
-    press: action(() => {
-      for (const handler of handlers) {
-        handler();
-      }
-    }, "browser.backButton.press"),
-  };
+  return { button, goBack: () => entry.hasEntry && window.history.back() };
 }
 
 function syncThemeColor(document: Document): void {
@@ -169,8 +229,6 @@ export function followInstalledApp(document: Document): void {
   }).observe(root, { attributes: true, attributeFilter: ["class", "data-platform"] });
   syncThemeColor(document);
 }
-
-export type BrowserBack = Pick<ReturnType<typeof reatomBrowserBack>, "isVisible" | "press">;
 
 function openLinkOf(window: BrowserWindow) {
   return (link: string) => {
@@ -264,7 +322,14 @@ const telegramOnly = {
 // The Installed App runs the Mini App's code outside Telegram: the browser serves the same
 // interface, and what has no meaning here reports an old version and stays hidden.
 export function reatomBrowserWebApp(window: BrowserWindow) {
-  const back = reatomBrowserBack();
+  const back = reatomBrowserBack(window);
+  const isIos = /iPhone|iPad|Macintosh/u.test(window.navigator.userAgent);
+
+  // Safari in a tab has its own back swipe; only the app on the home screen lacks one.
+  if (isIos && window.matchMedia("(display-mode: standalone)").matches) {
+    followEdgeSwipe(window, back.goBack);
+  }
+
   const theme = themeOf(window);
   const openLink = openLinkOf(window);
   const startParameter = new URLSearchParams(window.location.search).get(deepLinkParameter);
@@ -273,7 +338,7 @@ export function reatomBrowserWebApp(window: BrowserWindow) {
     ...dialogsOf(window),
     initData: "",
     initDataUnsafe: { start_param: startParameter ?? undefined },
-    platform: /iPhone|iPad|Macintosh/u.test(window.navigator.userAgent) ? "ios" : "android",
+    platform: isIos ? "ios" : "android",
     get colorScheme() {
       return theme.colorScheme;
     },
@@ -286,5 +351,5 @@ export function reatomBrowserWebApp(window: BrowserWindow) {
     offEvent: theme.offEvent,
   };
 
-  return { webApp, back: { isVisible: back.isVisible, press: back.press } };
+  return { webApp };
 }

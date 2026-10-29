@@ -46,6 +46,8 @@ function fakeBrowser({
   const shared: ShareData[] = [];
   const copied: string[] = [];
   const alerts: string[] = [];
+  const popListeners = new Set<Listener>();
+  const history = { entries: 0 };
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Node has no window to build one from
   const window: BrowserWindow = {
     location: { search },
@@ -83,7 +85,24 @@ function fakeBrowser({
       return null;
     },
     localStorage,
-    addEventListener: noop,
+    history: {
+      pushState: () => {
+        history.entries += 1;
+      },
+      back: () => {
+        history.entries -= 1;
+        queueMicrotask(() => {
+          for (const listener of popListeners) {
+            listener();
+          }
+        });
+      },
+    },
+    addEventListener: (type: string, listener: Listener) => {
+      if (type === "popstate") {
+        popListeners.add(listener);
+      }
+    },
     removeEventListener: noop,
   } as unknown as BrowserWindow;
 
@@ -93,6 +112,12 @@ function fakeBrowser({
     shared,
     copied,
     alerts,
+    history,
+    // What the system's back gesture does.
+    async goBack() {
+      window.history.back();
+      await Promise.resolve();
+    },
     turnDark() {
       media.matches = true;
 
@@ -104,9 +129,9 @@ function fakeBrowser({
 }
 
 function telegramIn(browser: ReturnType<typeof fakeBrowser>) {
-  const { webApp, back } = reatomBrowserWebApp(browser.window);
+  const { webApp } = reatomBrowserWebApp(browser.window);
 
-  return { telegram: reatomTelegram(webApp), back };
+  return { telegram: reatomTelegram(webApp) };
 }
 
 const inviteShare =
@@ -159,25 +184,30 @@ describe("the Installed App's stand-in for Telegram", () => {
     expect(telegram.startParam).toBe("task_0192f0a0");
   });
 
-  test("shows its own back button while a screen asks for Back, and passes its press on", () => {
-    const { telegram, back } = telegramIn(fakeBrowser());
+  test("hands Back to the system's back gesture while a screen asks for it", async () => {
+    const browser = fakeBrowser();
+    const { telegram } = telegramIn(browser);
     const pressed = vi.fn<() => void>();
     const stop = telegram.backButton.follow(() => true, pressed);
 
-    back.press();
+    await browser.goBack();
 
-    expect(back.isVisible()).toBe(true);
     expect(pressed).toHaveBeenCalledOnce();
+    expect(browser.history.entries).toBe(1);
     stop();
   });
 
-  test("hides its own back button once no screen asks for Back", () => {
-    const { telegram, back } = telegramIn(fakeBrowser());
-    const stop = telegram.backButton.follow(() => true, noop);
+  test("gives the back gesture back to the system once no screen asks for Back", async () => {
+    const browser = fakeBrowser();
+    const { telegram } = telegramIn(browser);
+    const pressed = vi.fn<() => void>();
+    const stop = telegram.backButton.follow(() => true, pressed);
 
     stop();
+    await Promise.resolve();
 
-    expect(back.isVisible()).toBe(false);
+    expect(browser.history.entries).toBe(0);
+    expect(pressed).not.toHaveBeenCalled();
   });
 
   test("hides what only makes sense in Telegram", async () => {

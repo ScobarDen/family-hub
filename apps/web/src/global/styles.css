@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-/* data-platform comes from common/telegram: Android gets the floating pill, iOS the glass. */
+/* data-platform comes from common/telegram: the tab bar floats as a solid pill on Android and as glass on iOS. */
 @custom-variant ios (&:is([data-platform="ios"] *));
 @custom-variant android (&:is([data-platform="android"] *));
 

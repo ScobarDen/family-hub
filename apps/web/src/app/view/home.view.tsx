@@ -99,14 +99,13 @@ const contents: Record<AppModule, (props: HomeProps) => ModuleContent> = {
 };
 
 function pageOf(props: HomeProps, { title, subtitle, content }: ModuleContent): ReactNode {
-  const { navigation, notifications } = props;
+  const { notifications } = props;
 
   return (
     <ModulePage
       title={title}
       subtitle={subtitle}
       banner={<NotificationsBanner model={notifications} />}
-      onOpenProfile={navigation.hasProfileButton ? navigation.openProfile : undefined}
     >
       {content}
     </ModulePage>
@@ -172,7 +171,7 @@ export const Home = reatomComponent((props: HomeProps) => {
   }, [screenKey]);
 
   return (
-    <main className="min-h-svh overflow-x-clip bg-secondary pt-safe-top pb-safe-bottom [[data-back-bar]+&]:pt-0 has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]">
+    <main className="min-h-svh overflow-x-clip bg-secondary pt-safe-top pb-safe-bottom has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]">
       {screenOf(props)}
     </main>
   );
