@@ -150,7 +150,7 @@ function reatomBrowserBack() {
 
 function syncThemeColor(document: Document): void {
   const color = getComputedStyle(document.documentElement)
-    .getPropertyValue("--tg-theme-bg-color")
+    .getPropertyValue("--tg-theme-secondary-bg-color")
     .trim();
 
   for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
@@ -159,7 +159,7 @@ function syncThemeColor(document: Document): void {
 }
 
 // Outside Telegram the page colours itself from the platform's own palette (see styles.css), and
-// the system bar above it takes the same colour as the page's top bar.
+// the system bar above it takes the page's own colour, which the screens start on.
 export function followInstalledApp(document: Document): void {
   const root = document.documentElement;
 

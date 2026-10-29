@@ -18,7 +18,7 @@ export const BrowserBackButton = reatomComponent(({ model }: BrowserBackButtonPr
     <nav
       aria-label="Назад"
       data-back-bar
-      className="sticky top-0 z-40 bg-background/90 px-2 pt-safe-top backdrop-blur"
+      className="sticky top-0 z-40 bg-secondary/90 px-2 pt-safe-top backdrop-blur"
     >
       <Button variant="ghost" onClick={model.press}>
         <ChevronLeft aria-hidden />
