@@ -5,8 +5,8 @@ import type { ClosingConfirmation, Fullscreen, Haptics, HomeScreen } from "./tel
 import type { DeviceStorage, HomeScreenStatus } from "./telegram.types.ts";
 
 // Telegram answers storage calls later, never inside the call.
-function answer(callback: (() => void) | undefined): void {
-  if (callback !== undefined) {
+function answer(callback: (() => void) | undefined, isSilent = false): void {
+  if (callback !== undefined && !isSilent) {
     queueMicrotask(callback);
   }
 }
@@ -20,31 +20,38 @@ export type FakeDeviceStorage = {
 export function fakeDeviceStorage({
   isSupported = true,
   isWriteFailing = false,
-}: { isSupported?: boolean; isWriteFailing?: boolean } = {}): FakeDeviceStorage {
+  isSilent = false,
+}: {
+  isSupported?: boolean;
+  isWriteFailing?: boolean;
+  // A client whose DeviceStorage never calls back.
+  isSilent?: boolean;
+} = {}): FakeDeviceStorage {
   const items = new Map<string, string>();
 
   const fake: FakeDeviceStorage = { deviceStorage: undefined, items, isWriteFailing };
+
   const deviceStorage: DeviceStorage = {
     setItem(key, value, callback) {
       if (fake.isWriteFailing) {
-        answer(callback && (() => callback("QUOTA_EXCEEDED")));
+        answer(callback && (() => callback("QUOTA_EXCEEDED")), isSilent);
 
         return;
       }
 
       items.set(key, value);
-      answer(callback && (() => callback(null, true)));
+      answer(callback && (() => callback(null, true)), isSilent);
     },
     getItem(key, callback) {
-      answer(() => callback(null, items.get(key) ?? null));
+      answer(() => callback(null, items.get(key) ?? null), isSilent);
     },
     removeItem(key, callback) {
       items.delete(key);
-      answer(callback && (() => callback(null, true)));
+      answer(callback && (() => callback(null, true)), isSilent);
     },
     clear(callback) {
       items.clear();
-      answer(callback && (() => callback(null, true)));
+      answer(callback && (() => callback(null, true)), isSilent);
     },
   };
 

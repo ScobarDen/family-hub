@@ -261,6 +261,16 @@ describe("device cache owner", () => {
     });
   });
 
+  test("lets sign-in go on when DeviceStorage never answers", async () => {
+    vi.useFakeTimers({ toFake: ["Date", "setTimeout"] });
+    const { cache } = launch(fakeDeviceStorage({ isSilent: true }));
+    const keeping = cache.keepFor(denis);
+
+    await vi.advanceTimersByTimeAsync(10_000);
+
+    await expect(keeping).resolves.toBeUndefined();
+  });
+
   test("clears the cache for another Member", async () => {
     const device = fakeDeviceStorage();
     const { cache } = launch(device);
