@@ -24,7 +24,7 @@
       "description": "Catalog entries lose their dependency type, so dev tools are named explicitly",
       "matchDepTypes": ["pnpm.catalog.default"],
       "matchPackageNames": [
-        "@feod/analyzer",
+        "@o-feod/oxlint-structure-plugin",
         "@grammyjs/types",
         "@stylistic/eslint-plugin",
         "@types/**",

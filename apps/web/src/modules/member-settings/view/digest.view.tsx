@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Clock, Sunrise } from "lucide-react";
 
-import { FieldError, PickerInput, SectionItem, Switch } from "@/common/ui";
+import { FieldError, PickerInput, SectionItem, Switch } from "@/modules/ui";
 
 import type { DigestModel } from "../vm/digest.vm.ts";
 

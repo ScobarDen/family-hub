@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { FormDrawer, LoadState, Revealed, SkeletonSection } from "@/common/ui";
+import { FormDrawer, LoadState, Revealed, SkeletonSection } from "@/modules/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 import { PetCard } from "./pet-card.view.tsx";

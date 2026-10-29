@@ -5,7 +5,7 @@ description: Dates and times in Family Hub with Temporal (`temporal-polyfill`) �
 
 # Dates and times
 
-All date math runs on Temporal from `temporal-polyfill` (`import { Temporal } from "temporal-polyfill"`), the same in the Mini App, the Worker and tests. `Date` appears only at the edges that hand out epoch milliseconds: the `Clock` in `apps/api/src/common/clock` and Drizzle rows.
+All date math runs on Temporal from `temporal-polyfill` (`import { Temporal } from "temporal-polyfill"`), the same in the Mini App, the Worker and tests. `Date` appears only at the edges that hand out epoch milliseconds: the `Clock` in `apps/api/src/common/clock.lib.ts` and Drizzle rows.
 
 ## Two kinds of time
 
@@ -36,4 +36,4 @@ Every value is one of these; decide which before writing code.
 - `packages/recurrence` owns every calculation above: Occurrences in a range, the fire time of a Task Reminder for a Recipient, Pet birthdays. It is pure — the current instant comes in as an argument — and covered by dense unit tests, DST transitions and month ends included.
 - Services in `apps/api` call it synchronously whenever a source changes (a Task, its Recipients or completions, «Готово», «Отложить», Pet archive, a Member leaving or changing zone) and rewrite only that source's `reminder_dispatch` rows. Cron consumes ready rows and advances `next_fire_at` after sending.
 - The Mini App imports the same package for the «Дела» list and calendar, so the screen and the bot agree on every date.
-- Formatting for display lives in `apps/web` `common/format-date`, in the viewer's zone and Russian locale.
+- Formatting for display lives in `apps/web` `common/format-date.lib.ts`, in the viewer's zone and Russian locale.

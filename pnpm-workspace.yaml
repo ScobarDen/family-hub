@@ -6,7 +6,7 @@ catalogMode: prefer
 
 catalog:
   "@base-ui/react": ^1.9.0
-  "@feod/analyzer": 0.1.1
+  "@o-feod/oxlint-structure-plugin": 0.1.7
   "@grammyjs/types": ^5.0.0
   "@hono/standard-validator": ^0.4.0
   "@reatom/core": ^1001.3.0

@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { Chip, ChipGroup, FieldError, ScreenTitle } from "@/common/ui";
+import { Chip, ChipGroup, FieldError, ScreenTitle } from "@/modules/ui";
 
 import type { Slot, TabBarMenuModel } from "../vm/tab-bar-menu.vm.ts";
 

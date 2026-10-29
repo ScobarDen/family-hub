@@ -8,8 +8,8 @@ import {
   type TaskChange,
 } from "@family-hub/contract";
 
-import type { HttpClient } from "@/common/http-client";
-import { resolvedPhoto } from "@/common/photo";
+import type { HttpClient } from "@/common/http-client.api.ts";
+import { resolvedPhoto } from "@/modules/photo";
 
 // The Album strip and the Pet Avatar are the Worker's signed paths; the browser loads them from its
 // origin.

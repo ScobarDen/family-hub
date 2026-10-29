@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { FailureBar, LoadState, Revealed, SkeletonSection, SkeletonTiles } from "@/common/ui";
+import { FailureBar, LoadState, Revealed, SkeletonSection, SkeletonTiles } from "@/modules/ui";
 
 import type { TodayModel } from "../vm/today.vm.ts";
 import { DueBlock } from "./due-block.view.tsx";

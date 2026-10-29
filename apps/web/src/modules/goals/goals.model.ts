@@ -2,9 +2,9 @@ import { action, atom, computed, withAsyncData, withRollback, wrap } from "@reat
 
 import { goalList, type FamilyMember, type Goal, type GoalList } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import type { LiveVersion } from "@/common/live-updates";
-import { rolledBackById, upserted } from "@/common/records";
+import { rolledBackById, upserted } from "@/common/records.lib.ts";
+import type { DeviceCache } from "@/modules/device-cache";
+import type { LiveVersion } from "@/modules/live-updates";
 
 import type { GoalsApi } from "./goals.api.ts";
 

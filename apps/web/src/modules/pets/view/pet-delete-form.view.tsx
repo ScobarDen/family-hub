@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { ConfirmDeletionForm } from "@/common/ui";
+import { ConfirmDeletionForm } from "@/modules/ui";
 
 import type { PetsScreenModel } from "../vm/pets.vm.ts";
 

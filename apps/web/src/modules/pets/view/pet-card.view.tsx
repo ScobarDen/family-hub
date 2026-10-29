@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { PrimaryButton, SectionLayout } from "@/common/ui";
+import { PrimaryButton, SectionLayout } from "@/modules/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 import { PetArchiveSection } from "./pet-archive-section.view.tsx";

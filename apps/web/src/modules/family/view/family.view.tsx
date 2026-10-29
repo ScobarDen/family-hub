@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { RotateCw } from "lucide-react";
 
-import { PersonAvatar, SectionItem } from "@/common/ui";
+import { PersonAvatar, SectionItem } from "@/modules/ui";
 
 import type { FamilyModel } from "../vm/family.vm.ts";
 

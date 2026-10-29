@@ -1,5 +1,5 @@
-import type { Clock } from "@/common/clock";
-import type { BotApi } from "@/common/telegram";
+import type { Clock } from "@/common/clock.lib.ts";
+import type { BotApi } from "@/modules/telegram";
 
 import type { FamilyRepo } from "./family.repo.ts";
 

@@ -3,16 +3,16 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { movementChange, type Goal } from "@family-hub/contract";
 
-import { reatomDeviceCache } from "@/common/device-cache";
-import { createHttpClient } from "@/common/http-client";
-import { fakeSlide } from "@/common/state";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeSlide } from "@/modules/changes";
+import { reatomDeviceCache } from "@/modules/device-cache";
+import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
 import {
   fakeDeviceStorage,
   fakeHaptics,
   type FakeDeviceStorage,
   fakeWindow,
-} from "@/common/telegram";
-import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
+} from "@/modules/telegram";
 
 import { createGoalsApi } from "../goals.api.ts";
 import { totalOf } from "../goals.model.ts";

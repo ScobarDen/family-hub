@@ -12,8 +12,8 @@ import {
   type InviteRevoked,
 } from "@family-hub/contract";
 
-import { requireMember, type AuthEnv } from "@/common/auth";
-import { apiError, httpStatus, refusalsOf } from "@/common/errors";
+import { apiError, httpStatus, refusalsOf } from "@/common/errors.lib.ts";
+import { requireMember, type AuthEnv } from "@/modules/auth";
 
 import type { AcceptResult, InviteService } from "./service/invite.service.ts";
 

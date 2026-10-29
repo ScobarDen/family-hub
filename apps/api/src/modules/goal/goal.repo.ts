@@ -1,9 +1,9 @@
 import { and, asc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
-import { bindFirst } from "@/common/bind";
-import { familyMembers, goalMovements, goals, members, type Db } from "@/common/db";
-import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
+import { bindFirst } from "@/common/bind.lib.ts";
+import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset.lib.ts";
+import { familyMembers, goalMovements, goals, members, type Db } from "@/modules/db";
 
 export type GoalRow = typeof goals.$inferSelect & { completedByName: string | null };
 

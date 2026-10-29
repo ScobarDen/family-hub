@@ -4,16 +4,16 @@ The phone answers a Member's tap the way a native app does: a tick for a selecti
 
 ## Where it lives
 
-- `common/telegram` is the only place that touches `Telegram.WebApp.HapticFeedback`. Its `haptics` has five semantic methods: `select`, `success`, `warning`, `error` and `impact(style)`.
+- `modules/telegram` is the only place that touches `Telegram.WebApp.HapticFeedback`. Its `haptics` has five semantic methods: `select`, `success`, `warning`, `error` and `impact(style)`.
 - Each method checks the client version (6.1+) and stays silent on older clients and on desktop.
 - The same feedback fires at most once per ~80 ms, so quick taps on several checkboxes do not merge into one buzz. Different feedbacks are not throttled against each other.
-- ViewModels get `telegram.haptics` (or a `haptics` dependency) from `app/main.tsx` and call it; Views never do. Tests pass `fakeHaptics()` from `common/telegram` and assert its `felt` list.
+- ViewModels get `telegram.haptics` (or a `haptics` dependency) from `app/main.tsx` and call it; Views never do. Tests pass `fakeHaptics()` from `modules/telegram` and assert its `felt` list.
 
 ## Rules
 
 - **One feedback per action.** Completing the last Subtask completes the Task, and a Contribution may make a Goal Achieved: each is still one pulse.
-- **Optimistic changes pulse at the tap**, and add `error` if they roll back. The rollback's error comes from `reatomRollbackFailure` in `common/state`, so a module using it gets it for free.
-- **Async actions pulse at the result**: `success` when the server takes it, `error` when it refuses. `reatomEditableRecord` and `reatomSubmitFailure` (`common/form`) and `reatomFailure` (`common/state`) do this for forms and commands.
+- **Optimistic changes pulse at the tap**, and add `error` if they roll back. The rollback's error comes from `reatomRollbackFailure` in `modules/changes`, so a module using it gets it for free.
+- **Async actions pulse at the result**: `success` when the server takes it, `error` when it refuses. `reatomEditableRecord` and `reatomSubmitFailure` (`modules/form`) and `reatomFailure` (`modules/changes`) do this for forms and commands.
 - **Bulk actions pulse once, at the end**: a batch of photos is one `success`, or one `error` if any photo failed.
 - **Nothing on navigation, scrolling or live updates**: opening a record, Back, tapping the active tab again, switching months in the calendar, swiping in the photo viewer, a list refreshed by another Member.
 - **Destructive confirmations warn.** `isConfirmed` gives `warning` when the popup is destructive; the deletion itself gives nothing.

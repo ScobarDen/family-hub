@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Bell } from "lucide-react";
 
-import { Button, SectionItem } from "@/common/ui";
+import { Button, SectionItem } from "@/modules/ui";
 
 import type { NotificationsModel } from "../vm/notifications.vm.ts";
 

@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
+import { PhotoThumbs, PhotoViewer } from "@/modules/photo-viewer";
 import {
   Button,
   CheckButton,
@@ -23,7 +23,7 @@ import {
   Section,
   SectionItem,
   SkeletonSection,
-} from "@/common/ui";
+} from "@/modules/ui";
 
 import type { FeedRow } from "../feed.lib.ts";
 import { feedFilters, type FeedModel } from "../vm/feed.vm.ts";

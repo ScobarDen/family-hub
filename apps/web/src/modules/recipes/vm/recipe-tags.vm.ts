@@ -2,15 +2,15 @@ import { action, atom, reatomMap, withAsync, wrap } from "@reatom/core";
 
 import { recipeTagNameMaxLength, type RecipeTag } from "@family-hub/contract";
 
-import { withoutId } from "@/common/records";
+import { withoutId } from "@/common/records.lib.ts";
 import {
   detached,
   readOnly,
   reatomFailure,
   reatomOptimistic,
   type RollbackFailure,
-} from "@/common/state";
-import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/common/telegram";
+} from "@/modules/changes";
+import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/modules/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import type { RecipesData } from "../recipes.model.ts";

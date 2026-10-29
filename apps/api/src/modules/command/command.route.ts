@@ -9,8 +9,8 @@ import {
   type DraftSettled,
 } from "@family-hub/contract";
 
-import { requireMember, type MemberEnv } from "@/common/auth";
-import { apiError, httpStatus, jsonBody } from "@/common/errors";
+import { apiError, httpStatus, jsonBody } from "@/common/errors.lib.ts";
+import { requireMember, type MemberEnv } from "@/modules/auth";
 
 import type { CommandService } from "./service/command.service.ts";
 

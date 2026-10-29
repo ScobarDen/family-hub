@@ -1,7 +1,7 @@
 import type { FeedActivity, FeedUpcoming } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import type { KeysetPage } from "@/common/keyset";
+import type { KeysetPage } from "@/common/keyset.lib.ts";
+import type { Membership } from "@/modules/auth";
 
 // The viewer's calendar days from today to the last day of Upcoming, in their zone.
 export type FeedWindow = { today: string; last: string; timeZone: string };

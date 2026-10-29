@@ -1,8 +1,8 @@
 import { reatomComponent } from "@reatom/react";
 import { Pencil, Share, Star, Trash2 } from "lucide-react";
 
-import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
-import { Section, SectionItem, SectionLayout } from "@/common/ui";
+import { PhotoThumbs, PhotoViewer } from "@/modules/photo-viewer";
+import { Section, SectionItem, SectionLayout } from "@/modules/ui";
 
 import type { RecipeDetails as RecipeDetailsData } from "../recipes.lib.ts";
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";

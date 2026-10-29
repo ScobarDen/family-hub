@@ -5,8 +5,10 @@ The Family Request form a stranger reaches from «Создать свою сем
 ## Injected
 
 - `api` — `createFamilyRequestApi(httpClient)`: posts raw `initData` with the family name and turns the server's refusals (`FAMILY_REQUEST_PENDING`, `FAMILY_REQUEST_COOLDOWN`, `ALREADY_MEMBER`) into outcomes.
-- `telegram` — `initData` and `requestWriteAccess` from `common/telegram`.
+- `telegram` — `initData` and `requestWriteAccess` from `modules/telegram`.
 - `familyRequestStatus` — the session's view of the request from the last sign-in: a pending request opens on «Заявка уже на рассмотрении», a cooldown on the cooldown screen, and either outranks an earlier submit.
 - `onBack`, `onCheck` — the session's `closeFamilyRequest` and `signIn`.
 
 The form is `reatomForm` with the family name schema; its `submit` keeps the outcome as data. `app/main.tsx` builds the model with `reatomFamilyRequest({ api, telegram, onBack, onCheck })`, and `app.view.tsx` hands `<FamilyRequest model={…} />` to the session, which shows it instead of the stranger screen.
+
+Out of scope: signing in and the first screen (`session`), joining an existing Family by Invite (`join-family`).

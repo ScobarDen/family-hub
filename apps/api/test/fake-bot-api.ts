@@ -6,7 +6,7 @@ import {
   type BotMethod,
   type BotParams,
   type BotResult,
-} from "@/common/telegram";
+} from "@/modules/telegram";
 
 type ChatId = number | string;
 type BotCall = { [Method in BotMethod]: { method: Method; params: BotParams<Method> } }[BotMethod];

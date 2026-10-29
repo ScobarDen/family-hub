@@ -1,4 +1,4 @@
-import { Section, SectionItem } from "@/common/ui";
+import { Section, SectionItem } from "@/modules/ui";
 
 import type { AgendaRow, CalendarItem } from "../calendar.lib.ts";
 

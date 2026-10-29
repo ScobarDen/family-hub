@@ -13,13 +13,8 @@ import {
 
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import { reatomFormBack } from "@/common/form";
-import { formatCount } from "@/common/format-count";
-import type { LiveVersion } from "@/common/live-updates";
-import type { PreparedPhoto } from "@/common/photo";
-import { reatomPhotoViewer } from "@/common/photo-viewer";
-import { withoutId } from "@/common/records";
+import { formatCount } from "@/common/format-count.lib.ts";
+import { withoutId } from "@/common/records.lib.ts";
 import {
   detached,
   instantly,
@@ -28,7 +23,12 @@ import {
   readOnly,
   type RollbackFailure,
   type Slide,
-} from "@/common/state";
+} from "@/modules/changes";
+import type { DeviceCache } from "@/modules/device-cache";
+import { reatomFormBack } from "@/modules/form";
+import type { LiveVersion } from "@/modules/live-updates";
+import type { PreparedPhoto } from "@/modules/photo";
+import { reatomPhotoViewer } from "@/modules/photo-viewer";
 import {
   type Confirmation,
   type ClosingConfirmation,
@@ -37,7 +37,7 @@ import {
   type Fullscreen,
   isConfirmed,
   type Haptics,
-} from "@/common/telegram";
+} from "@/modules/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";
 import {

@@ -29,6 +29,10 @@ Deliberately short. It loads at a decision point, not for the duration of a task
 
 Read how the neighbours in this repo already do it and follow that. A convention you'd have chosen differently, applied consistently, beats a better idea applied in one file. Everything below is the default for where the project has no opinion — never a licence to reshape code nobody asked you to touch.
 
+## Pairs with ponytail
+
+When [`ponytail`](https://github.com/DietrichGebert/ponytail) is installed, load it too: it decides **how much** code to write — the smallest complete change, at its default `full` level — and this file decides **the shape** of what remains. Its `shortcut: <limit>, <when to upgrade>` marker is a legitimate why-comment.
+
 ## Names state the result, not the machinery
 
 A reader should get what something does from its name, without opening it.
@@ -61,6 +65,7 @@ The rule bites where the parameter's name is **invisible at the call site** — 
 - Two positionals of the same type in a row is a bug waiting to happen — `transfer(accountA, accountB)` reads fine until someone swaps them. Name them, or take a single object.
 - Magic literals at a call site get a named constant, even when the signature is fine.
 - **Three or more parameters is a signal**, not a violation. Ask whether they are really one concept.
+- A UI component prop that shows, hides or replaces a part of it (`showFooter`, `renderHeader`) is the same flag at the component level: split it into a compound, see `frontend-mvvm` §7.
 
 ## One union beats a constellation of booleans
 
@@ -90,7 +95,7 @@ The impossible states stop existing, and the exhaustiveness check does the remin
 - **Don't invent a layer the project doesn't have.** A `services/` folder in a codebase with no services is a new convention, and introducing one is a decision to raise, not to make silently.
 - **Dependencies point one way.** Whatever the project's direction is, don't be the first import that goes back up.
 - New file or existing one — a file that has grown past what you can hold in your head is doing too many jobs. That's the signal to split, not the line count.
-- A project with no layout of its own yet: levels and module boundaries are **`feod`**, file names inside a module are **`role-files`**, and the stack skill (**`frontend-mvvm`**, **`qt-mvvm`**) says how both look there.
+- A project with no layout of its own yet: levels and module boundaries are **`feod`** with **`feod-preset`**, file names inside a module are **`role-files`**, and the stack skill (**`frontend-mvvm`**, **`qt-mvvm`**) says how both look there.
 
 ## The base floor
 

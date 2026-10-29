@@ -10,8 +10,8 @@ import {
   type TaskList,
 } from "@family-hub/contract";
 
-import { requireMember, type MemberEnv } from "@/common/auth";
-import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
+import { httpStatus, jsonBody, refusalsOf } from "@/common/errors.lib.ts";
+import { requireMember, type MemberEnv } from "@/modules/auth";
 
 import type { TaskService } from "./service/task.service.ts";
 import type { TaskRefusal, TaskResult } from "./task.types.ts";

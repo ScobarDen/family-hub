@@ -1,6 +1,6 @@
 import type { CallbackQuery } from "@grammyjs/types";
 
-import { ignoringBotErrors } from "@/common/telegram";
+import { ignoringBotErrors } from "@/modules/telegram";
 
 import { notYoursText, parseCallback, staleText, type CommandAction } from "../command.lib.ts";
 import type { CommandDependencies } from "../command.types.ts";

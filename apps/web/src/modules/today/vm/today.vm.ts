@@ -13,10 +13,10 @@ import { z } from "zod";
 
 import { today, type FeedUpcoming, type SlotModule, type Today } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import type { LiveVersion } from "@/common/live-updates";
-import { detached, reatomRollbackFailure, type RollbackFailure } from "@/common/state";
-import type { Haptics } from "@/common/telegram";
+import { detached, reatomRollbackFailure, type RollbackFailure } from "@/modules/changes";
+import type { DeviceCache } from "@/modules/device-cache";
+import type { LiveVersion } from "@/modules/live-updates";
+import type { Haptics } from "@/modules/telegram";
 
 import type { OccurrenceTarget, TodayApi } from "../today.api.ts";
 import { dueRowOf, headerOf, moreOf, nextRowOf, tilesOf, type Tile } from "../today.lib.ts";

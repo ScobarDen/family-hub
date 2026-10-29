@@ -2,15 +2,15 @@ import { action, computed, isAbort, withAsync, wrap, type Action } from "@reatom
 
 import type { Pet } from "@family-hub/contract";
 
-import { PhotoTooLargeError, type PreparedPhoto } from "@/common/photo";
-import { detached } from "@/common/state";
+import { detached } from "@/modules/changes";
+import { PhotoTooLargeError, type PreparedPhoto } from "@/modules/photo";
 import {
   didSucceedOrAlert,
   isConfirmed,
   type Confirmation,
   type Dialogs,
   type Haptics,
-} from "@/common/telegram";
+} from "@/modules/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";

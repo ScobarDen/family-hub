@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { FormShell, TextAreaField, TextField } from "@/common/ui";
+import { FormShell, TextAreaField, TextField } from "@/modules/ui";
 
 import type { AlbumFormModel } from "../vm/album-form.vm.ts";
 

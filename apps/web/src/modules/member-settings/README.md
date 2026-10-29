@@ -13,6 +13,8 @@ The Member's own settings in the Profile, which belong to no Family: whether the
 - `api` — `createMemberSettingsApi(httpClient)`: saves the digest and the time zone of the session Member.
 - `saved` — the Member's `settings.digest` / `settings.timeZone` from the session: `undefined` until they arrive, a `null` zone while the server knows none.
 - `canMessage` — the Member's `settings.canMessage`. The server turns it on when initData reports `allows_write_to_pm`; only a 403 from the bot turns it off.
-- `telegram` — `requestWriteAccess`, `addToHomeScreen` and `checkHomeScreenStatus` from `common/telegram`.
-- `deviceCache` — the launch counter's and the offer's storage, from `common/device-cache`.
-- `deviceZone` — `deviceTimeZone()` from `common/format-date`; `zones` — the IANA names the picker offers.
+- `telegram` — `requestWriteAccess`, `addToHomeScreen` and `checkHomeScreenStatus` from `modules/telegram`.
+- `deviceCache` — the launch counter's and the offer's storage, from `modules/device-cache`.
+- `deviceZone` — `deviceTimeZone()` from `common/format-date.lib.ts`; `zones` — the IANA names the picker offers.
+
+Out of scope: the Family and its Members (`family`), the Family's Photo Storage (`photo-storage`).

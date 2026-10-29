@@ -16,7 +16,6 @@
       "Bash(vp check)",
       "Bash(vp check:*)",
       "Bash(vp run fix)",
-      "Bash(vp run feod)",
       "Bash(vp run ready)",
       "Bash(vp run -r test)",
       "Bash(vp run -r build)",

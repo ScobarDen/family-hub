@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-import { IconBadge } from "@/common/ui";
+import { IconBadge } from "@/modules/ui";
 
 import { goalIcons } from "../goals.config.ts";
 import type { GoalDetails } from "../goals.lib.ts";

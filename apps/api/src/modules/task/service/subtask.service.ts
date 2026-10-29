@@ -1,6 +1,6 @@
 import { uuidv7, type SubtaskChange } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import type { TaskTree } from "../task.repo.ts";
 import type { SubtaskTarget, TaskDependencies, TaskRefusal, TaskResult } from "../task.types.ts";

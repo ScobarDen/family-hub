@@ -1,7 +1,8 @@
 import { and, asc, eq, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
+import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset.lib.ts";
 import {
   albumPhotos,
   albums,
@@ -14,8 +15,7 @@ import {
   taskRecipients,
   tasks,
   type Db,
-} from "@/common/db";
-import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
+} from "@/modules/db";
 
 export type TaskRow = typeof tasks.$inferSelect;
 

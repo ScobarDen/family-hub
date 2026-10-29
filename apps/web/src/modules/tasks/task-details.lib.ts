@@ -2,7 +2,7 @@ import { offsetTitles } from "@family-hub/commands";
 import type { Completion, Task } from "@family-hub/contract";
 import { timeInZone } from "@family-hub/recurrence";
 
-import { formatDate, formatDay, formatNearDate, type Viewer } from "@/common/format-date";
+import { formatDate, formatDay, formatNearDate, type Viewer } from "@/common/format-date.lib.ts";
 
 import { completionOf, momentOf, type OccurrenceStatus } from "./occurrences.lib.ts";
 import { repeatTitles } from "./tasks.config.ts";

@@ -3,9 +3,9 @@ import { z } from "zod";
 
 import { appModule, type AppModule, type SlotModule } from "@family-hub/contract";
 
-import { instantly, type Slide } from "@/common/state";
-import type { Telegram } from "@/common/telegram";
+import { instantly, type Slide } from "@/modules/changes";
 import type { TabId } from "@/modules/tab-bar";
+import type { Telegram } from "@/modules/telegram";
 
 export type Place = { module: AppModule; petId?: string };
 

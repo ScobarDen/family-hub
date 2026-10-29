@@ -1,4 +1,4 @@
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { shareCard } from "../recipe.lib.ts";
 import type { RecipeDependencies, ShareResult } from "../recipe.types.ts";

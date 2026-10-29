@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
+import { PhotoThumbs, PhotoViewer } from "@/modules/photo-viewer";
 import {
   FailureBar,
   FormDrawer,
@@ -10,7 +10,7 @@ import {
   SkeletonPhotoGrid,
   SkeletonSection,
   SkeletonSectionLayout,
-} from "@/common/ui";
+} from "@/modules/ui";
 
 import type { AlbumsScreen, AlbumsScreenModel } from "../vm/albums.vm.ts";
 import { AlbumDetails } from "./album-details.view.tsx";

@@ -2,7 +2,7 @@ import { wrap } from "@reatom/core";
 
 import { familyRequestCreated, type ErrorCode } from "@family-hub/contract";
 
-import { refusalOf, type HttpClient } from "@/common/http-client";
+import { refusalOf, type HttpClient } from "@/common/http-client.api.ts";
 
 export type SubmitOutcome = "sent" | "already-pending" | "cooldown" | "already-member";
 

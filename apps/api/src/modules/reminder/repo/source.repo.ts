@@ -1,7 +1,7 @@
 import { and, eq, isNull } from "drizzle-orm";
 
-import { bindFirst } from "@/common/bind";
-import { familyMembers, members, pets, tasks, type Db } from "@/common/db";
+import { bindFirst } from "@/common/bind.lib.ts";
+import { familyMembers, members, pets, tasks, type Db } from "@/modules/db";
 
 export type PetRow = typeof pets.$inferSelect;
 

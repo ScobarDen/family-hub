@@ -4,14 +4,14 @@ One Cloudflare Worker serving `/api/*`, `/bot/webhook` and the per-minute cron. 
 
 ## Shape
 
-- `src/index.ts` is the composition root: it builds real dependencies and hands them to `createWorker` in `src/app/worker.ts`, which mounts every route. Dependencies reach the code as arguments; `Clock` and `BotApi` are the seams tests replace.
+- `src/app/index.ts` is the composition root: it builds real dependencies and hands them to `createWorker` in `src/app/worker.ts`, which mounts every route. Dependencies reach the code as arguments; `Clock` and `BotApi` are the seams tests replace.
 - A domain module is `src/modules/<module>/` with three roles:
   - `*.route.ts` — Hono routes: validate with `@hono/standard-validator` against schemas from `@family-hub/contract`, authorise, call the service, map the result to HTTP.
   - `*.service.ts` — use-cases and policies (Private / Shared visibility, Family Owner rights); receives its repositories as constructor arguments.
   - `*.repo.ts` — the only code that touches the database.
-- Shared infrastructure lives in `src/common/` (`db`, `clock`, `telegram`, then `auth`, `errors`, `visibility`, and `live`: the Family's Durable Object, `GET /api/live` and the middleware that signals every write, [ADR 0010](../../docs/adr/0010-live-updates-through-a-family-durable-object.md)); the per-minute cron is `runScheduled` in `src/app/worker.ts`.
+- Shared infrastructure of several files is a module too: `db`, `telegram` (with the Mini App links), `auth`, `visibility` (the Private / Shared policy) and `live` (the Family's Durable Object, `GET /api/live` and the middleware that signals every write, [ADR 0010](../../docs/adr/0010-live-updates-through-a-family-durable-object.md)). One-file neutral entities sit flat in `src/common/` and are imported by their path (`clock.lib.ts`, `errors.lib.ts`, `bind.lib.ts`, `keyset.lib.ts`, `money.lib.ts`), with no `index.ts`; the signed photo links and who may delete a photo live in `photo`. The per-minute cron is `runScheduled` in `src/app/worker.ts`.
 - Routes are chained (`new Hono().get(…).post(…)`) and mounted with `.route()`. Request and response shapes live in `@family-hub/contract`; `apps/web` parses responses with those schemas instead of importing the app type.
-- Authenticated routes put `requireMember` from `common/auth` in front; it reads the bearer token and the Member's Family membership from D1 and exposes it as `context.var.membership`.
+- Authenticated routes put `requireMember` from `modules/auth` in front; it reads the bearer token and the Member's Family membership from D1 and exposes it as `context.var.membership`.
 
 ## Rules
 
@@ -26,7 +26,7 @@ One Cloudflare Worker serving `/api/*`, `/bot/webhook` and the per-minute cron. 
 
 ## Database
 
-- The schema is `src/common/db/schema.ts`. After changing it run `vp run @family-hub/api#db:generate`, commit the generated SQL in `migrations/` and review it like code. The deploy workflow applies it with `wrangler d1 migrations apply --remote` before the new Worker goes live, so every migration follows the expand / contract rule in [migrations/README.md](migrations/README.md).
+- The schema is `src/modules/db/schema.ts`. After changing it run `vp run @family-hub/api#db:generate`, commit the generated SQL in `migrations/` and review it like code. The deploy workflow applies it with `wrangler d1 migrations apply --remote` before the new Worker goes live, so every migration follows the expand / contract rule in [migrations/README.md](migrations/README.md).
 - Moments are `INTEGER` epoch ms UTC, floating dates `TEXT` `YYYY-MM-DD`, zones IANA names. Every Family table has `family_id`, `created_at`, `created_by`, `updated_at`. Deletion is physical, cascading from Family and from parent to child; references to a Member never cascade.
 - Care Entry kind-specific fields live in the `details` JSON validated by the contract schema; promote a field to a column only to filter, sort or chart on it ([ADR 0001](../../docs/adr/0001-care-entries-single-table-with-json-details.md)).
 

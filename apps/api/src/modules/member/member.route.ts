@@ -11,8 +11,8 @@ import {
   type TimeZoneSettings,
 } from "@family-hub/contract";
 
-import { requireMember, type AuthEnv } from "@/common/auth";
-import { jsonBody } from "@/common/errors";
+import { jsonBody } from "@/common/errors.lib.ts";
+import { requireMember, type AuthEnv } from "@/modules/auth";
 
 import type { MemberService } from "./member.service.ts";
 

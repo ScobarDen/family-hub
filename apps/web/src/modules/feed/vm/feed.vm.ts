@@ -11,12 +11,12 @@ import {
 
 import { feedPage, type FeedActivity, type FeedPage } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import type { LiveVersion } from "@/common/live-updates";
-import { reatomPhotoViewer } from "@/common/photo-viewer";
-import { rolledBack } from "@/common/records";
-import { detached, reatomOptimistic, reatomRollbackFailure, readOnly } from "@/common/state";
-import type { Dialogs, Fullscreen, Haptics } from "@/common/telegram";
+import { rolledBack } from "@/common/records.lib.ts";
+import { detached, reatomOptimistic, reatomRollbackFailure, readOnly } from "@/modules/changes";
+import type { DeviceCache } from "@/modules/device-cache";
+import type { LiveVersion } from "@/modules/live-updates";
+import { reatomPhotoViewer } from "@/modules/photo-viewer";
+import type { Dialogs, Fullscreen, Haptics } from "@/modules/telegram";
 
 import type { FeedApi } from "../feed.api.ts";
 import {

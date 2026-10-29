@@ -3,7 +3,7 @@ import { Temporal } from "temporal-polyfill";
 import type { Pet, Task } from "@family-hub/contract";
 import { birthdaysIn, timeInZone, type DateRange } from "@family-hub/recurrence";
 
-import { formatAge } from "@/common/format-date";
+import { formatAge } from "@/common/format-date.lib.ts";
 
 import { placedOccurrences, statusOf, type OccurrenceStatus } from "./occurrences.lib.ts";
 

@@ -1,13 +1,13 @@
 import { photoMaxBytes, uuidv7, type Photo, type PhotoVariant } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import { bindFirst } from "@/common/bind";
-import type { Clock } from "@/common/clock";
-import { httpStatus } from "@/common/errors";
-import type { PhotoLinks } from "@/common/photo-link";
-import { BotApiError } from "@/common/telegram";
+import { bindFirst } from "@/common/bind.lib.ts";
+import type { Clock } from "@/common/clock.lib.ts";
+import { httpStatus } from "@/common/errors.lib.ts";
+import type { Membership } from "@/modules/auth";
+import { BotApiError } from "@/modules/telegram";
 
 import type { PhotoFiles } from "./photo-file.api.ts";
+import type { PhotoLinks } from "./photo-link.lib.ts";
 import type { PhotoRepo } from "./photo.repo.ts";
 
 export type PhotoDependencies = {

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { createDb, families, familyMembers, members, pets, type Db } from "@/common/db";
+import { createDb, families, familyMembers, members, pets, type Db } from "@/modules/db";
 
 import type { FakeClock } from "./fake-clock.ts";
 

@@ -1,8 +1,8 @@
-import type { AuthService } from "@/common/auth";
-import type { Db } from "@/common/db";
 import type { AlbumService } from "@/modules/album";
+import type { AuthService } from "@/modules/auth";
 import type { CareEntryService } from "@/modules/care-entry";
 import type { CommandService } from "@/modules/command";
+import type { Db } from "@/modules/db";
 import type { FamilyService } from "@/modules/family";
 import type { FamilyRequestService } from "@/modules/family-request";
 import type { FeedService } from "@/modules/feed";

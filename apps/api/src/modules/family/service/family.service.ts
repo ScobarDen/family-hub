@@ -1,4 +1,4 @@
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
 
 import type { FamilyDependencies } from "../family.types.ts";
 import { leave, remove } from "./departure.service.ts";

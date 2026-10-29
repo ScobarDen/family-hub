@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { Button, Notice } from "@/common/ui";
+import { Button, Notice } from "@/modules/ui";
 
 import type { FamilyRequestModel, FamilyRequestScreen } from "../vm/family-request.vm.ts";
 import { FamilyRequestForm } from "./family-request-form.view.tsx";

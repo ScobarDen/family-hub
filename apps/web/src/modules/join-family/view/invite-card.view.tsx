@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { Button, FieldError, Notice } from "@/common/ui";
+import { Button, FieldError, Notice } from "@/modules/ui";
 
 import type { JoinFamilyModel } from "../vm/join-family.vm.ts";
 

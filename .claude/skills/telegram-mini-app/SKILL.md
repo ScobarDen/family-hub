@@ -1,6 +1,6 @@
 ---
 name: telegram-mini-app
-description: How Family Hub talks to Telegram — the Mini App wrapper in apps/web `common/telegram`, initData login, `start_param` deep links, theme, the bot client and webhook in apps/api, inline buttons and callbacks, and photos kept in a Family's Telegram channel. Load when touching any of these, or before reaching for a Telegram SDK or library.
+description: How Family Hub talks to Telegram — the Mini App wrapper in apps/web `modules/telegram`, initData login, `start_param` deep links, theme, the bot client and webhook in apps/api, inline buttons and callbacks, and photos kept in a Family's Telegram channel. Load when touching any of these, or before reaching for a Telegram SDK or library.
 ---
 
 # Telegram in Family Hub
@@ -11,7 +11,7 @@ Feature and version tables, limits and the exact wording of Telegram's docs live
 
 ## Mini App side (`apps/web`)
 
-- The official `telegram-web-app.js` script is the only SDK. `common/telegram` wraps it as Reatom atoms (theme, viewport, safe area, launch params) and actions (main / secondary / back / settings buttons, haptics, `requestWriteAccess`, `shareMessage`). ViewModels reach Telegram through this module, so tests swap it for a fake.
+- The official `telegram-web-app.js` script is the only SDK. `modules/telegram` wraps it as Reatom atoms (theme, viewport, safe area, launch params) and actions (main / secondary / back / settings buttons, haptics, `requestWriteAccess`, `shareMessage`). ViewModels reach Telegram through this module, so tests swap it for a fake.
 - **Theme**: `themeParams` and `themeChanged` feed the shadcn CSS variables. Newer keys (`section_*`, `bottom_bar_bg_color`) need a fallback colour.
 - **Launch params** are read before the first navigation. Telegram owns the URL hash (`#tgWebAppData=…`), so routing is by pathname under the `/family-hub/` base.
 - **`start_param`** is `<kind>_<id>`: `inv_<token>`, `pet_<uuid>`, `entry_<uuid>`, `task_<uuid>`, `rec_<uuid>_<date>` (record a Care Entry for an Occurrence of a Pet-linked Task), `goal_<uuid>`, `cmd_<uuid>`, `recipe_<uuid>`, `album_<uuid>`; the old `plan_<uuid>` and `event_<uuid>` still open the Task they became. Its codec with validation lives in `packages/contract` and is shared with the bot, which builds the same links. Keep payloads within 64 characters of `[A-Za-z0-9_-]`. Opening a payload is a `route.go(…, true)` on start; a reload of a deep page falls back to the home screen and re-applies `start_param`.
@@ -20,7 +20,7 @@ Feature and version tables, limits and the exact wording of Telegram's docs live
 
 ## Bot side (`apps/api`)
 
-- **Bot API client** is `common/telegram/bot.api.ts`: `fetch` plus types from `@grammyjs/types`, a typed `call(method, params)` and `BotApiError` carrying `errorCode` and `retryAfterSeconds`. Add a method by calling it; tests use `test/fake-bot-api.ts`, which records calls and can answer 403 and 429.
+- **Bot API client** is `modules/telegram/bot.api.ts`: `fetch` plus types from `@grammyjs/types`, a typed `call(method, params)` and `BotApiError` carrying `errorCode` and `retryAfterSeconds`. Add a method by calling it; tests use `test/fake-bot-api.ts`, which records calls and can answer 403 and 429.
 - **Webhook** `/bot/webhook` checks `X-Telegram-Bot-Api-Secret-Token` against `WEBHOOK_SECRET` on every request.
 - **initData check** is HMAC over WebCrypto: `secret = HMAC_SHA256(key = "WebAppData", message = BOT_TOKEN)` — the constant is the key, the token is the message; `data_check_string` drops only `hash`, keeps `signature`, sorts `key=value` lines joined by `\n`; compare in constant time; accept `auth_date` up to one hour old; parse `user` JSON only after the check. Identity is `user.id`; names and `username` are display-only.
 - **Reminder buttons** are one set for every Task Reminder: «✅ Готово» (`style: "success"`) completes that Occurrence for everyone, «⏰ Отложить» snoozes the presser's own row (an hour for a timed Task, a day otherwise), and a Pet-linked Task adds «📝 Записать», a URL button to `rec_<task>_<occurrence>`: the Mini App completes the Occurrence and opens a Care Entry prefilled for the Pet. Every Task Reminder also gets «Открыть», a URL button to `task_<id>` (`url`, not `web_app`, which works only in private chats); rows are «Готово» · «Отложить», then «Записать» · «Открыть».

@@ -9,8 +9,8 @@ import {
   type RecipeChange,
 } from "@family-hub/contract";
 
-import type { HttpClient } from "@/common/http-client";
-import { createPhotoCalls, resolvedPhoto } from "@/common/photo";
+import type { HttpClient } from "@/common/http-client.api.ts";
+import { createPhotoCalls, resolvedPhoto } from "@/modules/photo";
 
 export type RecipeQuery = {
   text: string;

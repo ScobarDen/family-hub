@@ -3,15 +3,15 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { recipeChange, type Recipe } from "@family-hub/contract";
 
-import { reatomDeviceCache } from "@/common/device-cache";
-import { createHttpClient } from "@/common/http-client";
-import { fakeSlide } from "@/common/state";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeSlide } from "@/modules/changes";
+import { reatomDeviceCache } from "@/modules/device-cache";
 import {
   fakeDeviceStorage,
   type FakeDeviceStorage,
   fakeHaptics,
   fakeWindow,
-} from "@/common/telegram";
+} from "@/modules/telegram";
 
 import { createRecipesApi } from "../recipes.api.ts";
 import { reatomRecipesScreen } from "./recipes.vm.ts";

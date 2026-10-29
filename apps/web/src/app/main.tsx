@@ -3,22 +3,19 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Temporal } from "temporal-polyfill";
 
-import { reatomDeviceCache } from "@/common/device-cache";
-import { deviceTimeZone, today as todayIn } from "@/common/format-date";
-import { createHttpClient } from "@/common/http-client";
-import { openLiveSocket, reatomLiveUpdates } from "@/common/live-updates";
-import { preparePhoto } from "@/common/photo";
-import { reatomTelegram } from "@/common/telegram";
-import { slideScreens } from "@/common/ui";
-import { createVoiceRecorder } from "@/common/voice-recorder";
+import { deviceTimeZone, today as todayIn } from "@/common/format-date.lib.ts";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { createVoiceRecorder } from "@/common/voice-recorder.lib.ts";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
+import { reatomDeviceCache } from "@/modules/device-cache";
 import { createFamilyApi, reatomFamily, reatomFamilyMembers } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
 import { createFeedApi, reatomFeed } from "@/modules/feed";
 import { createGoalsApi, reatomGoalsScreen } from "@/modules/goals";
 import { createInvitesApi, reatomInvites } from "@/modules/invites";
 import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
+import { openLiveSocket, reatomLiveUpdates } from "@/modules/live-updates";
 import {
   createMemberSettingsApi,
   reatomDigest,
@@ -27,6 +24,7 @@ import {
   reatomTimeZone,
 } from "@/modules/member-settings";
 import { createCareApi, createPetsApi, reatomPets, reatomPetTab } from "@/modules/pets";
+import { preparePhoto } from "@/modules/photo";
 import { createPhotoStorageApi, reatomPhotoStorage } from "@/modules/photo-storage";
 import { createRecipesApi, reatomRecipesScreen } from "@/modules/recipes";
 import { createSessionApi, reatomSession } from "@/modules/session";
@@ -38,7 +36,9 @@ import {
   reatomTabBarModules,
 } from "@/modules/tab-bar";
 import { createTasksApi, reatomTasksScreen } from "@/modules/tasks";
+import { reatomTelegram } from "@/modules/telegram";
 import { createTodayApi, reatomToday } from "@/modules/today";
+import { slideScreens } from "@/modules/ui";
 
 import { reatomNavigation } from "./app.route.ts";
 import { reatomOpener } from "./opener.vm.ts";

@@ -1,6 +1,6 @@
 import { action, computed } from "@reatom/core";
 
-import { reatomCare, type CareApi, type CareDependencies } from "../care/index.ts";
+import { reatomCare, type CareApi, type CareDependencies } from "../modules/care/index.ts";
 import type { PetsDependencies } from "./pets-screen.vm.ts";
 import { reatomPetsScreen } from "./pets.vm.ts";
 

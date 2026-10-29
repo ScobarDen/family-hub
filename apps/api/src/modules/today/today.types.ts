@@ -1,6 +1,6 @@
 import type { TodayTiles } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 export type TileWindow = { today: string; timeZone: string };
 

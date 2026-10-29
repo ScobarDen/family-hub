@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { Invite, InviteCreated, InviteList } from "@family-hub/contract";
 
-import { createHttpClient } from "@/common/http-client";
-import { fakeHaptics } from "@/common/telegram";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeHaptics } from "@/modules/telegram";
 
 import { createInvitesApi } from "../invites.api.ts";
 import { reatomInvites } from "./invites.vm.ts";

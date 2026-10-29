@@ -1,4 +1,4 @@
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { isAllDone, isOccurrenceOf, occurrenceKey } from "../task.lib.ts";
 import type { OccurrenceOf, SubtaskTarget, TaskDependencies, TaskResult } from "../task.types.ts";

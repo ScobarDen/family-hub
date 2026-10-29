@@ -1,6 +1,6 @@
 import { uuidv7, type Pet, type PetMemoChange, type PetProfile } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { toPet } from "../pet.lib.ts";
 import type { PetRow } from "../pet.repo.ts";

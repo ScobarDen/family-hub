@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { Button, Notice, Skeleton } from "@/common/ui";
+import { Button, Notice, Skeleton } from "@/modules/ui";
 
 import type { SessionModel, SessionScreen } from "../vm/session.vm.ts";
 import { Stranger } from "./stranger.view.tsx";

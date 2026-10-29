@@ -1,7 +1,6 @@
-import type { MembershipRepo } from "@/common/auth";
-import type { Clock } from "@/common/clock";
-import type { MiniAppLinks } from "@/common/mini-app-link";
-import type { BotApi } from "@/common/telegram";
+import type { Clock } from "@/common/clock.lib.ts";
+import type { MembershipRepo } from "@/modules/auth";
+import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
 import type { InviteRepo } from "./invite.repo.ts";
 

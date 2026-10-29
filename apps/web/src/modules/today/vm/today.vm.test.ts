@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { FeedUpcoming, Task, Today } from "@family-hub/contract";
 
-import { reatomDeviceCache } from "@/common/device-cache";
-import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/common/telegram";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { reatomDeviceCache } from "@/modules/device-cache";
+import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/modules/telegram";
 
 import { createTodayApi } from "../today.api.ts";
 import { reatomToday, type TodayTarget } from "./today.vm.ts";

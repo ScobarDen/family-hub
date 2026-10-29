@@ -1,6 +1,6 @@
-import type { Membership } from "@/common/auth";
-import { httpStatus } from "@/common/errors";
-import { BotApiError } from "@/common/telegram";
+import { httpStatus } from "@/common/errors.lib.ts";
+import type { Membership } from "@/modules/auth";
+import { BotApiError } from "@/modules/telegram";
 
 import { assignedText, openTaskButton } from "../task.lib.ts";
 import type { TaskDependencies } from "../task.types.ts";

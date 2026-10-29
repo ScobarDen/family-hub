@@ -2,7 +2,7 @@ import { action, computed } from "@reatom/core";
 
 import { appModule, type AppModule } from "@family-hub/contract";
 
-import { sectionTitles } from "@/common/sections";
+import { sectionTitles } from "@/modules/sections";
 
 import type { TabBarModules } from "../tab-bar.model.ts";
 

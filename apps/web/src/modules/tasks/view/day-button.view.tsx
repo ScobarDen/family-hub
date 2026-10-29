@@ -1,4 +1,4 @@
-import { cn } from "@/common/ui";
+import { cn } from "@/modules/ui";
 
 import type { DayCell } from "../calendar.lib.ts";
 

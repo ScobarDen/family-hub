@@ -18,10 +18,7 @@ import type {
   MovementKind,
 } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import { reatomFormBack } from "@/common/form";
-import { formatRubles } from "@/common/format-money";
-import type { LiveVersion } from "@/common/live-updates";
+import { formatRubles } from "@/common/format-money.lib.ts";
 import {
   detached,
   instantly,
@@ -30,14 +27,17 @@ import {
   reatomRollbackFailure,
   type RollbackFailure,
   type Slide,
-} from "@/common/state";
+} from "@/modules/changes";
+import type { DeviceCache } from "@/modules/device-cache";
+import { reatomFormBack } from "@/modules/form";
+import type { LiveVersion } from "@/modules/live-updates";
 import {
   type ClosingConfirmation,
   type Confirmation,
   type Dialogs,
   isConfirmed,
   type Haptics,
-} from "@/common/telegram";
+} from "@/modules/telegram";
 
 import type { GoalsApi } from "../goals.api.ts";
 import {

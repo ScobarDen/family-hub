@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-import { Button, CheckButton, Section, SectionItem } from "@/common/ui";
+import { Button, CheckButton, Section, SectionItem } from "@/modules/ui";
 
 import type { SubtaskRow, TaskDetails as Details } from "../task-details.lib.ts";
 import type { TasksScreenModel } from "../vm/tasks.vm.ts";

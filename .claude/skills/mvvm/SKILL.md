@@ -1,6 +1,6 @@
 ---
 name: mvvm
-description: MVVM as separation of responsibility — Model owns the domain, ViewModel owns screen state and user intent and hands the View only UI-shaped data (facade), View binds and decides nothing, and whoever sits above wires parts through arguments (mediator, composition root). Load when writing or reviewing a screen with logic, deciding which role owns a mapping, a handler, a piece of state or an error, a god component or god ViewModel, backend shapes leaking into the UI, modules importing each other, or making a screen testable without a backend or a window. Stack-neutral; levels are feod, file names are role-files, stack wiring is frontend-mvvm or qt-mvvm.
+description: MVVM as separation of responsibility — Model owns the domain, ViewModel owns screen state and user intent and hands the View only UI-shaped data (facade), View binds and decides nothing, and whoever sits above wires parts through arguments (mediator, composition root). Load when writing or reviewing a screen with logic, deciding which role owns a mapping, a handler, a piece of state or an error, a god component or god ViewModel, backend shapes leaking into the UI, modules importing each other, or making a screen testable without a backend or a window. Stack-neutral; levels are feod and feod-preset, file names are role-files, stack wiring is frontend-mvvm or qt-mvvm.
 ---
 
 # MVVM
@@ -119,7 +119,7 @@ MVVM that cannot be tested without a backend and without a window exists only on
 
 | Need | Load |
 | --- | --- |
-| Which level and who may import it | `feod` |
+| Which level and who may import it | `feod`, `feod-preset` |
 | File names and folders per role | `role-files` |
 | React / Vue / Reatom wiring | `frontend-mvvm` |
 | MobX wiring | `mobx-mvvm` |

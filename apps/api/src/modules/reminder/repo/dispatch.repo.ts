@@ -1,7 +1,7 @@
 import { and, asc, eq, gte, inArray, isNull, lt, lte, notInArray, or } from "drizzle-orm";
 
-import { bindFirst } from "@/common/bind";
-import { familyMembers, reminderDispatch, type DispatchSource, type Db } from "@/common/db";
+import { bindFirst } from "@/common/bind.lib.ts";
+import { familyMembers, reminderDispatch, type DispatchSource, type Db } from "@/modules/db";
 
 import { sourceIdOf } from "../reminder.lib.ts";
 

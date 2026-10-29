@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { LoaderCircle, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import { Button, Drawer, DrawerContent, DrawerTitle, FieldError, LiveRegion } from "@/common/ui";
+import { Button, Drawer, DrawerContent, DrawerTitle, FieldError, LiveRegion } from "@/modules/ui";
 
 import type { CommandSheet as SheetState, CommandSheetModel } from "../vm/command-sheet.vm.ts";
 import { DraftPreviewBlock } from "./draft-preview.view.tsx";

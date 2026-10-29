@@ -1,8 +1,8 @@
 import type { FeedUpcoming } from "@family-hub/contract";
 import { birthdaysIn } from "@family-hub/recurrence";
 
-import type { PhotoLinks } from "@/common/photo-link";
 import type { UpcomingSource } from "@/modules/feed";
+import type { PhotoLinks } from "@/modules/photo";
 
 import type { PetRepo } from "../pet.repo.ts";
 

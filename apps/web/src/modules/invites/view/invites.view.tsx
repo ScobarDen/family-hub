@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Link, LoaderCircle, UserPlus } from "lucide-react";
 
-import { Button, FieldError, FormDrawer, Section, SectionItem } from "@/common/ui";
+import { Button, FieldError, FormDrawer, Section, SectionItem } from "@/modules/ui";
 
 import type { InvitesModel } from "../vm/invites.vm.ts";
 

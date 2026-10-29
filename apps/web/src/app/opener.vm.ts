@@ -10,10 +10,10 @@ import {
   type RecordLink,
 } from "@family-hub/contract";
 
-import type { DraftOpening } from "@/common/form";
-import type { Telegram } from "@/common/telegram";
 import type { OpenedDraft } from "@/modules/command";
+import type { DraftOpening } from "@/modules/form";
 import type { TaskDraftOpening } from "@/modules/tasks";
+import type { Telegram } from "@/modules/telegram";
 
 import type { Place } from "./app.route.ts";
 

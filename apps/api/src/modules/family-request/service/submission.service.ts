@@ -1,6 +1,6 @@
 import type { FamilyRequestStatus } from "@family-hub/contract";
 
-import type { TelegramUser } from "@/common/auth";
+import type { TelegramUser } from "@/modules/auth";
 
 import { familyRequestCooldownMs } from "../family-request.config.ts";
 import { decisionButtons, newRequest, operatorText } from "../family-request.lib.ts";

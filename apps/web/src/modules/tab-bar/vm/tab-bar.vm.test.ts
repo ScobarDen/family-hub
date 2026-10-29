@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, test } from "vite-plus/test";
 
 import type { SlotModule } from "@family-hub/contract";
 
-import { createHttpClient } from "@/common/http-client";
-import { fakeHaptics } from "@/common/telegram";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeHaptics } from "@/modules/telegram";
 
 import { createTabBarApi } from "../tab-bar.api.ts";
 import { reatomTabBarModules } from "../tab-bar.model.ts";

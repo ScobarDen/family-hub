@@ -4,15 +4,17 @@ The «Рецепты» tab: the Family's recipes, always Shared. A Recipe has a 
 
 Recipe photos go to the Photo Storage like any other but stay out of «Все фото» and the Albums.
 
-The Recipe form is a `reatomEditableRecord` from `common/form`, which owns creating, editing and the saving flags; the form adds its tags, its photos and saving while a photo still uploads. It opens in a bottom `FormDrawer` (`isFormOpen`) over the list or the Recipe it came from; the tags stay a screen of their own.
+The Recipe form is a `reatomEditableRecord` from `modules/form`, which owns creating, editing and the saving flags; the form adds its tags, its photos and saving while a photo still uploads. It opens in a bottom `FormDrawer` (`isFormOpen`) over the list or the Recipe it came from; the tags stay a screen of their own.
 
 ## Injected
 
 - `api` — `createRecipesApi(httpClient)`: Recipes, their tags, favourites and photos.
-- `deviceCache` — `common/device-cache`: the Recipe cards (without «как готовить», which the Recipe's own screen loads) and the tag chips of the last launch show at once. Only the whole book in its usual order is kept, never a search, a chip or «⭐».
-- `telegram` — `showPopup` from `common/telegram` for the confirmations, `canShareMessage` and `shareMessage` for «Поделиться».
-- `preparePhoto` — `preparePhoto` from `common/photo`.
+- `deviceCache` — `modules/device-cache`: the Recipe cards (without «как готовить», which the Recipe's own screen loads) and the tag chips of the last launch show at once. Only the whole book in its usual order is kept, never a search, a chip or «⭐».
+- `telegram` — `showPopup` from `modules/telegram` for the confirmations, `canShareMessage` and `shareMessage` for «Поделиться».
+- `preparePhoto` — `preparePhoto` from `modules/photo`.
 - `photoHint` — from `photo-storage`: why photos cannot be added now.
 - `today`, `timeZone` — the viewer's date and zone: an earlier day is marked at its midday.
 
-The photo picker is `common/photo-attachments` and the viewer `common/photo-viewer`, shared with the care and albums modules. `reatomRecipesScreen` goes to the navigation as the recipes module's `nestedBack`.
+The photo picker is `modules/photo-attachments` and the viewer `modules/photo-viewer`, shared with the care and albums modules. `reatomRecipesScreen` goes to the navigation as the recipes module's `nestedBack`.
+
+Out of scope: picking and viewing photos (`photo-attachments`, `photo-viewer`), the shared form machinery (`form`).

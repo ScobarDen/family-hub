@@ -2,8 +2,8 @@ import { Hono } from "hono";
 
 import { familyRequestBody, type FamilyRequestCreated } from "@family-hub/contract";
 
-import type { AuthEnv } from "@/common/auth";
-import { apiError, httpStatus, jsonBody, refusalsOf } from "@/common/errors";
+import { apiError, httpStatus, jsonBody, refusalsOf } from "@/common/errors.lib.ts";
+import type { AuthEnv } from "@/modules/auth";
 
 import type { FamilyRequestService, SubmitResult } from "./service/family-request.service.ts";
 

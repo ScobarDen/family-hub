@@ -1,7 +1,7 @@
 import { Pencil } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Button, cn } from "@/common/ui";
+import { Button, cn } from "@/modules/ui";
 
 import type { PetCard } from "../pets.lib.ts";
 

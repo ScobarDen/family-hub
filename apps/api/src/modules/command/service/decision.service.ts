@@ -4,8 +4,8 @@ import { draftRefusalTexts } from "@family-hub/commands";
 import type { CommandDraft, DraftCreated, DraftRefusal } from "@family-hub/contract";
 import type { Phrase } from "@family-hub/recurrence";
 
-import type { Membership } from "@/common/auth";
-import { ignoringBotErrors } from "@/common/telegram";
+import type { Membership } from "@/modules/auth";
+import { ignoringBotErrors } from "@/modules/telegram";
 
 import { previewText } from "../command-preview.lib.ts";
 import { createdText, dismissedText, picked, previewButtons } from "../command.lib.ts";

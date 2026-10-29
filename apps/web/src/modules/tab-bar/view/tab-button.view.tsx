@@ -1,6 +1,6 @@
 import { House, LayoutGrid, type LucideIcon } from "lucide-react";
 
-import { sectionIcons } from "@/common/sections";
+import { sectionIcons } from "@/modules/sections";
 
 import type { TabId, TabItem } from "../vm/tab-bar.vm.ts";
 

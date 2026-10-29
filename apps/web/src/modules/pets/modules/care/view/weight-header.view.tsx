@@ -1,0 +1,33 @@
+import { reatomComponent } from "@reatom/react";
+import { Scale } from "lucide-react";
+
+import { Button } from "@/modules/ui";
+
+import type { CareModel } from "../vm/care.vm.ts";
+
+// The last weighing leads the block; the chart under it is the evidence.
+export const WeightHeader = reatomComponent(({ model }: { model: CareModel }) => {
+  const summary = model.weightSummary();
+
+  return (
+    <div className="flex items-end justify-between gap-3 px-4 pt-4">
+      <div className="flex flex-col gap-0.5">
+        <span className="text-figure tracking-tight">{summary?.latest ?? "—"}</span>
+        <span className="text-footnote text-muted-foreground">
+          {summary?.change ?? "Последнее взвешивание"}
+        </span>
+      </div>
+      {!model.isReadOnly() && (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            model.add("weight");
+          }}
+        >
+          <Scale /> Записать
+        </Button>
+      )}
+    </div>
+  );
+}, "WeightHeader");

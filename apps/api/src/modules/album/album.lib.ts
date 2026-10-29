@@ -2,7 +2,7 @@ import type { InlineQueryResultCachedPhoto } from "@grammyjs/types";
 
 import { petAlbumPrefix, type Album, type AlbumSummary, type Photo } from "@family-hub/contract";
 
-import type { PhotoLinks } from "@/common/photo-link";
+import type { PhotoLinks } from "@/modules/photo";
 
 import type { AlbumRow, PetRow, PhotoRow } from "./album.repo.ts";
 

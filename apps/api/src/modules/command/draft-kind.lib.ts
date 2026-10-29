@@ -10,7 +10,7 @@ import {
 } from "@family-hub/contract";
 import { momentOfPhrase, type Phrase } from "@family-hub/recurrence";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import type { CommandDependencies } from "./command.types.ts";
 

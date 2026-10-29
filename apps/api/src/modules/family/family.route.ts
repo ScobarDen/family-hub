@@ -9,8 +9,8 @@ import {
   type MemberRemoved,
 } from "@family-hub/contract";
 
-import { requireMember, type AuthEnv } from "@/common/auth";
-import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
+import { httpStatus, jsonBody, refusalsOf } from "@/common/errors.lib.ts";
+import { requireMember, type AuthEnv } from "@/modules/auth";
 
 import type { FamilyService } from "./service/family.service.ts";
 

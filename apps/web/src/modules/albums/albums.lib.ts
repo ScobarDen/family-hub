@@ -1,6 +1,6 @@
 import type { Album, AlbumSummary } from "@family-hub/contract";
 
-import { formatDay, type Viewer } from "@/common/format-date";
+import { formatDay, type Viewer } from "@/common/format-date.lib.ts";
 
 export type AlbumItem = {
   id: string;

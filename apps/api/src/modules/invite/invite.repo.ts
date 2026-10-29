@@ -1,7 +1,7 @@
 import { and, desc, eq, gt, isNotNull, isNull, lt, or } from "drizzle-orm";
 
-import { bindFirst } from "@/common/bind";
-import { families, familyMembers, invites, members, type Db } from "@/common/db";
+import { bindFirst } from "@/common/bind.lib.ts";
+import { families, familyMembers, invites, members, type Db } from "@/modules/db";
 
 export type InviteRow = typeof invites.$inferSelect;
 

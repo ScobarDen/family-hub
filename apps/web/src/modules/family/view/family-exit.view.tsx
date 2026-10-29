@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { LogOut, Trash2 } from "lucide-react";
 
-import { ConfirmDeletionForm, FieldError, FormDrawer, Section, SectionItem } from "@/common/ui";
+import { ConfirmDeletionForm, FieldError, FormDrawer, Section, SectionItem } from "@/modules/ui";
 
 import type { FamilyModel } from "../vm/family.vm.ts";
 

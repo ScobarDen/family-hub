@@ -1,4 +1,4 @@
-import type { DispatchSource } from "@/common/db";
+import type { DispatchSource } from "@/modules/db";
 
 import { holderIdOf } from "../reminder.lib.ts";
 import type { HolderKind, ReminderDependencies, Source, SourceHolder } from "../reminder.types.ts";

@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/common/ui";
+import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/modules/ui";
 
 import { goalIcons } from "../goals.config.ts";
 import type { GoalListItem } from "../goals.lib.ts";

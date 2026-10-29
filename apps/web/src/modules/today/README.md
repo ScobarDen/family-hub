@@ -9,8 +9,10 @@ The first tab: the Today hub. It answers «what needs doing now and what's comin
 ## Injected
 
 - `api` — `createTodayApi(httpClient)`: the hub's payload, completing and reopening a Task Occurrence or a Subtask.
-- `deviceCache` — `common/device-cache`: the last Today, stamped with the date it was loaded for, shows at once on the next launch. From another date «Сделать сегодня» stays a skeleton (`isDueOutdated`) until the fresh one arrives, so yesterday's rows are never completed by mistake; «Впереди» and the tiles show from the cache.
+- `deviceCache` — `modules/device-cache`: the last Today, stamped with the date it was loaded for, shows at once on the next launch. From another date «Сделать сегодня» stays a skeleton (`isDueOutdated`) until the fresh one arrives, so yesterday's rows are never completed by mistake; «Впереди» and the tiles show from the cache.
 - `today` — the Member's date, for «Сегодня» / «Завтра» and Overdue.
 - `onOpen`, `onOpenSection`, `onOpenFeed` — the app's opener and navigation: a Task (`{ kind: "task", taskId }`), a Pet, adding a Pet, a section and the Feed open on top of the Today tab.
 
 `nearestGoalId` hands «Разделы» the Goal for «+ Взнос» from the same payload. `reload` refetches; the app calls it whenever the hub is shown again and after a Command Draft is saved.
+
+Out of scope: editing a record beyond ticking it off (its own module), the Feed's chronology (`feed`), each section's title, icon and colour (`sections`).

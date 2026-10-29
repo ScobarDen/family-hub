@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 
 import type { RecipeTag } from "@family-hub/contract";
 
-import { Chip, ChipGroup } from "@/common/ui";
+import { Chip, ChipGroup } from "@/modules/ui";
 
 import type { RecipeFormModel } from "../vm/recipe-form.vm.ts";
 

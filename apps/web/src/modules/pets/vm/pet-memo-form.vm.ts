@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { petLongTextMaxLength, petMemoChange, type Pet } from "@family-hub/contract";
 
-import { fillForm, reatomSubmitFailure } from "@/common/form";
-import type { Haptics } from "@/common/telegram";
+import { fillForm, reatomSubmitFailure } from "@/modules/form";
+import type { Haptics } from "@/modules/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";

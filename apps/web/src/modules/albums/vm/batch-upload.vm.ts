@@ -12,9 +12,9 @@ import {
 
 import { albumBatchMax, type Photo } from "@family-hub/contract";
 
-import { HttpError } from "@/common/http-client";
-import type { PreparedPhoto } from "@/common/photo";
-import type { Haptics } from "@/common/telegram";
+import { HttpError } from "@/common/http-error.lib.ts";
+import type { PreparedPhoto } from "@/modules/photo";
+import type { Haptics } from "@/modules/telegram";
 
 export type BatchStatus = "waiting" | "uploading" | "done" | "failed";
 

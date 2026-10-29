@@ -7,7 +7,7 @@ import {
   type FamilyRequestStatus,
 } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
+import type { DeviceCache } from "@/modules/device-cache";
 
 import type { SessionApi } from "./session.api.ts";
 

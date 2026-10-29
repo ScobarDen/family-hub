@@ -3,8 +3,8 @@ import type { Message } from "@grammyjs/types";
 import type { FeedUpcoming } from "@family-hub/contract";
 import { dateInZone, daysAfter, occurrenceMoment } from "@family-hub/recurrence";
 
-import { fallbackTimeZone } from "@/common/clock";
-import { ignoringBotErrors, strangerText } from "@/common/telegram";
+import { fallbackTimeZone } from "@/common/clock.lib.ts";
+import { ignoringBotErrors, strangerText } from "@/modules/telegram";
 
 import { formatFloatingDate, openAppButton, snoozeMs, sourceIdOf } from "../reminder.lib.ts";
 import type { SourceHolder, ReminderDependencies, Source } from "../reminder.types.ts";

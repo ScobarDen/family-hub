@@ -1,3 +1,6 @@
+import { fileURLToPath } from "node:url";
+
+import { configFromProject } from "@o-feod/oxlint-structure-plugin/configs";
 import { defineConfig } from "vite-plus";
 
 type Pattern = { regex: string; message: string; allowTypeImports?: boolean };
@@ -11,14 +14,6 @@ function role(...roles: string[]): Pattern {
   };
 }
 
-const deepImport = {
-  regex: "^@/(modules|common|pages)/[^/]+/.+",
-  message: "Import the entity root, not its insides.",
-};
-const globalImport = {
-  regex: "^@/global(/|$)",
-  message: "Only the entry connects global.",
-};
 const reactuse = {
   name: "@siberiacancode/reactuse",
   message: "reactuse holds ephemeral DOM state and lives only in *.view.tsx.",
@@ -32,6 +27,14 @@ function restrict(
     "no-restricted-imports": ["error", { paths: allowReactuse ? [] : [reactuse], patterns }],
   };
 }
+
+function feodRules(app: string) {
+  const appDirectory = fileURLToPath(new URL(`apps/${app}`, import.meta.url));
+
+  return configFromProject({ rootDir: appDirectory }).rules ?? {};
+}
+
+const reactuseOnly = restrict([]);
 
 function webSource(glob: string): string {
   return `apps/web/src/${glob}`;
@@ -50,7 +53,41 @@ function isVendoredSkill(file: string): boolean {
   return path.includes("/.claude/skills/") || path.endsWith("/skills-lock.json");
 }
 
-// Windows runs `vp` through a .cmd shim capped at 8191 characters, which a skills update overflows.
+// Windows runs `vp` through a .cmd shim capped at 8191 characters, with room left for the shim's own prefix.
+const maxCommandLength = 7000;
+const checkCommand = "vp check --fix";
+
+// lint-staged splits the command with string-argv, which honours quotes but no escapes, and runs it without a shell.
+function quotedArgument(file: string): string {
+  const quote = file.includes('"') ? "'" : '"';
+
+  if (file.includes(quote)) {
+    throw new Error(
+      `A staged file name holds both quote marks and cannot reach vp intact: ${file}`,
+    );
+  }
+
+  return `${quote}${file}${quote}`;
+}
+
+function checkCommandsFor(files: readonly string[]): string[] {
+  const commands: string[] = [];
+  let command = checkCommand;
+
+  for (const file of files) {
+    const argument = ` ${quotedArgument(file)}`;
+
+    if (command !== checkCommand && command.length + argument.length > maxCommandLength) {
+      commands.push(command);
+      command = checkCommand;
+    }
+
+    command += argument;
+  }
+
+  return [...commands, command];
+}
+
 function checkStagedFiles(files: readonly string[]): string[] {
   const checked = files.filter((file) => !isVendoredSkill(file));
 
@@ -58,10 +95,8 @@ function checkStagedFiles(files: readonly string[]): string[] {
     return [];
   }
 
-  const command = `vp check --fix ${checked.map((file) => JSON.stringify(file)).join(" ")}`;
-
   // A single pass leaves lint autofixes such as `curly` unformatted; the second pass formats them.
-  return [command, command];
+  return checkCommandsFor(checked).flatMap((command) => [command, command]);
 }
 
 const tests = ["**/*.test.{ts,tsx}"];
@@ -110,6 +145,7 @@ export default defineConfig({
       { name: "vite-plus", specifier: "vite-plus/oxlint-plugin" },
       { name: "@stylistic", specifier: "@stylistic/eslint-plugin" },
       { name: "unicorn-js", specifier: "eslint-plugin-unicorn" },
+      { name: "feod-structure", specifier: "@o-feod/oxlint-structure-plugin" },
     ],
     options: { typeAware: true, typeCheck: true, reportUnusedDisableDirectives: "error" },
     rules: {
@@ -263,54 +299,41 @@ export default defineConfig({
       },
       { files: configs, rules: { "max-lines": "off" } },
       {
-        files: [...configs, apiSource("index.ts")],
+        files: [...configs, apiSource("app/index.ts")],
         rules: { "import/no-default-export": "off" },
       },
-      {
-        files: ["apps/*/src/**/*.{ts,tsx}"],
-        rules: restrict([deepImport, globalImport, role("dto")]),
-      },
-      {
-        files: ["apps/*/src/**/*.test.{ts,tsx}"],
-        rules: restrict([deepImport, globalImport]),
-      },
-      {
-        files: [webSource("app/main.tsx")],
-        rules: restrict([deepImport, role("dto")]),
-      },
-      { files: [webSource("**/*.dto.ts")], rules: restrict([deepImport, globalImport]) },
+      { files: [webSource("**/*.{ts,tsx}")], rules: feodRules("web") },
+      { files: [apiSource("**/*.ts")], rules: feodRules("api") },
+      { files: ["apps/*/src/**/*.{ts,tsx}"], rules: restrict([role("dto")]) },
+      { files: ["apps/*/src/**/*.test.{ts,tsx}"], rules: reactuseOnly },
+      { files: [webSource("**/*.dto.ts")], rules: reactuseOnly },
       {
         files: [webSource("**/*.api.ts")],
-        rules: restrict([deepImport, globalImport, role("vm", "view")]),
+        rules: restrict([role("vm", "view")]),
       },
       {
         files: [webSource("**/*.model.ts")],
-        rules: restrict([deepImport, globalImport, role("vm", "view", "dto")]),
+        rules: restrict([role("vm", "view", "dto")]),
       },
       {
         files: [webSource("**/*.vm.ts")],
-        rules: restrict([
-          deepImport,
-          globalImport,
-          role("view", "dto"),
-          { ...role("api"), allowTypeImports: true },
-        ]),
+        rules: restrict([role("view", "dto"), { ...role("api"), allowTypeImports: true }]),
       },
       {
         files: [webSource("**/*.view.tsx")],
-        rules: restrict([deepImport, globalImport, role("api", "dto")], { allowReactuse: true }),
+        rules: restrict([role("api", "dto")], { allowReactuse: true }),
       },
       {
         files: [apiSource("**/*.route.ts")],
-        rules: restrict([deepImport, globalImport, role("repo")]),
+        rules: restrict([role("repo")]),
       },
       {
         files: [apiSource("**/*.service.ts")],
-        rules: restrict([deepImport, globalImport, role("route")]),
+        rules: restrict([role("route")]),
       },
       {
         files: [apiSource("**/*.repo.ts")],
-        rules: restrict([deepImport, globalImport, role("route", "service")]),
+        rules: restrict([role("route", "service")]),
       },
     ],
   },

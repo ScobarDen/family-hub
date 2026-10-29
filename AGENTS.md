@@ -4,7 +4,7 @@ The linter and formatter (`vite.config.ts`) set the style: run `vp run fix` befo
 
 ## Architecture
 
-Every app follows FEOD levels (`app` / `pages` / `modules` / `common` / `global`) with role files `{subject}.{role}.ts` and a module's public API in its `index.ts`. The linter and `vp run feod` enforce the import matrix; each app's `AGENTS.md` carries the rules a linter cannot see.
+Every app follows FEOD levels (`app` / `pages` / `modules` / `common` / `global`) with role files `{subject}.{role}.ts` and a module's public API in its `index.ts`. The linter enforces the import matrix (levels through `@o-feod/oxlint-structure-plugin` with each app's `package.json#feod`, roles through `no-restricted-imports`); each app's `AGENTS.md` carries the rules a linter cannot see.
 
 - `apps/web` — [apps/web/AGENTS.md](apps/web/AGENTS.md)
 - `apps/api` — [apps/api/AGENTS.md](apps/api/AGENTS.md)
