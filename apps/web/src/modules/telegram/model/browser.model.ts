@@ -15,7 +15,12 @@ import { browserStandInVersions } from "./telegram.model.ts";
 // The URL parameter a Push or a link opens a record with, in place of `start_param`.
 const deepLinkParameter = "open";
 
-const storagePrefix = "family-hub:";
+// The cache has a prefix of its own: «family-hub:» also holds the Device, which clear() must keep.
+const storagePrefix = "family-hub:cache:";
+const appPrefix = "family-hub:";
+const layoutKey = "family-hub:storage-layout";
+const layout = "2";
+const keptAcrossLayouts = new Set(["family-hub:device", layoutKey]);
 const darkScheme = "(prefers-color-scheme: dark)";
 const telegramShare = "https://t.me/share/url";
 
@@ -57,7 +62,32 @@ function answerLater<Result>(
   });
 }
 
+function keysOf(storage: Storage): string[] {
+  return Array.from({ length: storage.length }, (_, index) => storage.key(index) ?? "");
+}
+
+// Before layout 2 the cache wrote straight under «family-hub:»; those copies go once.
+function dropOldLayout(storage: Storage): void {
+  if (storage.getItem(layoutKey) === layout) {
+    return;
+  }
+
+  for (const key of keysOf(storage)) {
+    if (
+      key.startsWith(appPrefix) &&
+      !key.startsWith(storagePrefix) &&
+      !keptAcrossLayouts.has(key)
+    ) {
+      storage.removeItem(key);
+    }
+  }
+
+  storage.setItem(layoutKey, layout);
+}
+
 function storageOver(storage: Storage): DeviceStorage {
+  dropOldLayout(storage);
+
   return {
     setItem: (key, value, callback) => {
       answerLater(callback, () => {
@@ -78,7 +108,7 @@ function storageOver(storage: Storage): DeviceStorage {
     },
     clear: (callback) => {
       answerLater(callback, () => {
-        for (const key of Object.keys(storage).filter((name) => name.startsWith(storagePrefix))) {
+        for (const key of keysOf(storage).filter((name) => name.startsWith(storagePrefix))) {
           storage.removeItem(key);
         }
 
@@ -116,6 +146,28 @@ function reatomBrowserBack() {
       }
     }, "browser.backButton.press"),
   };
+}
+
+function syncThemeColor(document: Document): void {
+  const color = getComputedStyle(document.documentElement)
+    .getPropertyValue("--tg-theme-bg-color")
+    .trim();
+
+  for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+    meta.content = color;
+  }
+}
+
+// Outside Telegram the page colours itself from the platform's own palette (see styles.css), and
+// the system bar above it takes the same colour as the page's top bar.
+export function followInstalledApp(document: Document): void {
+  const root = document.documentElement;
+
+  root.dataset.shell = "installed";
+  new MutationObserver(() => {
+    syncThemeColor(document);
+  }).observe(root, { attributes: true, attributeFilter: ["class", "data-platform"] });
+  syncThemeColor(document);
 }
 
 export type BrowserBack = Pick<ReturnType<typeof reatomBrowserBack>, "isVisible" | "press">;

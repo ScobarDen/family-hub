@@ -41,7 +41,12 @@ import {
   reatomTabBarModules,
 } from "@/modules/tab-bar";
 import { createTasksApi, reatomTasksScreen } from "@/modules/tasks";
-import { BrowserBackButton, reatomBrowserWebApp, reatomTelegram } from "@/modules/telegram";
+import {
+  BrowserBackButton,
+  followInstalledApp,
+  reatomBrowserWebApp,
+  reatomTelegram,
+} from "@/modules/telegram";
 import { createTodayApi, reatomToday } from "@/modules/today";
 import { slideScreens } from "@/modules/ui";
 
@@ -432,6 +437,11 @@ const home = {
 telegram.launch(deviceCache.whenRead([session.member, todayHub.header]));
 telegram.followColorScheme(document.documentElement);
 telegram.followPlatform(document.documentElement);
+
+if (browser) {
+  followInstalledApp(document);
+}
+
 navigation.start();
 commandSheet.start();
 home.homeScreen.load().catch(noop);
