@@ -100,6 +100,7 @@ function taskSource(
         recordUrl: recordUrlOf(occurrence),
         openUrl,
       }),
+    deepLink: { kind: "task", id: row.id },
     closesForEveryone: true,
     complete: async (presser, occurrence) => {
       const { status } = await dependencies.tasks.complete(presser, { taskId: row.id, occurrence });

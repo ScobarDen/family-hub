@@ -27,11 +27,11 @@ type VerifyInitDataOptions = {
 
 const encoder = new TextEncoder();
 
-async function hmacKey(secret: BufferSource, usage: "sign" | "verify"): Promise<CryptoKey> {
+export async function hmacKey(secret: BufferSource, usage: "sign" | "verify"): Promise<CryptoKey> {
   return crypto.subtle.importKey("raw", secret, { name: "HMAC", hash: "SHA-256" }, false, [usage]);
 }
 
-function hexToBytes(hex: string): Uint8Array<ArrayBuffer> | undefined {
+export function hexToBytes(hex: string): Uint8Array<ArrayBuffer> | undefined {
   if (!hexPair.test(hex)) {
     return undefined;
   }
@@ -61,8 +61,7 @@ async function isSignedByBot(fields: URLSearchParams, botToken: string): Promise
   return crypto.subtle.verify("HMAC", verifier, hash, encoder.encode(dataCheckString(fields)));
 }
 
-function isFresh(fields: URLSearchParams, now: number): boolean {
-  const authDate = Number(fields.get("auth_date"));
+export function isFreshAuthDate(authDate: number, now: number): boolean {
   const ageMs = now - authDate * msPerSecond;
 
   return Number.isInteger(authDate) && ageMs <= initDataMaxAgeMs && ageMs >= -initDataClockSkewMs;
@@ -83,7 +82,10 @@ export async function verifyInitData({
 }: VerifyInitDataOptions): Promise<TelegramUser | undefined> {
   const fields = new URLSearchParams(initData);
 
-  if (!isFresh(fields, now) || !(await isSignedByBot(fields, botToken))) {
+  if (
+    !isFreshAuthDate(Number(fields.get("auth_date")), now) ||
+    !(await isSignedByBot(fields, botToken))
+  ) {
     return undefined;
   }
 

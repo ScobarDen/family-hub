@@ -1,13 +1,19 @@
 import { asc, eq, sql } from "drizzle-orm";
 
-import type { AppModule, DigestSettings } from "@family-hub/contract";
+import type { AppModule, DigestSettings, ReminderChannel } from "@family-hub/contract";
 
 import { bindFirst } from "@/common/bind.lib.ts";
 import { families, familyMembers, members, type Db } from "@/modules/db";
 
 export type MemberSettingsRow = Pick<
   typeof members.$inferSelect,
-  "tabBar" | "timeZone" | "isTimeZoneAuto" | "canMessage" | "isDigestEnabled" | "digestTime"
+  | "tabBar"
+  | "timeZone"
+  | "isTimeZoneAuto"
+  | "canMessage"
+  | "isDigestEnabled"
+  | "digestTime"
+  | "reminderChannel"
 >;
 
 type TimeZoneChange = { timeZone: string; isAuto: boolean };
@@ -57,6 +63,7 @@ export function createMemberRepo(db: Db) {
           canMessage: members.canMessage,
           isDigestEnabled: members.isDigestEnabled,
           digestTime: members.digestTime,
+          reminderChannel: members.reminderChannel,
         })
         .from(members)
         .where(eq(members.id, memberId))
@@ -70,6 +77,9 @@ export function createMemberRepo(db: Db) {
 
     saveDigest: async (memberId: string, { isEnabled, time }: DigestSettings, now: number) =>
       update(memberId, { isDigestEnabled: isEnabled, digestTime: time, updatedAt: now }),
+
+    saveReminderChannel: async (memberId: string, reminderChannel: ReminderChannel, now: number) =>
+      update(memberId, { reminderChannel, updatedAt: now }),
   };
 }
 

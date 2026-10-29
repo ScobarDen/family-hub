@@ -12,6 +12,7 @@ import type { MemberService } from "@/modules/member";
 import type { PetService } from "@/modules/pet";
 import type { PhotoService } from "@/modules/photo";
 import type { PhotoStorageService } from "@/modules/photo-storage";
+import type { PushService } from "@/modules/push";
 import type { RecipeService } from "@/modules/recipe";
 import type { ReminderService } from "@/modules/reminder";
 import type { TaskService } from "@/modules/task";
@@ -32,6 +33,7 @@ export type AppServices = {
   members: MemberService;
   pets: PetService;
   photoStorage: PhotoStorageService;
+  push: PushService;
   recipes: RecipeService;
   reminders: ReminderService;
   tasks: TaskService;

@@ -1,6 +1,6 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import type { FeedUpcoming } from "@family-hub/contract";
+import type { DeepLink, FeedUpcoming, PushMessage } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock.lib.ts";
 import type { Membership, MembershipRepo } from "@/modules/auth";
@@ -27,7 +27,11 @@ type DigestContent = {
   ): Promise<{ overdue: FeedUpcoming[]; today: FeedUpcoming[] } | undefined>;
 };
 
+// Push is its own module; the app wires in sending to every Device of a Recipient.
+type PushPort = { sendTo(memberId: string, message: PushMessage): Promise<number> };
+
 export type ReminderDependencies = {
+  push: PushPort;
   digests: DigestContent;
   tasks: TaskPort;
   dispatch: DispatchRepo;
@@ -58,6 +62,8 @@ export type Source = {
   emoji: string;
   title: (occurrence: string, timeZone: string) => string;
   buttons: (dispatchId: string, occurrence: string) => InlineKeyboardMarkup;
+  // The record a Push opens; without one it opens the app.
+  deepLink?: DeepLink;
   closesForEveryone: boolean;
   // False when the source refused, so the messages are left as they were.
   complete?: (presser: Membership, occurrence: string | null) => Promise<boolean>;

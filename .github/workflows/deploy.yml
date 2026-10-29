@@ -49,9 +49,12 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
           OPERATOR_TELEGRAM_ID: ${{ secrets.OPERATOR_TELEGRAM_ID }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
         run: |
           for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID API_URL MINI_APP_URL \
-            BOT_TOKEN JWT_SECRET WEBHOOK_SECRET OPERATOR_TELEGRAM_ID; do
+            BOT_TOKEN JWT_SECRET WEBHOOK_SECRET OPERATOR_TELEGRAM_ID \
+            VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY; do
             if [ -z "${!name}" ]; then
               echo "::error::$name is not set in the production environment"
               exit 1
@@ -67,8 +70,10 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
           OPERATOR_TELEGRAM_ID: ${{ secrets.OPERATOR_TELEGRAM_ID }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
         run: |
-          jq -n 'env | {BOT_TOKEN, JWT_SECRET, WEBHOOK_SECRET, OPERATOR_TELEGRAM_ID}' \
+          jq -n 'env | {BOT_TOKEN, JWT_SECRET, WEBHOOK_SECRET, OPERATOR_TELEGRAM_ID, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY}' \
             > "$RUNNER_TEMP/secrets.json"
 
       # Secrets ride with the new version, so a failed deploy leaves the live one untouched.

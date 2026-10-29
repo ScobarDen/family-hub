@@ -1,5 +1,6 @@
 import {
   defaultDigestTime,
+  defaultReminderChannel,
   defaultTabBar,
   slotModule,
   tabBarSlots,
@@ -7,6 +8,7 @@ import {
   type DigestSettings,
   type FamilyMemberList,
   type MemberSettings,
+  type ReminderChannel,
   type SlotModule,
   type TimeZoneSettings,
 } from "@family-hub/contract";
@@ -48,6 +50,10 @@ function slotsOf(stored: string[] | null | undefined): SlotModule[] {
   return [...new Set([...kept, ...defaultTabBar])].slice(0, tabBarSlots);
 }
 
+function reminderChannelFrom(row: MemberSettingsRow | undefined): ReminderChannel {
+  return row?.reminderChannel ?? defaultReminderChannel;
+}
+
 function settingsFrom(row: MemberSettingsRow | undefined): MemberSettings {
   return {
     tabBar: slotsOf(row?.tabBar),
@@ -57,6 +63,7 @@ function settingsFrom(row: MemberSettingsRow | undefined): MemberSettings {
         : { timeZone: row.timeZone, isAuto: row.isTimeZoneAuto },
     canMessage: row?.canMessage ?? true,
     digest: digestFrom(row),
+    reminderChannel: reminderChannelFrom(row),
   };
 }
 
@@ -92,6 +99,12 @@ export function createMemberService({ members, clock, schedule }: MemberServiceD
       await schedule.digestChanged(member.id);
 
       return change;
+    },
+
+    async saveReminderChannel({ member }: Membership, channel: ReminderChannel) {
+      await members.saveReminderChannel(member.id, channel, clock.now());
+
+      return channel;
     },
 
     async familyMembers({ family }: Membership): Promise<FamilyMemberList> {

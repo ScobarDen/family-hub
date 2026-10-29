@@ -2,11 +2,13 @@ import { Hono } from "hono";
 
 import {
   digestSettings,
+  reminderChannelSettings,
   tabBarSettings,
   timeZoneSettings,
   type CurrentMember,
   type DigestSettings,
   type FamilyMemberList,
+  type ReminderChannelSettings,
   type TabBarSettings,
   type TimeZoneSettings,
 } from "@family-hub/contract";
@@ -53,6 +55,18 @@ export const memberRoute = new Hono<MemberRouteEnv>()
       context.json<DigestSettings>(
         await context.var.members.saveDigest(context.var.membership, context.req.valid("json")),
       ),
+  )
+  .put(
+    "/api/me/reminder-channel",
+    requireMember,
+    jsonBody(reminderChannelSettings, "Reminders go to telegram, push or both"),
+    async (context) =>
+      context.json<ReminderChannelSettings>({
+        channel: await context.var.members.saveReminderChannel(
+          context.var.membership,
+          context.req.valid("json").channel,
+        ),
+      }),
   )
   .get("/api/family/members", requireMember, async (context) =>
     context.json<FamilyMemberList>(await context.var.members.familyMembers(context.var.membership)),

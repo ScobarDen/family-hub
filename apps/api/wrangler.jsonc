@@ -25,9 +25,17 @@
     "AI_COMMAND_MODEL_FALLBACK": "@cf/meta/llama-4-scout-17b-16e-instruct",
     "AI_SPEECH_MODEL": "@cf/openai/whisper-large-v3-turbo",
     "AI_COMMANDS_PER_FAMILY_DAY": "30",
+    "VAPID_SUBJECT": "https://scobarden.github.io/family-hub/",
   },
   "secrets": {
-    "required": ["BOT_TOKEN", "JWT_SECRET", "WEBHOOK_SECRET", "OPERATOR_TELEGRAM_ID"],
+    "required": [
+      "BOT_TOKEN",
+      "JWT_SECRET",
+      "WEBHOOK_SECRET",
+      "OPERATOR_TELEGRAM_ID",
+      "VAPID_PUBLIC_KEY",
+      "VAPID_PRIVATE_KEY",
+    ],
   },
   "triggers": {
     "crons": ["* * * * *"],

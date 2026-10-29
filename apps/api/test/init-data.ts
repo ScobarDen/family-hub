@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 
 export type TelegramUserFixture = {
   id: number;
@@ -43,4 +43,18 @@ export function tamperUser(initData: string, user: TelegramUserFixture): string 
   fields.set("user", JSON.stringify(user));
 
   return fields.toString();
+}
+
+// What the Telegram Login widget hands the page: the user's fields, auth_date and the hash keyed
+// by SHA-256 of the bot token.
+export function signTelegramLogin({ botToken, user, authDate }: SignInitDataOptions) {
+  const { allows_write_to_pm: _ignored, ...fields } = user;
+  const login = { ...fields, auth_date: Math.floor(Date.parse(authDate) / 1000) };
+  const dataCheckString = Object.entries(login)
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .toSorted()
+    .join("\n");
+  const secret = createHash("sha256").update(botToken).digest();
+
+  return { ...login, hash: hmac(secret, dataCheckString).toString("hex") };
 }

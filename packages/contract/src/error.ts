@@ -3,6 +3,10 @@ import { z } from "zod";
 export const errorCode = z.enum([
   "INVALID_REQUEST",
   "INIT_DATA_INVALID",
+  "TELEGRAM_LOGIN_INVALID",
+  "NOT_A_MEMBER",
+  "DEVICE_INVALID",
+  "DEVICE_NOT_FOUND",
   "UNAUTHENTICATED",
   "ALREADY_MEMBER",
   "FAMILY_REQUEST_PENDING",

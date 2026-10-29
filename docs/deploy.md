@@ -29,7 +29,7 @@ There is no automatic rollback. To roll back the Worker: `vp exec wrangler rollb
 ### GitHub
 
 - Environment **`production`**:
-  - secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `JWT_SECRET`, `WEBHOOK_SECRET`, `OPERATOR_TELEGRAM_ID`;
+  - secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `JWT_SECRET`, `WEBHOOK_SECRET`, `OPERATOR_TELEGRAM_ID`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (one key pair for Push, base64url as `npx web-push generate-vapid-keys` prints it; a new pair drops every push subscription, so generate it once);
   - variables `API_URL` (the Worker origin, no trailing slash) and `MINI_APP_URL` (`https://scobarden.github.io/family-hub/`).
   - The Worker answers CORS only for `ALLOWED_ORIGINS` in `apps/api/wrangler.jsonc`; keep it equal to the origin of `MINI_APP_URL`.
   - The deploy hands `MINI_APP_URL` to the Worker too, for the «Открыть Family Hub» button in bot messages; the value in `wrangler.jsonc` is only the fallback.
@@ -41,5 +41,6 @@ There is no automatic rollback. To roll back the Worker: `vp exec wrangler rollb
 ### Production bot
 
 - In BotFather: **Bot Settings → Configure Mini App → Enable Mini App** with `MINI_APP_URL`, so the bot gets the «Открыть» button in the chat list (Main Mini App). Repeat for the dev bot with its own URL.
+- In BotFather: `/setdomain` for the bot with the GitHub Pages host (`scobarden.github.io`), so Telegram Login works in the Installed App. Telegram Login does not work on `localhost`: check it locally with a dev bot whose domain is a tunnel, never with a sign-in bypass.
 - **Never recreate the production bot.** Photos live in Family channels where this bot is an admin, and every `file_id` is bound to it; a new bot loses access to all of them. If the token leaks, `/revoke` it in BotFather, put the new token into the `BOT_TOKEN` secret and re-run the deploy workflow (Actions → Deploy → Run workflow).
 - Commands, the menu button and the webhook are owned by the deploy workflow; changes made by hand in BotFather are overwritten by the next deploy.

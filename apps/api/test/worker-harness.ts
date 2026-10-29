@@ -7,6 +7,7 @@ import { createFakeAi, type FakeAi } from "./fake-ai.ts";
 import { createFakeBotApi } from "./fake-bot-api.ts";
 import { createFakeClock } from "./fake-clock.ts";
 import { createFakeLive, type FakeLive } from "./fake-live.ts";
+import { createFakePush } from "./fake-push.ts";
 import { createFamilyFixtures } from "./family-fixtures.ts";
 import { signInitData, type TelegramUserFixture } from "./init-data.ts";
 import { createMigratedSqliteD1, type SeedBefore } from "./sqlite-d1.ts";
@@ -56,6 +57,9 @@ function createTestEnv({
     AI_COMMAND_MODEL_FALLBACK: "fallback-model",
     AI_SPEECH_MODEL: "speech-model",
     AI_COMMANDS_PER_FAMILY_DAY: "3",
+    VAPID_PUBLIC_KEY: "test-vapid-public-key",
+    VAPID_PRIVATE_KEY: "test-vapid-private-key",
+    VAPID_SUBJECT: "mailto:push@family-hub.test",
   };
 }
 
@@ -115,10 +119,23 @@ function fakesOf({ now, seedBefore }: { now: string; seedBefore: SeedBefore | un
   return {
     clock: createFakeClock(now),
     bot: createFakeBotApi(),
+    push: createFakePush(),
     ai,
     live,
     env: createTestEnv({ ai, live, seedBefore }),
   };
+}
+
+function workerOver({
+  clock,
+  bot,
+  push,
+}: Pick<ReturnType<typeof fakesOf>, "clock" | "bot" | "push">) {
+  return createWorker({
+    clock,
+    createBotApi: () => bot.api,
+    createPushTransport: () => push.transport,
+  });
 }
 
 export function startWorker({
@@ -127,8 +144,8 @@ export function startWorker({
 }: { now?: string; seedBefore?: SeedBefore } = {}) {
   vi.stubGlobal("caches", { default: createEdgeCache() });
 
-  const { clock, bot, ai, live, env } = fakesOf({ now, seedBefore });
-  const worker = createWorker({ clock, createBotApi: () => bot.api });
+  const { clock, bot, push, ai, live, env } = fakesOf({ now, seedBefore });
+  const worker = workerOver({ clock, bot, push });
 
   async function fetchPath(path: string, init?: RequestInit) {
     return withContext((context) =>
@@ -140,6 +157,7 @@ export function startWorker({
     env,
     clock,
     bot,
+    push,
     ai,
     live,
     request: fetchPath,

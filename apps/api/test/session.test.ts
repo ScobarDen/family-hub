@@ -64,6 +64,7 @@ describe("signing in with initData", () => {
         timeZone: null,
         canMessage: true,
         digest: { isEnabled: true, time: "09:00" },
+        reminderChannel: "both",
       },
     });
   });
