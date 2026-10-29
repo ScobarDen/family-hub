@@ -20,8 +20,10 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: production
+    # deploy-web runs in the github-pages environment, which cannot read production's variables.
     outputs:
       api-url: ${{ vars.API_URL }}
+      bot-username: ${{ vars.BOT_USERNAME }}
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -139,7 +141,7 @@ jobs:
       - name: Build Mini App
         env:
           VITE_API_URL: ${{ needs.deploy-api.outputs.api-url }}
-          VITE_BOT_USERNAME: ${{ vars.BOT_USERNAME }}
+          VITE_BOT_USERNAME: ${{ needs.deploy-api.outputs.bot-username }}
         run: |
           if [ -z "$VITE_BOT_USERNAME" ]; then
             echo "::error::BOT_USERNAME is not set in the production environment"
