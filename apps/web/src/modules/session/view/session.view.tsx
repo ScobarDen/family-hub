@@ -4,26 +4,15 @@ import type { ReactNode } from "react";
 import { Button, Notice, Skeleton } from "@/modules/ui";
 
 import type { SessionModel, SessionScreen } from "../vm/session.vm.ts";
+import { NotMember } from "./not-member.view.tsx";
 import { Stranger } from "./stranger.view.tsx";
+import { TelegramLogin } from "./telegram-login.view.tsx";
 
 export type SessionProps = {
   model: SessionModel;
   familyRequest: ReactNode;
   joinFamily: ReactNode;
   home: ReactNode;
-};
-
-type PlainNotice = Extract<SessionScreen, { kind: "outside-telegram" | "restart" }>;
-
-const plainNotices: Record<PlainNotice["kind"], { title: string; description?: string }> = {
-  "outside-telegram": {
-    title: "Откройте Family Hub в Telegram",
-    description: "Приложение работает только внутри Telegram.",
-  },
-  restart: {
-    title: "Перезапустите приложение",
-    description: "Сессия устарела. Закройте Family Hub и откройте его снова.",
-  },
 };
 
 // Only a first launch, or one without DeviceStorage, waits here: otherwise the cached shell shows.
@@ -45,44 +34,36 @@ function SigningIn() {
   );
 }
 
+const screens: Record<SessionScreen["kind"], (props: SessionProps) => ReactNode> = {
+  "family-request": ({ familyRequest }) => familyRequest,
+  "join-family": ({ joinFamily }) => joinFamily,
+  member: ({ home }) => home,
+  stranger: ({ model }) => (
+    <Stranger onInviteHelp={model.showInviteHelp} onRequestFamily={model.requestFamily} />
+  ),
+  "signed-out": ({ model }) => (
+    <TelegramLogin botUsername={model.botUsername} onLogin={model.loginWith} />
+  ),
+  "not-member": ({ model }) => (
+    <NotMember botUsername={model.botUsername} onSignOut={model.signOutHere} />
+  ),
+  failed: ({ model }) => (
+    <Notice title="Не получилось войти" description="Проверьте соединение и попробуйте ещё раз.">
+      <Button size="lg" onClick={model.signIn}>
+        Повторить
+      </Button>
+    </Notice>
+  ),
+  "signing-in": () => <SigningIn />,
+  restart: () => (
+    <Notice
+      title="Перезапустите приложение"
+      description="Сессия устарела. Закройте Family Hub и откройте его снова."
+    />
+  ),
+};
+
 export const Session = reatomComponent(
-  ({ model, familyRequest, joinFamily, home }: SessionProps) => {
-    const screen = model.screen();
-
-    if (screen.kind === "family-request") {
-      return familyRequest;
-    }
-
-    if (screen.kind === "join-family") {
-      return joinFamily;
-    }
-
-    if (screen.kind === "stranger") {
-      return <Stranger onInviteHelp={model.showInviteHelp} onRequestFamily={model.requestFamily} />;
-    }
-
-    if (screen.kind === "member") {
-      return home;
-    }
-
-    if (screen.kind === "failed") {
-      return (
-        <Notice
-          title="Не получилось войти"
-          description="Проверьте соединение и попробуйте ещё раз."
-        >
-          <Button size="lg" onClick={model.signIn}>
-            Повторить
-          </Button>
-        </Notice>
-      );
-    }
-
-    if (screen.kind === "signing-in") {
-      return <SigningIn />;
-    }
-
-    return <Notice {...plainNotices[screen.kind]} />;
-  },
+  (props: SessionProps) => screens[props.model.screen().kind](props),
   "Session",
 );

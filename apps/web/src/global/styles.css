@@ -60,15 +60,30 @@
   --badge-teal: oklch(0.6 0.118 184.704);
   --badge-pink: oklch(0.592 0.249 0.584);
   --badge-gray: oklch(0.446 0.03 256.802);
+  /* Outside Telegram the Installed App takes the system's own insets. */
   --safe-area-top: calc(
-    var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)
+    var(--tg-safe-area-inset-top, env(safe-area-inset-top, 0px)) +
+      var(--tg-content-safe-area-inset-top, 0px)
   );
   --safe-area-bottom: calc(
-    var(--tg-safe-area-inset-bottom, 0px) + var(--tg-content-safe-area-inset-bottom, 0px)
+    var(--tg-safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) +
+      var(--tg-content-safe-area-inset-bottom, 0px)
   );
 }
 
+/* Telegram sets its theme inline on <html>, which wins; these colour the Installed App. */
 .dark {
+  --tg-theme-bg-color: #1c1c1e;
+  --tg-theme-text-color: #ffffff;
+  --tg-theme-hint-color: #98989e;
+  --tg-theme-link-color: #3e88f7;
+  --tg-theme-button-color: #3e88f7;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-secondary-bg-color: #000000;
+  --tg-theme-section-bg-color: #1c1c1e;
+  --tg-theme-accent-text-color: #3e88f7;
+  --tg-theme-destructive-text-color: #eb5545;
+  --tg-theme-section-separator-color: #38383a;
   --section-feed: oklch(0.78 0.11 250);
   --section-tasks: oklch(0.78 0.13 150);
   --section-pet: oklch(0.78 0.13 55);

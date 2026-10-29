@@ -1,4 +1,10 @@
 export {
+  deepLinkParameter,
+  reatomBrowserWebApp,
+  type BrowserBack,
+  type BrowserWindow,
+} from "./browser.model.ts";
+export {
   didSucceedOrAlert,
   isConfirmed,
   type ClosingConfirmation,
@@ -19,6 +25,7 @@ export {
   type FakeWindow,
 } from "./telegram.fixtures.ts";
 export { reatomTelegram, type BottomButtonState, type Telegram } from "./telegram.model.ts";
+export { BrowserBackButton } from "./view/browser-back.view.tsx";
 export type {
   DeviceStorage,
   HapticImpact,

@@ -27,6 +27,7 @@ function fakeWebApp({ version = "9.0" } = {}) {
     requestWriteAccess: noop,
     shareMessage: noop,
     openTelegramLink: noop,
+    openLink: noop,
     addToHomeScreen: () => calls.push("addToHomeScreen"),
     checkHomeScreenStatus: (callback) => callback?.("missed"),
     requestFullscreen: () => calls.push("requestFullscreen"),

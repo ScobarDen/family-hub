@@ -26,6 +26,14 @@ const homeScreenVersion = "8.0";
 const fullscreenVersion = "8.0";
 const closingConfirmationVersion = "6.2";
 const readyAfterMs = 300;
+
+// What the Installed App's browser stands in for: its own back button, closing confirmation and
+// storage; haptics share the back button's version and do nothing there.
+export const browserStandInVersions: ReadonlySet<string> = new Set([
+  backButtonVersion,
+  closingConfirmationVersion,
+  deviceStorageVersion,
+]);
 const sameHapticGapMs = 80;
 
 type PlatformLook = "ios" | "android";
@@ -94,6 +102,10 @@ function reatomPrompts(webApp: TelegramWebApp) {
     openTelegramLink: action((url: string) => {
       webApp.openTelegramLink(url);
     }, "telegram.openTelegramLink"),
+    // Opens the device's own browser, which Telegram's in-app one is not.
+    openLink: action((url: string) => {
+      webApp.openLink(url);
+    }, "telegram.openLink"),
   };
 }
 
@@ -363,6 +375,8 @@ export function reatomTelegram(webApp: TelegramWebApp) {
 
   return {
     initData: webApp.initData,
+    // Outside Telegram the script still loads, but there is nothing for it to sign.
+    isInTelegram: webApp.initData !== "",
     // Display-only like the rest of initDataUnsafe: the server reads the signed initData.
     startParam: webApp.initDataUnsafe.start_param,
     canShareMessage: webApp.isVersionAtLeast(shareMessageVersion),

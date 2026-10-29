@@ -9,6 +9,7 @@ import { reatomDeviceCache } from "@/modules/device-cache";
 import { fakeDeviceStorage, type FakeDeviceStorage } from "@/modules/telegram";
 
 import { createSessionApi } from "../session.api.ts";
+import { memoryStorage } from "../session.fixtures.ts";
 import { reatomSession } from "./session.vm.ts";
 
 const initData = "query_id=AAH&user=%7B%22id%22%3A111%7D&auth_date=1791100800&hash=abc";
@@ -23,6 +24,7 @@ const denis: CurrentMember = {
     timeZone: { timeZone: "Europe/Moscow", isAuto: true },
     canMessage: true,
     digest: { isEnabled: true, time: "09:00" },
+    reminderChannel: "both",
   },
 };
 
@@ -98,7 +100,12 @@ function startSession(
   const deviceCache = reatomDeviceCache(device.deviceStorage);
 
   return Object.assign(
-    reatomSession({ api: createSessionApi(client), telegram, isJoiningFamily, deviceCache }),
+    reatomSession({
+      api: createSessionApi(client, memoryStorage()),
+      telegram,
+      isJoiningFamily,
+      deviceCache,
+    }),
     { client, deviceCache },
   );
 }
@@ -153,16 +160,6 @@ describe("signing in", () => {
     await signIn(session);
 
     expect(session.screen()).toEqual({ kind: "stranger" });
-  });
-
-  test("asks to open the app from Telegram when there is no initData", async () => {
-    const backend = fakeBackend({ session: signedIn });
-    const session = startSession(backend, fakeTelegram(""));
-
-    await signIn(session);
-
-    expect(session.screen()).toEqual({ kind: "outside-telegram" });
-    expect(backend.requests).toEqual([]);
   });
 
   test("offers to try again when the backend cannot be reached", async () => {

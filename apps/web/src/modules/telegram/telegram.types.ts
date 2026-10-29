@@ -62,6 +62,7 @@ export type TelegramWebApp = {
   requestWriteAccess(callback?: (isAllowed: boolean) => void): void;
   shareMessage(preparedMessageId: string, callback?: (isSent: boolean) => void): void;
   openTelegramLink(url: string): void;
+  openLink(url: string): void;
   addToHomeScreen(): void;
   checkHomeScreenStatus(callback?: (status: HomeScreenStatus) => void): void;
   requestFullscreen(): void;

@@ -139,7 +139,13 @@ jobs:
       - name: Build Mini App
         env:
           VITE_API_URL: ${{ needs.deploy-api.outputs.api-url }}
-        run: vp run @family-hub/web#build
+          VITE_BOT_USERNAME: ${{ vars.BOT_USERNAME }}
+        run: |
+          if [ -z "$VITE_BOT_USERNAME" ]; then
+            echo "::error::BOT_USERNAME is not set in the production environment"
+            exit 1
+          fi
+          vp run @family-hub/web#build
 
       - uses: actions/upload-pages-artifact@v5
         with:

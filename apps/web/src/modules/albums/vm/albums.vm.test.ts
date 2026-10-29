@@ -61,6 +61,8 @@ type Launch = {
   answered?: Promise<void>;
   photosAnswered?: Promise<void>;
   isShareUnsupported?: boolean;
+  // The Installed App shares the photo file itself instead of a bot message.
+  sharePhotoFile?: (url: string) => Promise<void>;
   popup?: string;
   deletion?: "held" | "failing" | "unreachable";
 };
@@ -87,6 +89,7 @@ function startAlbums({
   answered = Promise.resolve(),
   photosAnswered = Promise.resolve(),
   isShareUnsupported,
+  sharePhotoFile,
   popup,
   deletion,
 }: Launch = {}) {
@@ -117,7 +120,10 @@ function startAlbums({
       return Response.json(albums);
     }
 
-    return Response.json(albumOf(url.pathname.split("/")[3] ?? ""));
+    return Response.json({
+      ...albumOf(url.pathname.split("/")[3] ?? ""),
+      photos: [photoOf("photo-1")],
+    });
   }
 
   async function fetch(url: URL, init: RequestInit): Promise<Response> {
@@ -169,6 +175,7 @@ function startAlbums({
     photoHint: noop,
     canSetUpPhotos: () => false,
     onSetUpPhotos: noop,
+    sharePhotoFile,
     deviceCache: reatomDeviceCache(device.deviceStorage),
     slide,
   });
@@ -351,6 +358,26 @@ describe("sharing a photo", () => {
     await openPhoto(model);
 
     expect(model.viewer.canShare()).toBe(false);
+  });
+
+  test("sends the photo itself through the system share sheet outside Telegram", async () => {
+    const sharedFiles: string[] = [];
+    const { model, requests } = startAlbums({
+      isShareUnsupported: true,
+      sharePhotoFile: async (url) => {
+        sharedFiles.push(url);
+      },
+    });
+
+    await openPhoto(model);
+
+    expect(model.viewer.canShare()).toBe(true);
+
+    model.viewer.share();
+    await vi.waitFor(() => {
+      expect(sharedFiles).toEqual([expect.stringMatching(/\/f\/photo-1$/u)]);
+    });
+    expect(requests.filter((request) => request.endsWith("/share"))).toEqual([]);
   });
 
   test("is not offered in «Все фото», which belong to no one Album", async () => {

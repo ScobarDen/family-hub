@@ -8,7 +8,7 @@ A merge into `main` releases Family Hub through `.github/workflows/deploy.yml`. 
    3. `wrangler deploy --secrets-file …` — the secrets ride with the new version.
    4. Bot registration, idempotent: `setWebhook` with the secret token, `setMyCommands`, `setChatMenuButton`.
    5. Smoke check: `GET $API_URL/api/health` must answer `{"status":"ok"}`.
-2. **`deploy-web`** — builds `apps/web` with `VITE_API_URL` set to `API_URL` and publishes it to GitHub Pages.
+2. **`deploy-web`** — builds `apps/web` with `VITE_API_URL` set to `API_URL` and `VITE_BOT_USERNAME` to `BOT_USERNAME` (the bot of the Installed App's Telegram Login) and publishes it to GitHub Pages.
 
 Any failing step stops the chain. A failed configuration check, migration or `wrangler deploy` leaves the previous Worker live, and the Mini App is published only after the Worker passed its smoke check. A failure in bot registration or the smoke check comes **after** the new Worker went live: production then runs the new Worker with the previous Mini App, and rolling back is a manual decision.
 
@@ -30,7 +30,7 @@ There is no automatic rollback. To roll back the Worker: `vp exec wrangler rollb
 
 - Environment **`production`**:
   - secrets `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `BOT_TOKEN`, `JWT_SECRET`, `WEBHOOK_SECRET`, `OPERATOR_TELEGRAM_ID`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (one key pair for Push, base64url as `npx web-push generate-vapid-keys` prints it; a new pair drops every push subscription, so generate it once);
-  - variables `API_URL` (the Worker origin, no trailing slash) and `MINI_APP_URL` (`https://scobarden.github.io/family-hub/`).
+  - variables `API_URL` (the Worker origin, no trailing slash) `MINI_APP_URL` (`https://scobarden.github.io/family-hub/`) and `BOT_USERNAME` (the bot's username without `@`).
   - The Worker answers CORS only for `ALLOWED_ORIGINS` in `apps/api/wrangler.jsonc`; keep it equal to the origin of `MINI_APP_URL`.
   - The deploy hands `MINI_APP_URL` to the Worker too, for the «Открыть Family Hub» button in bot messages; the value in `wrangler.jsonc` is only the fallback.
   - `WEBHOOK_SECRET` may contain only `A-Z`, `a-z`, `0-9`, `_` and `-` (Telegram's rule), e.g. `openssl rand -hex 32`.

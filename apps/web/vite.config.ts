@@ -1,5 +1,6 @@
 import { copyFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
@@ -23,6 +24,15 @@ function pagesSpaFallback(): Plugin {
 export default defineConfig({
   base: "/family-hub/",
   plugins: [react(), tailwindcss(), pagesSpaFallback()],
+  // The install page boots none of the app: it only offers to install it.
+  build: {
+    rollupOptions: {
+      input: {
+        app: fileURLToPath(new URL("index.html", import.meta.url)),
+        install: fileURLToPath(new URL("install.html", import.meta.url)),
+      },
+    },
+  },
   resolve: { tsconfigPaths: true },
   server: {
     // The dev bot opens the Mini App through a cloudflared quick tunnel, so the Worker sits behind the same origin.
