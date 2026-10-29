@@ -1,8 +1,4 @@
-export {
-  followInstalledApp,
-  reatomBrowserWebApp,
-  type BrowserBack,
-} from "./model/browser.model.ts";
+export { followInstalledApp, reatomBrowserWebApp } from "./model/browser.model.ts";
 export {
   didSucceedOrAlert,
   isConfirmed,
@@ -24,7 +20,6 @@ export {
   type FakeWindow,
 } from "./telegram.fixtures.ts";
 export { reatomTelegram, type BottomButtonState, type Telegram } from "./model/telegram.model.ts";
-export { BrowserBackButton } from "./view/browser-back.view.tsx";
 export { TelegramLoginWidget } from "./view/login-widget.view.tsx";
 export type {
   DeviceStorage,

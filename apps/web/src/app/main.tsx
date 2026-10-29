@@ -41,12 +41,7 @@ import {
   reatomTabBarModules,
 } from "@/modules/tab-bar";
 import { createTasksApi, reatomTasksScreen } from "@/modules/tasks";
-import {
-  BrowserBackButton,
-  followInstalledApp,
-  reatomBrowserWebApp,
-  reatomTelegram,
-} from "@/modules/telegram";
+import { followInstalledApp, reatomBrowserWebApp, reatomTelegram } from "@/modules/telegram";
 import { createTodayApi, reatomToday } from "@/modules/today";
 import { slideScreens } from "@/modules/ui";
 
@@ -461,7 +456,6 @@ if (browser !== undefined) {
 
 createRoot(root).render(
   <StrictMode>
-    {browser !== undefined && <BrowserBackButton model={browser.back} />}
     <App {...home} familyRequest={familyRequest} joinFamily={joinFamily} />
   </StrictMode>,
 );
