@@ -13,9 +13,9 @@ import { z } from "zod";
 
 import { today, type FeedUpcoming, type SlotModule, type Today } from "@family-hub/contract";
 
+import { detached, reatomRollbackFailure, type RollbackFailure } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
 import type { LiveVersion } from "@/modules/live-updates";
-import { detached, reatomRollbackFailure, type RollbackFailure } from "@/modules/state";
 import type { Haptics } from "@/modules/telegram";
 
 import type { OccurrenceTarget, TodayApi } from "../today.api.ts";

@@ -2,7 +2,7 @@ import { action, computed, noop } from "@reatom/core";
 
 import { defaultDigestTime, type DigestSettings } from "@family-hub/contract";
 
-import { reatomFailure } from "@/modules/state";
+import { reatomFailure } from "@/modules/changes";
 import type { Haptics } from "@/modules/telegram";
 
 import type { MemberSettingsApi } from "../member-settings.api.ts";

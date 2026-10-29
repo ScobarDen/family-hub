@@ -1,6 +1,6 @@
 # The bot talks to Telegram through our own thin client, not grammY
 
-The Worker needs a handful of Bot API methods (`sendMessage`, `editMessageText`, `answerCallbackQuery`, `sendPhoto`, `getFile`) and a webhook that routes into our own services. We call them with a typed `fetch` wrapper (`apps/api/src/common/telegram/bot.api.ts`) over `@grammyjs/types`, so the Bot API is one interface the test harness replaces with a recording fake that can answer 403 and 429.
+The Worker needs a handful of Bot API methods (`sendMessage`, `editMessageText`, `answerCallbackQuery`, `sendPhoto`, `getFile`) and a webhook that routes into our own services. We call them with a typed `fetch` wrapper (`apps/api/src/modules/telegram/bot.api.ts`) over `@grammyjs/types`, so the Bot API is one interface the test harness replaces with a recording fake that can answer 403 and 429.
 
 ## Considered Options
 

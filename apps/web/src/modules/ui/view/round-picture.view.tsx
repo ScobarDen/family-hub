@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 
-import { SignedPhoto } from "@/modules/photo";
-
 import { cn } from "../ui.lib.ts";
+import { FallbackImage } from "./fallback-image.view.tsx";
 
 // A picture that fails to load gives its place back to what stood there without it.
 export function RoundPicture({
@@ -15,7 +14,7 @@ export function RoundPicture({
   className?: string;
 }) {
   return (
-    <SignedPhoto
+    <FallbackImage
       src={src}
       fallback={fallback}
       className={cn(

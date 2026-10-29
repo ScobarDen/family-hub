@@ -4,7 +4,7 @@ import type { Invite, InviteCreated } from "@family-hub/contract";
 
 import { formatDayTime, type Viewer } from "@/common/format-date.lib.ts";
 import { withoutId } from "@/common/records.lib.ts";
-import { detached, reatomFailure } from "@/modules/state";
+import { detached, reatomFailure } from "@/modules/changes";
 import type { Haptics } from "@/modules/telegram";
 
 import type { InvitesApi } from "../invites.api.ts";

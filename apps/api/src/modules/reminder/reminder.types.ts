@@ -5,9 +5,8 @@ import type { FeedUpcoming } from "@family-hub/contract";
 import type { Clock } from "@/common/clock.lib.ts";
 import type { Membership, MembershipRepo } from "@/modules/auth";
 import type { DispatchSource } from "@/modules/db";
-import type { MiniAppLinks } from "@/modules/mini-app-link";
 import type { TaskTree } from "@/modules/task";
-import type { BotApi } from "@/modules/telegram";
+import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
 import type { DispatchRepo } from "./repo/dispatch.repo.ts";
 import type { FamilyHolderKind, SourceRepo } from "./repo/source.repo.ts";

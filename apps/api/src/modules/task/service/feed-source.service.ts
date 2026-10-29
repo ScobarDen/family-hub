@@ -2,9 +2,9 @@ import { overdueLookbackDays, type FeedActivity, type FeedUpcoming } from "@fami
 import { daysAfter, occurrenceMoment, occurrencesOnDays, timeInZone } from "@family-hub/recurrence";
 
 import type { KeysetPage } from "@/common/keyset.lib.ts";
-import type { PhotoLinks } from "@/common/photo-link.lib.ts";
 import type { Membership } from "@/modules/auth";
 import type { ActivitySource, FeedWindow, UpcomingSource } from "@/modules/feed";
+import type { PhotoLinks } from "@/modules/photo";
 
 import { isCompleted, isOverdue, recurrenceOf, titleOf } from "../task.lib.ts";
 import type { TaskRecord, TaskRepo, TaskTree } from "../task.repo.ts";

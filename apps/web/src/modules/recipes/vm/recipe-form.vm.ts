@@ -10,10 +10,10 @@ import {
   type RecipeChange,
 } from "@family-hub/contract";
 
+import { readOnly } from "@/modules/changes";
 import { reatomEditableRecord } from "@/modules/form";
 import type { PreparedPhoto } from "@/modules/photo";
 import { reatomPhotoAttachments } from "@/modules/photo-attachments";
-import { readOnly } from "@/modules/state";
 import type { ClosingConfirmation, Haptics } from "@/modules/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";

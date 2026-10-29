@@ -6,8 +6,8 @@ import {
 } from "@family-hub/contract";
 
 import { formatKeyset, newestFirst } from "@/common/keyset.lib.ts";
-import type { PhotoLinks } from "@/common/photo-link.lib.ts";
 import type { Membership } from "@/modules/auth";
+import type { PhotoLinks } from "@/modules/photo";
 
 import type { FeedWindow } from "./feed.types.ts";
 

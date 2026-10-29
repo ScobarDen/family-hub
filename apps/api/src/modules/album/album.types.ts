@@ -1,10 +1,9 @@
 import type { Album } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock.lib.ts";
-import type { PhotoLinks } from "@/common/photo-link.lib.ts";
 import type { Membership } from "@/modules/auth";
-import type { MiniAppLinks } from "@/modules/mini-app-link";
-import type { BotApi } from "@/modules/telegram";
+import type { PhotoLinks } from "@/modules/photo";
+import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
 import type { AlbumRepo } from "./album.repo.ts";
 

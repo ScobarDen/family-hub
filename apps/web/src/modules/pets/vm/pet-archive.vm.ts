@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import type { Pet } from "@family-hub/contract";
 
+import { detached, reatomFailure } from "@/modules/changes";
 import { fillForm, matchingName, reatomSubmitFailure } from "@/modules/form";
-import { detached, reatomFailure } from "@/modules/state";
 import type { Haptics } from "@/modules/telegram";
 
 import type { PetsApi } from "../pets.api.ts";

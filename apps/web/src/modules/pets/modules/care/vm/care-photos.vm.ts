@@ -2,10 +2,10 @@ import { computed } from "@reatom/core";
 
 import { careEntryPhotoMax, type Photo } from "@family-hub/contract";
 
+import { readOnly, type RollbackFailure } from "@/modules/changes";
 import type { PreparedPhoto } from "@/modules/photo";
 import { reatomPhotoAttachments } from "@/modules/photo-attachments";
 import { reatomPhotoViewer } from "@/modules/photo-viewer";
-import { readOnly, type RollbackFailure } from "@/modules/state";
 import type { Dialogs, Fullscreen, Haptics } from "@/modules/telegram";
 
 import type { CareApi } from "../care.api.ts";

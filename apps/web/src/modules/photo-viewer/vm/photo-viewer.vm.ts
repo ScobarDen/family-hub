@@ -10,7 +10,7 @@ import {
 
 import type { Photo } from "@family-hub/contract";
 
-import { detached, reatomOptimistic, type RollbackFailure } from "@/modules/state";
+import { detached, reatomOptimistic, type RollbackFailure } from "@/modules/changes";
 import {
   type Confirmation,
   type Dialogs,

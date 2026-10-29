@@ -9,3 +9,5 @@ A Member's Invites in the Profile: «Пригласить в семью» create
 - `timeZone` — the viewer's zone the expiry day is shown in; the Member's own zone, the device's until it is known.
 
 The list is an async computed (`withAsyncData`) that loads when the View subscribes, so it waits for the session token. A new Invite joins the list from the create response; a revoke asks first in a bottom `FormDrawer` (`revoke` opens it, `confirmRevoke` or `cancelRevoke` answers; the model goes to the navigation as the Profile's `nestedBack`, so Telegram Back closes the drawer before leaving the Profile and the question never comes back with it), since the sent link stops working for good, then removes it at once and puts it back if the server call fails. `app/main.tsx` builds the model with `reatomInvites({ api, telegram, timeZone })`, and the Profile page mounts `<Invites model={…} />`.
+
+Out of scope: accepting an Invite (`join-family`), the Family's Members (`family`).

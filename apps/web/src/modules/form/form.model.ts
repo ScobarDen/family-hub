@@ -14,7 +14,7 @@ import {
 
 import type { CommandPhrase } from "@family-hub/contract";
 
-import { detached } from "@/modules/state";
+import { detached } from "@/modules/changes";
 import {
   isConfirmed,
   type ClosingConfirmation,

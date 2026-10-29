@@ -2,7 +2,7 @@ import { type FeedUpcoming, type SlotModule, type TodayTiles } from "@family-hub
 
 import { formatCount, type CountWords } from "@/common/format-count.lib.ts";
 import { formatFullAge, formatNearDate, formatShortAge } from "@/common/format-date.lib.ts";
-import { sectionTitles } from "@/common/sections.config.ts";
+import { sectionTitles } from "@/modules/sections";
 
 export type DueRow = {
   key: string;

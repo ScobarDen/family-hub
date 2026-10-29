@@ -1,9 +1,9 @@
 import type { FeedActivity } from "@family-hub/contract";
 
 import type { KeysetPage } from "@/common/keyset.lib.ts";
-import type { PhotoLinks } from "@/common/photo-link.lib.ts";
 import type { Membership } from "@/modules/auth";
 import { previewOf, type ActivitySource } from "@/modules/feed";
+import type { PhotoLinks } from "@/modules/photo";
 
 import type { AlbumRepo } from "../album.repo.ts";
 

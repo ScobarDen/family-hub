@@ -2,8 +2,8 @@ import { action, atom, computed, reatomBoolean } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
+import { readOnly } from "@/modules/changes";
 import { reatomFormBack } from "@/modules/form";
-import { readOnly } from "@/modules/state";
 
 import { reatomPetArchive } from "./pet-archive.vm.ts";
 import { reatomPetAvatar } from "./pet-avatar.vm.ts";

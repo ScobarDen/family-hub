@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { recipeChange, type Recipe } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeSlide } from "@/modules/changes";
 import { reatomDeviceCache } from "@/modules/device-cache";
-import { fakeSlide } from "@/modules/state";
 import {
   fakeDeviceStorage,
   type FakeDeviceStorage,

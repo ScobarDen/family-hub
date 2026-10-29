@@ -12,10 +12,10 @@ import {
 import { feedPage, type FeedActivity, type FeedPage } from "@family-hub/contract";
 
 import { rolledBack } from "@/common/records.lib.ts";
+import { detached, reatomOptimistic, reatomRollbackFailure, readOnly } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
 import type { LiveVersion } from "@/modules/live-updates";
 import { reatomPhotoViewer } from "@/modules/photo-viewer";
-import { detached, reatomOptimistic, reatomRollbackFailure, readOnly } from "@/modules/state";
 import type { Dialogs, Fullscreen, Haptics } from "@/modules/telegram";
 
 import type { FeedApi } from "../feed.api.ts";

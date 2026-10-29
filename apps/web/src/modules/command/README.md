@@ -22,3 +22,5 @@ Shows what was heard and the draft as the bot shows it: both read it with `previ
 - `onCreated` — what «Создать» made, for the module that lists it.
 
 A `start_param` `cmd_<draftId>` from the bot's «Изменить» skips the sheet: once signed in, the app's opener calls `openForEdit`, which fetches the draft and goes straight to `onEdit`.
+
+Out of scope: the forms a draft opens in (each record's own module), recording itself (`common/voice-recorder.lib.ts`), switching to the record (`app/opener.vm.ts`).

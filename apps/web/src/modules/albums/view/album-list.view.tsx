@@ -1,7 +1,6 @@
 import { Images } from "lucide-react";
 
-import { SignedPhoto } from "@/modules/photo";
-import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/modules/ui";
+import { FallbackImage, PrimaryButton, Section, SectionItem, SectionLayout } from "@/modules/ui";
 
 import type { AlbumItem } from "../albums.lib.ts";
 import type { AlbumsScreenModel } from "../vm/albums.vm.ts";
@@ -27,7 +26,7 @@ function albumsOf({ model, albums }: AlbumListProps) {
                     <Images className="size-5 text-muted-foreground" />
                   </span>
                 ) : (
-                  <SignedPhoto
+                  <FallbackImage
                     src={album.cover}
                     className="size-12 rounded-lg object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
                   />

@@ -2,7 +2,6 @@ import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 
 import type { Clock } from "@/common/clock.lib.ts";
-import { createPhotoLinks, type PhotoLinks } from "@/common/photo-link.lib.ts";
 import {
   albumRoute,
   createAlbumFeed,
@@ -49,9 +48,10 @@ import {
 import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
 import { liveRoute, signalWrites } from "@/modules/live";
 import { createMemberRepo, createMemberService, memberRoute } from "@/modules/member";
-import { createMiniAppLinks, type MiniAppLinks } from "@/modules/mini-app-link";
 import { createPetFeed, createPetRepo, createPetService, petRoute } from "@/modules/pet";
 import {
+  createPhotoLinks,
+  type PhotoLinks,
   createPhotoRepo,
   createPhotoService,
   createTelegramPhotoFiles,
@@ -83,7 +83,7 @@ import {
   type TaskRepo,
   type TaskService,
 } from "@/modules/task";
-import type { BotApi } from "@/modules/telegram";
+import { createMiniAppLinks, type MiniAppLinks, type BotApi } from "@/modules/telegram";
 import { createTodayService, todayRoute } from "@/modules/today";
 
 import type { AppEnv, AppServices } from "./app.types.ts";

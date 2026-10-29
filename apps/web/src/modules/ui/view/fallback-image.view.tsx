@@ -1,7 +1,7 @@
 import { ImageOff } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-type SignedPhotoProps = {
+type FallbackImageProps = {
   src: string;
   className: string;
   alt?: string;
@@ -10,7 +10,7 @@ type SignedPhotoProps = {
 };
 
 // A signed link kept in the device cache may have expired: the placeholder takes the image's box, so nothing shifts.
-export function SignedPhoto({ src, className, alt = "", loading, fallback }: SignedPhotoProps) {
+export function FallbackImage({ src, className, alt = "", loading, fallback }: FallbackImageProps) {
   const [failedSource, setFailedSource] = useState<string>();
 
   if (failedSource === src) {

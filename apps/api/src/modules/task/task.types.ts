@@ -1,10 +1,9 @@
 import type { Task } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock.lib.ts";
-import type { PhotoLinks } from "@/common/photo-link.lib.ts";
 import type { MembershipRepo } from "@/modules/auth";
-import type { MiniAppLinks } from "@/modules/mini-app-link";
-import type { BotApi } from "@/modules/telegram";
+import type { PhotoLinks } from "@/modules/photo";
+import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
 import type { TaskRepo } from "./task.repo.ts";
 

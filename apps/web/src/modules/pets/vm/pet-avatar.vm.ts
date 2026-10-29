@@ -2,8 +2,8 @@ import { action, computed, isAbort, withAsync, wrap, type Action } from "@reatom
 
 import type { Pet } from "@family-hub/contract";
 
+import { detached } from "@/modules/changes";
 import { PhotoTooLargeError, type PreparedPhoto } from "@/modules/photo";
-import { detached } from "@/modules/state";
 import {
   didSucceedOrAlert,
   isConfirmed,

@@ -12,9 +12,9 @@ import {
 import { recipeList, recipeTagList, type Recipe } from "@family-hub/contract";
 
 import { rolledBackById } from "@/common/records.lib.ts";
+import { readOnly } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
 import type { LiveVersion } from "@/modules/live-updates";
-import { readOnly } from "@/modules/state";
 
 import type { RecipesApi } from "./recipes.api.ts";
 

@@ -1,6 +1,6 @@
 import { encodeDeepLink, type DeepLink } from "@family-hub/contract";
 
-import type { BotApi } from "@/modules/telegram";
+import type { BotApi } from "./bot.api.ts";
 
 // Built per request or cron tick, so the bot's name is asked of Telegram at most once in either.
 export function createMiniAppLinks(bot: BotApi) {

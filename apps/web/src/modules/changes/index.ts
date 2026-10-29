@@ -1,4 +1,4 @@
-export { fakeSlide } from "./state.fixtures.ts";
+export { fakeSlide } from "./changes.fixtures.ts";
 export {
   detached,
   instantly,
@@ -9,4 +9,4 @@ export {
   reatomRollbackFailure,
   type RollbackFailure,
   type Slide,
-} from "./state.lib.ts";
+} from "./changes.lib.ts";

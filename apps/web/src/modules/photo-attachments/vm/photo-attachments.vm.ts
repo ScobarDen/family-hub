@@ -2,8 +2,8 @@ import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reato
 
 import type { Photo } from "@family-hub/contract";
 
+import { readOnly } from "@/modules/changes";
 import { PhotoTooLargeError, type PreparedPhoto } from "@/modules/photo";
-import { readOnly } from "@/modules/state";
 import type { Haptics } from "@/modules/telegram";
 
 export type Attachment =

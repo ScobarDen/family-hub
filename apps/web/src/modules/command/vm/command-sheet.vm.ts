@@ -17,7 +17,7 @@ import {
 } from "@family-hub/contract";
 
 import { HttpError } from "@/common/http-error.lib.ts";
-import { detached } from "@/modules/state";
+import { detached } from "@/modules/changes";
 import type { Haptics, Telegram } from "@/modules/telegram";
 
 import type { CommandApi } from "../command.api.ts";

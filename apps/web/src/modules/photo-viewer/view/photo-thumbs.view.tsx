@@ -1,7 +1,6 @@
 import type { Photo } from "@family-hub/contract";
 
-import { SignedPhoto } from "@/modules/photo";
-import { cn } from "@/modules/ui";
+import { FallbackImage, cn } from "@/modules/ui";
 
 type PhotoThumbsProps = {
   photos: Photo[];
@@ -47,7 +46,7 @@ export function PhotoThumbs({
             onOpen(photo.id);
           }}
         >
-          <SignedPhoto
+          <FallbackImage
             src={photo.urls[resolution]}
             loading="lazy"
             className="size-full rounded-[inherit] object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"

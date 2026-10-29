@@ -15,11 +15,6 @@ import type { Recipe, RecipeTag } from "@family-hub/contract";
 
 import { formatCount } from "@/common/format-count.lib.ts";
 import { withoutId } from "@/common/records.lib.ts";
-import type { DeviceCache } from "@/modules/device-cache";
-import { reatomFormBack } from "@/modules/form";
-import type { LiveVersion } from "@/modules/live-updates";
-import type { PreparedPhoto } from "@/modules/photo";
-import { reatomPhotoViewer } from "@/modules/photo-viewer";
 import {
   detached,
   instantly,
@@ -28,7 +23,12 @@ import {
   readOnly,
   type RollbackFailure,
   type Slide,
-} from "@/modules/state";
+} from "@/modules/changes";
+import type { DeviceCache } from "@/modules/device-cache";
+import { reatomFormBack } from "@/modules/form";
+import type { LiveVersion } from "@/modules/live-updates";
+import type { PreparedPhoto } from "@/modules/photo";
+import { reatomPhotoViewer } from "@/modules/photo-viewer";
 import {
   type Confirmation,
   type ClosingConfirmation,

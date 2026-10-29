@@ -9,3 +9,5 @@ The screen of a person who opened the Mini App from an Invite link (`start_param
 - `onJoined` — the session's `signIn`, which lets the new Member in.
 
 The preview is a Reatom async action (`withAsyncData`) that `app/main.tsx` starts with `load()` at launch; «Повторить» calls it again. `isOpen` is handed to the session as `isJoiningFamily`, so the session shows `<JoinFamily model={…} />` instead of its own screens until the person joins or closes it.
+
+Out of scope: creating Invites (`invites`), a stranger's Family Request (`family-request`), signing in (`session`).

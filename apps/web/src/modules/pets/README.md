@@ -20,4 +20,6 @@ The pet tab: the Family's Pets, each one's card and its Pet Memo, with the `care
 
 The card follows the spec — header with the avatar, «Дела», Pet Memo, «Траты за месяц», «Фото», «Журнал»; the expenses, photos and journal blocks come from the `care` submodule through `PetTab`. The header shows the Pet Avatar square; `reatomPetAvatar` uploads one straight from there (`uploadAvatar`, or the Photo Storage hint when none is connected), replaces it, removes it after a confirmation, and `makeAvatar` saves the photo picked in the care module's viewer instead. An archived Pet's avatar reads only.
 
-The profile form is a `reatomEditableRecord` from `modules/form`: it maps values from a Pet and into a profile, while creating, editing and the saving flags are the common module's. The Pet Memo form only edits the memo of a Pet that exists, so it has no creating to share and is filled through `fillForm`, never the form's own `reset`, which also aborts the next submit.
+The profile form is a `reatomEditableRecord` from `modules/form`: it maps values from a Pet and into a profile, while creating, editing and the saving flags are the `form` module's. The Pet Memo form only edits the memo of a Pet that exists, so it has no creating to share and is filled through `fillForm`, never the form's own `reset`, which also aborts the next submit.
+
+Out of scope: the Care journal (the `care` submodule), each Pet's automatic Album (`albums`).

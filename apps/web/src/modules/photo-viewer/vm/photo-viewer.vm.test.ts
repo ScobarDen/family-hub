@@ -4,7 +4,7 @@ import { beforeEach, expect, test, vi } from "vite-plus/test";
 import type { Photo } from "@family-hub/contract";
 
 import { HttpError } from "@/common/http-error.lib.ts";
-import { reatomRollbackFailure } from "@/modules/state";
+import { reatomRollbackFailure } from "@/modules/changes";
 import { fakeHaptics, fakeWindow } from "@/modules/telegram";
 
 import { reatomPhotoViewer } from "./photo-viewer.vm.ts";

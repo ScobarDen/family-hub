@@ -12,8 +12,8 @@ import {
   SectionItem,
   TextAreaField,
   TextField,
-  visibilityChoices,
 } from "@/modules/ui";
+import { visibilityChoices } from "@/modules/visibility";
 
 import { repeatChoices } from "../tasks.config.ts";
 import type { SubtaskFormModel } from "../vm/subtask-form.vm.ts";

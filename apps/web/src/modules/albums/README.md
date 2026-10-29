@@ -15,3 +15,5 @@ The «Альбомы» tab: the Family's Albums, always Shared, and each Pet's a
 - `photoHint` — from `photo-storage`: why photos cannot be added now.
 
 `reatomAlbumsScreen` goes to the navigation as the albums module's `nestedBack`. The full-screen viewer is `modules/photo-viewer`, shared with the care journal in `pets`.
+
+Out of scope: the full-screen viewer (`photo-viewer`), signed photo links (`photo`), connecting the channel the photos live in (`photo-storage`).

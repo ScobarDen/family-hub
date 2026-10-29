@@ -4,9 +4,9 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { movementChange, type Goal } from "@family-hub/contract";
 
 import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeSlide } from "@/modules/changes";
 import { reatomDeviceCache } from "@/modules/device-cache";
 import { createFamilyApi, reatomFamilyMembers } from "@/modules/family";
-import { fakeSlide } from "@/modules/state";
 import {
   fakeDeviceStorage,
   fakeHaptics,

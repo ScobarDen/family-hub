@@ -14,16 +14,16 @@ import { expenseCategoryTitles, type CareEntry, type CareKind } from "@family-hu
 import { formatDay } from "@/common/format-date.lib.ts";
 import { formatRubles } from "@/common/format-money.lib.ts";
 import { withoutId } from "@/common/records.lib.ts";
-import { reatomFormBack } from "@/modules/form";
-import type { LiveVersion } from "@/modules/live-updates";
-import type { PreparedPhoto } from "@/modules/photo";
 import {
   detached,
   readOnly,
   reatomOptimistic,
   reatomRollbackFailure,
   type RollbackFailure,
-} from "@/modules/state";
+} from "@/modules/changes";
+import { reatomFormBack } from "@/modules/form";
+import type { LiveVersion } from "@/modules/live-updates";
+import type { PreparedPhoto } from "@/modules/photo";
 import {
   type ClosingConfirmation,
   type Dialogs,

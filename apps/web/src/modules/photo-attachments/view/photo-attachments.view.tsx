@@ -1,8 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
 
-import { SignedPhoto } from "@/modules/photo";
-import { Button, ChipGroup, FilePick } from "@/modules/ui";
+import { FallbackImage, Button, ChipGroup, FilePick } from "@/modules/ui";
 
 import type { Attachment, PhotoAttachmentsModel } from "../vm/photo-attachments.vm.ts";
 
@@ -20,7 +19,7 @@ function Tile({
   return (
     <div className="relative size-20 overflow-hidden rounded-lg bg-muted">
       {item.status === "ready" && (
-        <SignedPhoto
+        <FallbackImage
           src={item.photo.urls.thumb}
           className="size-full rounded-[inherit] object-cover outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10"
         />

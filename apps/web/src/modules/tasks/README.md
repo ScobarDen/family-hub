@@ -28,3 +28,5 @@ One tap on the circle completes an Occurrence and shows the undo bar: «Отме
 - `recordOccurrence(target)` — the bot's «📝 Записать»: waits for the list, completes the Occurrence without the undo bar and calls `onRecord` with the Task's Pet and title; nothing happens when the Task or its Pet is missing, and a failed load or completion shows as the module's `failure`.
 
 The server owns the rules: who sees a Private Task, Overdue for the Feed and the bot, the last Subtask completing its Task, and only the owner deleting one. `reatomTasksScreen` goes to the navigation as the module's `nestedBack`, so Telegram's BackButton closes a form or leaves a Task first.
+
+Out of scope: sending Reminders (the bot in `apps/api`), the shared form machinery (`form`), the «Кто видит» choices (`visibility`).

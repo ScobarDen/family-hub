@@ -1,6 +1,6 @@
 import { action, computed, reatomBoolean, withAsync, wrap } from "@reatom/core";
 
-import { detached } from "@/modules/state";
+import { detached } from "@/modules/changes";
 
 type NotificationsDependencies = {
   canMessage: () => boolean | undefined;

@@ -12,8 +12,8 @@ import {
   PickerField,
   TextAreaField,
   TextField,
-  visibilityChoices,
 } from "@/modules/ui";
+import { visibilityChoices } from "@/modules/visibility";
 
 import { goalColorTitles, goalIconTitles, goalIcons } from "../goals.config.ts";
 import type { GoalFormModel } from "../vm/goal-form.vm.ts";

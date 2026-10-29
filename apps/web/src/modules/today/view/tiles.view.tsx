@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { sectionColors, sectionIcons } from "@/common/sections.config.ts";
+import { sectionColors, sectionIcons } from "@/modules/sections";
 import { cn, RoundPicture } from "@/modules/ui";
 
 import type { TodayModel } from "../vm/today.vm.ts";

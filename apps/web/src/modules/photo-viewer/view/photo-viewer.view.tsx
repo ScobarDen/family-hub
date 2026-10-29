@@ -10,8 +10,7 @@ import {
 } from "lucide-react";
 import { useRef, type PointerEvent } from "react";
 
-import { SignedPhoto } from "@/modules/photo";
-import { Button, FailureBar, ModalDialog } from "@/modules/ui";
+import { FallbackImage, Button, FailureBar, ModalDialog } from "@/modules/ui";
 
 import type { PhotoViewerModel } from "../vm/photo-viewer.vm.ts";
 
@@ -117,7 +116,7 @@ const SwipedPhoto = reatomComponent(({ model, src }: { model: PhotoViewerModel; 
       onPointerDown={swipe.onPointerDown}
       onPointerUp={swipe.onPointerUp}
     >
-      <SignedPhoto
+      <FallbackImage
         src={src}
         className="max-h-full max-w-full object-contain"
         fallback={<ImageOff aria-hidden className="size-12 text-white/50" />}

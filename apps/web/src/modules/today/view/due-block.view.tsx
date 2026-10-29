@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { ChevronRight } from "lucide-react";
 
-import { sectionIcons } from "@/common/sections.config.ts";
+import { sectionIcons } from "@/modules/sections";
 import { CheckButton, cn, Section, SectionItem, SkeletonSection } from "@/modules/ui";
 
 import type { DueRow } from "../today.lib.ts";

@@ -31,8 +31,10 @@ function restrict(
 function feodRules(app: string) {
   const appDirectory = fileURLToPath(new URL(`apps/${app}`, import.meta.url));
 
-  return configFromProject({ rootDir: appDirectory, preset: "recommended" }).rules ?? {};
+  return configFromProject({ rootDir: appDirectory }).rules ?? {};
 }
+
+const reactuseOnly = restrict([]);
 
 function webSource(glob: string): string {
   return `apps/web/src/${glob}`;
@@ -290,8 +292,8 @@ export default defineConfig({
       { files: [webSource("**/*.{ts,tsx}")], rules: feodRules("web") },
       { files: [apiSource("**/*.ts")], rules: feodRules("api") },
       { files: ["apps/*/src/**/*.{ts,tsx}"], rules: restrict([role("dto")]) },
-      { files: ["apps/*/src/**/*.test.{ts,tsx}"], rules: restrict([]) },
-      { files: [webSource("**/*.dto.ts")], rules: restrict([]) },
+      { files: ["apps/*/src/**/*.test.{ts,tsx}"], rules: reactuseOnly },
+      { files: [webSource("**/*.dto.ts")], rules: reactuseOnly },
       {
         files: [webSource("**/*.api.ts")],
         rules: restrict([role("vm", "view")]),

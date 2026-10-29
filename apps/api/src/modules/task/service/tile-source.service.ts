@@ -1,7 +1,7 @@
 import { tileWindowDays } from "@family-hub/contract";
 import { daysAfter } from "@family-hub/recurrence";
 
-import type { PhotoLinks } from "@/common/photo-link.lib.ts";
+import type { PhotoLinks } from "@/modules/photo";
 import type { TileSource } from "@/modules/today";
 
 import type { TaskRepo } from "../task.repo.ts";

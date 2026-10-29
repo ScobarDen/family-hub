@@ -1,4 +1,4 @@
-import type { Slide } from "./state.lib.ts";
+import type { Slide } from "./changes.lib.ts";
 
 export function fakeSlide(): { slides: string[]; slide: Slide } {
   const slides: string[] = [];

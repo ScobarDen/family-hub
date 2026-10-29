@@ -16,3 +16,5 @@ The Member's own settings in the Profile, which belong to no Family: whether the
 - `telegram` — `requestWriteAccess`, `addToHomeScreen` and `checkHomeScreenStatus` from `modules/telegram`.
 - `deviceCache` — the launch counter's and the offer's storage, from `modules/device-cache`.
 - `deviceZone` — `deviceTimeZone()` from `common/format-date.lib.ts`; `zones` — the IANA names the picker offers.
+
+Out of scope: the Family and its Members (`family`), the Family's Photo Storage (`photo-storage`).

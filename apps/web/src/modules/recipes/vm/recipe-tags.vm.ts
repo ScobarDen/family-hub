@@ -9,7 +9,7 @@ import {
   reatomFailure,
   reatomOptimistic,
   type RollbackFailure,
-} from "@/modules/state";
+} from "@/modules/changes";
 import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/modules/telegram";
 
 import type { RecipesApi } from "../recipes.api.ts";

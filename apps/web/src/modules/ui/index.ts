@@ -38,5 +38,5 @@ export { Skeleton } from "./view/skeleton.view.tsx";
 export { Switch } from "./view/switch.view.tsx";
 export { TextAreaField } from "./view/text-area-field.view.tsx";
 export { TextField } from "./view/text-field.view.tsx";
-export { visibilityChoices } from "./ui.config.ts";
 export { cn, slideScreens, useFocusOnInvalid } from "./ui.lib.ts";
+export { FallbackImage } from "./view/fallback-image.view.tsx";

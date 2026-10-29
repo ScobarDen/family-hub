@@ -12,3 +12,5 @@ The bottom tab bar and «Разделы». The bar is `Сегодня · slot ·
 - `onQuickAdd`, `onAddPhotos`, `onConfigure`, `onOpenSettings` — the app's opener and navigation: each quick-add opens that module's own create form.
 
 `tab-bar.model.ts` holds the slots: each change shows at once and is saved; a failed save puts back the last saved pair. `reatomTabBar` turns them into the five places of the bar, `reatomTabBarMenu` into the slot setup, where picking a module already in the other slot swaps the two, and `reatomSections` into «Разделы».
+
+Out of scope: the screens the tabs open (their own modules), the microphone (`command`), each section's title, icon and colour (`sections`).

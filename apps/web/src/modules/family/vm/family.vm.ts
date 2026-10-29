@@ -1,7 +1,7 @@
 import { action, atom, computed, reatomBoolean, retryComputed } from "@reatom/core";
 
+import { detached, readOnly } from "@/modules/changes";
 import { fillForm, reatomSubmitFailure } from "@/modules/form";
-import { detached, readOnly } from "@/modules/state";
 
 import { reatomDeletion, reatomLeave } from "./family-exit.vm.ts";
 import { reatomManage } from "./family-manage.vm.ts";

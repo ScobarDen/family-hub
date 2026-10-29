@@ -1,4 +1,4 @@
-import type { Choice } from "./view/choice-field.view.tsx";
+import type { Choice } from "@/modules/ui";
 
 export const visibilityChoices: Choice[] = [
   { value: "shared", title: "Для всей семьи" },

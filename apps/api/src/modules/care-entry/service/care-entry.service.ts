@@ -7,8 +7,8 @@ import {
 
 import { bindFirst } from "@/common/bind.lib.ts";
 import type { Clock } from "@/common/clock.lib.ts";
-import type { PhotoLinks } from "@/common/photo-link.lib.ts";
 import type { Membership } from "@/modules/auth";
+import type { PhotoLinks } from "@/modules/photo";
 
 import { careTitleOf, columnsOf, summaryOf } from "../care-entry.lib.ts";
 import type { CareEntryRepo, CareEntryRow } from "../care-entry.repo.ts";

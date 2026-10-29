@@ -10,3 +10,5 @@ The Family Request form a stranger reaches from «Создать свою сем
 - `onBack`, `onCheck` — the session's `closeFamilyRequest` and `signIn`.
 
 The form is `reatomForm` with the family name schema; its `submit` keeps the outcome as data. `app/main.tsx` builds the model with `reatomFamilyRequest({ api, telegram, onBack, onCheck })`, and `app.view.tsx` hands `<FamilyRequest model={…} />` to the session, which shows it instead of the stranger screen.
+
+Out of scope: signing in and the first screen (`session`), joining an existing Family by Invite (`join-family`).

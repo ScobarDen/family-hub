@@ -3,7 +3,7 @@ import { action, atom, computed, noop, wrap, type Atom } from "@reatom/core";
 import type { Task } from "@family-hub/contract";
 
 import { withoutId } from "@/common/records.lib.ts";
-import { reatomOptimistic, reatomRollbackFailure } from "@/modules/state";
+import { reatomOptimistic, reatomRollbackFailure } from "@/modules/changes";
 import { type Confirmation, type Dialogs, isConfirmed, type Haptics } from "@/modules/telegram";
 
 import {

@@ -19,9 +19,6 @@ import type {
 } from "@family-hub/contract";
 
 import { formatRubles } from "@/common/format-money.lib.ts";
-import type { DeviceCache } from "@/modules/device-cache";
-import { reatomFormBack } from "@/modules/form";
-import type { LiveVersion } from "@/modules/live-updates";
 import {
   detached,
   instantly,
@@ -30,7 +27,10 @@ import {
   reatomRollbackFailure,
   type RollbackFailure,
   type Slide,
-} from "@/modules/state";
+} from "@/modules/changes";
+import type { DeviceCache } from "@/modules/device-cache";
+import { reatomFormBack } from "@/modules/form";
+import type { LiveVersion } from "@/modules/live-updates";
 import {
   type ClosingConfirmation,
   type Confirmation,
