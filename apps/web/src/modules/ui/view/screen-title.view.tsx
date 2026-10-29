@@ -6,8 +6,12 @@ type ScreenTitleProps = {
 export function ScreenTitle({ title, subtitle }: ScreenTitleProps) {
   return (
     <header className="flex flex-col gap-1 px-5 pt-6 pb-5">
-      {/* The app moves focus here on each new screen, so a screen reader hears where it is. */}
-      <h1 tabIndex={-1} className="text-title font-semibold tracking-tight break-words">
+      {/* The app moves focus here on each new screen, so a screen reader hears where it is; the
+          heading is no control, so a browser that rings programmatic focus draws nothing. */}
+      <h1
+        tabIndex={-1}
+        className="text-title font-semibold tracking-tight break-words outline-none"
+      >
         {title}
       </h1>
       {subtitle !== undefined && <p className="text-subhead text-muted-foreground">{subtitle}</p>}
