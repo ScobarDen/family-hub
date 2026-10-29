@@ -11,25 +11,31 @@
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/workflow/code-craft/SKILL.md",
-      "computedHash": "e5a07b94428db94d978ed3b15f102ceb760b3818a2821dd4193d39ffdeec1d08"
+      "computedHash": "eeabf661421f12350c0de29962acb8fb62cccff43e572826ad3d8e8e0eda792f"
     },
     "feod": {
+      "source": "Sdju/feod",
+      "sourceType": "github",
+      "skillPath": "skills/feod/SKILL.md",
+      "computedHash": "58a4a7aa2e1eee36d2ceecd3e57bb2170ad34f5a065927cfb20ab427849e3287"
+    },
+    "feod-preset": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
-      "skillPath": "skills/architecture/feod/SKILL.md",
-      "computedHash": "71c5f8573ed35eeb8e2bf40565e6e6693e4c207bf85d871ce5df4496c593f2c7"
+      "skillPath": "skills/architecture/feod-preset/SKILL.md",
+      "computedHash": "c8779b5cdd6655a1a02062eb3100306354810c1bfc8bcd7c9832553e3b7d9f24"
     },
     "frontend-boundaries": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/frontend/frontend-boundaries/SKILL.md",
-      "computedHash": "8b2e0a4fe48e74c7746ba831bbab677ef7b57787b3673cc8e0bb05c6df859bb6"
+      "computedHash": "ae366ad3c527332b33474e1e9126315303310cb47cde6cdcbdae10f223c926bd"
     },
     "frontend-mvvm": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/frontend/frontend-mvvm/SKILL.md",
-      "computedHash": "f48f87dafa47edeaf35242adba4a7e26daeb7b490fb47d9e1089b908fb9a4051"
+      "computedHash": "4c58f26b7bf640e00e15e920f547cba7ec759e3f957d9bcd6ff9285ef4a1b056"
     },
     "hono": {
       "source": "honojs/skills",
@@ -47,7 +53,7 @@
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/architecture/mvvm/SKILL.md",
-      "computedHash": "1c27bd80f12efe3324a8ab3969bdc8d5aa5bdd839cd1abb2c1c61472a10ed739"
+      "computedHash": "413087459320bd4152c1e73e47bf8d61b1583a2ea9aa868f627825b4fb684439"
     },
     "pnpm": {
       "source": "antfu/skills",
@@ -101,7 +107,7 @@
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/architecture/role-files/SKILL.md",
-      "computedHash": "34c7e9b565a9fe4316288fe9e56b031f12ac1f074704d51ab998c15e6228398e"
+      "computedHash": "900c9cf2027ac2ed7f368b496d444b905658e685ed5e327abca4e1276da5c885"
     },
     "shadcn": {
       "source": "shadcn-ui/ui",

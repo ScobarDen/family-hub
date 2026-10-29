@@ -1,6 +1,6 @@
 ---
 name: role-files
-description: Files named by the role they play — `{subject}.{role}.{ext}` (`checkout.vm.ts`, `order.dto.ts`) or a role folder, from a closed role list; one file of a role sits at the module root, two or more move into a folder named after the role; tests sit beside what they test; a role import matrix. Load when naming or placing a file inside a module, when a module or a file is too big to navigate, when deciding whether a role gets its own folder, or when setting up which role may import which. Stack-neutral; levels and public API are feod, what each role owns is mvvm, enforcement is frontend-boundaries or qt-cmake-boundaries.
+description: Files named by the role they play — `{subject}.{role}.{ext}` (`checkout.vm.ts`, `order.dto.ts`) or a role folder, from a closed role list; one file of a role sits at the module root, two or more move into a folder named after the role; tests sit beside what they test; a role import matrix. Load when naming or placing a file inside a module, when a module or a file is too big to navigate, when deciding whether a role gets its own folder, or when setting up which role may import which. Stack-neutral; levels and public API are feod and feod-preset, what each role owns is mvvm, enforcement is frontend-boundaries or qt-cmake-boundaries.
 ---
 
 # Role files
@@ -9,7 +9,7 @@ The goal is a module you understand from its file list: open the folder, read th
 
 ## Provenance and precedence
 
-- This family's own convention, built on `feod` (modules, submodules) and `mvvm` (roles). FEOD leaves a module's insides to the module; its examples use `ui/ model/ api/ lib/`, and role markers replace them.
+- This family's own convention, built on FEOD (`feod`, `feod-preset`: modules, submodules) and `mvvm` (roles). FEOD leaves a module's insides to the module; its examples use technical-kind folders (`components/`, `composables/`, `api/`, `store/`), and role markers replace them.
 - Suffix choice weighed against the [Angular style guide](https://angular.dev/style-guide), which dropped `.component` / `.service` as decoration, and NestJS, which keeps them. Here the role marker stays because tooling keys off it: lint globs and build targets enforce role boundaries, and fuzzy search on `checkout vm` finds the file.
 - **Project conventions win.** An existing naming scheme or a file-based router outranks this file. Follow it and mention the divergence in one line.
 
@@ -69,7 +69,7 @@ modules/checkout/
     checkout.vm.test.ts
 ```
 
-The root shows at a glance which roles are one file and which have grown. Each role in a module is laid out one way: one file at the root, or all of its files in its folder. A submodule (`feod` §4) repeats the same layout inside its own folder.
+The root shows at a glance which roles are one file and which have grown. Each role in a module is laid out one way: one file at the root, or all of its files in its folder. A submodule (`modules/<name>/modules/<sub>/`) repeats the same layout inside its own folder. `common` keeps the role markers but not the role folders: FEOD caps it at one folder deep (`common/ui/button.view.tsx`).
 
 ## 5. Size is a prompt, the cut is by responsibility
 
@@ -90,7 +90,7 @@ A **headless module** (Model and ViewModel only, Views elsewhere) is legitimate 
 | `vm` | `view`, `dto`; `api` values (types pass) | the ViewModel does not know how it is drawn, and reaches transport through `model` or an injected instance it never constructs |
 | `model` | `vm`, `view`, `dto` | the Model sits below the ViewModel |
 | `api` | `vm`, `view` | transport sits below the ViewModel |
-| the root contract | wildcard re-exports | the contract is explicit (`feod` §3) |
+| the root contract | wildcard re-exports | the contract is explicit (`feod-preset` §3) |
 
 A boundary no tool checks lasts until the first deadline. `frontend-boundaries` turns this table into lint rules; `qt-cmake-boundaries` turns it into include paths the compiler enforces.
 
@@ -108,7 +108,7 @@ A boundary no tool checks lasts until the first deadline. `frontend-boundaries` 
 
 | Need | Load |
 | --- | --- |
-| Levels, public API, submodules | `feod` |
+| Levels, public API, submodules | `feod`, `feod-preset` |
 | What each role owns | `mvvm` |
 | Role files in TypeScript; lint rules | `frontend-mvvm`, `frontend-boundaries` |
 | Role folders in Qt; CMake targets | `qt-mvvm`, `qt-cmake-boundaries` |

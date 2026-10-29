@@ -1,15 +1,15 @@
 ---
 name: frontend-mvvm
-description: MVVM, FEOD and role files applied to a web frontend — the ViewModel as a hook, a composable or a Reatom model, the passive component, `index.ts` as a module's public API, `{subject}.{role}.ts` in TypeScript, routes and file-based routers, a new-module recipe and a worked shop migration. Load when building or reviewing a React or Vue screen or module, writing an `index.ts`, a DTO reaching a component, a fetch or `useQuery` inside a presentational component, or migrating a frontend to modules. Doctrine is in mvvm, feod and role-files; state library choice is frontend-state-stack; lint enforcement is frontend-boundaries.
+description: MVVM, FEOD and role files applied to a web frontend — the ViewModel as a hook, a composable or a Reatom model, the passive component, `index.ts` as a module's public API, `{subject}.{role}.ts` in TypeScript, routes and file-based routers, compound components and presets, a new-module recipe and a worked shop migration. Load when building or reviewing a React or Vue screen or module, a component growing props that show, hide or replace its parts, writing an `index.ts`, a DTO reaching a component, a fetch or `useQuery` inside a presentational component, or migrating a frontend to modules. Doctrine is in mvvm, feod, feod-preset and role-files; state library choice is frontend-state-stack; lint enforcement is frontend-boundaries.
 ---
 
 # Frontend MVVM
 
-How `mvvm`, `feod` and `role-files` look in a TypeScript frontend. Load those three for the rules; this file adds only what the web stack changes.
+How `mvvm`, FEOD (`feod`, `feod-preset`) and `role-files` look in a TypeScript frontend. Load those three for the rules; this file adds only what the web stack changes.
 
 ## Provenance and precedence
 
-- Hooks adapter and render rules: [MVVM for React](https://www.youtube.com/watch?v=H0pKvQ8P3UI). Level and public API rules: [FEOD](https://fractal-oriented.tech/llms-full.txt), whose own examples are TypeScript.
+- Hooks adapter and render rules: [MVVM for React](https://www.youtube.com/watch?v=H0pKvQ8P3UI). Level and public API rules: [FEOD](https://feod.dev/), whose own examples are TypeScript and Vue.
 - **Project conventions win.** An existing layout, a file-based router or a ViewModel convention outranks this file. Follow it and mention the divergence in one line.
 - Picking Zustand vs Reatom vs MobX vs hooks is `frontend-state-stack`. MobX wiring is `mobx-mvvm`. Reatom API is `reatom` / `reatom-async`.
 - Hook *return shape* (`form` / `state` / `functions` / `refs` / `features`) is `react-hooks-best-practices` rule `dx-extract-complex-hook`. This file owns the fact that the hook **is** the ViewModel.
@@ -40,10 +40,11 @@ Do not smear fetches and maps across the tree to "localize state" or dodge re-re
 
 ## 3. Public API in TypeScript
 
-`feod` §3, spelled out:
+`feod-preset` §3, spelled out:
 
-- `index.ts` at the entity root, `export { A, B } from './…'` only; `export *` is banned (`frontend-boundaries` checks it in ESLint).
+- `index.ts` at the module root, `export { A, B } from './…'` only; `export *` is banned (`frontend-boundaries` checks it in ESLint).
 - Consumers import `@/modules/checkout`, never `@/modules/checkout/vm/checkout.vm`. `import type` obeys the same rule.
+- `common` has no `index.ts`: consumers import the file, `@/common/format-money.lib`.
 - Public names: `Checkout`, `useCheckout`, `CheckoutProps`, `getOrderTotal`. Inside the module, names follow the library's convention (mobx-view-model's `CheckoutVM` class); the public surface does not restate the role.
 - A consumer writing `ReturnType<typeof getOrderStatus>` or `Parameters<typeof placeOrder>[0]` means the owner forgot to export the type.
 
@@ -58,8 +59,8 @@ Do not smear fetches and maps across the tree to "localize state" or dodge re-re
 | tests, stories | `.test.ts`, `.stories.tsx`, after the role: `checkout.vm.test.ts` |
 
 - The hooks adapter from §1 lives in `checkout.view.tsx` and is what `index.ts` exports as `Checkout`.
-- `.api` files take transport from `common/http-client`, not from `fetch` or `ky` directly.
-- `global/` holds `polyfills.ts`, `vite-env.d.ts`, global styles; `app/main.tsx` connects them and nothing else imports them.
+- `.api` files take transport from `common/http-client/http-client.api.ts`, not from `fetch` or `ky` directly.
+- `global/` holds `polyfills.ts`, `vite-env.d.ts`, global styles. No code imports them, `app/main.tsx` included: `tsconfig.json` picks up the `.d.ts`, `index.html` loads polyfills and styles before the entry.
 
 ## 5. Routes and pages
 
@@ -78,7 +79,7 @@ A file-based router (Next, Nuxt, TanStack Router, React Router fs-routes) dictat
 
 ## 6. Recipe: a new module
 
-1. **Qualify it** (`feod` §2): name it in product terms, kebab-case, under `modules/`.
+1. **Qualify it** (`feod-preset` §2): name it in product terms, kebab-case, under `modules/`.
 2. **Files**: `index.ts`, `README.md` if it has a ViewModel, then one file per role you need (`<name>.api.ts`, `<name>.dto.ts`, `<name>.model.ts`, `<name>.vm.ts`, `<name>.view.tsx`). Folders appear only when a role reaches two files.
 3. **Model**: domain types and the DTO → domain adapter in `.api` / `.model`. The DTO goes no further.
 4. **ViewModel**: the hook takes services as arguments, returns UI-shaped data and commands; tests beside it with a fake service and a fixed clock.
@@ -87,7 +88,18 @@ A file-based router (Next, Nuxt, TanStack Router, React Router fs-routes) dictat
 7. **Mount**: a page imports the module root and passes its dependencies; the module never imports the page or another module's internals.
 8. **Check**: lint is green with the `frontend-boundaries` config; the README names what is injected.
 
-## 7. Worked example
+## 7. Compound components and presets
+
+A component that grows a prop per variant becomes unreadable. Split it into a **compound** (`CardRoot`, `CardHeader`, `CardActions`, flat named exports) and keep the usual assembly as a **preset** (`UserCard`).
+
+- The first **structural prop** (`showHeader`, `renderActions`, a `variant` that changes which parts exist) is the trigger, not the prop count.
+- The root owns UI state and passes it through context; domain data comes from the ViewModel. A part used outside its root throws.
+- A preset appears on the third identical assembly, takes data and callbacks only, and never grows a structural prop: a frequent variant gets a second preset, a rare one is assembled in place.
+- Interactive compounds (dialog, select, tabs) wrap the project's headless library.
+
+[`references/compound-components.md`](references/compound-components.md) has the full rules, FEOD placement and React and Vue examples. Read it when building or splitting a reusable component.
+
+## 8. Worked example
 
 [`references/worked-example.md`](references/worked-example.md) takes a typical shop frontend sorted by technical kind (`components/`, `hooks/`, `utils/`, `types/`) to this layout, row by row: every level, every role folder, submodules, and a page wiring two modules. Read it when migrating a project or starting a new one.
 
@@ -100,13 +112,16 @@ A file-based router (Next, Nuxt, TanStack Router, React Router fs-routes) dictat
 - `export *` in an `index.ts`; an import path past a module root.
 - `ReturnType<typeof …>` reconstructing a type another module owns.
 - A component file without a role suffix inside a module.
+- A structural prop: `showFooter`, `renderHeader`, a `variant` that adds or drops parts.
+- A preset that grew a structural prop.
+- A compound part that fetches or holds domain state.
 
 ## Related skills
 
 | Need | Load |
 | --- | --- |
 | What each role owns | `mvvm` |
-| Levels and public API | `feod` |
+| Levels and public API | `feod`, `feod-preset` |
 | File names and role folders | `role-files` |
 | Lint rules for levels and roles | `frontend-boundaries` |
 | Which state library | `frontend-state-stack` |
