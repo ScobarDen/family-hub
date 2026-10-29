@@ -17,6 +17,8 @@ type Options = {
   permission?: PushPermission;
   answer?: PushPermission;
   pushAvailability?: PushAvailability;
+  // Requests to the subscription the server answers with 500.
+  failing?: "PUT" | "DELETE";
 };
 
 function startPush(options: Options = {}) {
@@ -26,6 +28,10 @@ function startPush(options: Options = {}) {
     const body: unknown = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
 
     requests.push({ path: url.pathname, method: init.method ?? "GET", body });
+
+    if (init.method !== undefined && init.method === options.failing) {
+      return Response.json({ code: "INTERNAL", message: "" }, { status: 500 });
+    }
 
     if (url.pathname === "/api/push/key") {
       return Response.json({ publicKey: "BPublicKey" });
@@ -75,6 +81,34 @@ describe("Push on this Device", () => {
       { path: "/api/push/key", method: "GET", body: undefined },
       { path: "/api/devices/device-1/push", method: "PUT", body: fakePushSubscription },
     ]);
+  });
+
+  test("stays off and drops the browser's subscription when the server does not save it", async () => {
+    const { model, browser } = startPush({ failing: "PUT" });
+
+    model.toggle(true);
+
+    await vi.waitFor(() => {
+      expect(model.failure()).toBe("Не получилось переключить Push. Попробуйте ещё раз.");
+    });
+    expect(model.state()).toBe("off");
+    expect(browser.isSubscribed()).toBe(false);
+  });
+
+  test("stays on when the server does not forget the subscription", async () => {
+    const { model, browser } = startPush({ failing: "DELETE" });
+
+    model.toggle(true);
+    await vi.waitFor(() => {
+      expect(model.state()).toBe("on");
+    });
+    model.toggle(false);
+
+    await vi.waitFor(() => {
+      expect(model.failure()).toBe("Не получилось переключить Push. Попробуйте ещё раз.");
+    });
+    expect(model.state()).toBe("on");
+    expect(browser.isSubscribed()).toBe(true);
   });
 
   test("says how to allow notifications when the Member denies them", async () => {

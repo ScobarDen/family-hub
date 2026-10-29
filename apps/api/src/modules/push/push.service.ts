@@ -3,13 +3,15 @@ import type { PushMessage, PushSubscriptionChange } from "@family-hub/contract";
 import { bindFirst } from "@/common/bind.lib.ts";
 import type { Clock } from "@/common/clock.lib.ts";
 import { httpStatus } from "@/common/errors.lib.ts";
-import type { Membership } from "@/modules/auth";
+import { deviceLifetimeMs, type Membership } from "@/modules/auth";
 
 import type { PushRepo, SubscriptionRow } from "./push.repo.ts";
 import type { PushTransport } from "./push.types.ts";
 
-// Devices are the auth module's; the app wires in its ownership check.
-type DevicePort = { isOwnDevice(memberId: string, deviceId: string): Promise<boolean> };
+// Devices are the auth module's; the app wires in its check of a Member's unexpired Device.
+type DevicePort = {
+  isLive(memberId: string, deviceId: string, usedSince: number): Promise<boolean>;
+};
 
 type PushServiceDependencies = {
   subscriptions: PushRepo;
@@ -23,7 +25,7 @@ const goneStatuses = new Set<number>([httpStatus.notFound, httpStatus.gone]);
 const acceptedStatusMax = 299;
 
 // A push service that fails is logged and counted out; it never stops the other Devices or the bot.
-async function isAccepted(
+async function isDeliveredTo(
   { transport, subscriptions }: PushServiceDependencies,
   { row, payload }: { row: SubscriptionRow; payload: string },
 ): Promise<boolean> {
@@ -49,7 +51,7 @@ async function subscribe(
   { member }: Membership,
   { deviceId, subscription }: { deviceId: string; subscription: PushSubscriptionChange },
 ): Promise<"subscribed" | "device-not-found"> {
-  if (!(await devices.isOwnDevice(member.id, deviceId))) {
+  if (!(await devices.isLive(member.id, deviceId, clock.now() - deviceLifetimeMs))) {
     return "device-not-found";
   }
 
@@ -80,9 +82,12 @@ async function sendTo(
   message: PushMessage,
 ): Promise<number> {
   const payload = JSON.stringify(message);
-  const rows = await dependencies.subscriptions.listOf(memberId);
+  const rows = await dependencies.subscriptions.listOf(
+    memberId,
+    dependencies.clock.now() - deviceLifetimeMs,
+  );
   const accepted = await Promise.all(
-    rows.map(async (row) => isAccepted(dependencies, { row, payload })),
+    rows.map(async (row) => isDeliveredTo(dependencies, { row, payload })),
   );
 
   return accepted.filter(Boolean).length;

@@ -20,7 +20,8 @@ export const liveRoute = new Hono<LiveEnv>().get("/api/live", async (context) =>
   }
 
   const token = tokenOfProtocols(context.req.header("sec-websocket-protocol"));
-  const membership = token === undefined ? undefined : await context.var.auth.authenticate(token);
+  const session = token === undefined ? undefined : await context.var.auth.authenticate(token);
+  const membership = session?.membership;
 
   if (!membership) {
     return context.json(

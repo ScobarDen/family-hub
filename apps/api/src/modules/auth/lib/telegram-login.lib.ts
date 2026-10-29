@@ -1,5 +1,6 @@
 import type { TelegramWidgetLogin } from "@family-hub/contract";
 
+import { telegramLoginMaxAgeMs } from "../auth.config.ts";
 import { hexToBytes, hmacKey, isFreshAuthDate, type TelegramUser } from "./init-data.lib.ts";
 
 const encoder = new TextEncoder();
@@ -35,7 +36,10 @@ export async function verifyTelegramLogin({
   botToken: string;
   now: number;
 }): Promise<TelegramUser | undefined> {
-  if (!isFreshAuthDate(login.auth_date, now) || !(await isSignedByBot(login, botToken))) {
+  if (
+    !isFreshAuthDate(login.auth_date, now, telegramLoginMaxAgeMs) ||
+    !(await isSignedByBot(login, botToken))
+  ) {
     return undefined;
   }
 

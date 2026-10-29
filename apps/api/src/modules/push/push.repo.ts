@@ -1,6 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 
-import { pushSubscriptions, type Db } from "@/modules/db";
+import { devices, pushSubscriptions, type Db } from "@/modules/db";
 
 export type SubscriptionRow = typeof pushSubscriptions.$inferSelect;
 
@@ -30,8 +30,21 @@ export function createPushRepo(db: Db) {
         );
     },
 
-    listOf: async (memberId: string): Promise<SubscriptionRow[]> =>
-      db.select().from(pushSubscriptions).where(eq(pushSubscriptions.memberId, memberId)).all(),
+    // An expired Device keeps its row until it signs in again, so its subscription is skipped here.
+    listOf: async (memberId: string, usedSince: number): Promise<SubscriptionRow[]> =>
+      db
+        .select({
+          deviceId: pushSubscriptions.deviceId,
+          memberId: pushSubscriptions.memberId,
+          endpoint: pushSubscriptions.endpoint,
+          p256dh: pushSubscriptions.p256dh,
+          auth: pushSubscriptions.auth,
+          createdAt: pushSubscriptions.createdAt,
+        })
+        .from(pushSubscriptions)
+        .innerJoin(devices, eq(devices.id, pushSubscriptions.deviceId))
+        .where(and(eq(pushSubscriptions.memberId, memberId), gt(devices.lastUsedAt, usedSince)))
+        .all(),
   };
 }
 

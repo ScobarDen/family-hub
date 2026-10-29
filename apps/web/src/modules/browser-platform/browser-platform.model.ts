@@ -118,7 +118,10 @@ function pushOf(window: Window) {
 
 // Built before the first render, so the install prompt is caught when it comes.
 export function reatomBrowserPlatform(window: Window): BrowserPlatform {
-  const isIos = /iPhone|iPad/u.test(window.navigator.userAgent);
+  // iPadOS Safari introduces itself as a Mac; only the touch screen gives it away.
+  const isIos =
+    /iPhone|iPad/u.test(window.navigator.userAgent) ||
+    (/Macintosh/u.test(window.navigator.userAgent) && window.navigator.maxTouchPoints > 1);
   const { hasPush, ...push } = pushOf(window);
 
   function isStandalone(): boolean {

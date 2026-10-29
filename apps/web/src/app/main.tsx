@@ -77,6 +77,7 @@ const session = reatomSession({
   isJoiningFamily: () => joinFamily.isOpen(),
   deviceCache,
   botUsername: import.meta.env.VITE_BOT_USERNAME,
+  unsubscribePush: platform?.unsubscribePush,
 });
 const joinFamily = reatomJoinFamily({
   api: createJoinFamilyApi(httpClient),
@@ -370,8 +371,9 @@ const home = {
     onConfigure: navigation.openTabBarMenu,
     onOpenSettings: navigation.openProfile,
   }),
+  // Outside Telegram the bot's write access cannot be asked for, and Push stands in for it.
   notifications: reatomNotifications({
-    canMessage: () => session.member()?.settings.canMessage,
+    canMessage: () => (browser === undefined ? session.member()?.settings.canMessage : undefined),
     telegram,
   }),
   timeZone,

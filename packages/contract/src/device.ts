@@ -43,10 +43,17 @@ export const deviceList = z.array(device);
 
 export type DeviceList = z.infer<typeof deviceList>;
 
-// The shape of PushSubscription.toJSON() in the browser.
+// The Worker posts to whatever endpoint it is given, so only the browsers' own push services pass.
+const pushServiceHost =
+  /^(?:fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[\w.-]+\.push\.apple\.com|[\w.-]+\.notify\.windows\.com)$/u;
+
+// The shape of PushSubscription.toJSON() in the browser: a P-256 point and a 16-byte secret.
 export const pushSubscription = z.object({
-  endpoint: z.url({ protocol: /^https$/ }),
-  keys: z.object({ p256dh: z.string().min(1), auth: z.string().min(1) }),
+  endpoint: z.url({ protocol: /^https$/u, hostname: pushServiceHost }),
+  keys: z.object({
+    p256dh: z.string().regex(/^[\w-]{87}=?$/u),
+    auth: z.string().regex(/^[\w-]{22}(?:==)?$/u),
+  }),
 });
 
 export type PushSubscriptionChange = z.infer<typeof pushSubscription>;

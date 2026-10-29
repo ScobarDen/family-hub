@@ -59,12 +59,13 @@ async function syncProfile(
   }
 }
 
-async function newDevice(
+async function registerDevice(
   { devices }: AuthContext,
   { memberId, userAgent, now }: { memberId: string; userAgent: string | undefined; now: number },
 ) {
   const device = { id: uuidv7(now), credential: newCredential() };
 
+  await devices.removeUnusedOf(memberId, now - deviceLifetimeMs);
   await devices.insert({
     id: device.id,
     memberId,
@@ -99,11 +100,13 @@ async function signInWithLogin(
 
   await syncProfile(context, { user, member: membership.member });
 
+  const device = await registerDevice(context, { memberId: membership.member.id, userAgent, now });
+
   return {
     status: "member",
-    token: await sessionTokens.sign(membership.member.id, now),
+    token: await sessionTokens.sign({ memberId: membership.member.id, deviceId: device.id }, now),
     membership,
-    device: await newDevice(context, { memberId: membership.member.id, userAgent, now }),
+    device,
   };
 }
 
@@ -120,7 +123,7 @@ async function signInWithDevice(
   }
 
   if (now - device.lastUsedAt >= deviceLifetimeMs) {
-    await devices.removeExpired(device.id);
+    await devices.removeById(device.id);
 
     return { status: "invalid" };
   }
@@ -133,7 +136,14 @@ async function signInWithDevice(
 
   return membership === undefined
     ? { status: "stranger" }
-    : { status: "member", token: await sessionTokens.sign(membership.member.id, now), membership };
+    : {
+        status: "member",
+        token: await sessionTokens.sign(
+          { memberId: membership.member.id, deviceId: device.id },
+          now,
+        ),
+        membership,
+      };
 }
 
 async function devicesOf({ devices }: AuthContext, { member }: Membership): Promise<DeviceList> {
@@ -164,13 +174,15 @@ async function signIn(context: AuthContext, initData: string): Promise<SignInRes
 
   return {
     status: "member",
-    token: await sessionTokens.sign(membership.member.id, clock.now()),
+    token: await sessionTokens.sign({ memberId: membership.member.id }, clock.now()),
     membership,
   };
 }
 
+export type Session = { membership: Membership; deviceId: string | undefined };
+
 export function createAuthService(dependencies: AuthServiceDependencies) {
-  const { memberships, clock, botToken } = dependencies;
+  const { memberships, devices, clock, botToken } = dependencies;
   const sessionTokens = createSessionTokens(dependencies.jwtSecret);
 
   return {
@@ -181,12 +193,32 @@ export function createAuthService(dependencies: AuthServiceDependencies) {
       { ...dependencies, sessionTokens },
       { signIn, signInWithLogin, signInWithDevice, devicesOf, revokeDevice },
     ),
-    renew: async ({ member }: Membership) => sessionTokens.sign(member.id, clock.now()),
+    // Renewing is use too: an Installed App kept open never signs in with its Device again.
+    async renew({ member }: Membership, deviceId: string | undefined): Promise<string> {
+      const now = clock.now();
 
-    async authenticate(token: string): Promise<Membership | undefined> {
-      const memberId = await sessionTokens.read(token, clock.now());
+      if (deviceId !== undefined) {
+        await devices.touch(deviceId, now);
+      }
 
-      return memberId === undefined ? undefined : memberships.findByMemberId(memberId);
+      return sessionTokens.sign({ memberId: member.id, deviceId }, now);
+    },
+
+    async authenticate(token: string): Promise<Session | undefined> {
+      const now = clock.now();
+      const claims = await sessionTokens.read(token, now);
+
+      if (
+        claims === undefined ||
+        (claims.deviceId !== undefined &&
+          !(await devices.isLive(claims.memberId, claims.deviceId, now - deviceLifetimeMs)))
+      ) {
+        return undefined;
+      }
+
+      const membership = await memberships.findByMemberId(claims.memberId);
+
+      return membership && { membership, deviceId: claims.deviceId };
     },
   };
 }

@@ -45,7 +45,7 @@ type Refusal = { status: number; code: ErrorCode };
 
 type Replies = {
   login?: DeviceSignIn | Refusal;
-  device?: DeviceSession | Refusal;
+  device?: DeviceSession | Refusal | "offline";
   // What a session request answers to each token, in turn.
   today?: number[];
 };
@@ -73,7 +73,15 @@ function fakeBackend(replies: Replies) {
     }
 
     if (url.pathname === "/api/session/device") {
+      if (replies.device === "offline") {
+        throw new TypeError("Failed to fetch");
+      }
+
       return answer(replies.device);
+    }
+
+    if (url.pathname.startsWith("/api/devices/")) {
+      return Response.json({ status: "deleted" });
     }
 
     const status = replies.today?.shift() ?? 200;
@@ -224,6 +232,36 @@ describe("a later launch", () => {
     ]);
   });
 
+  test("signs in again only once for requests that get 401 together", async () => {
+    const backend = fakeBackend({
+      device: { ...denis, token: "token-1" },
+      today: [401, 401, 200, 200],
+    });
+    const session = startInstalledApp(backend, storageWithDevice());
+
+    session.signIn();
+    await settled(session);
+    await Promise.all([
+      session.client.request("/api/today", { schema: z.unknown() }),
+      session.client.request("/api/today", { schema: z.unknown() }),
+    ]);
+
+    expect(backend.requests.filter((path) => path === "/api/session/device")).toHaveLength(2);
+  });
+
+  test("asks to restart and keeps the Device when signing in again gets no answer", async () => {
+    const replies: Replies = { device: { ...denis, token: "token-1" }, today: [401] };
+    const session = startInstalledApp(fakeBackend(replies), storageWithDevice());
+
+    session.signIn();
+    await settled(session);
+    replies.device = "offline";
+    await session.client.request("/api/today", { schema: z.unknown() }).catch(noop);
+
+    expect(session.screen()).toEqual({ kind: "restart" });
+    expect(session.storage.items.has(deviceKey)).toBe(true);
+  });
+
   test("goes back to sign-in when the Device is refused on the way", async () => {
     const replies: Replies = { device: { ...denis, token: "token-1" }, today: [401] };
     const session = startInstalledApp(fakeBackend(replies), storageWithDevice());
@@ -236,11 +274,9 @@ describe("a later launch", () => {
     expect(session.screen()).toEqual({ kind: "signed-out" });
   });
 
-  test("signs out of this Device back to the sign-in screen", async () => {
-    const session = startInstalledApp(
-      fakeBackend({ device: { ...denis, token: "token-1" } }),
-      storageWithDevice(),
-    );
+  test("signs out of this Device back to the sign-in screen, revoking it on the server", async () => {
+    const backend = fakeBackend({ device: { ...denis, token: "token-1" } });
+    const session = startInstalledApp(backend, storageWithDevice());
 
     session.signIn();
     await settled(session);
@@ -248,5 +284,6 @@ describe("a later launch", () => {
 
     expect(session.screen()).toEqual({ kind: "signed-out" });
     expect(session.storage.items.has(deviceKey)).toBe(false);
+    expect(backend.requests).toContain("/api/devices/device-1");
   });
 });

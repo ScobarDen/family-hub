@@ -1,4 +1,4 @@
-import { and, desc, eq, type SQL } from "drizzle-orm";
+import { and, desc, eq, gt, lte, type SQL } from "drizzle-orm";
 
 import { devices, families, familyMembers, members, type Db } from "@/modules/db";
 
@@ -80,13 +80,25 @@ export function createDeviceRepo(db: Db) {
         .orderBy(desc(devices.lastUsedAt))
         .all(),
 
-    isOwnedBy: async (memberId: string, id: string): Promise<boolean> =>
+    isLive: async (memberId: string, id: string, usedSince: number): Promise<boolean> =>
       (await db
         .select({ id: devices.id })
         .from(devices)
-        .where(and(eq(devices.id, id), eq(devices.memberId, memberId)))
+        .where(
+          and(
+            eq(devices.id, id),
+            eq(devices.memberId, memberId),
+            gt(devices.lastUsedAt, usedSince),
+          ),
+        )
         .get()) !== undefined,
 
+    ...deviceRemovalsOf(db),
+  };
+}
+
+function deviceRemovalsOf(db: Db) {
+  return {
     async remove(memberId: string, id: string): Promise<boolean> {
       const removed = await db
         .delete(devices)
@@ -96,8 +108,14 @@ export function createDeviceRepo(db: Db) {
       return removed.length > 0;
     },
 
-    async removeExpired(id: string): Promise<void> {
+    async removeById(id: string): Promise<void> {
       await db.delete(devices).where(eq(devices.id, id));
+    },
+
+    async removeUnusedOf(memberId: string, usedSince: number): Promise<void> {
+      await db
+        .delete(devices)
+        .where(and(eq(devices.memberId, memberId), lte(devices.lastUsedAt, usedSince)));
     },
   };
 }

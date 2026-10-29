@@ -92,9 +92,9 @@ describe("signing in with Telegram Login", () => {
     expect(response.status).toBe(401);
   });
 
-  test("a login older than the initData limit is refused", async () => {
+  test("a login older than five minutes is refused", async () => {
     const { worker } = await startWithFamily();
-    const login = loginOf(worker, denis, "2026-10-04T07:59:00Z");
+    const login = loginOf(worker, denis, "2026-10-04T08:54:59Z");
 
     const response = await postLogin(worker, login);
 
@@ -196,6 +196,24 @@ describe("the Devices in the settings", () => {
 
     expect(await revoked.json()).toEqual({ status: "deleted" });
     expect(await deviceStatus(worker, device.credential)).toBe(401);
+  });
+
+  test("a revoked Device loses the session it signed in, renewal included", async () => {
+    const { worker } = await startWithFamily();
+    const lost = await signIn(worker);
+    const other = await signIn(worker);
+
+    await worker.request(
+      `/api/devices/${lost.device.id}`,
+      withToken(other.token, { method: "DELETE" }),
+    );
+    const me = await worker.request("/api/me", withToken(lost.token));
+    const renewed = await worker.request(
+      "/api/session/renew",
+      withToken(lost.token, { method: "POST" }),
+    );
+
+    expect([me.status, renewed.status]).toEqual([401, 401]);
   });
 
   test("another Member's Device is not found", async () => {

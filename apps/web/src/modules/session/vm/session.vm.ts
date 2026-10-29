@@ -38,6 +38,8 @@ type SessionDependencies = {
   deviceCache: SessionCache;
   // The bot whose Telegram Login the Installed App shows.
   botUsername?: string;
+  // The browser's own Push subscription, dropped when the Member signs out of this Device.
+  unsubscribePush?: () => Promise<void>;
 };
 
 function memberScreenOf({ member, family }: CurrentMember): SessionScreen {
@@ -71,9 +73,12 @@ function currentScreen({
   isJoiningFamily,
   isRequestingFamily,
 }: ScreenSources): SessionScreen {
-  // The Installed App can sign in again by itself; the Mini App needs fresh initData.
+  // The Mini App needs fresh initData; the Installed App needs Telegram Login only once its
+  // Device is gone, and otherwise signs in with it again on the next launch.
   if (api.isSessionLost()) {
-    return { kind: isInstalledApp ? "signed-out" : "restart" };
+    return {
+      kind: isInstalledApp && api.currentDeviceId() === undefined ? "signed-out" : "restart",
+    };
   }
 
   if (isJoiningFamily()) {
@@ -127,12 +132,14 @@ function reatomDeviceSignIn({
   signIn,
   deviceCache,
   botUsername,
-}: Pick<SessionDependencies, "api" | "deviceCache"> & {
+  unsubscribePush,
+}: Pick<SessionDependencies, "api" | "deviceCache" | "unsubscribePush"> & {
   signIn: ReturnType<typeof reatomSignIn>;
   botUsername: string;
 }) {
   const signOut = action(async () => {
-    api.signOut();
+    await wrap(unsubscribePush?.().catch(noop));
+    await wrap(api.signOut());
     await wrap(deviceCache.clear());
   }, "session.signOut");
 
@@ -167,6 +174,7 @@ export function reatomSession({
   isJoiningFamily,
   deviceCache,
   botUsername = "",
+  unsubscribePush,
 }: SessionDependencies) {
   const { cachedMember, shell } = reatomShell({ deviceCache, startParam: telegram.startParam });
   const signIn = reatomSignIn({ api, initData: telegram.initData, deviceCache, cachedMember });
@@ -192,7 +200,7 @@ export function reatomSession({
       signIn().catch(noop);
     }, "session.start"),
 
-    ...reatomDeviceSignIn({ api, signIn, deviceCache, botUsername }),
+    ...reatomDeviceSignIn({ api, signIn, deviceCache, botUsername, unsubscribePush }),
 
     showInviteHelp: action(() => {
       telegram.showAlert("Откройте ссылку-приглашение, которую вам прислал кто-то из семьи.");

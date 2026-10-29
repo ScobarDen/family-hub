@@ -60,14 +60,48 @@ async function sendToBot(
   }
 }
 
+// A Push that fails never holds back the row, which the bot may already have delivered.
 async function pushToDevices(
   { push }: ReminderDependencies,
   { source, recipient, text }: Sending,
 ): Promise<number> {
-  return push.sendTo(recipient.member.id, {
-    text,
-    ...(source.deepLink === undefined ? {} : { startParam: encodeDeepLink(source.deepLink) }),
-  });
+  try {
+    return await push.sendTo(recipient.member.id, {
+      text,
+      ...(source.deepLink === undefined ? {} : { startParam: encodeDeepLink(source.deepLink) }),
+    });
+  } catch (error) {
+    console.error("Push failed", { memberId: recipient.member.id, error });
+
+    return 0;
+  }
+}
+
+// Under «both» a bot that fails outright still lets the Push through; the row is retried only
+// when nothing reached the Member.
+async function sendToBotThenPush(
+  dependencies: ReminderDependencies,
+  sending: Sending,
+): Promise<Delivery> {
+  let delivery: Delivery;
+
+  try {
+    delivery = await sendToBot(dependencies, sending);
+  } catch (error) {
+    if ((await pushToDevices(dependencies, sending)) > 0) {
+      return { status: "pushed" };
+    }
+
+    throw error;
+  }
+
+  if (delivery.status === "rate-limited") {
+    return delivery;
+  }
+
+  const pushed = await pushToDevices(dependencies, sending);
+
+  return delivery.status === "skipped" && pushed > 0 ? { status: "pushed" } : delivery;
 }
 
 // The bot goes first, so a 429 releases the row before anything was pushed twice; under «push»
@@ -81,15 +115,9 @@ async function send(dependencies: ReminderDependencies, sending: Sending): Promi
       : sendToBot(dependencies, sending);
   }
 
-  const delivery = await sendToBot(dependencies, sending);
-
-  if (channel === "both" && delivery.status !== "rate-limited") {
-    const pushed = await pushToDevices(dependencies, sending);
-
-    return delivery.status === "skipped" && pushed > 0 ? { status: "pushed" } : delivery;
-  }
-
-  return delivery;
+  return channel === "both"
+    ? sendToBotThenPush(dependencies, sending)
+    : sendToBot(dependencies, sending);
 }
 
 async function textOf(

@@ -1,8 +1,9 @@
-import { noop, wrap } from "@reatom/core";
+import { atom, noop, wrap } from "@reatom/core";
 import { z } from "zod";
 
 import {
   currentMember,
+  deleted,
   deviceSession,
   deviceSignIn,
   sessionResponse,
@@ -25,20 +26,26 @@ type DeviceOutcome =
   | { status: "signed-out" };
 
 // The Installed App keeps its Device across launches; the Mini App never touches this storage.
+function storedDeviceIn(storage: DeviceStorage): StoredDevice | undefined {
+  try {
+    return storedDevice.parse(JSON.parse(storage.getItem(deviceKey) ?? ""));
+  } catch {
+    return undefined;
+  }
+}
+
 function deviceStoreOf(storage: DeviceStorage) {
+  const current = atom(storedDeviceIn(storage), "session.device");
+
   return {
-    read(): StoredDevice | undefined {
-      try {
-        return storedDevice.parse(JSON.parse(storage.getItem(deviceKey) ?? ""));
-      } catch {
-        return undefined;
-      }
-    },
+    read: () => current(),
     keep(device: StoredDevice) {
       storage.setItem(deviceKey, JSON.stringify(device));
+      current.set(device);
     },
     forget() {
       storage.removeItem(deviceKey);
+      current.set(undefined);
     },
   };
 }
@@ -117,6 +124,31 @@ function signInAsDeviceOf(client: HttpClient, devices: DeviceStore) {
   };
 }
 
+// Requests that get 401 together share one sign-in instead of each starting its own.
+function reauthenticateOf(signInAsDevice: ReturnType<typeof signInAsDeviceOf>) {
+  let pending: Promise<string | undefined> | undefined;
+
+  return async (): Promise<string | undefined> => {
+    pending ??= signInAsDevice()
+      .then((outcome) => (outcome.status === "member" ? outcome.token : undefined))
+      .catch(noop)
+      .finally(() => {
+        pending = undefined;
+      });
+
+    return wrap(pending);
+  };
+}
+
+// Signing out revokes the Device on the server too, so its subscription stops getting Push.
+async function revokeDevice(client: HttpClient, deviceId: string): Promise<void> {
+  await wrap(
+    client
+      .request(`/api/devices/${deviceId}`, { method: "DELETE", schema: deleted })
+      .then(noop, noop),
+  );
+}
+
 export function createSessionApi(client: HttpClient, storage: DeviceStorage) {
   const devices = deviceStoreOf(storage);
   const signInAsDevice = signInAsDeviceOf(client, devices);
@@ -138,13 +170,15 @@ export function createSessionApi(client: HttpClient, storage: DeviceStorage) {
     },
     signInAsDevice,
     // A 401 on the way is tried once more through the Device; nothing is kept on failure.
-    async reauthenticate(): Promise<string | undefined> {
-      const outcome = await wrap(signInAsDevice().catch(noop));
-
-      return outcome?.status === "member" ? outcome.token : undefined;
-    },
+    reauthenticate: reauthenticateOf(signInAsDevice),
     currentDeviceId: () => devices.read()?.id,
-    signOut() {
+    async signOut() {
+      const device = devices.read();
+
+      if (device !== undefined) {
+        await wrap(revokeDevice(client, device.id));
+      }
+
       devices.forget();
       client.isSessionLost.setTrue();
     },

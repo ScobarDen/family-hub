@@ -44,7 +44,11 @@ async function signInDevice(worker: Worker): Promise<DeviceSignIn> {
 function subscriptionOf(endpoint: string) {
   return {
     endpoint,
-    keys: { p256dh: "BCVxsr7N_eNgVRqvHtD0zTZsEc6", auth: "BTBZMqHH6r4Tts7J_aSIgg" },
+    keys: {
+      p256dh:
+        "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4",
+      auth: "BTBZMqHH6r4Tts7J_aSIgg",
+    },
   };
 }
 
@@ -100,8 +104,8 @@ function taskPushes(worker: Worker) {
   return worker.push.pushes().filter(({ message }) => message.text.startsWith("📌"));
 }
 
-const phone = "https://push.example.net/phone";
-const laptop = "https://push.example.net/laptop";
+const phone = "https://fcm.googleapis.com/fcm/send/phone";
+const laptop = "https://fcm.googleapis.com/fcm/send/laptop";
 
 describe("a push subscription", () => {
   test("is saved for the Member's own Device and replaced by the next one", async () => {
@@ -129,6 +133,14 @@ describe("a push subscription", () => {
     });
 
     expect(response.status).toBe(404);
+  });
+
+  test("is refused for an endpoint that is no browser's push service", async () => {
+    const worker = await startWithFamily();
+
+    const { response } = await subscribe(worker, "https://internal.example.net/hook");
+
+    expect(response.status).toBe(400);
   });
 
   test("deleted, or gone with its revoked Device, gets no more Push", async () => {
@@ -249,5 +261,23 @@ describe("a Reminder", () => {
     await tickAt(worker, "2026-10-02T06:00:00Z");
 
     expect(botTexts(worker)).toHaveLength(1);
+  });
+
+  test("under «push» falls back to the bot when the push service fails, keeping the subscription", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await chooseChannel(worker, "push");
+    worker.push.answer(phone, 500);
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    worker.push.answer(phone, 201);
+    await remindTomorrow(worker, "Полить цветы");
+    await tickAt(worker, "2026-10-02T06:01:00Z");
+
+    expect(botTexts(worker)).toEqual(["📌 Вынести мусор · 2 октября"]);
+    expect(taskPushes(worker).map(({ message }) => message.text)).toEqual([
+      "📌 Полить цветы · 2 октября",
+    ]);
   });
 });

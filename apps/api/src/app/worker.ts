@@ -378,7 +378,7 @@ function pushServiceOf(
 
   return createPushService({
     subscriptions: createPushRepo(db),
-    devices: { isOwnDevice: devices.isOwnedBy },
+    devices: { isLive: devices.isLive },
     transport: createPushTransport(vapid),
     clock,
     publicKey: vapid.publicKey,

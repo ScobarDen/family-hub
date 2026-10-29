@@ -11,24 +11,33 @@ async function verifiedPayload(token: string, secret: string) {
   );
 }
 
+// An Installed App session names its Device, so revoking the Device ends the session too.
+export type SessionClaims = { memberId: string; deviceId?: string };
+
 export function createSessionTokens(secret: string) {
   return {
-    async sign(memberId: string, now: number): Promise<string> {
+    async sign({ memberId, deviceId }: SessionClaims, now: number): Promise<string> {
       return sign(
-        { memberId, exp: Math.floor((now + sessionLifetimeMs) / msPerSecond) },
+        { memberId, deviceId, exp: Math.floor((now + sessionLifetimeMs) / msPerSecond) },
         secret,
         algorithm,
       );
     },
 
-    async read(token: string, now: number): Promise<string | undefined> {
+    async read(token: string, now: number): Promise<SessionClaims | undefined> {
       const payload = await verifiedPayload(token, secret);
 
-      if (typeof payload?.exp !== "number" || payload.exp * msPerSecond < now) {
+      if (
+        typeof payload?.exp !== "number" ||
+        payload.exp * msPerSecond < now ||
+        typeof payload.memberId !== "string"
+      ) {
         return undefined;
       }
 
-      return typeof payload.memberId === "string" ? payload.memberId : undefined;
+      return typeof payload.deviceId === "string"
+        ? { memberId: payload.memberId, deviceId: payload.deviceId }
+        : { memberId: payload.memberId };
     },
   };
 }

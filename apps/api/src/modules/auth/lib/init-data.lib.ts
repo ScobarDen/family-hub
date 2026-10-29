@@ -61,10 +61,14 @@ async function isSignedByBot(fields: URLSearchParams, botToken: string): Promise
   return crypto.subtle.verify("HMAC", verifier, hash, encoder.encode(dataCheckString(fields)));
 }
 
-export function isFreshAuthDate(authDate: number, now: number): boolean {
+export function isFreshAuthDate(
+  authDate: number,
+  now: number,
+  maxAgeMs = initDataMaxAgeMs,
+): boolean {
   const ageMs = now - authDate * msPerSecond;
 
-  return Number.isInteger(authDate) && ageMs <= initDataMaxAgeMs && ageMs >= -initDataClockSkewMs;
+  return Number.isInteger(authDate) && ageMs <= maxAgeMs && ageMs >= -initDataClockSkewMs;
 }
 
 function parseUser(raw: string | null): TelegramUser | undefined {

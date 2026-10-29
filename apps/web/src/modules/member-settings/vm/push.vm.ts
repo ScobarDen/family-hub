@@ -1,4 +1,4 @@
-import { action, atom, computed, withAsync, wrap, type Atom } from "@reatom/core";
+import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
 
 import type { BrowserPlatform, PushPermission } from "@/modules/browser-platform";
 import { detached, reatomFailure } from "@/modules/changes";
@@ -60,13 +60,20 @@ async function turnOn({ api, platform, permission, isOn }: PushSwitch, device: s
   const { publicKey } = await wrap(api.pushKey());
   const subscription = await wrap(platform.subscribePush(publicKey));
 
-  await wrap(api.savePush(device, subscription));
+  // A subscription the server never saved would look «on» at the next launch and never ring.
+  await wrap(
+    api.savePush(device, subscription).catch(async (error: unknown) => {
+      await platform.unsubscribePush().catch(noop);
+      throw error;
+    }),
+  );
   isOn.set(true);
 }
 
+// The server forgets the subscription first, so a failure leaves Push on as it was.
 async function turnOff({ api, platform, isOn }: PushSwitch, device: string) {
-  await wrap(platform.unsubscribePush());
   await wrap(api.deletePush(device));
+  await wrap(platform.unsubscribePush());
   isOn.set(false);
 }
 
@@ -78,10 +85,13 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
   const toggle = action(async (isWanted: boolean) => {
     const device = deviceId();
 
-    if (device !== undefined) {
-      await wrap(isWanted ? turnOn(pushSwitch, device) : turnOff(pushSwitch, device));
+    if (device === undefined) {
+      throw new Error("Push needs the Device this app signed in with");
     }
+
+    await wrap(isWanted ? turnOn(pushSwitch, device) : turnOff(pushSwitch, device));
   }, "push.toggle").extend(withAsync());
+  const detachedToggle = detached(toggle, "push.switch");
   const state = computed(
     () => stateOf(platform, { permission: permission(), isOn: isOn() }),
     "push.state",
@@ -97,10 +107,16 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
       haptics,
     }),
 
+    // Permission can change in the browser's settings while the app is closed.
     load: action(async () => {
+      permission.set(platform.pushPermission());
       isOn.set(await wrap(platform.hasPushSubscription()));
     }, "push.load"),
-    toggle: detached(toggle, "push.switch"),
+    toggle: action((isWanted: boolean) => {
+      if (toggle.ready()) {
+        detachedToggle(isWanted);
+      }
+    }, "push.toggle.once"),
   };
 }
 

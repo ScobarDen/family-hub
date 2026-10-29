@@ -26,22 +26,25 @@ const bearerPrefix = "Bearer ";
 
 export type AuthEnv = { Variables: { auth: AuthService } };
 
-export type MemberEnv = { Variables: AuthEnv["Variables"] & { membership: Membership } };
+export type MemberEnv = {
+  Variables: AuthEnv["Variables"] & { membership: Membership; deviceId: string | undefined };
+};
 
 export const requireMember = createMiddleware<MemberEnv>(async (context, next) => {
   const header = context.req.header("authorization") ?? "";
-  const membership = header.startsWith(bearerPrefix)
+  const session = header.startsWith(bearerPrefix)
     ? await context.var.auth.authenticate(header.slice(bearerPrefix.length))
     : undefined;
 
-  if (!membership) {
+  if (!session) {
     return context.json(
       apiError("UNAUTHENTICATED", "Session is missing or expired"),
       httpStatus.unauthorized,
     );
   }
 
-  context.set("membership", membership);
+  context.set("membership", session.membership);
+  context.set("deviceId", session.deviceId);
 
   return next();
 });
@@ -157,6 +160,6 @@ export const sessionRoute = new Hono<SessionEnv>()
   )
   .post("/api/session/renew", requireMember, async (context) =>
     context.json<SessionToken>({
-      token: await context.var.auth.renew(context.var.membership),
+      token: await context.var.auth.renew(context.var.membership, context.var.deviceId),
     }),
   );
