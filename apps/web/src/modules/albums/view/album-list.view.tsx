@@ -1,7 +1,7 @@
 import { Images } from "lucide-react";
 
-import { SignedPhoto } from "@/common/photo";
-import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/common/ui";
+import { SignedPhoto } from "@/modules/photo";
+import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/modules/ui";
 
 import type { AlbumItem } from "../albums.lib.ts";
 import type { AlbumsScreenModel } from "../vm/albums.vm.ts";

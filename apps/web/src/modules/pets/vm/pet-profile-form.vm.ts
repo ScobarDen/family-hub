@@ -10,8 +10,8 @@ import {
   type PetProfile,
 } from "@family-hub/contract";
 
-import { reatomEditableRecord } from "@/common/form";
-import type { ClosingConfirmation, Haptics } from "@/common/telegram";
+import { reatomEditableRecord } from "@/modules/form";
+import type { ClosingConfirmation, Haptics } from "@/modules/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";

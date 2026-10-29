@@ -4,10 +4,10 @@ import { parseCommand, type CommandResult } from "@family-hub/commands";
 import { commandDraftLifetimeMs, uuidv7 } from "@family-hub/contract";
 import { dateInZone, type Phrase } from "@family-hub/recurrence";
 
-import type { Membership } from "@/common/auth";
-import { fallbackTimeZone } from "@/common/clock";
-import type { CommandSource } from "@/common/db";
-import { ignoringBotErrors, strangerText } from "@/common/telegram";
+import { fallbackTimeZone } from "@/common/clock.lib.ts";
+import type { Membership } from "@/modules/auth";
+import type { CommandSource } from "@/modules/db";
+import { ignoringBotErrors, strangerText } from "@/modules/telegram";
 
 import { previewText } from "../command-preview.lib.ts";
 import { failureTexts, heardText, previewButtons } from "../command.lib.ts";

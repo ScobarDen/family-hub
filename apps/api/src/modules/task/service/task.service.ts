@@ -1,7 +1,7 @@
 import type { ParsedTaskChange, SubtaskChange } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
+import type { Membership } from "@/modules/auth";
 
 import type { OccurrenceOf, SubtaskTarget, TaskDependencies } from "../task.types.ts";
 import { complete, completeSubtask, reopen, reopenSubtask, skip } from "./completion.service.ts";

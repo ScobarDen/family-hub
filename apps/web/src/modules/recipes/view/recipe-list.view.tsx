@@ -3,7 +3,7 @@ import { CookingPot, Star, Tags } from "lucide-react";
 
 import type { RecipeTag } from "@family-hub/contract";
 
-import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/common/ui";
+import { PrimaryButton, Section, SectionItem, SectionLayout } from "@/modules/ui";
 
 import type { RecipeItem } from "../recipes.lib.ts";
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";

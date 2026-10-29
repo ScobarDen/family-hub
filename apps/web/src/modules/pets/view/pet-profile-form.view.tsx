@@ -7,7 +7,7 @@ import {
   FormShell,
   TextAreaField,
   TextField,
-} from "@/common/ui";
+} from "@/modules/ui";
 
 import { sexTitles, speciesTitles } from "../pets.config.ts";
 import type { PetProfileFormModel } from "../vm/pet-profile-form.vm.ts";

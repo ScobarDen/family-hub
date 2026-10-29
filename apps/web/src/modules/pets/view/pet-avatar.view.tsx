@@ -1,8 +1,8 @@
 import { reatomComponent } from "@reatom/react";
 import { ImagePlus, LoaderCircle, RefreshCw, Trash2 } from "lucide-react";
 
-import { SignedPhoto } from "@/common/photo";
-import { Button, FilePick } from "@/common/ui";
+import { SignedPhoto } from "@/modules/photo";
+import { Button, FilePick } from "@/modules/ui";
 
 import type { PetCard } from "../pets.lib.ts";
 import type { PetsScreenModel } from "../vm/pets.vm.ts";

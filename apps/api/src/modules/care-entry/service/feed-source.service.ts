@@ -1,8 +1,8 @@
 import type { FeedActivity } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import type { KeysetPage } from "@/common/keyset";
-import type { PhotoLinks } from "@/common/photo-link";
+import type { KeysetPage } from "@/common/keyset.lib.ts";
+import type { PhotoLinks } from "@/common/photo-link.lib.ts";
+import type { Membership } from "@/modules/auth";
 import { previewOf, type ActivitySource } from "@/modules/feed";
 
 import { careTitleOf } from "../care-entry.lib.ts";

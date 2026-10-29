@@ -1,5 +1,5 @@
-import type { Membership } from "@/common/auth";
-import { ignoringBotErrors } from "@/common/telegram";
+import type { Membership } from "@/modules/auth";
+import { ignoringBotErrors } from "@/modules/telegram";
 
 import { removedText } from "../family.lib.ts";
 import type { FamilyDependencies } from "../family.types.ts";

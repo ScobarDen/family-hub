@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 
 import type { RecipeTag } from "@family-hub/contract";
 
-import { Button, FieldError, Input, Section } from "@/common/ui";
+import { Button, FieldError, Input, Section } from "@/modules/ui";
 
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { TagRow } from "./tag-row.view.tsx";

@@ -1,6 +1,6 @@
 import { uuidv7, type MovementChange } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { balanceOf } from "../goal.lib.ts";
 import type { MovementRow } from "../goal.repo.ts";

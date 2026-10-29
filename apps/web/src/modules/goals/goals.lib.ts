@@ -2,8 +2,8 @@ import { Temporal } from "temporal-polyfill";
 
 import type { Goal, GoalColor, GoalIcon } from "@family-hub/contract";
 
-import { formatDay, formatShortDate, type Viewer } from "@/common/format-date";
-import { formatRubles } from "@/common/format-money";
+import { formatDay, formatShortDate, type Viewer } from "@/common/format-date.lib.ts";
+import { formatRubles } from "@/common/format-money.lib.ts";
 
 import { outcomeTitles } from "./goals.config.ts";
 

@@ -1,8 +1,8 @@
 import { context } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { fakeHaptics } from "@/common/telegram";
-import type { Recording, RecordingRefusal } from "@/common/voice-recorder";
+import type { Recording, RecordingRefusal } from "@/common/voice-recorder.lib.ts";
+import { fakeHaptics } from "@/modules/telegram";
 
 import { botHint, holdHint, reatomMicrophone } from "./microphone.vm.ts";
 

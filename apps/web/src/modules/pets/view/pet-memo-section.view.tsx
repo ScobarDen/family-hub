@@ -1,6 +1,6 @@
 import { NotebookPen } from "lucide-react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { Section, SectionItem } from "@/modules/ui";
 
 import { memoFields } from "../pets.config.ts";
 import type { PetMemoView } from "../pets.lib.ts";

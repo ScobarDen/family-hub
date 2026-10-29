@@ -1,7 +1,7 @@
 import type { PhotoSize } from "@grammyjs/types";
 
-import type { PhotoVariants } from "@/common/db";
-import type { BotApi } from "@/common/telegram";
+import type { PhotoVariants } from "@/modules/db";
+import type { BotApi } from "@/modules/telegram";
 
 type UploadedPhoto = { fileUniqueId: string; variants: PhotoVariants };
 

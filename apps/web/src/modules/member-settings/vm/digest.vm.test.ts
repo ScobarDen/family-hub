@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { DigestSettings } from "@family-hub/contract";
 
-import { createHttpClient } from "@/common/http-client";
-import { fakeHaptics } from "@/common/telegram";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeHaptics } from "@/modules/telegram";
 
 import { createMemberSettingsApi } from "../member-settings.api.ts";
 import { reatomDigest } from "./digest.vm.ts";

@@ -1,7 +1,7 @@
 import type { CareEntry } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import type { PhotoLinks } from "@/common/photo-link";
+import type { PhotoLinks } from "@/common/photo-link.lib.ts";
+import type { Membership } from "@/modules/auth";
 
 import { toCareEntry } from "../care-entry.lib.ts";
 import type { CareEntryRepo, CareEntryRow } from "../care-entry.repo.ts";

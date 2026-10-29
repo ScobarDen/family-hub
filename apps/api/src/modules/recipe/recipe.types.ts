@@ -1,9 +1,9 @@
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
-import type { Clock } from "@/common/clock";
-import type { MiniAppLinks } from "@/common/mini-app-link";
-import type { PhotoLinks } from "@/common/photo-link";
-import type { BotApi } from "@/common/telegram";
+import type { Clock } from "@/common/clock.lib.ts";
+import type { PhotoLinks } from "@/common/photo-link.lib.ts";
+import type { MiniAppLinks } from "@/modules/mini-app-link";
+import type { BotApi } from "@/modules/telegram";
 
 import type { RecipeRepo } from "./recipe.repo.ts";
 

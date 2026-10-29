@@ -11,9 +11,9 @@ import {
 
 import { taskList, type FamilyMember, type Pet, type Task } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import type { LiveVersion } from "@/common/live-updates";
-import { rolledBackById, upserted, withoutId } from "@/common/records";
+import { rolledBackById, upserted, withoutId } from "@/common/records.lib.ts";
+import type { DeviceCache } from "@/modules/device-cache";
+import type { LiveVersion } from "@/modules/live-updates";
 
 import type { TasksApi } from "./tasks.api.ts";
 

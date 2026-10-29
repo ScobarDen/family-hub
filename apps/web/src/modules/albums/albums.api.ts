@@ -9,8 +9,8 @@ import {
   type AlbumSummary,
 } from "@family-hub/contract";
 
-import type { HttpClient } from "@/common/http-client";
-import { createPhotoCalls, resolvedPhoto, resolvedUrls } from "@/common/photo";
+import type { HttpClient } from "@/common/http-client.api.ts";
+import { createPhotoCalls, resolvedPhoto, resolvedUrls } from "@/modules/photo";
 
 function resolvedSummary(client: HttpClient, summary: AlbumSummary): AlbumSummary {
   return {

@@ -1,6 +1,6 @@
 import { petAlbumPrefix, type AlbumSummary, type Photo } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { albumSourceOf, petSourceOf, photosOf, summaryOf, type AlbumSource } from "../album.lib.ts";
 import type { AlbumDependencies } from "../album.types.ts";

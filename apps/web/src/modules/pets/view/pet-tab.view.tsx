@@ -1,9 +1,15 @@
 import { reatomComponent } from "@reatom/react";
 import type { ReactNode } from "react";
 
-import { FailureBar } from "@/common/ui";
+import { FailureBar } from "@/modules/ui";
 
-import { Care, CareSummary, ExpensesBlock, JournalBlock, PhotosBlock } from "../care/index.ts";
+import {
+  Care,
+  CareSummary,
+  ExpensesBlock,
+  JournalBlock,
+  PhotosBlock,
+} from "../modules/care/index.ts";
 import type { PetTabModel } from "../vm/pet-tab.vm.ts";
 import { Pets } from "./pets.view.tsx";
 

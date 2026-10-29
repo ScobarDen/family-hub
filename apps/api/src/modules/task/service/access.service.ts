@@ -1,6 +1,6 @@
 import { taskAlbumPreview, type Task, type TaskAlbum } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { toTask } from "../task.lib.ts";
 import type { TaskRow, TaskTree } from "../task.repo.ts";

@@ -1,6 +1,6 @@
 import { uuidv7, type RecipeChange } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import type { RecipeDependencies, RecipeRefusal, RecipeResult } from "../recipe.types.ts";
 import { recipeOf } from "./recipe-read.service.ts";

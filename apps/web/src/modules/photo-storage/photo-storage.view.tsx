@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Images } from "lucide-react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { Section, SectionItem } from "@/modules/ui";
 
 import type { PhotoStorageModel } from "./vm/photo-storage.vm.ts";
 

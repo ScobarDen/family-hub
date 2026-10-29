@@ -1,6 +1,6 @@
 import type { Goal } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { toGoal } from "../goal.lib.ts";
 import type { GoalRow, MovementRow } from "../goal.repo.ts";

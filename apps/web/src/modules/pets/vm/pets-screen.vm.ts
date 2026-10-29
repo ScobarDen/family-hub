@@ -2,8 +2,8 @@ import { computed, type Atom, type BooleanAtom } from "@reatom/core";
 
 import type { Pet } from "@family-hub/contract";
 
-import type { PreparedPhoto } from "@/common/photo";
-import type { ClosingConfirmation, Dialogs, Fullscreen, Haptics } from "@/common/telegram";
+import type { PreparedPhoto } from "@/modules/photo";
+import type { ClosingConfirmation, Dialogs, Fullscreen, Haptics } from "@/modules/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import {

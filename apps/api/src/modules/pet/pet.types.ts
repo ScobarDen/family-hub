@@ -1,7 +1,7 @@
 import type { Pet } from "@family-hub/contract";
 
-import type { Clock } from "@/common/clock";
-import type { PhotoLinks } from "@/common/photo-link";
+import type { Clock } from "@/common/clock.lib.ts";
+import type { PhotoLinks } from "@/common/photo-link.lib.ts";
 
 import type { PetRepo } from "./pet.repo.ts";
 

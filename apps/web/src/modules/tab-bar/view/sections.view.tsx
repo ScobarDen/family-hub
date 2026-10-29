@@ -1,8 +1,8 @@
 import { reatomComponent } from "@reatom/react";
 import { Plus, Settings } from "lucide-react";
 
-import { sectionColors, sectionIcons } from "@/common/sections";
-import { Chip, chipClass, FilePick, ScreenTitle, Section, SectionItem, cn } from "@/common/ui";
+import { sectionColors, sectionIcons } from "@/common/sections.config.ts";
+import { Chip, chipClass, FilePick, ScreenTitle, Section, SectionItem, cn } from "@/modules/ui";
 
 import type { SectionRow, SectionsModel } from "../vm/sections.vm.ts";
 

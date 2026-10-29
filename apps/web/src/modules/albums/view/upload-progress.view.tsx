@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { RotateCw, Upload } from "lucide-react";
 
-import { LiveRegion, Section, SectionItem } from "@/common/ui";
+import { LiveRegion, Section, SectionItem } from "@/modules/ui";
 
 import type { BatchUploadModel } from "../vm/batch-upload.vm.ts";
 

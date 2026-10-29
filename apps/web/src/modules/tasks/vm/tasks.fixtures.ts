@@ -12,15 +12,15 @@ import {
   type Task,
 } from "@family-hub/contract";
 
-import { reatomDeviceCache } from "@/common/device-cache";
-import { createHttpClient } from "@/common/http-client";
-import { fakeSlide } from "@/common/state";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { reatomDeviceCache } from "@/modules/device-cache";
+import { fakeSlide } from "@/modules/state";
 import {
   fakeDeviceStorage,
   fakeHaptics,
   type FakeDeviceStorage,
   fakeWindow,
-} from "@/common/telegram";
+} from "@/modules/telegram";
 
 import type { TaskRow } from "../task-rows.lib.ts";
 import { createTasksApi } from "../tasks.api.ts";

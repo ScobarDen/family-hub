@@ -2,8 +2,8 @@ import { asc, eq, sql } from "drizzle-orm";
 
 import type { AppModule, DigestSettings } from "@family-hub/contract";
 
-import { bindFirst } from "@/common/bind";
-import { families, familyMembers, members, type Db } from "@/common/db";
+import { bindFirst } from "@/common/bind.lib.ts";
+import { families, familyMembers, members, type Db } from "@/modules/db";
 
 export type MemberSettingsRow = Pick<
   typeof members.$inferSelect,

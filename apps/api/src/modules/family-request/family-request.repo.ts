@@ -1,7 +1,7 @@
 import { and, desc, eq, lt, ne } from "drizzle-orm";
 
-import { bindFirst } from "@/common/bind";
-import { families, familyMembers, familyRequests, members, type Db } from "@/common/db";
+import { bindFirst } from "@/common/bind.lib.ts";
+import { families, familyMembers, familyRequests, members, type Db } from "@/modules/db";
 
 export type FamilyRequest = typeof familyRequests.$inferSelect;
 

@@ -3,7 +3,7 @@ import { Trash2 } from "lucide-react";
 
 import type { RecipeTag } from "@family-hub/contract";
 
-import { Button, Input } from "@/common/ui";
+import { Button, Input } from "@/modules/ui";
 
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
 

@@ -5,7 +5,7 @@ The Family's Members in the Profile, the Family Owner marked «Владелец�
 ## Injected
 
 - `api` — `createFamilyApi(httpClient)`: lists the session Member's Family, leaves it, removes a Member, hands over the Owner role and deletes the Family.
-- `telegram` — `showPopup` and `showAlert` from `common/telegram`, for choosing and confirming what happens to a Member and to the Family.
+- `telegram` — `showPopup` and `showAlert` from `modules/telegram`, for choosing and confirming what happens to a Member and to the Family.
 - `self` — the session Member's id and their Family's name, read from the session.
 - `members` — `reatomFamilyMembers(api)`, built once in `app/main.tsx` and shared with every module that names Members, so a removed Member leaves their pickers too.
 - `onLeft` — called once the Member is out of the Family (left it or deleted it); `app/main.tsx` passes `session.signIn`, which brings the stranger screen.

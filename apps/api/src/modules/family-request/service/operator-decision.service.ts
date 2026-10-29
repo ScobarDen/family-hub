@@ -2,7 +2,7 @@ import type { CallbackQuery } from "@grammyjs/types";
 
 import { uuidv7 } from "@family-hub/contract";
 
-import { ignoringBotErrors, type BotParams } from "@/common/telegram";
+import { ignoringBotErrors, type BotParams } from "@/modules/telegram";
 
 import {
   approvedMessage,

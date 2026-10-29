@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { LiveRegion, PrimaryButton, Section, SectionItem, SectionLayout } from "@/common/ui";
+import { LiveRegion, PrimaryButton, Section, SectionItem, SectionLayout } from "@/modules/ui";
 
 import type { GoalDetails as Details } from "../goals.lib.ts";
 import type { GoalsScreenModel } from "../vm/goals.vm.ts";

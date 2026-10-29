@@ -2,8 +2,8 @@ import { action, atom, computed, noop, withAsync, withAsyncData, wrap } from "@r
 
 import { inviteTokenPattern, parseDeepLink, type InvitePreview } from "@family-hub/contract";
 
-import { reatomFailure } from "@/common/state";
-import type { Haptics } from "@/common/telegram";
+import { reatomFailure } from "@/modules/state";
+import type { Haptics } from "@/modules/telegram";
 
 import type { AcceptOutcome, JoinFamilyApi } from "../join-family.api.ts";
 

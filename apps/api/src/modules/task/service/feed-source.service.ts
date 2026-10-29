@@ -1,9 +1,9 @@
 import { overdueLookbackDays, type FeedActivity, type FeedUpcoming } from "@family-hub/contract";
 import { daysAfter, occurrenceMoment, occurrencesOnDays, timeInZone } from "@family-hub/recurrence";
 
-import type { Membership } from "@/common/auth";
-import type { KeysetPage } from "@/common/keyset";
-import type { PhotoLinks } from "@/common/photo-link";
+import type { KeysetPage } from "@/common/keyset.lib.ts";
+import type { PhotoLinks } from "@/common/photo-link.lib.ts";
+import type { Membership } from "@/modules/auth";
 import type { ActivitySource, FeedWindow, UpcomingSource } from "@/modules/feed";
 
 import { isCompleted, isOverdue, recurrenceOf, titleOf } from "../task.lib.ts";

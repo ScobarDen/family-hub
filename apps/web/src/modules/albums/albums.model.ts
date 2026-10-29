@@ -11,9 +11,9 @@ import {
 
 import { albumList } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import type { LiveVersion } from "@/common/live-updates";
-import { rolledBackById } from "@/common/records";
+import { rolledBackById } from "@/common/records.lib.ts";
+import type { DeviceCache } from "@/modules/device-cache";
+import type { LiveVersion } from "@/modules/live-updates";
 
 import type { AlbumsApi } from "./albums.api.ts";
 

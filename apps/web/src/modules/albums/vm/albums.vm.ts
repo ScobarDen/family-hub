@@ -12,14 +12,14 @@ import {
 
 import type { AlbumSummary, Photo } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import { reatomFormBack } from "@/common/form";
-import { formatCount } from "@/common/format-count";
-import type { Viewer } from "@/common/format-date";
-import type { LiveVersion } from "@/common/live-updates";
-import type { PreparedPhoto } from "@/common/photo";
-import { reatomPhotoViewer } from "@/common/photo-viewer";
-import { withoutId } from "@/common/records";
+import { formatCount } from "@/common/format-count.lib.ts";
+import type { Viewer } from "@/common/format-date.lib.ts";
+import { withoutId } from "@/common/records.lib.ts";
+import type { DeviceCache } from "@/modules/device-cache";
+import { reatomFormBack } from "@/modules/form";
+import type { LiveVersion } from "@/modules/live-updates";
+import type { PreparedPhoto } from "@/modules/photo";
+import { reatomPhotoViewer } from "@/modules/photo-viewer";
 import {
   detached,
   instantly,
@@ -28,14 +28,14 @@ import {
   reatomRollbackFailure,
   type RollbackFailure,
   type Slide,
-} from "@/common/state";
+} from "@/modules/state";
 import {
   type ClosingConfirmation,
   type Dialogs,
   type Fullscreen,
   type PopupParams,
   type Haptics,
-} from "@/common/telegram";
+} from "@/modules/telegram";
 
 import type { AlbumsApi } from "../albums.api.ts";
 import { subtitleOf, toItem, type AlbumItem, type AlbumView } from "../albums.lib.ts";

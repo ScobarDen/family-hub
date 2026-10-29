@@ -2,8 +2,8 @@ import { action, computed, type Atom } from "@reatom/core";
 
 import type { Pet, Task } from "@family-hub/contract";
 
-import { formatNearDate, type Viewer } from "@/common/format-date";
-import type { Haptics } from "@/common/telegram";
+import { formatNearDate, type Viewer } from "@/common/format-date.lib.ts";
+import type { Haptics } from "@/modules/telegram";
 
 import {
   agendaRowsOf,

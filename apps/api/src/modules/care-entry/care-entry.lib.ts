@@ -8,7 +8,7 @@ import {
   type Photo,
 } from "@family-hub/contract";
 
-import { formatRubles } from "@/common/money";
+import { formatRubles } from "@/common/money.lib.ts";
 
 import type { CareEntryRow } from "./care-entry.repo.ts";
 

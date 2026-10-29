@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { ApiError, FamilyMemberList } from "@family-hub/contract";
 
-import { createHttpClient } from "@/common/http-client";
-import { fakeHaptics } from "@/common/telegram";
-import type { PopupParams } from "@/common/telegram";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeHaptics } from "@/modules/telegram";
+import type { PopupParams } from "@/modules/telegram";
 
 import { createFamilyApi } from "../family.api.ts";
 import { reatomFamilyMembers } from "./family-sources.vm.ts";

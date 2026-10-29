@@ -1,7 +1,7 @@
 import { uuidv7, type GoalChange, type GoalList, type GoalOutcome } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import { isTurnedPrivate } from "@/common/visibility";
+import { isTurnedPrivate } from "@/common/visibility.lib.ts";
+import type { Membership } from "@/modules/auth";
 
 import type { GoalDependencies, GoalResult } from "../goal.types.ts";
 import { currentGoal, goalOf, visibleGoal, visibleGoals } from "./goal-access.service.ts";

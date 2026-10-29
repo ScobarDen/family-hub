@@ -1,8 +1,8 @@
 import type { Pet, PetMemo } from "@family-hub/contract";
 
-import { formatAge, formatDate, formatDay } from "@/common/format-date";
+import { formatAge, formatDate, formatDay } from "@/common/format-date.lib.ts";
 
-import { careKindOfTask } from "./care/index.ts";
+import { careKindOfTask } from "./modules/care/index.ts";
 import { sexTitles, speciesTitles } from "./pets.config.ts";
 
 export type PetListItem = { id: string; name: string; subtitle: string };

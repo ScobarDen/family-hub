@@ -1,4 +1,4 @@
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { isSamePetName } from "../pet.lib.ts";
 import type { PetDependencies, PetRefusal, PetResult } from "../pet.types.ts";

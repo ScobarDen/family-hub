@@ -1,6 +1,6 @@
 import type { Goal } from "@family-hub/contract";
 
-import type { Clock } from "@/common/clock";
+import type { Clock } from "@/common/clock.lib.ts";
 
 import type { GoalRepo } from "./goal.repo.ts";
 

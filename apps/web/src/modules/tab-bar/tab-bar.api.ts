@@ -2,7 +2,7 @@ import { wrap } from "@reatom/core";
 
 import { tabBarSettings, type SlotModule } from "@family-hub/contract";
 
-import type { HttpClient } from "@/common/http-client";
+import type { HttpClient } from "@/common/http-client.api.ts";
 
 export function createTabBarApi(client: HttpClient) {
   return {

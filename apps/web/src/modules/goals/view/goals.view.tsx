@@ -9,7 +9,7 @@ import {
   Skeleton,
   SkeletonSection,
   SkeletonSectionLayout,
-} from "@/common/ui";
+} from "@/modules/ui";
 
 import type { GoalsScreen, GoalsScreenModel } from "../vm/goals.vm.ts";
 import { GoalDetails } from "./goal-details.view.tsx";

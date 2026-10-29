@@ -1,4 +1,4 @@
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
 
 import type { CommandDependencies } from "../command.types.ts";
 import { handleCommandCallback } from "./callback.service.ts";

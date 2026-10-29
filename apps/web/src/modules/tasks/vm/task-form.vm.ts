@@ -15,9 +15,9 @@ import {
   type TaskDraft,
 } from "@family-hub/contract";
 
-import { reatomEditableRecord, type DraftOpening } from "@/common/form";
-import type { ClosingConfirmation, Haptics } from "@/common/telegram";
-import type { AvatarMember, Choice } from "@/common/ui";
+import { reatomEditableRecord, type DraftOpening } from "@/modules/form";
+import type { ClosingConfirmation, Haptics } from "@/modules/telegram";
+import type { AvatarMember, Choice } from "@/modules/ui";
 
 import type { TasksApi } from "../tasks.api.ts";
 import type { TasksModel } from "../tasks.model.ts";

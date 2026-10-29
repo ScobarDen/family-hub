@@ -1,8 +1,8 @@
 import { action, atom, computed, wrap } from "@reatom/core";
 import { z } from "zod";
 
-import type { DeviceCache } from "@/common/device-cache";
-import type { HomeScreen, HomeScreenStatus } from "@/common/telegram";
+import type { DeviceCache } from "@/modules/device-cache";
+import type { HomeScreen, HomeScreenStatus } from "@/modules/telegram";
 
 const offeredFromLaunch = 5;
 

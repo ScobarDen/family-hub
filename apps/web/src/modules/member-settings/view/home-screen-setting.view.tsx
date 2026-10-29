@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Smartphone } from "lucide-react";
 
-import { Button, SectionItem } from "@/common/ui";
+import { Button, SectionItem } from "@/modules/ui";
 
 import type { HomeScreenModel } from "../vm/home-screen.vm.ts";
 

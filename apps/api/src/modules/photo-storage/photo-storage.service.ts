@@ -2,9 +2,9 @@ import type { ChatMemberUpdated } from "@grammyjs/types";
 
 import type { PhotoStorage } from "@family-hub/contract";
 
-import type { Membership, MembershipRepo } from "@/common/auth";
-import type { Clock } from "@/common/clock";
-import { ignoringBotErrors, type BotApi } from "@/common/telegram";
+import type { Clock } from "@/common/clock.lib.ts";
+import type { Membership, MembershipRepo } from "@/modules/auth";
+import { ignoringBotErrors, type BotApi } from "@/modules/telegram";
 
 import {
   cannotPostText,

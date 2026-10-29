@@ -2,7 +2,7 @@ import { reatomComponent } from "@reatom/react";
 import { Mic } from "lucide-react";
 import type { KeyboardEvent } from "react";
 
-import { cn, LiveRegion } from "@/common/ui";
+import { cn, LiveRegion } from "@/modules/ui";
 
 import type { MicrophoneModel } from "../vm/microphone.vm.ts";
 

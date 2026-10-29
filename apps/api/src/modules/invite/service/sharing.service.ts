@@ -1,7 +1,7 @@
 import { uuidv7, type Invite, type InviteCreated } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import { BotApiError } from "@/common/telegram";
+import type { Membership } from "@/modules/auth";
+import { BotApiError } from "@/modules/telegram";
 
 import { inviteLifetimeMs } from "../invite.config.ts";
 import { newInviteToken, shareCard } from "../invite.lib.ts";

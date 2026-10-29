@@ -1,4 +1,4 @@
-import type { PhotoLinks } from "@/common/photo-link";
+import type { PhotoLinks } from "@/common/photo-link.lib.ts";
 import type { TileSource } from "@/modules/today";
 
 import type { CareEntryRepo } from "../care-entry.repo.ts";

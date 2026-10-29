@@ -3,9 +3,9 @@ import { Hono } from "hono";
 
 import type { AppModule } from "@family-hub/contract";
 
-import { httpStatus } from "@/common/errors";
-import { commandCallbackModules, reminderCallbackModules, signalFamily } from "@/common/live";
+import { httpStatus } from "@/common/errors.lib.ts";
 import { commandCallbackPrefix } from "@/modules/command";
+import { commandCallbackModules, reminderCallbackModules, signalFamily } from "@/modules/live";
 import { reminderCallbackPrefix } from "@/modules/reminder";
 
 import type { AppEnv, AppServices } from "./app.types.ts";

@@ -1,6 +1,6 @@
 import { and, asc, count, eq, inArray } from "drizzle-orm";
 
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
 import {
   photos,
   recipeFavorites,
@@ -9,7 +9,7 @@ import {
   recipeTags,
   recipes,
   type Db,
-} from "@/common/db";
+} from "@/modules/db";
 import { knownPhotoIds } from "@/modules/photo";
 
 export type RecipeRow = typeof recipes.$inferSelect;

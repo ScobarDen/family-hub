@@ -1,4 +1,4 @@
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import type { TaskDependencies, TaskResult } from "../task.types.ts";
 import { create } from "./task-root.service.ts";

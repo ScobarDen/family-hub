@@ -2,13 +2,13 @@ import { context } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { z } from "zod";
 
-import { reatomDeviceCache } from "@/common/device-cache";
+import { reatomDeviceCache } from "@/modules/device-cache";
 import {
   fakeDeviceStorage,
   fakeWindow,
   type FakeDeviceStorage,
   type HomeScreenStatus,
-} from "@/common/telegram";
+} from "@/modules/telegram";
 
 import { reatomHomeScreen } from "./home-screen.vm.ts";
 

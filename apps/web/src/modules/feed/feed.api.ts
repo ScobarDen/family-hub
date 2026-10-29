@@ -1,7 +1,7 @@
 import { feedPage, task, type FeedPage } from "@family-hub/contract";
 
-import type { HttpClient } from "@/common/http-client";
-import { createPhotoCalls, resolvedPhoto, resolvedUpcoming } from "@/common/photo";
+import type { HttpClient } from "@/common/http-client.api.ts";
+import { createPhotoCalls, resolvedPhoto, resolvedUpcoming } from "@/modules/photo";
 
 export type OccurrenceTarget = { taskId: string; occurrence: string; subtaskId: string | null };
 

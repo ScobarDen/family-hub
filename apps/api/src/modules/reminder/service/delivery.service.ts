@@ -1,5 +1,5 @@
-import { httpStatus } from "@/common/errors";
-import { BotApiError } from "@/common/telegram";
+import { httpStatus } from "@/common/errors.lib.ts";
+import { BotApiError } from "@/modules/telegram";
 
 import { latenessLimitMs } from "../reminder.lib.ts";
 import type { ReminderDependencies, Source } from "../reminder.types.ts";

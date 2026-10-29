@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { DraftPreview } from "@family-hub/commands";
 
-import { Button } from "@/common/ui";
+import { Button } from "@/modules/ui";
 
 import type { CommandSheetModel } from "../vm/command-sheet.vm.ts";
 

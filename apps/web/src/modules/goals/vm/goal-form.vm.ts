@@ -11,8 +11,8 @@ import {
   type GoalChange,
 } from "@family-hub/contract";
 
-import { reatomEditableRecord } from "@/common/form";
-import type { ClosingConfirmation, Haptics } from "@/common/telegram";
+import { reatomEditableRecord } from "@/modules/form";
+import type { ClosingConfirmation, Haptics } from "@/modules/telegram";
 
 import type { GoalsApi } from "../goals.api.ts";
 import type { GoalsModel } from "../goals.model.ts";

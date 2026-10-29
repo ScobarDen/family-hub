@@ -2,8 +2,8 @@ import { action, withAsync, wrap } from "@reatom/core";
 
 import type { FamilyMember } from "@family-hub/contract";
 
-import { withoutId } from "@/common/records";
-import { isConfirmed } from "@/common/telegram";
+import { withoutId } from "@/common/records.lib.ts";
+import { isConfirmed } from "@/modules/telegram";
 
 import type { FamilySources } from "./family-sources.vm.ts";
 

@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Globe, Smartphone } from "lucide-react";
 
-import { FieldError, SectionItem, Switch } from "@/common/ui";
+import { FieldError, SectionItem, Switch } from "@/modules/ui";
 
 import type { TimeZoneModel } from "../vm/time-zone.vm.ts";
 import { TimeZoneSelect } from "./time-zone-select.view.tsx";

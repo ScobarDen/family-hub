@@ -27,5 +27,13 @@
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "wrangler": "catalog:"
+  },
+  "feod": {
+    "srcRoot": "src",
+    "aliasPrefix": "@",
+    "aliasRoot": "src",
+    "submodules": {
+      "visibility": "parent-only"
+    }
   }
 }

@@ -8,8 +8,8 @@ import {
   type GoalList,
 } from "@family-hub/contract";
 
-import { requireMember, type MemberEnv } from "@/common/auth";
-import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
+import { httpStatus, jsonBody, refusalsOf } from "@/common/errors.lib.ts";
+import { requireMember, type MemberEnv } from "@/modules/auth";
 
 import type { GoalRefusal, GoalResult } from "./goal.types.ts";
 import type { GoalService } from "./service/goal.service.ts";

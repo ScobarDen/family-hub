@@ -6,9 +6,9 @@ import {
 } from "@family-hub/contract";
 import { dateInZone, daysAfter } from "@family-hub/recurrence";
 
-import type { Membership } from "@/common/auth";
-import { fallbackTimeZone, type Clock } from "@/common/clock";
-import { parseKeyset } from "@/common/keyset";
+import { fallbackTimeZone, type Clock } from "@/common/clock.lib.ts";
+import { parseKeyset } from "@/common/keyset.lib.ts";
+import type { Membership } from "@/modules/auth";
 
 import { agendaOf, pageOf } from "./feed.lib.ts";
 import type { ActivitySource, FeedWindow, UpcomingSource } from "./feed.types.ts";

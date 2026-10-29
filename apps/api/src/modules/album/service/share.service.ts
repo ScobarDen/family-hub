@@ -1,4 +1,4 @@
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { photoCard } from "../album.lib.ts";
 import type { AlbumDependencies, ShareResult } from "../album.types.ts";

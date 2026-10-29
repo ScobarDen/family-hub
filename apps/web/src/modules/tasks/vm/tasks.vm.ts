@@ -12,12 +12,12 @@ import {
 
 import type { Pet, Task } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import { reatomFormBack } from "@/common/form";
-import type { Viewer } from "@/common/format-date";
-import type { LiveVersion } from "@/common/live-updates";
-import { detached, instantly, readOnly, type Slide } from "@/common/state";
-import type { ClosingConfirmation, Dialogs, Haptics } from "@/common/telegram";
+import type { Viewer } from "@/common/format-date.lib.ts";
+import type { DeviceCache } from "@/modules/device-cache";
+import { reatomFormBack } from "@/modules/form";
+import type { LiveVersion } from "@/modules/live-updates";
+import { detached, instantly, readOnly, type Slide } from "@/modules/state";
+import type { ClosingConfirmation, Dialogs, Haptics } from "@/modules/telegram";
 
 import { detailsOf, type TaskDetails } from "../task-details.lib.ts";
 import {

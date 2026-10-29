@@ -5,7 +5,7 @@ import {
   type AlbumChange,
 } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import { albumOf } from "../album.lib.ts";
 import type { AlbumDeletion } from "../album.repo.ts";

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 
 import type { Today } from "@family-hub/contract";
 
-import { requireMember, type MemberEnv } from "@/common/auth";
+import { requireMember, type MemberEnv } from "@/modules/auth";
 
 import type { TodayService } from "./today.service.ts";
 

@@ -1,6 +1,6 @@
 import { CalendarClock, Plus, TriangleAlert } from "lucide-react";
 
-import { Button, Section, SectionItem } from "@/common/ui";
+import { Button, Section, SectionItem } from "@/modules/ui";
 
 import type { PetTaskRow } from "../pets.lib.ts";
 

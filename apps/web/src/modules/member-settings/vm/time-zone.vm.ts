@@ -2,8 +2,8 @@ import { action, computed, effect, noop, peek } from "@reatom/core";
 
 import type { TimeZoneSettings } from "@family-hub/contract";
 
-import { reatomFailure } from "@/common/state";
-import type { Haptics } from "@/common/telegram";
+import { reatomFailure } from "@/modules/state";
+import type { Haptics } from "@/modules/telegram";
 
 import type { MemberSettingsApi } from "../member-settings.api.ts";
 import { reatomSavedSetting } from "../member-settings.model.ts";

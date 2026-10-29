@@ -1,6 +1,6 @@
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 
-import { albumPhotos, careEntryPhotos, pets, photos, recipePhotos, type Db } from "@/common/db";
+import { albumPhotos, careEntryPhotos, pets, photos, recipePhotos, type Db } from "@/modules/db";
 import { storageChannelOf } from "@/modules/photo-storage";
 
 export type PhotoRow = typeof photos.$inferSelect;

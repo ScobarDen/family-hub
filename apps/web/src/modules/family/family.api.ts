@@ -8,7 +8,7 @@ import {
   type FamilyOwnerChange,
 } from "@family-hub/contract";
 
-import type { HttpClient } from "@/common/http-client";
+import type { HttpClient } from "@/common/http-client.api.ts";
 
 export function createFamilyApi(client: HttpClient) {
   return {

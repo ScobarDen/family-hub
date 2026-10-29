@@ -3,14 +3,14 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { FeedPage, FeedUpcoming, Photo, Task } from "@family-hub/contract";
 
-import { reatomDeviceCache } from "@/common/device-cache";
-import { createHttpClient } from "@/common/http-client";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { reatomDeviceCache } from "@/modules/device-cache";
 import {
   fakeDeviceStorage,
   fakeHaptics,
   type FakeDeviceStorage,
   fakeWindow,
-} from "@/common/telegram";
+} from "@/modules/telegram";
 
 import { createFeedApi } from "../feed.api.ts";
 import { reatomFeed, type FeedTarget } from "./feed.vm.ts";

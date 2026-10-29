@@ -2,9 +2,9 @@ import { action, atom, computed, noop, wrap } from "@reatom/core";
 
 import { voiceMaxSeconds } from "@family-hub/contract";
 
-import { readOnly } from "@/common/state";
-import type { Haptics } from "@/common/telegram";
-import type { Recording, VoiceRecorder } from "@/common/voice-recorder";
+import type { Recording, VoiceRecorder } from "@/common/voice-recorder.lib.ts";
+import { readOnly } from "@/modules/state";
+import type { Haptics } from "@/modules/telegram";
 
 type MicrophoneDependencies = {
   recorder: VoiceRecorder;

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { PhotoStorage } from "@family-hub/contract";
 
-import { createHttpClient } from "@/common/http-client";
+import { createHttpClient } from "@/common/http-client.api.ts";
 
 import { createPhotoStorageApi } from "../photo-storage.api.ts";
 import { reatomPhotoStorage } from "./photo-storage.vm.ts";

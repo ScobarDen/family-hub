@@ -5,7 +5,7 @@ The screen of a person who opened the Mini App from an Invite link (`start_param
 ## Injected
 
 - `api` — `createJoinFamilyApi(httpClient)`: previews and accepts the Invite with raw `initData`, turning `INVITE_UNAVAILABLE` and `ALREADY_MEMBER` into outcomes.
-- `telegram` — `initData`, `startParam` and `requestWriteAccess` from `common/telegram`.
+- `telegram` — `initData`, `startParam` and `requestWriteAccess` from `modules/telegram`.
 - `onJoined` — the session's `signIn`, which lets the new Member in.
 
 The preview is a Reatom async action (`withAsyncData`) that `app/main.tsx` starts with `load()` at launch; «Повторить» calls it again. `isOpen` is handed to the session as `isJoiningFamily`, so the session shows `<JoinFamily model={…} />` instead of its own screens until the person joins or closes it.

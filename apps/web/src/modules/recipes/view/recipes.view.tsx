@@ -8,7 +8,7 @@ import {
   Revealed,
   SkeletonSection,
   SkeletonSectionLayout,
-} from "@/common/ui";
+} from "@/modules/ui";
 
 import type { RecipesScreen, RecipesScreenModel } from "../vm/recipes.vm.ts";
 import { RecipeDetails } from "./recipe-details.view.tsx";

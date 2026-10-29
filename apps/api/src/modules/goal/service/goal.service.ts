@@ -1,7 +1,7 @@
 import type { GoalChange, GoalOutcome, MovementChange } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
+import type { Membership } from "@/modules/auth";
 
 import type { GoalDependencies } from "../goal.types.ts";
 import { complete, create, list, update } from "./goal-root.service.ts";

@@ -2,8 +2,8 @@ import { reatomComponent } from "@reatom/react";
 
 import type { RecipeTag } from "@family-hub/contract";
 
-import { PhotoAttachments } from "@/common/photo-attachments";
-import { FormShell, TextAreaField, TextField } from "@/common/ui";
+import { PhotoAttachments } from "@/modules/photo-attachments";
+import { FormShell, TextAreaField, TextField } from "@/modules/ui";
 
 import type { RecipeFormModel } from "../vm/recipe-form.vm.ts";
 import { TagPicker } from "./tag-picker.view.tsx";

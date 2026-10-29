@@ -5,7 +5,7 @@ The pet tab: the Family's Pets, each one's card and its Pet Memo, with the `care
 ## Injected
 
 - `api` — `createPetsApi(httpClient)`: lists the Family's Pets, adds one, saves its card and its Pet Memo.
-- `deviceCache` — `common/device-cache`: the Pets of the last launch with their Pet Memo show at once and stay on screen through a failed refresh.
+- `deviceCache` — `modules/device-cache`: the Pets of the last launch with their Pet Memo show at once and stay on screen through a failed refresh.
 - `pets` — `reatomPets({ api })`, the Pets themselves (`withAsyncData`, loaded once the tab bar or the tab subscribes). Its `tabTitle` goes to the tab bar; a saved Pet replaces its old copy in the list.
 - `careApi`, `now`, `telegram`, `preparePhoto`, `photoHint`, `onDraftSaved` — handed on to the `care` submodule (see its README).
 - `tasksOf`, `onOpenTask`, `onAddTask` — `tasksOf` is the Pet's Task rows from the `tasks` module (Overdue, today, upcoming and undated, already in order) for the card's «Дела» block, which adds «Просрочено» in words to an Overdue one. A tap opens the Task and «+» adds a Task for this Pet, both through the app's opener.
@@ -20,4 +20,4 @@ The pet tab: the Family's Pets, each one's card and its Pet Memo, with the `care
 
 The card follows the spec — header with the avatar, «Дела», Pet Memo, «Траты за месяц», «Фото», «Журнал»; the expenses, photos and journal blocks come from the `care` submodule through `PetTab`. The header shows the Pet Avatar square; `reatomPetAvatar` uploads one straight from there (`uploadAvatar`, or the Photo Storage hint when none is connected), replaces it, removes it after a confirmation, and `makeAvatar` saves the photo picked in the care module's viewer instead. An archived Pet's avatar reads only.
 
-The profile form is a `reatomEditableRecord` from `common/form`: it maps values from a Pet and into a profile, while creating, editing and the saving flags are the common module's. The Pet Memo form only edits the memo of a Pet that exists, so it has no creating to share and is filled through `fillForm`, never the form's own `reset`, which also aborts the next submit.
+The profile form is a `reatomEditableRecord` from `modules/form`: it maps values from a Pet and into a profile, while creating, editing and the saving flags are the common module's. The Pet Memo form only edits the memo of a Pet that exists, so it has no creating to share and is filled through `fillForm`, never the form's own `reset`, which also aborts the next submit.

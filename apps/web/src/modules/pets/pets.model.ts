@@ -2,9 +2,9 @@ import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
 
 import { petList, type Pet } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import type { LiveVersion } from "@/common/live-updates";
-import { upserted, withoutId } from "@/common/records";
+import { upserted, withoutId } from "@/common/records.lib.ts";
+import type { DeviceCache } from "@/modules/device-cache";
+import type { LiveVersion } from "@/modules/live-updates";
 
 import type { PetsApi } from "./pets.api.ts";
 

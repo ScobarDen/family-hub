@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Archive, ArchiveRestore, PawPrint, Trash2 } from "lucide-react";
 
-import { FieldError, Section, SectionItem } from "@/common/ui";
+import { FieldError, Section, SectionItem } from "@/modules/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 

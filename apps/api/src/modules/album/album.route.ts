@@ -9,8 +9,8 @@ import {
   type PreparedMessage,
 } from "@family-hub/contract";
 
-import { requireMember, type MemberEnv } from "@/common/auth";
-import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
+import { httpStatus, jsonBody, refusalsOf } from "@/common/errors.lib.ts";
+import { requireMember, type MemberEnv } from "@/modules/auth";
 
 import type { AlbumRefusal, AlbumResult } from "./album.types.ts";
 import type { AlbumService } from "./service/album.service.ts";

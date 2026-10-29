@@ -1,4 +1,4 @@
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
 
 import { familyRequestRetentionMs } from "../family-request.config.ts";
 import type { FamilyRequestDependencies } from "../family-request.types.ts";

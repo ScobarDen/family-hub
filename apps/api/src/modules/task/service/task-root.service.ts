@@ -1,7 +1,7 @@
 import { uuidv7, type ParsedTaskChange, type Task } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import { isTurnedPrivate } from "@/common/visibility";
+import { isTurnedPrivate } from "@/common/visibility.lib.ts";
+import type { Membership } from "@/modules/auth";
 
 import { columnsOf } from "../task.lib.ts";
 import type { TaskTree } from "../task.repo.ts";

@@ -11,10 +11,10 @@ import {
 
 import { recipeList, recipeTagList, type Recipe } from "@family-hub/contract";
 
-import type { DeviceCache } from "@/common/device-cache";
-import type { LiveVersion } from "@/common/live-updates";
-import { rolledBackById } from "@/common/records";
-import { readOnly } from "@/common/state";
+import { rolledBackById } from "@/common/records.lib.ts";
+import type { DeviceCache } from "@/modules/device-cache";
+import type { LiveVersion } from "@/modules/live-updates";
+import { readOnly } from "@/modules/state";
 
 import type { RecipesApi } from "./recipes.api.ts";
 

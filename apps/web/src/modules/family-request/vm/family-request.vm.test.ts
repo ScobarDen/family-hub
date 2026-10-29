@@ -3,8 +3,8 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { ApiError, FamilyRequestCreated, FamilyRequestStatus } from "@family-hub/contract";
 
-import { createHttpClient } from "@/common/http-client";
-import { fakeHaptics } from "@/common/telegram";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeHaptics } from "@/modules/telegram";
 
 import { createFamilyRequestApi } from "../family-request.api.ts";
 import { reatomFamilyRequest } from "./family-request.vm.ts";

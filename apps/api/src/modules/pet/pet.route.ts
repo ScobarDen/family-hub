@@ -10,8 +10,8 @@ import {
   type PetList,
 } from "@family-hub/contract";
 
-import { requireMember, type MemberEnv } from "@/common/auth";
-import { httpStatus, jsonBody, refusalsOf } from "@/common/errors";
+import { httpStatus, jsonBody, refusalsOf } from "@/common/errors.lib.ts";
+import { requireMember, type MemberEnv } from "@/modules/auth";
 
 import type { PetRefusal, PetResult } from "./pet.types.ts";
 import type { PetService } from "./service/pet.service.ts";

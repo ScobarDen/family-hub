@@ -12,8 +12,8 @@ import {
   type TaskDraft,
 } from "@family-hub/contract";
 
-import { createHttpClient } from "@/common/http-client";
-import { fakeBottomButton, fakeHaptics } from "@/common/telegram";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { fakeBottomButton, fakeHaptics } from "@/modules/telegram";
 
 import { createCommandApi } from "../command.api.ts";
 import {

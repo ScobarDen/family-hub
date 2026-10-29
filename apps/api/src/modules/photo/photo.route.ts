@@ -2,8 +2,8 @@ import { Hono, type Context } from "hono";
 
 import { photoVariant, type Photo, type PhotoVariant } from "@family-hub/contract";
 
-import { requireMember, type MemberEnv } from "@/common/auth";
-import { apiError, httpStatus, refusalsOf } from "@/common/errors";
+import { apiError, httpStatus, refusalsOf } from "@/common/errors.lib.ts";
+import { requireMember, type MemberEnv } from "@/modules/auth";
 
 import type { PhotoRefusal, PhotoService, SignedRequest } from "./photo.service.ts";
 

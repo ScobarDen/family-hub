@@ -1,4 +1,4 @@
-import { formatTimeZone } from "@/common/format-date";
+import { formatTimeZone } from "@/common/format-date.lib.ts";
 
 type TimeZoneSelectProps = {
   value: string;

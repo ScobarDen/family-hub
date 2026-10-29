@@ -1,8 +1,8 @@
 import type { Today, TodayTiles } from "@family-hub/contract";
 import { dateInZone } from "@family-hub/recurrence";
 
-import type { Membership } from "@/common/auth";
-import { fallbackTimeZone, type Clock } from "@/common/clock";
+import { fallbackTimeZone, type Clock } from "@/common/clock.lib.ts";
+import type { Membership } from "@/modules/auth";
 import type { FeedService } from "@/modules/feed";
 
 import type { TileSource, TileSources, TileWindow } from "./today.types.ts";

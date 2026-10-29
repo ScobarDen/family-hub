@@ -4,9 +4,9 @@ import { z } from "zod";
 
 import type { CurrentMember, SessionResponse } from "@family-hub/contract";
 
-import { reatomDeviceCache } from "@/common/device-cache";
-import { createHttpClient } from "@/common/http-client";
-import { fakeDeviceStorage, type FakeDeviceStorage } from "@/common/telegram";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { reatomDeviceCache } from "@/modules/device-cache";
+import { fakeDeviceStorage, type FakeDeviceStorage } from "@/modules/telegram";
 
 import { createSessionApi } from "../session.api.ts";
 import { reatomSession } from "./session.vm.ts";

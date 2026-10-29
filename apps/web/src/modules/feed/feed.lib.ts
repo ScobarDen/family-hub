@@ -1,7 +1,7 @@
 import type { FeedActivity, FeedUpcoming, Photo } from "@family-hub/contract";
 import { dateInZone, timeInZone } from "@family-hub/recurrence";
 
-import { formatNearDate } from "@/common/format-date";
+import { formatNearDate } from "@/common/format-date.lib.ts";
 
 export type FeedFilter = "all" | "tasks" | "pet" | "goals" | "albums";
 

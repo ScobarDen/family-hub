@@ -12,7 +12,7 @@ import type {
 } from "@family-hub/contract";
 import { firstOccurrenceFrom } from "@family-hub/recurrence";
 
-import type { RecipientsMode } from "@/common/db";
+import type { RecipientsMode } from "@/modules/db";
 
 import type { CompletionRow, PersonRow, TaskRecord, TaskRow, TaskTree } from "./task.repo.ts";
 

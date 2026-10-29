@@ -13,7 +13,7 @@ import {
   TextAreaField,
   TextField,
   visibilityChoices,
-} from "@/common/ui";
+} from "@/modules/ui";
 
 import { repeatChoices } from "../tasks.config.ts";
 import type { SubtaskFormModel } from "../vm/subtask-form.vm.ts";

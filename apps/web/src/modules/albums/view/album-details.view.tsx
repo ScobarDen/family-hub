@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { ImagePlus, ImageUp, Pencil, Trash2 } from "lucide-react";
 
-import { PhotoThumbs, PhotoViewer } from "@/common/photo-viewer";
+import { PhotoThumbs, PhotoViewer } from "@/modules/photo-viewer";
 import {
   buttonVariants,
   cn,
@@ -11,7 +11,7 @@ import {
   Section,
   SectionItem,
   SectionLayout,
-} from "@/common/ui";
+} from "@/modules/ui";
 
 import type { AlbumView } from "../albums.lib.ts";
 import type { AlbumsScreenModel } from "../vm/albums.vm.ts";

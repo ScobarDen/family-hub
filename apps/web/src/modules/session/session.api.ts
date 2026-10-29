@@ -2,7 +2,7 @@ import { wrap } from "@reatom/core";
 
 import { currentMember, sessionResponse } from "@family-hub/contract";
 
-import type { HttpClient } from "@/common/http-client";
+import type { HttpClient } from "@/common/http-client.api.ts";
 
 export function createSessionApi(client: HttpClient) {
   return {

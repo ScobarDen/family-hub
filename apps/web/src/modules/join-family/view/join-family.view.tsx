@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { Button, Notice } from "@/common/ui";
+import { Button, Notice } from "@/modules/ui";
 
 import type { JoinFamilyModel, JoinFamilyScreen } from "../vm/join-family.vm.ts";
 import { InviteCard } from "./invite-card.view.tsx";

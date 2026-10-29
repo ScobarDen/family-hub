@@ -1,5 +1,0 @@
-srcDir: src
-outputDir: dist/feod
-aliases:
-  "@": src
-tsconfig: tsconfig.app.json

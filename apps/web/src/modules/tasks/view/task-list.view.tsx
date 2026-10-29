@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Cake, ChevronDown, ChevronUp } from "lucide-react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { Section, SectionItem } from "@/modules/ui";
 
 import type { ListRow, TaskGroups } from "../task-rows.lib.ts";
 import type { TasksScreen, TasksScreenModel } from "../vm/tasks.vm.ts";

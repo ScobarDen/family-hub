@@ -1,7 +1,7 @@
 import { overdueLookbackDays, type Person, type Pet, type Task } from "@family-hub/contract";
 import { daysAfter, timeInZone, type PlacedOccurrence } from "@family-hub/recurrence";
 
-import { formatNearDate, type Viewer } from "@/common/format-date";
+import { formatNearDate, type Viewer } from "@/common/format-date.lib.ts";
 
 import { birthdaysOf } from "./calendar.lib.ts";
 import { placedOccurrences, statusOf, type OccurrenceStatus } from "./occurrences.lib.ts";

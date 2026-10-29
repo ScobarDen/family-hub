@@ -1,4 +1,4 @@
-import type { Clock } from "@/common/clock";
+import type { Clock } from "@/common/clock.lib.ts";
 
 export type FakeClock = Clock & {
   set(iso: string): void;

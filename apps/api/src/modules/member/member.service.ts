@@ -11,8 +11,8 @@ import {
   type TimeZoneSettings,
 } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import type { Clock } from "@/common/clock";
+import type { Clock } from "@/common/clock.lib.ts";
+import type { Membership } from "@/modules/auth";
 
 import type { MemberRepo, MemberSettingsRow } from "./member.repo.ts";
 

@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { cn } from "@/common/ui";
+import { cn } from "@/modules/ui";
 
 import type { TasksScreenModel } from "../vm/tasks.vm.ts";
 import { DayButton } from "./day-button.view.tsx";

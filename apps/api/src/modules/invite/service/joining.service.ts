@@ -1,6 +1,6 @@
 import { uuidv7, type InvitePreview } from "@family-hub/contract";
 
-import { displayNameOf, type TelegramUser } from "@/common/auth";
+import { displayNameOf, type TelegramUser } from "@/modules/auth";
 
 import type { FoundInvite } from "../invite.repo.ts";
 import type { InviteDependencies } from "../invite.types.ts";

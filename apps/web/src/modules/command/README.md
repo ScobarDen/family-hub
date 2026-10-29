@@ -12,8 +12,8 @@ Shows what was heard and the draft as the bot shows it: both read it with `previ
 
 ## Injected
 
-- `recorder` — `common/voice-recorder`, the browser's `MediaRecorder` behind a seam tests replace.
-- `telegram` — haptics, vertical swipes and `openTelegramLink` from `common/telegram` for the microphone; MainButton and SecondaryButton for the sheet, which `start()` from the composition root makes follow the draft.
+- `recorder` — `common/voice-recorder.lib.ts`, the browser's `MediaRecorder` behind a seam tests replace.
+- `telegram` — haptics, vertical swipes and `openTelegramLink` from `modules/telegram` for the microphone; MainButton and SecondaryButton for the sheet, which `start()` from the composition root makes follow the draft.
 - `botChat` — the bot chat link from `GET /api/commands/bot`, since the Mini App does not know its bot's name.
 - `wait` — the one-second tick of the recording timer.
 - `onRecorded` — the composition root passes the recording to the sheet.

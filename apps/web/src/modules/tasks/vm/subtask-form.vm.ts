@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { taskTitleMaxLength, type SubtaskChange, type Task } from "@family-hub/contract";
 
-import { reatomEditableRecord } from "@/common/form";
-import type { ClosingConfirmation, Haptics } from "@/common/telegram";
+import { reatomEditableRecord } from "@/modules/form";
+import type { ClosingConfirmation, Haptics } from "@/modules/telegram";
 
 import type { TasksApi } from "../tasks.api.ts";
 import type { TasksModel } from "../tasks.model.ts";

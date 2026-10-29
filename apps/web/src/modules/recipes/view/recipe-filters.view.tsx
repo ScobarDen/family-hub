@@ -3,7 +3,7 @@ import { Star } from "lucide-react";
 
 import type { RecipeTag } from "@family-hub/contract";
 
-import { Chip, Input } from "@/common/ui";
+import { Chip, Input } from "@/modules/ui";
 
 import type { RecipesScreenModel } from "../vm/recipes.vm.ts";
 

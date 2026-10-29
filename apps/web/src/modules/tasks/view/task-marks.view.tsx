@@ -1,6 +1,6 @@
 import { BellRing, Repeat } from "lucide-react";
 
-import { PersonAvatar, RoundPicture } from "@/common/ui";
+import { PersonAvatar, RoundPicture } from "@/modules/ui";
 
 import type { TaskRow } from "../task-rows.lib.ts";
 

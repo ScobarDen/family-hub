@@ -2,7 +2,7 @@ import { Hono } from "hono";
 
 import type { PhotoStorage } from "@family-hub/contract";
 
-import { requireMember, type AuthEnv } from "@/common/auth";
+import { requireMember, type AuthEnv } from "@/modules/auth";
 
 import type { PhotoStorageService } from "./photo-storage.service.ts";
 

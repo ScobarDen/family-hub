@@ -1,6 +1,6 @@
 import { uuidv7, type RecipeTag } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
+import type { Membership } from "@/modules/auth";
 
 import type { RecipeDependencies, TagResult } from "../recipe.types.ts";
 

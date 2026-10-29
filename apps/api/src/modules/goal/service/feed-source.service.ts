@@ -1,8 +1,8 @@
 import type { FeedActivity } from "@family-hub/contract";
 
-import type { Membership } from "@/common/auth";
-import { newestFirst, type KeysetPage } from "@/common/keyset";
-import { formatRubles } from "@/common/money";
+import { newestFirst, type KeysetPage } from "@/common/keyset.lib.ts";
+import { formatRubles } from "@/common/money.lib.ts";
+import type { Membership } from "@/modules/auth";
 import type { ActivitySource } from "@/modules/feed";
 
 import type { GoalRepo } from "../goal.repo.ts";

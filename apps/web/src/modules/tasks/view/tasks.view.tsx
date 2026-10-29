@@ -10,7 +10,7 @@ import {
   LoadState,
   Revealed,
   SkeletonSection,
-} from "@/common/ui";
+} from "@/modules/ui";
 
 import type { TasksScreen, TasksScreenModel } from "../vm/tasks.vm.ts";
 import { TaskCalendar } from "./task-calendar.view.tsx";

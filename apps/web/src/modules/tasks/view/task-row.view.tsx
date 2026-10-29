@@ -1,4 +1,4 @@
-import { CheckButton, SectionItem } from "@/common/ui";
+import { CheckButton, SectionItem } from "@/modules/ui";
 
 import type { TaskRow as Row } from "../task-rows.lib.ts";
 import { TaskMarks } from "./task-marks.view.tsx";

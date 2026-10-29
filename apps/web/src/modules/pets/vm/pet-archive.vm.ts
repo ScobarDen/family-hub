@@ -3,9 +3,9 @@ import { z } from "zod";
 
 import type { Pet } from "@family-hub/contract";
 
-import { fillForm, matchingName, reatomSubmitFailure } from "@/common/form";
-import { detached, reatomFailure } from "@/common/state";
-import type { Haptics } from "@/common/telegram";
+import { fillForm, matchingName, reatomSubmitFailure } from "@/modules/form";
+import { detached, reatomFailure } from "@/modules/state";
+import type { Haptics } from "@/modules/telegram";
 
 import type { PetsApi } from "../pets.api.ts";
 import type { PetsModel } from "../pets.model.ts";

@@ -2,7 +2,7 @@ import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
 import { uuidv7 } from "@family-hub/contract";
 
-import { displayNameOf, type TelegramUser } from "@/common/auth";
+import { displayNameOf, type TelegramUser } from "@/modules/auth";
 
 import { callbackPrefix } from "./family-request.config.ts";
 import type { FamilyRequest } from "./family-request.repo.ts";

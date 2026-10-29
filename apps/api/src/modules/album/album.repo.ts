@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, exists, gte, inArray, isNull, ne, not, notInArray } from "drizzle-orm";
 
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
+import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset.lib.ts";
 import {
   albumPhotos,
   albumUploadBatches,
@@ -12,8 +13,7 @@ import {
   photos,
   recipePhotos,
   type Db,
-} from "@/common/db";
-import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset";
+} from "@/modules/db";
 import { knownPhotoIds } from "@/modules/photo";
 
 export type AlbumRow = typeof albums.$inferSelect;

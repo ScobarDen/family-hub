@@ -13,7 +13,7 @@ import {
   TextAreaField,
   TextField,
   visibilityChoices,
-} from "@/common/ui";
+} from "@/modules/ui";
 
 import { goalColorTitles, goalIconTitles, goalIcons } from "../goals.config.ts";
 import type { GoalFormModel } from "../vm/goal-form.vm.ts";

@@ -10,10 +10,10 @@ import {
   type PetList,
 } from "@family-hub/contract";
 
-import { reatomDeviceCache } from "@/common/device-cache";
-import { createHttpClient } from "@/common/http-client";
-import { PhotoTooLargeError } from "@/common/photo";
-import { fakeDeviceStorage, fakeHaptics, fakeWindow } from "@/common/telegram";
+import { createHttpClient } from "@/common/http-client.api.ts";
+import { reatomDeviceCache } from "@/modules/device-cache";
+import { PhotoTooLargeError } from "@/modules/photo";
+import { fakeDeviceStorage, fakeHaptics, fakeWindow } from "@/modules/telegram";
 
 import { createPetsApi } from "../pets.api.ts";
 import type { PetTask } from "../pets.lib.ts";

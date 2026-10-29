@@ -1,7 +1,7 @@
 import { Images } from "lucide-react";
 
-import { PhotoThumbs } from "@/common/photo-viewer";
-import { Section, SectionItem } from "@/common/ui";
+import { PhotoThumbs } from "@/modules/photo-viewer";
+import { Section, SectionItem } from "@/modules/ui";
 
 import type { TaskDetails } from "../task-details.lib.ts";
 

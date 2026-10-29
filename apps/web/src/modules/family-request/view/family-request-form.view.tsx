@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import type { FormEvent } from "react";
 
-import { Button, FieldError, Notice, TextField } from "@/common/ui";
+import { Button, FieldError, Notice, TextField } from "@/modules/ui";
 
 import type { FamilyRequestModel } from "../vm/family-request.vm.ts";
 

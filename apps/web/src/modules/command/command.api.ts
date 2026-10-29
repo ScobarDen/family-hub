@@ -1,6 +1,6 @@
 import { botChat, commandOutcome, draftCreated, draftSettled } from "@family-hub/contract";
 
-import type { HttpClient } from "@/common/http-client";
+import type { HttpClient } from "@/common/http-client.api.ts";
 
 export function createCommandApi(client: HttpClient) {
   return {

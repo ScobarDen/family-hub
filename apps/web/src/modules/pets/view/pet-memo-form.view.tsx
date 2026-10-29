@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { FormShell, TextAreaField } from "@/common/ui";
+import { FormShell, TextAreaField } from "@/modules/ui";
 
 import { memoFields } from "../pets.config.ts";
 import type { PetMemoFormModel } from "../vm/pet-memo-form.vm.ts";

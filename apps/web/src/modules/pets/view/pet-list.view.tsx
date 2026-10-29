@@ -1,6 +1,6 @@
 import { PawPrint, Plus } from "lucide-react";
 
-import { Section, SectionItem } from "@/common/ui";
+import { Section, SectionItem } from "@/modules/ui";
 
 import type { PetsScreen, PetsScreenModel } from "../vm/pets.vm.ts";
 import { ArchivedPets } from "./archived-pets.view.tsx";

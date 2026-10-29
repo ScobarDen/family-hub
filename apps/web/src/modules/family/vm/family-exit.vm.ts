@@ -1,8 +1,8 @@
 import { action, reatomForm, withAsync, wrap } from "@reatom/core";
 import { z } from "zod";
 
-import { matchingName } from "@/common/form";
-import { isConfirmed } from "@/common/telegram";
+import { matchingName } from "@/modules/form";
+import { isConfirmed } from "@/modules/telegram";
 
 import type { FamilySources } from "./family-sources.vm.ts";
 

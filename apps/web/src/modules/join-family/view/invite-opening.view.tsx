@@ -1,4 +1,4 @@
-import { Skeleton } from "@/common/ui";
+import { Skeleton } from "@/modules/ui";
 
 export function InviteOpening() {
   return (

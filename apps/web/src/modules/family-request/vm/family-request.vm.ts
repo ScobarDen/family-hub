@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import { familyNameMaxLength, type FamilyRequestStatus } from "@family-hub/contract";
 
-import { reatomSubmitFailure } from "@/common/form";
-import type { Haptics } from "@/common/telegram";
+import { reatomSubmitFailure } from "@/modules/form";
+import type { Haptics } from "@/modules/telegram";
 
 import type { FamilyRequestApi, SubmitOutcome } from "../family-request.api.ts";
 

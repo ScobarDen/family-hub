@@ -1,6 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-import { Button } from "@/common/ui";
+import { Button } from "@/modules/ui";
 
 type MonthHeaderProps = { title: string; onPrevious: () => void; onNext: () => void };
 

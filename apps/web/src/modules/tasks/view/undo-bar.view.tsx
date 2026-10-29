@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { floatingBarClass, LiveRegion } from "@/common/ui";
+import { floatingBarClass, LiveRegion } from "@/modules/ui";
 
 import type { TasksScreenModel } from "../vm/tasks.vm.ts";
 

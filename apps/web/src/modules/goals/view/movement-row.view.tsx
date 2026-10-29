@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 import { Pencil, Trash2 } from "lucide-react";
 
-import { Button, SectionItem } from "@/common/ui";
+import { Button, SectionItem } from "@/modules/ui";
 
 import type { MovementItem } from "../goals.lib.ts";
 import type { GoalsScreenModel } from "../vm/goals.vm.ts";

@@ -1,8 +1,8 @@
 import type { CommandOutcome } from "@family-hub/contract";
 import type { Phrase } from "@family-hub/recurrence";
 
-import type { Membership } from "@/common/auth";
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
+import type { Membership } from "@/modules/auth";
 
 import { failureTexts } from "../command.lib.ts";
 import type { CommandDependencies } from "../command.types.ts";

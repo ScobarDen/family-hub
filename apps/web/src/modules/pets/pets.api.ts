@@ -8,8 +8,8 @@ import {
   type PetProfile,
 } from "@family-hub/contract";
 
-import type { HttpClient } from "@/common/http-client";
-import { createPhotoCalls } from "@/common/photo";
+import type { HttpClient } from "@/common/http-client.api.ts";
+import { createPhotoCalls } from "@/modules/photo";
 
 // The avatar is a signed path of the Worker; the browser loads it from there.
 function resolvedOf(client: HttpClient, saved: Pet): Pet {

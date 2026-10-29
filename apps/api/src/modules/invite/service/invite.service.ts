@@ -1,4 +1,4 @@
-import { bindFirst } from "@/common/bind";
+import { bindFirst } from "@/common/bind.lib.ts";
 
 import type { InviteDependencies } from "../invite.types.ts";
 import { accept, preview } from "./joining.service.ts";

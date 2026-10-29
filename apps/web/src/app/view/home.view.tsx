@@ -35,8 +35,8 @@ import {
 } from "@/modules/tab-bar";
 import { Tasks, type TasksScreenModel } from "@/modules/tasks";
 import { Today, type TodayModel } from "@/modules/today";
-import { ModulePage } from "@/pages/module";
-import { ProfilePage } from "@/pages/profile";
+import { ModulePage } from "@/pages/module.view.tsx";
+import { ProfilePage } from "@/pages/profile.view.tsx";
 
 import type { NavigationModel, Screen } from "../app.route.ts";
 

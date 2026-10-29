@@ -2,7 +2,7 @@ import { Hono } from "hono";
 
 import type { FeedPage } from "@family-hub/contract";
 
-import { requireMember, type MemberEnv } from "@/common/auth";
+import { requireMember, type MemberEnv } from "@/modules/auth";
 
 import type { FeedService } from "./feed.service.ts";
 

@@ -1,7 +1,7 @@
 import { context, noop, sleep } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { fakeDeviceStorage } from "@/common/telegram";
+import { fakeDeviceStorage } from "@/modules/telegram";
 
 import {
   cleaning,

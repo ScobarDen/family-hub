@@ -5,7 +5,7 @@ The Family Request form a stranger reaches from «Создать свою сем
 ## Injected
 
 - `api` — `createFamilyRequestApi(httpClient)`: posts raw `initData` with the family name and turns the server's refusals (`FAMILY_REQUEST_PENDING`, `FAMILY_REQUEST_COOLDOWN`, `ALREADY_MEMBER`) into outcomes.
-- `telegram` — `initData` and `requestWriteAccess` from `common/telegram`.
+- `telegram` — `initData` and `requestWriteAccess` from `modules/telegram`.
 - `familyRequestStatus` — the session's view of the request from the last sign-in: a pending request opens on «Заявка уже на рассмотрении», a cooldown on the cooldown screen, and either outranks an earlier submit.
 - `onBack`, `onCheck` — the session's `closeFamilyRequest` and `signIn`.
 

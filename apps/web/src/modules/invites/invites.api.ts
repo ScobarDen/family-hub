@@ -2,7 +2,8 @@ import { wrap } from "@reatom/core";
 
 import { inviteCreated, inviteList, inviteRevoked } from "@family-hub/contract";
 
-import { HttpError, type HttpClient } from "@/common/http-client";
+import type { HttpClient } from "@/common/http-client.api.ts";
+import { HttpError } from "@/common/http-error.lib.ts";
 
 export function createInvitesApi(client: HttpClient) {
   return {

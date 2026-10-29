@@ -2,8 +2,8 @@ import { and, asc, eq, type SQL } from "drizzle-orm";
 
 import type { PetMemoChange, PetProfile } from "@family-hub/contract";
 
-import { bindFirst } from "@/common/bind";
-import { careEntries, careEntryPhotos, members, pets, photos, type Db } from "@/common/db";
+import { bindFirst } from "@/common/bind.lib.ts";
+import { careEntries, careEntryPhotos, members, pets, photos, type Db } from "@/modules/db";
 import { forgetUnheldPhoto } from "@/modules/photo";
 
 export type PetRow = typeof pets.$inferSelect & { memoUpdatedByName: string | null };

@@ -2,8 +2,8 @@ import { action, computed } from "@reatom/core";
 
 import type { SlotModule } from "@family-hub/contract";
 
-import { sectionTitles } from "@/common/sections";
-import type { Haptics } from "@/common/telegram";
+import { sectionTitles } from "@/common/sections.config.ts";
+import type { Haptics } from "@/modules/telegram";
 
 import type { TabBarModules } from "../tab-bar.model.ts";
 

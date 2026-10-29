@@ -1,6 +1,6 @@
 import { type Atom, computed, withAsyncData, wrap } from "@reatom/core";
 
-import type { Dialogs, Haptics } from "@/common/telegram";
+import type { Dialogs, Haptics } from "@/modules/telegram";
 
 import type { FamilyApi } from "../family.api.ts";
 
