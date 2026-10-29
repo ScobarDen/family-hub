@@ -158,7 +158,7 @@ function syncThemeColor(document: Document): void {
   }
 }
 
-// Outside Telegram the page colours itself from the platform's own palette (see styles.css), and
+// Outside Telegram the page colours itself from the Installed App's palette (see styles.css), and
 // the system bar above it takes the page's own colour, which the screens start on.
 export function followInstalledApp(document: Document): void {
   const root = document.documentElement;
