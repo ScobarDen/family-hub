@@ -14,6 +14,8 @@ import { z } from "zod";
 import type { DeviceStorage } from "@/modules/telegram";
 
 const keptForMs = 2_592_000_000;
+// Some Telegram clients never answer a DeviceStorage call; sign-in waits on it, so it gives up.
+const storageTimeoutMs = 3000;
 const ownerKey = "device-cache.owner";
 
 export type CacheOwner = { memberId: string; familyId: string };
@@ -22,11 +24,12 @@ const cacheOwner = z.object({ memberId: z.string(), familyId: z.string() });
 
 type Contract = { contract: z.ZodType };
 
-// A DeviceStorage error (a full quota, a broken value) costs only the cache, never the screen.
+// A DeviceStorage error (a full quota, a broken value) or silence costs only the cache, never the screen.
 async function promised<Result>(
   call: (callback: (error: string | null, result?: Result) => void) => void,
 ): Promise<Result | undefined> {
   return new Promise((resolve) => {
+    setTimeout(resolve, storageTimeoutMs);
     call((error, result) => {
       resolve(error === null ? result : undefined);
     });
