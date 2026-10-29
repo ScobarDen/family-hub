@@ -57,12 +57,25 @@ function isVendoredSkill(file: string): boolean {
 const maxCommandLength = 7000;
 const checkCommand = "vp check --fix";
 
+// lint-staged splits the command with string-argv, which honours quotes but no escapes, and runs it without a shell.
+function quotedArgument(file: string): string {
+  const quote = file.includes('"') ? "'" : '"';
+
+  if (file.includes(quote)) {
+    throw new Error(
+      `A staged file name holds both quote marks and cannot reach vp intact: ${file}`,
+    );
+  }
+
+  return `${quote}${file}${quote}`;
+}
+
 function checkCommandsFor(files: readonly string[]): string[] {
   const commands: string[] = [];
   let command = checkCommand;
 
   for (const file of files) {
-    const argument = ` ${JSON.stringify(file)}`;
+    const argument = ` ${quotedArgument(file)}`;
 
     if (command !== checkCommand && command.length + argument.length > maxCommandLength) {
       commands.push(command);
