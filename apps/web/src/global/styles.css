@@ -72,26 +72,76 @@
   );
 }
 
-/* Telegram sets its theme inline on <html>, which wins; these colour the Installed App. */
+/* Telegram sets its theme inline on <html>, which wins; this colours the Installed App's dark scheme. */
 .dark {
   color-scheme: dark;
-  --tg-theme-bg-color: #1c1c1e;
-  --tg-theme-text-color: #ffffff;
-  --tg-theme-hint-color: #98989e;
-  --tg-theme-link-color: #3e88f7;
-  --tg-theme-button-color: #3e88f7;
-  --tg-theme-button-text-color: #ffffff;
-  --tg-theme-secondary-bg-color: #000000;
-  --tg-theme-section-bg-color: #1c1c1e;
-  --tg-theme-accent-text-color: #3e88f7;
-  --tg-theme-destructive-text-color: #eb5545;
-  --tg-theme-section-separator-color: #38383a;
   --section-feed: oklch(0.78 0.11 250);
   --section-tasks: oklch(0.78 0.13 150);
   --section-pet: oklch(0.78 0.13 55);
   --section-goals: oklch(0.78 0.13 300);
   --section-albums: oklch(0.78 0.13 200);
   --section-recipes: oklch(0.78 0.13 85);
+}
+
+/* Outside Telegram the Installed App wears its platform's own palette: bg is the top bars and sheets,
+   secondary-bg the page, section-bg the cards. iOS takes Apple's HIG system colours for grouped
+   lists, the elevated variants in dark (softer than black). */
+[data-shell="installed"][data-platform="ios"] {
+  --tg-theme-bg-color: #ffffff;
+  --tg-theme-secondary-bg-color: #f2f2f7;
+  --tg-theme-section-bg-color: #ffffff;
+  --tg-theme-text-color: #000000;
+  --tg-theme-hint-color: #8e8e93;
+  --tg-theme-link-color: #007aff;
+  --tg-theme-button-color: #007aff;
+  --tg-theme-accent-text-color: #007aff;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-destructive-text-color: #ff3b30;
+  --tg-theme-section-separator-color: #c6c6c8;
+}
+
+.dark[data-shell="installed"][data-platform="ios"] {
+  --tg-theme-bg-color: #1c1c1e;
+  --tg-theme-secondary-bg-color: #1c1c1e;
+  --tg-theme-section-bg-color: #2c2c2e;
+  --tg-theme-text-color: #ffffff;
+  --tg-theme-hint-color: #8e8e93;
+  --tg-theme-link-color: #0a84ff;
+  --tg-theme-button-color: #0a84ff;
+  --tg-theme-accent-text-color: #0a84ff;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-destructive-text-color: #ff453a;
+  --tg-theme-section-separator-color: #38383a;
+}
+
+/* Android takes Material 3 roles from @material/material-color-utilities seeded with the icon's blue
+   #2ea4fc (Tonal Spot neutrals, Fidelity primary), laid out as in Android's own settings. */
+[data-shell="installed"][data-platform="android"] {
+  --tg-theme-bg-color: #ffffff;
+  --tg-theme-secondary-bg-color: #eceef4;
+  --tg-theme-section-bg-color: #ffffff;
+  --tg-theme-text-color: #191c20;
+  --tg-theme-hint-color: #73777f;
+  --tg-theme-link-color: #00629e;
+  --tg-theme-button-color: #00629e;
+  --tg-theme-accent-text-color: #00629e;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-destructive-text-color: #ba1a1a;
+  --tg-theme-section-separator-color: #c2c7cf;
+}
+
+.dark[data-shell="installed"][data-platform="android"] {
+  --tg-theme-bg-color: #1d2024;
+  --tg-theme-secondary-bg-color: #101418;
+  --tg-theme-section-bg-color: #1d2024;
+  --tg-theme-text-color: #e0e2e8;
+  --tg-theme-hint-color: #8c9199;
+  --tg-theme-link-color: #9acbff;
+  --tg-theme-button-color: #9acbff;
+  --tg-theme-accent-text-color: #9acbff;
+  --tg-theme-button-text-color: #003355;
+  --tg-theme-destructive-text-color: #ffb4ab;
+  --tg-theme-section-separator-color: #42474e;
 }
 
 @theme inline {

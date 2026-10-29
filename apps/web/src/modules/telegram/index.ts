@@ -1,4 +1,8 @@
-export { reatomBrowserWebApp, type BrowserBack } from "./model/browser.model.ts";
+export {
+  followInstalledApp,
+  reatomBrowserWebApp,
+  type BrowserBack,
+} from "./model/browser.model.ts";
 export {
   didSucceedOrAlert,
   isConfirmed,

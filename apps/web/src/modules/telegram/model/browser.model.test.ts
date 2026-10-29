@@ -6,10 +6,10 @@ import { reatomTelegram } from "./telegram.model.ts";
 
 type Listener = () => void;
 
+// Like the real localStorage, every kept key is also an own enumerable property.
 function memoryStorage(): Storage {
   const items = new Map<string, string>();
-
-  return {
+  const storage: Storage = {
     get length() {
       return items.size;
     },
@@ -25,13 +25,22 @@ function memoryStorage(): Storage {
       items.clear();
     },
   };
+
+  return new Proxy(storage, {
+    ownKeys: () => [...items.keys()],
+    getOwnPropertyDescriptor: (_target, key) =>
+      typeof key === "string" && items.has(key)
+        ? { value: items.get(key), enumerable: true, configurable: true, writable: true }
+        : undefined,
+  });
 }
 
 function fakeBrowser({
   search = "",
   isDark = false,
   canShare = true,
-}: { search?: string; isDark?: boolean; canShare?: boolean } = {}) {
+  localStorage = memoryStorage(),
+}: { search?: string; isDark?: boolean; canShare?: boolean; localStorage?: Storage } = {}) {
   const media = { matches: isDark, listeners: new Set<Listener>() };
   const opened: string[] = [];
   const shared: ShareData[] = [];
@@ -73,7 +82,7 @@ function fakeBrowser({
 
       return null;
     },
-    localStorage: memoryStorage(),
+    localStorage,
     addEventListener: noop,
     removeEventListener: noop,
   } as unknown as BrowserWindow;
@@ -207,6 +216,38 @@ describe("the Installed App's stand-in for Telegram", () => {
       expect(browser.alerts).toEqual(["Ссылка скопирована"]);
     });
     expect(browser.copied).toEqual(["Привет https://t.me/bot?startapp=inv_abc"]);
+  });
+
+  test("clears only the cache's own keys, so the Device kept by Telegram Login survives", async () => {
+    const localStorage = memoryStorage();
+    const { webApp } = reatomBrowserWebApp(fakeBrowser({ localStorage }).window);
+
+    localStorage.setItem("family-hub:device", "device-1");
+    await new Promise((resolve) => {
+      webApp.DeviceStorage.setItem("today", "{}", resolve);
+    });
+    await new Promise((resolve) => {
+      webApp.DeviceStorage.clear(resolve);
+    });
+
+    expect(localStorage.getItem("family-hub:device")).toBe("device-1");
+    expect(localStorage.getItem("family-hub:cache:today")).toBeNull();
+  });
+
+  test("drops the cache copies kept before the cache had its own prefix, once, and keeps the Device", () => {
+    const localStorage = memoryStorage();
+
+    localStorage.setItem("family-hub:today", "{}");
+    localStorage.setItem("family-hub:device-cache.owner", "member-1");
+    localStorage.setItem("family-hub:device", "device-1");
+    reatomBrowserWebApp(fakeBrowser({ localStorage }).window);
+    localStorage.setItem("family-hub:later", "kept");
+    reatomBrowserWebApp(fakeBrowser({ localStorage }).window);
+
+    expect(localStorage.getItem("family-hub:today")).toBeNull();
+    expect(localStorage.getItem("family-hub:device-cache.owner")).toBeNull();
+    expect(localStorage.getItem("family-hub:device")).toBe("device-1");
+    expect(localStorage.getItem("family-hub:later")).toBe("kept");
   });
 
   test("opens other links in a new tab", () => {
