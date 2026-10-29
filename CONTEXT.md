@@ -18,6 +18,14 @@ _Avoid_: User, account, participant
 The picture a Member shows in their Telegram profile; the app shows it but never keeps it, and it is not a Photo.
 _Avoid_: Avatar, userpic, member photo
 
+**Installed App**:
+Family Hub running on its own, outside Telegram, which a Member enters with their Telegram account; only Members can use it.
+_Avoid_: PWA, desktop app, standalone
+
+**Device**:
+A browser or Installed App in which a Member signed in with their Telegram account; it stays signed in until the Member revokes it or leaves it unused for 90 days.
+_Avoid_: Session, client, browser
+
 **Family Owner**:
 The one Member of a Family who may delete it, remove Members and hand the role to another Member.
 _Avoid_: Admin, creator, head
@@ -125,8 +133,12 @@ One concrete date of a Task; each Occurrence of a recurring Task is Completed or
 _Avoid_: Instance, repetition
 
 **Reminder**:
-A prompt the bot delivers to a Task's Recipients in Telegram at a set offset from an Occurrence.
-_Avoid_: Notification, alert, push
+A prompt delivered to a Task's Recipients at a set offset from an Occurrence, through the bot in Telegram, as a Push, or both, as each Recipient chooses.
+_Avoid_: Notification, alert
+
+**Push**:
+Delivery of a Reminder to a Recipient's Devices outside Telegram.
+_Avoid_: Notification, web push, alert
 
 **Recipient**:
 A Member a Reminder is delivered to; by default a Task's Assignees, or its author when it has none.

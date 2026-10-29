@@ -56,6 +56,8 @@ type HttpClientOptions = {
   now?: () => number;
   // Screens drawn from the device cache start loading before sign-in answers.
   holdUntilSignedIn?: boolean;
+  // The Installed App signs in again with its Device once, on a 401, before the session is lost.
+  reauthenticate?: () => Promise<string | undefined>;
 };
 
 type RequestOptions<Schema extends z.ZodType> = {
@@ -154,30 +156,88 @@ function renewOnReturn({ page, session, request }: Renewal): void {
   );
 }
 
+type Transport = {
+  fetch: Fetch;
+  baseUrl: string;
+  timeoutMs: number;
+  session: ReturnType<typeof reatomSessionToken>;
+};
+
+async function send(
+  { fetch, baseUrl, timeoutMs, session }: Transport,
+  {
+    path,
+    options: { method = "GET", body, withoutSession },
+  }: { path: string; options: Omit<RequestOptions<z.ZodType>, "schema"> },
+): Promise<Response> {
+  const signingIn = withoutSession === true ? undefined : session.signingIn();
+
+  if (signingIn !== undefined) {
+    await wrap(signingIn);
+  }
+
+  return wrap(
+    fetchUntilAborted(fetch, {
+      url: new URL(path, baseUrl),
+      init: {
+        method,
+        headers: headersFor(body, session.token()),
+        body: body === undefined || isRaw(body) ? body : JSON.stringify(body),
+      },
+      timeoutMs,
+    }),
+  );
+}
+
+// A session request refused with 401 gets one more try with a token signed in again.
+async function sendOrRetry(
+  transport: Transport,
+  {
+    path,
+    options,
+    reauthenticate,
+  }: {
+    path: string;
+    options: RequestOptions<z.ZodType>;
+    reauthenticate: HttpClientOptions["reauthenticate"];
+  },
+): Promise<Response> {
+  const response = await wrap(send(transport, { path, options }));
+
+  if (
+    response.status !== unauthorizedStatus ||
+    options.withoutSession === true ||
+    reauthenticate === undefined
+  ) {
+    return response;
+  }
+
+  const token = await wrap(reauthenticate());
+
+  if (token === undefined) {
+    return response;
+  }
+
+  transport.session.token.set(token);
+
+  return wrap(send(transport, { path, options }));
+}
+
 export function createHttpClient(options: HttpClientOptions) {
   const { baseUrl, fetch, timeoutMs = defaultTimeoutMs, page, now = Date.now } = options;
   const session = reatomSessionToken({ now, isHeld: options.holdUntilSignedIn === true });
   const isSessionLost = reatomBoolean(false, "httpClient.isSessionLost");
+  const transport = { fetch, baseUrl, timeoutMs, session };
 
   async function request<Schema extends z.ZodType>(
     path: string,
-    { schema, method = "GET", body, withoutSession }: RequestOptions<Schema>,
+    requestOptions: RequestOptions<Schema>,
   ): Promise<z.infer<Schema>> {
-    const signingIn = withoutSession === true ? undefined : session.signingIn();
-
-    if (signingIn !== undefined) {
-      await wrap(signingIn);
-    }
-
     const response = await wrap(
-      fetchUntilAborted(fetch, {
-        url: new URL(path, baseUrl),
-        init: {
-          method,
-          headers: headersFor(body, session.token()),
-          body: body === undefined || isRaw(body) ? body : JSON.stringify(body),
-        },
-        timeoutMs,
+      sendOrRetry(transport, {
+        path,
+        options: requestOptions,
+        reauthenticate: options.reauthenticate,
       }),
     );
 
@@ -189,7 +249,7 @@ export function createHttpClient(options: HttpClientOptions) {
       throw await wrap(httpErrorOf(response));
     }
 
-    return schema.parse(await wrap(response.json()));
+    return requestOptions.schema.parse(await wrap(response.json()));
   }
 
   if (page !== undefined) {

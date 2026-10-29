@@ -1,7 +1,7 @@
 import { effect, noop } from "@reatom/core";
 
+import type { BottomButtonState } from "./model/telegram.model.ts";
 import type { ClosingConfirmation, Fullscreen, Haptics, HomeScreen } from "./telegram.lib.ts";
-import type { BottomButtonState } from "./telegram.model.ts";
 import type { DeviceStorage, HomeScreenStatus } from "./telegram.types.ts";
 
 // Telegram answers storage calls later, never inside the call.

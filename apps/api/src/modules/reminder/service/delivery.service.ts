@@ -1,4 +1,7 @@
+import { encodeDeepLink } from "@family-hub/contract";
+
 import { httpStatus } from "@/common/errors.lib.ts";
+import type { Membership } from "@/modules/auth";
 import { BotApiError } from "@/modules/telegram";
 
 import { latenessLimitMs } from "../reminder.lib.ts";
@@ -13,23 +16,20 @@ type Sent = { chatId: number; messageId: number };
 
 type Delivery =
   | { status: "sent"; sent: Sent }
+  | { status: "pushed" }
   | { status: "skipped" }
   | { status: "departed" }
   | { status: "rate-limited" };
 
-type Sending = { row: DispatchRow; source: Source; telegramId: number; timeZone: string };
+type Sending = { row: DispatchRow; source: Source; recipient: Membership; text: string };
 
-async function send(
+async function sendToBot(
   { bot, memberships, clock }: ReminderDependencies,
-  { row, source, telegramId, timeZone }: Sending,
+  { row, source, recipient, text }: Sending,
 ): Promise<Delivery> {
-  const occurrence = row.occurrence ?? "";
-  const text =
-    source.compose === undefined
-      ? `${source.emoji} ${source.title(occurrence, timeZone)}`
-      : await source.compose(occurrence, timeZone);
+  const telegramId = recipient.member.telegramId;
 
-  if (text === undefined) {
+  if (!recipient.member.canMessage) {
     return { status: "skipped" };
   }
 
@@ -37,7 +37,7 @@ async function send(
     const message = await bot.call("sendMessage", {
       chat_id: telegramId,
       text,
-      reply_markup: source.buttons(row.id, occurrence),
+      reply_markup: source.buttons(row.id, row.occurrence ?? ""),
     });
 
     return { status: "sent", sent: { chatId: telegramId, messageId: message.message_id } };
@@ -60,6 +60,75 @@ async function send(
   }
 }
 
+// A Push that fails never holds back the row, which the bot may already have delivered.
+async function pushToDevices(
+  { push }: ReminderDependencies,
+  { source, recipient, text }: Sending,
+): Promise<number> {
+  try {
+    return await push.sendTo(recipient.member.id, {
+      text,
+      ...(source.deepLink === undefined ? {} : { startParam: encodeDeepLink(source.deepLink) }),
+    });
+  } catch (error) {
+    console.error("Push failed", { memberId: recipient.member.id, error });
+
+    return 0;
+  }
+}
+
+// Under «both» a bot that fails outright still lets the Push through; the row is retried only
+// when nothing reached the Member.
+async function sendToBotThenPush(
+  dependencies: ReminderDependencies,
+  sending: Sending,
+): Promise<Delivery> {
+  let delivery: Delivery;
+
+  try {
+    delivery = await sendToBot(dependencies, sending);
+  } catch (error) {
+    if ((await pushToDevices(dependencies, sending)) > 0) {
+      return { status: "pushed" };
+    }
+
+    throw error;
+  }
+
+  if (delivery.status === "rate-limited") {
+    return delivery;
+  }
+
+  const pushed = await pushToDevices(dependencies, sending);
+
+  return delivery.status === "skipped" && pushed > 0 ? { status: "pushed" } : delivery;
+}
+
+// The bot goes first, so a 429 releases the row before anything was pushed twice; under «push»
+// alone the bot stands in when no Device took the Push.
+async function send(dependencies: ReminderDependencies, sending: Sending): Promise<Delivery> {
+  const channel = sending.recipient.member.reminderChannel;
+
+  if (channel === "push") {
+    return (await pushToDevices(dependencies, sending)) > 0
+      ? { status: "pushed" }
+      : sendToBot(dependencies, sending);
+  }
+
+  return channel === "both"
+    ? sendToBotThenPush(dependencies, sending)
+    : sendToBot(dependencies, sending);
+}
+
+async function textOf(
+  source: Source,
+  { occurrence, timeZone }: { occurrence: string; timeZone: string },
+) {
+  return source.compose === undefined
+    ? `${source.emoji} ${source.title(occurrence, timeZone)}`
+    : source.compose(occurrence, timeZone);
+}
+
 // A Reminder more than 12 hours late moves on without a stale message.
 async function attempt(
   dependencies: ReminderDependencies,
@@ -77,11 +146,15 @@ async function attempt(
     return { status: "departed" };
   }
 
-  if ((isLate && source.isSkippedWhenLate) || !recipient.member.canMessage) {
+  if (isLate && source.isSkippedWhenLate) {
     return { status: "skipped" };
   }
 
-  return send(dependencies, { row, source, telegramId: recipient.member.telegramId, timeZone });
+  const text = await textOf(source, { occurrence: row.occurrence ?? "", timeZone });
+
+  return text === undefined
+    ? { status: "skipped" }
+    : send(dependencies, { row, source, recipient, text });
 }
 
 // Sent or not, the row moves on to the next Occurrence; the message it sent stays answerable.

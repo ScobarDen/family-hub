@@ -11,6 +11,7 @@ import {
 } from "@/modules/album";
 import {
   createAuthService,
+  createDeviceRepo,
   createMembershipRepo,
   sessionRoute,
   type MembershipRepo,
@@ -63,6 +64,14 @@ import {
   photoStorageRoute,
 } from "@/modules/photo-storage";
 import {
+  createPushRepo,
+  createPushService,
+  pushRoute,
+  type PushService,
+  type PushTransport,
+  type Vapid,
+} from "@/modules/push";
+import {
   createRecipeRepo,
   createRecipeService,
   createRecipeTile,
@@ -93,6 +102,7 @@ import { webhookRoute } from "./webhook.route.ts";
 type WorkerDependencies = {
   clock: Clock;
   createBotApi: (token: string) => BotApi;
+  createPushTransport: (vapid: Vapid) => PushTransport;
 };
 
 export type Worker = Required<Pick<ExportedHandler<Env>, "fetch" | "scheduled">>;
@@ -120,7 +130,13 @@ function allowedOrigin(origin: string, env: Env): string | null {
   return env.ALLOWED_ORIGINS.split(",").includes(origin) ? origin : null;
 }
 
-type Shared = { memberships: MembershipRepo; bot: BotApi; appLinks: MiniAppLinks; clock: Clock };
+type Shared = {
+  memberships: MembershipRepo;
+  bot: BotApi;
+  appLinks: MiniAppLinks;
+  clock: Clock;
+  push: PushService;
+};
 
 type Records = Shared & { links: PhotoLinks };
 
@@ -316,11 +332,13 @@ function commandServiceOf(
 }
 
 function authServiceOf(
+  db: Db,
   env: Env,
   { memberships, clock }: { memberships: MembershipRepo; clock: Clock },
 ) {
   return createAuthService({
     memberships,
+    devices: createDeviceRepo(db),
     clock,
     botToken: env.BOT_TOKEN,
     jwtSecret: env.JWT_SECRET,
@@ -346,11 +364,34 @@ function membershipServicesOf(
   };
 }
 
-function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): AppServices {
+function pushServiceOf(
+  db: Db,
+  env: Env,
+  { clock, createPushTransport }: Pick<WorkerDependencies, "clock" | "createPushTransport">,
+) {
+  const vapid = {
+    publicKey: env.VAPID_PUBLIC_KEY,
+    privateKey: env.VAPID_PRIVATE_KEY,
+    subject: env.VAPID_SUBJECT,
+  };
+  const devices = createDeviceRepo(db);
+
+  return createPushService({
+    subscriptions: createPushRepo(db),
+    devices: { isLive: devices.isLive },
+    transport: createPushTransport(vapid),
+    clock,
+    publicKey: vapid.publicKey,
+  });
+}
+
+function servicesFor(env: Env, dependencies: WorkerDependencies): AppServices {
+  const { clock, createBotApi } = dependencies;
   const db = createDb(env.DB);
   const bot = createBotApi(env.BOT_TOKEN);
   const memberships = createMembershipRepo(db);
-  const shared = { memberships, bot, appLinks: createMiniAppLinks(bot), clock };
+  const push = pushServiceOf(db, env, dependencies);
+  const shared = { memberships, bot, appLinks: createMiniAppLinks(bot), clock, push };
   const records = familyRecordServices(db, {
     ...shared,
     links: createPhotoLinks({ secret: env.JWT_SECRET, clock }),
@@ -366,7 +407,8 @@ function servicesFor(env: Env, { clock, createBotApi }: WorkerDependencies): App
 
   return {
     db,
-    auth: authServiceOf(env, { memberships, clock }),
+    auth: authServiceOf(db, env, { memberships, clock }),
+    push,
     ...records,
     ...membershipServicesOf(db, { shared, familyRequests, schedule: records.reminders }),
     familyRequests,
@@ -399,6 +441,7 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", liveRoute)
     .route("/", webhookRoute)
     .route("/", sessionRoute)
+    .route("/", pushRoute)
     .route("/", familyRequestRoute)
     .route("/", inviteRoute)
     .route("/", memberRoute)

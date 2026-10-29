@@ -13,6 +13,7 @@ const viewer: Membership = {
     telegramId: 111,
     canMessage: true,
     timeZone: "Europe/Moscow",
+    reminderChannel: "both",
   },
   family: { id: "family-1", name: "Гущины" },
   isFamilyOwner: true,

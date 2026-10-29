@@ -17,8 +17,8 @@ export const HomeScreenSetting = reatomComponent(({ model }: HomeScreenSettingPr
   return (
     <SectionItem
       icon={Smartphone}
-      title="Значок на экране «Домой»"
-      subtitle={entry.isAdded ? "Уже добавлен" : "Открывайте как приложение"}
+      title="Ярлык Telegram на экране «Домой»"
+      subtitle={entry.isAdded ? "Уже добавлен" : "Открывает Family Hub внутри Telegram"}
       after={
         !entry.isAdded && (
           <Button size="sm" onClick={model.add}>

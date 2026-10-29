@@ -1,8 +1,8 @@
 import { context, noop } from "@reatom/core";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
+import type { BottomButton, TelegramButton, TelegramWebApp } from "../telegram.types.ts";
 import { reatomTelegram } from "./telegram.model.ts";
-import type { BottomButton, TelegramButton, TelegramWebApp } from "./telegram.types.ts";
 
 const button: TelegramButton = { show: noop, hide: noop, onClick: noop, offClick: noop };
 const bottomButton: BottomButton = {
@@ -27,6 +27,7 @@ function fakeWebApp({ version = "9.0" } = {}) {
     requestWriteAccess: noop,
     shareMessage: noop,
     openTelegramLink: noop,
+    openLink: noop,
     addToHomeScreen: () => calls.push("addToHomeScreen"),
     checkHomeScreenStatus: (callback) => callback?.("missed"),
     requestFullscreen: () => calls.push("requestFullscreen"),

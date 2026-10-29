@@ -26,6 +26,7 @@ export async function birthdaySources(
       emoji: "🎂",
       title: () => `Сегодня день рождения у ${pet.name}!`,
       buttons: (dispatchId) => reminderButtons(dispatchId),
+      deepLink: { kind: "pet", id: pet.id },
       closesForEveryone: true,
       snoozeMs,
       isSkippedWhenLate: true,

@@ -7,6 +7,7 @@ import { deviceTimeZone, today as todayIn } from "@/common/format-date.lib.ts";
 import { createHttpClient } from "@/common/http-client.api.ts";
 import { createVoiceRecorder } from "@/common/voice-recorder.lib.ts";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
+import { reatomBrowserPlatform } from "@/modules/browser-platform";
 import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
 import { reatomDeviceCache } from "@/modules/device-cache";
 import { createFamilyApi, reatomFamily, reatomFamilyMembers } from "@/modules/family";
@@ -18,9 +19,13 @@ import { createJoinFamilyApi, reatomJoinFamily } from "@/modules/join-family";
 import { openLiveSocket, reatomLiveUpdates } from "@/modules/live-updates";
 import {
   createMemberSettingsApi,
+  reatomDevices,
   reatomDigest,
   reatomHomeScreen,
+  reatomInstallEntry,
   reatomNotifications,
+  reatomPush,
+  reatomReminderChannel,
   reatomTimeZone,
 } from "@/modules/member-settings";
 import { createCareApi, createPetsApi, reatomPets, reatomPetTab } from "@/modules/pets";
@@ -36,7 +41,7 @@ import {
   reatomTabBarModules,
 } from "@/modules/tab-bar";
 import { createTasksApi, reatomTasksScreen } from "@/modules/tasks";
-import { reatomTelegram } from "@/modules/telegram";
+import { BrowserBackButton, reatomBrowserWebApp, reatomTelegram } from "@/modules/telegram";
 import { createTodayApi, reatomToday } from "@/modules/today";
 import { slideScreens } from "@/modules/ui";
 
@@ -51,20 +56,28 @@ if (!root) {
   throw new Error("#root is missing from index.html");
 }
 
+// Outside Telegram this is the Installed App: the browser serves the Telegram wrapper's interface.
+const browser = window.Telegram.WebApp.initData === "" ? reatomBrowserWebApp(window) : undefined;
+const platform = browser && reatomBrowserPlatform(window);
+
 // Built first: it reads the launch params before the first navigation rewrites the URL.
-const telegram = reatomTelegram(window.Telegram.WebApp);
+const telegram = reatomTelegram(browser?.webApp ?? window.Telegram.WebApp);
 const httpClient = createHttpClient({
   baseUrl: import.meta.env.VITE_API_URL ?? window.location.origin,
   fetch: async (input, init) => fetch(input, init),
   page: document,
   holdUntilSignedIn: true,
+  reauthenticate: browser && (async () => sessionApi.reauthenticate()),
 });
 const deviceCache = reatomDeviceCache(telegram.deviceStorage);
+const sessionApi = createSessionApi(httpClient, window.localStorage);
 const session = reatomSession({
-  api: createSessionApi(httpClient),
+  api: sessionApi,
   telegram,
   isJoiningFamily: () => joinFamily.isOpen(),
   deviceCache,
+  botUsername: import.meta.env.VITE_BOT_USERNAME,
+  unsubscribePush: platform?.unsubscribePush,
 });
 const joinFamily = reatomJoinFamily({
   api: createJoinFamilyApi(httpClient),
@@ -149,6 +162,7 @@ const albums = reatomAlbumsScreen({
   onSetUpPhotos: () => {
     navigation.openProfile();
   },
+  sharePhotoFile: platform?.shareFile,
   slide: slideScreens,
 });
 const recipes = reatomRecipesScreen({
@@ -367,7 +381,31 @@ const home = {
     saved: () => session.member()?.settings.digest,
     haptics: telegram.haptics,
   }),
-  homeScreen: reatomHomeScreen({ telegram, deviceCache }),
+  homeScreen: reatomHomeScreen({ telegram }),
+  installEntry: reatomInstallEntry({
+    telegram,
+    installUrl: new URL(`${import.meta.env.BASE_URL}install.html`, window.location.origin).href,
+  }),
+  devices: reatomDevices({
+    api: memberSettingsApi,
+    currentDeviceId: session.currentDeviceId,
+    telegram,
+    viewer,
+    onSignedOut: session.signOut,
+  }),
+  reminderChannel: reatomReminderChannel({
+    api: memberSettingsApi,
+    saved: () => session.member()?.settings.reminderChannel,
+    haptics: telegram.haptics,
+  }),
+  push:
+    platform &&
+    reatomPush({
+      api: memberSettingsApi,
+      platform,
+      deviceId: session.currentDeviceId,
+      haptics: telegram.haptics,
+    }),
   family: reatomFamily({
     api: familyApi,
     members,
@@ -396,7 +434,8 @@ telegram.followColorScheme(document.documentElement);
 telegram.followPlatform(document.documentElement);
 navigation.start();
 commandSheet.start();
-home.homeScreen.countLaunch().catch(noop);
+home.homeScreen.load().catch(noop);
+home.push?.load().catch(noop);
 opener.launch();
 
 timeZone.keepFollowingDevice();
@@ -405,8 +444,14 @@ prefetch().catch(noop);
 joinFamily.load();
 live.start();
 
+// The service worker only shows Push and opens the app from one; it caches nothing.
+if (browser !== undefined) {
+  navigator.serviceWorker?.register(`${import.meta.env.BASE_URL}sw.js`).catch(noop);
+}
+
 createRoot(root).render(
   <StrictMode>
+    {browser !== undefined && <BrowserBackButton model={browser.back} />}
     <App {...home} familyRequest={familyRequest} joinFamily={joinFamily} />
   </StrictMode>,
 );

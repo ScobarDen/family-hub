@@ -5,6 +5,7 @@ import { reatomNotifications } from "./notifications.vm.ts";
 
 function startNotifications({ canMessage = false, isAllowed = true } = {}) {
   const telegram = {
+    isInTelegram: true,
     requests: 0,
     async requestWriteAccess() {
       telegram.requests += 1;

@@ -51,11 +51,23 @@ export const digestSettings = z.object({
 
 export type DigestSettings = z.infer<typeof digestSettings>;
 
+// Where a Member's Reminders go: the bot, Push to their Devices, or both.
+export const reminderChannel = z.enum(["telegram", "push", "both"]);
+
+export type ReminderChannel = z.infer<typeof reminderChannel>;
+
+export const defaultReminderChannel: ReminderChannel = "both";
+
+export const reminderChannelSettings = z.object({ channel: reminderChannel });
+
+export type ReminderChannelSettings = z.infer<typeof reminderChannelSettings>;
+
 export const memberSettings = z.object({
   tabBar,
   timeZone: timeZoneSettings.nullable(),
   canMessage: z.boolean(),
   digest: digestSettings,
+  reminderChannel,
 });
 
 export type MemberSettings = z.infer<typeof memberSettings>;

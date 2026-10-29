@@ -22,6 +22,7 @@ import type {
   PetSex,
   PetSpecies,
   Recurrence,
+  ReminderChannel,
   ReminderOffset,
   Visibility,
 } from "@family-hub/contract";
@@ -40,9 +41,43 @@ export const members = sqliteTable("members", {
   canMessage: integer("can_message", { mode: "boolean" }).notNull().default(true),
   isDigestEnabled: integer("is_digest_enabled", { mode: "boolean" }).notNull().default(true),
   digestTime: text("digest_time").notNull().default("09:00"),
+  reminderChannel: text("reminder_channel").$type<ReminderChannel>().notNull().default("both"),
   createdAt: integer("created_at").notNull(),
   updatedAt: integer("updated_at").notNull(),
 });
+
+// An Installed App signed in with Telegram Login; it belongs to a Member, not to a Family.
+export const devices = sqliteTable(
+  "devices",
+  {
+    id: text("id").primaryKey(),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id),
+    credentialHash: text("credential_hash").notNull().unique(),
+    label: text("label").notNull(),
+    createdAt: integer("created_at").notNull(),
+    lastUsedAt: integer("last_used_at").notNull(),
+  },
+  (table) => [index("devices_member_id_idx").on(table.memberId)],
+);
+
+export const pushSubscriptions = sqliteTable(
+  "push_subscriptions",
+  {
+    deviceId: text("device_id")
+      .primaryKey()
+      .references(() => devices.id, { onDelete: "cascade" }),
+    memberId: text("member_id")
+      .notNull()
+      .references(() => members.id),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (table) => [index("push_subscriptions_member_id_idx").on(table.memberId)],
+);
 
 export const families = sqliteTable("families", {
   id: text("id").primaryKey(),

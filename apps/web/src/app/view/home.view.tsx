@@ -16,9 +16,13 @@ import { Goals, type GoalsScreenModel } from "@/modules/goals";
 import type { InvitesModel } from "@/modules/invites";
 import {
   NotificationsBanner,
+  type DevicesModel,
   type DigestModel,
   type HomeScreenModel,
+  type InstallEntryModel,
   type NotificationsModel,
+  type PushModel,
+  type ReminderChannelModel,
   type TimeZoneModel,
 } from "@/modules/member-settings";
 import { PetTab, type PetTabModel } from "@/modules/pets";
@@ -51,6 +55,11 @@ export type HomeProps = {
   timeZone: TimeZoneModel;
   digest: DigestModel;
   homeScreen: HomeScreenModel;
+  installEntry: InstallEntryModel;
+  devices: DevicesModel;
+  reminderChannel: ReminderChannelModel;
+  // Only the Installed App can take Push.
+  push: PushModel | undefined;
   family: FamilyModel;
   invites: InvitesModel;
   pet: PetTabModel;
@@ -163,7 +172,7 @@ export const Home = reatomComponent((props: HomeProps) => {
   }, [screenKey]);
 
   return (
-    <main className="min-h-svh overflow-x-clip bg-secondary pt-safe-top pb-safe-bottom has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]">
+    <main className="min-h-svh overflow-x-clip bg-secondary pt-safe-top pb-safe-bottom [[data-back-bar]+&]:pt-0 has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]">
       {screenOf(props)}
     </main>
   );

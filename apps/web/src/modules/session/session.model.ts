@@ -4,6 +4,7 @@ import {
   currentMember,
   parseDeepLink,
   type CurrentMember,
+  telegramWidgetLogin,
   type FamilyRequestStatus,
 } from "@family-hub/contract";
 
@@ -12,7 +13,8 @@ import type { DeviceCache } from "@/modules/device-cache";
 import type { SessionApi } from "./session.api.ts";
 
 export type SignInOutcome =
-  | { status: "outside-telegram" }
+  | { status: "signed-out" }
+  | { status: "not-member" }
   | { status: "stranger"; familyRequest: FamilyRequestStatus }
   | { status: "member"; member: CurrentMember };
 
@@ -52,22 +54,20 @@ export function reatomShell({
 
 type SignInDependencies = {
   api: SessionApi;
-  initData: string;
+  telegram: { initData: string; isInTelegram: boolean };
   deviceCache: SessionCache;
   cachedMember: CachedMember;
 };
 
+type Answer = Awaited<ReturnType<SessionApi["signIn"] | SessionApi["signInWithDevice"]>>;
+
 // The token is handed out only once the cache belongs to this Member, so data loaded right
 // after sign-in is never wiped together with another Family's.
-export function reatomSignIn({ api, initData, deviceCache, cachedMember }: SignInDependencies) {
-  return action(async (): Promise<SignInOutcome> => {
-    if (initData === "") {
-      return { status: "outside-telegram" };
-    }
+function reatomAnsweredSignIn({ api, deviceCache, cachedMember }: SignInDependencies) {
+  return action(async (answer: () => Promise<Answer>): Promise<SignInOutcome> => {
+    const outcome = await wrap(answer());
 
-    const outcome = await wrap(api.signIn(initData));
-
-    if (outcome.status === "stranger") {
+    if (outcome.status !== "member") {
       await wrap(deviceCache.clear());
 
       return outcome;
@@ -81,4 +81,25 @@ export function reatomSignIn({ api, initData, deviceCache, cachedMember }: SignI
 
     return { status: "member", member: outcome.member };
   }, "session.signIn").extend(withAsyncData());
+}
+
+// Outside Telegram there is no initData: the Installed App signs in with its Device, or with a
+// Telegram Login that creates one.
+export function reatomSignIn(dependencies: SignInDependencies) {
+  const { api, telegram } = dependencies;
+  const signIn = reatomAnsweredSignIn(dependencies);
+
+  return {
+    signIn,
+    signInAtLaunch: async () =>
+      signIn(async () =>
+        telegram.isInTelegram ? api.signIn(telegram.initData) : api.signInWithDevice(),
+      ),
+    // What the Telegram Login widget hands the page; anything else is ignored.
+    signInWithLogin: async (login: unknown) => {
+      const parsed = telegramWidgetLogin.safeParse(login);
+
+      return parsed.success ? signIn(async () => api.signInWithLogin(parsed.data)) : undefined;
+    },
+  };
 }

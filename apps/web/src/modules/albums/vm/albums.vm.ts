@@ -77,6 +77,8 @@ type AlbumsDependencies = LiveVersion & {
   // The Family Owner can connect the photo channel, so a closed upload leads them to it.
   canSetUpPhotos: () => boolean;
   onSetUpPhotos: () => void;
+  // Outside Telegram a photo goes through the system share sheet instead of a bot message.
+  sharePhotoFile?: (url: string) => Promise<void>;
   slide?: Slide;
 };
 
@@ -166,7 +168,7 @@ function reatomRemoval(
 
 // «Все фото» belong to no one Album, and a shared photo opens its Album.
 function photoSharing(
-  { api, telegram }: AlbumsDependencies,
+  { api, telegram, sharePhotoFile }: AlbumsDependencies,
   { data, navigation }: { data: AlbumsData; navigation: Navigation },
 ) {
   function sharedAlbumId() {
@@ -174,11 +176,15 @@ function photoSharing(
   }
 
   return {
-    isAvailable: () => telegram.canShareMessage && sharedAlbumId() !== undefined,
+    isAvailable: () =>
+      (telegram.canShareMessage || sharePhotoFile !== undefined) && sharedAlbumId() !== undefined,
     async share(photoId: string) {
       const albumId = sharedAlbumId();
+      const photo = data.opened.data()?.photos.find(({ id }) => id === photoId);
 
-      if (albumId !== undefined) {
+      if (!telegram.canShareMessage && sharePhotoFile !== undefined && photo !== undefined) {
+        await wrap(sharePhotoFile(photo.urls.full));
+      } else if (albumId !== undefined) {
         const { preparedMessageId } = await wrap(api.sharePhoto(albumId, photoId));
 
         await wrap(telegram.shareMessage(preparedMessageId));
