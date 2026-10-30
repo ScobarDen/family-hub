@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { Chip, ChipGroup, FieldError } from "@/modules/ui";
+import { Chip, ChipGroup, FieldError, LiveRegion } from "@/modules/ui";
 
 import type { ReminderChannelModel } from "../vm/reminder-channel.vm.ts";
 
@@ -25,6 +25,7 @@ export const ReminderChannelSetting = reatomComponent(({ model }: ReminderChanne
           </Chip>
         ))}
       </ChipGroup>
+      <LiveRegion className="sr-only">{model.announcement()}</LiveRegion>
       <FieldError>{model.failure()}</FieldError>
     </div>
   );

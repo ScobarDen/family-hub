@@ -446,10 +446,13 @@ describe("a Push", () => {
 
     const response = await pressPush(worker, { token: stale, action: "snooze" });
 
+    await tickAt(worker, "2026-10-10T06:00:00Z");
+
     expect(await response.json()).toEqual({
       code: "PRESS_REFUSED",
       message: "Это напоминание уже прошло",
     });
+    expect(botTexts(worker)).toEqual(["📌 Полить цветы · 9 октября"]);
   });
 
   test("«Готово» pressed twice on a single Task says it is already done", async () => {
@@ -485,7 +488,9 @@ describe("a Push", () => {
     });
     await tickAt(worker, "2026-10-02T06:00:00Z");
 
-    const birthday = worker.push.pushes().find(({ message }) => message.title.startsWith("🎂"));
+    const birthday = worker.push
+      .pushes()
+      .find(({ message }) => message.title.startsWith("День рождения"));
     const token = birthday?.message.pressToken ?? "";
 
     await pressPush(worker, { token, action: "done" });
@@ -495,7 +500,7 @@ describe("a Push", () => {
 
     expect(await snoozed.json()).toEqual({ code: "PRESS_REFUSED", message: "Уже сделано" });
     expect(
-      worker.push.pushes().filter(({ message }) => message.title.startsWith("🎂")),
+      worker.push.pushes().filter(({ message }) => message.title.startsWith("День рождения")),
     ).toHaveLength(1);
   });
 
@@ -537,7 +542,7 @@ describe("a Push", () => {
     await remindTomorrow(worker, "Вынести мусор");
     await tickAt(worker, "2026-10-02T06:00:00Z");
 
-    const digest = worker.push.pushes().find(({ message }) => message.title.startsWith("☀️"));
+    const digest = worker.push.pushes().find(({ message }) => message.title.startsWith("Сводка"));
 
     expect(digest?.message.pressToken).toBeUndefined();
     expect(digest?.message.body).toContain("Вынести мусор");
@@ -545,6 +550,22 @@ describe("a Push", () => {
 });
 
 describe("a replaced subscription", () => {
+  test("takes over its new endpoint from another Device that held it", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await subscribe(worker, laptop);
+    await worker.request("/api/push/rotation", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ oldEndpoint: phone, subscription: subscriptionOf(laptop) }),
+    });
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    expect(taskPushes(worker).map(({ endpoint }) => endpoint)).toEqual([laptop]);
+  });
+
   test("is saved by its old endpoint without a session", async () => {
     const worker = await startWithFamily();
 
@@ -599,38 +620,43 @@ describe("the subscription a Device holds", () => {
     expect(taskPushes(worker)).toHaveLength(1);
   });
 
-  test("is told by its endpoint, or null once the push service called it gone", async () => {
+  test("is told by its endpoint", async () => {
     const worker = await startWithFamily();
     const { token, device } = await subscribe(worker, phone);
 
-    async function endpointOf() {
-      const response = await worker.request(`/api/devices/${device.id}/push`, {
-        headers: { authorization: `Bearer ${token}` },
-      });
+    const response = await worker.request(`/api/devices/${device.id}/push`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
 
-      return response.json();
-    }
+    expect(await response.json()).toEqual({ endpoint: phone });
+  });
 
-    const before = await endpointOf();
+  test("is told as none once the push service called it gone", async () => {
+    const worker = await startWithFamily();
+    const { token, device } = await subscribe(worker, phone);
 
     worker.push.answer(phone, "gone");
     await remindTomorrow(worker, "Вынести мусор");
     await tickAt(worker, "2026-10-02T06:00:00Z");
+    const response = await worker.request(`/api/devices/${device.id}/push`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
 
-    expect(before).toEqual({ endpoint: phone });
-    expect(await endpointOf()).toEqual({ endpoint: null });
+    expect(await response.json()).toEqual({ endpoint: null });
   });
 
-  test("goes with its Device once the Device is unused for 90 days", async () => {
+  test("goes with its Device once the Device is unused for 90 days, while a used one stays", async () => {
     const worker = await startWithFamily();
 
     await subscribe(worker, phone);
+    worker.clock.set("2026-11-15T09:00:00Z");
+    await subscribe(worker, laptop);
     await tickAt(worker, "2026-12-31T03:00:00Z");
 
-    const left = await worker.env.DB.prepare(
-      "SELECT count(*) AS count FROM push_subscriptions",
-    ).first<{ count: number }>();
+    const { results } = await worker.env.DB.prepare("SELECT endpoint FROM push_subscriptions").all<{
+      endpoint: string;
+    }>();
 
-    expect(left?.count).toBe(0);
+    expect(results.map(({ endpoint }) => endpoint)).toEqual([laptop]);
   });
 });

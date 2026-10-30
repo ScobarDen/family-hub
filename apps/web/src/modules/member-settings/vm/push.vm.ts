@@ -26,9 +26,9 @@ const hints: Partial<Record<PushState, string>> = {
   off: "Включите, чтобы напоминания приходили без Telegram",
 };
 
-// Samsung and Xiaomi put Chrome to sleep, so a Push can arrive late until it is exempted.
+// Samsung and Xiaomi put the browser to sleep, so a Push can arrive late until it is exempted.
 const androidOnHint =
-  "Напоминания приходят на это устройство. Если опаздывают, уберите Chrome из экономии батареи";
+  "Напоминания приходят на это устройство. Если опаздывают, уберите браузер из экономии батареи в настройках телефона";
 
 function stateOf(
   platform: BrowserPlatform,
@@ -96,10 +96,11 @@ async function mend(
 }
 
 // The switch shows what the server keeps, which the push service may have dropped (ADR 0016).
-// Offline, the server is taken to agree with the browser.
+// Offline, the server is taken to agree with the browser. A subscription held without permission
+// rings nothing, so it counts as none.
 async function reconcile(pushSwitch: PushSwitch, device: string) {
-  const { api, platform, isOn } = pushSwitch;
-  const held = await wrap(platform.pushSubscription());
+  const { api, platform, permission, isOn } = pushSwitch;
+  const held = permission() === "granted" ? await wrap(platform.pushSubscription()) : undefined;
   const { endpoint } = await wrap(
     api.pushEndpoint(device).catch(() => ({ endpoint: held?.endpoint ?? null })),
   );
@@ -110,11 +111,11 @@ async function reconcile(pushSwitch: PushSwitch, device: string) {
     return;
   }
 
-  await wrap(
-    mend(pushSwitch, { device, held }).catch(() => {
-      isOn.set(false);
-    }),
-  );
+  try {
+    await wrap(mend(pushSwitch, { device, held }));
+  } catch {
+    isOn.set(false);
+  }
 }
 
 // The server forgets the subscription first, so a failure leaves Push on as it was.
@@ -139,11 +140,8 @@ async function load(pushSwitch: PushSwitch, device: string | undefined) {
   await wrap(reconcile(pushSwitch, device));
 }
 
-export function reatomPush({ api, platform, deviceId, haptics }: PushDependencies) {
-  const permission = atom(platform.pushPermission(), "push.permission");
-  const isOn = atom(false, "push.isSubscribed");
-  const pushSwitch = { api, platform, permission, isOn };
-
+// The launch's reconciling and the Member's switch would overwrite each other, so one waits.
+function reatomPushActions(pushSwitch: PushSwitch, deviceId: () => string | undefined) {
   const switchPush = action(async (isWanted: boolean) => {
     const device = deviceId();
 
@@ -153,6 +151,21 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
 
     await wrap(isWanted ? turnOn(pushSwitch, device) : turnOff(pushSwitch, device));
   }, "push.switch").extend(withAsync());
+  const loadPush = action(async () => {
+    if (switchPush.ready()) {
+      await wrap(load(pushSwitch, deviceId()));
+    }
+  }, "push.load").extend(withAsync());
+
+  return { switchPush, loadPush };
+}
+
+export function reatomPush({ api, platform, deviceId, haptics }: PushDependencies) {
+  const permission = atom(platform.pushPermission(), "push.permission");
+  const isOn = atom(false, "push.isSubscribed");
+  const pushSwitch = { api, platform, permission, isOn };
+
+  const { switchPush, loadPush } = reatomPushActions(pushSwitch, deviceId);
   const detachedSwitch = detached(switchPush, "push.switchDetached");
   const state = computed(
     () => stateOf(platform, { permission: permission(), isOn: isOn() }),
@@ -167,16 +180,16 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
     ),
     canToggle: computed(() => ["on", "off", "denied"].includes(state()), "push.canToggle"),
     isOn: computed(() => state() === "on", "push.isOn"),
-    isSwitching: computed(() => !switchPush.ready(), "push.isSwitching"),
+    isSwitching: computed(() => !switchPush.ready() || !loadPush.ready(), "push.isSwitching"),
     failure: reatomFailure(switchPush, {
       message: "Не получилось переключить Push. Попробуйте ещё раз.",
       name: "push.failure",
       haptics,
     }),
 
-    load: action(async () => load(pushSwitch, deviceId()), "push.load"),
+    load: loadPush,
     toggle: action((isWanted: boolean) => {
-      if (switchPush.ready()) {
+      if (switchPush.ready() && loadPush.ready()) {
         detachedSwitch(isWanted);
       }
     }, "push.toggle"),

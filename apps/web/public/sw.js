@@ -65,7 +65,10 @@ async function openApp(url) {
   await open.navigate(url);
 }
 
-const notPressedText = "Не получилось отметить, откройте приложение";
+const notPressedTexts = {
+  done: "Не получилось отметить, откройте приложение",
+  snooze: "Не получилось отложить, откройте приложение",
+};
 const refusedStatus = 409;
 
 // Nothing when the press did what it says, or what the Worker refused it with, such as «Уже
@@ -86,9 +89,9 @@ async function refusalOf(token, action) {
 
     return response.status === refusedStatus && typeof message === "string"
       ? message
-      : notPressedText;
+      : notPressedTexts[action];
   } catch {
-    return notPressedText;
+    return notPressedTexts[action];
   }
 }
 

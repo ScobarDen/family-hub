@@ -20,7 +20,7 @@ type Options = {
   answer?: PushPermission;
   pushAvailability?: PushAvailability;
   // Requests to the subscription the server answers with 500.
-  failing?: "PUT" | "DELETE";
+  failing?: "GET" | "PUT" | "DELETE";
   // The endpoint the server keeps for this Device.
   saved?: string;
   isAndroid?: boolean;
@@ -203,12 +203,16 @@ describe("Push on this Device", () => {
   });
 
   test("subscribes again at launch when the browser lost the subscription the Member wanted", async () => {
-    const { model, browser } = startPush({ permission: "granted", saved: "https://old.test" });
+    const { model, browser, server } = startPush({
+      permission: "granted",
+      saved: "https://old.test",
+    });
 
     await model.load();
 
     expect(model.state()).toBe("on");
     expect(browser.isSubscribed()).toBe(true);
+    expect(server.saved()).toBe(fakePushSubscription.endpoint);
   });
 
   test("is off at launch and forgotten on the server once notifications are no longer allowed", async () => {
@@ -240,5 +244,44 @@ describe("Push on this Device", () => {
     await model.load();
 
     expect(model.hint()).toContain("экономии батареи");
+  });
+
+  test("trusts the browser at launch when the server cannot be reached", async () => {
+    const { model, browser } = startPush({ permission: "granted", failing: "GET" });
+
+    browser.subscribe();
+    await model.load();
+
+    expect(model.state()).toBe("on");
+  });
+
+  test("is forgotten on the server at launch once notifications are denied", async () => {
+    const { model, browser, server } = startPush({
+      permission: "denied",
+      saved: fakePushSubscription.endpoint,
+    });
+
+    browser.subscribe();
+    await model.load();
+
+    expect(model.state()).toBe("denied");
+    expect(server.saved()).toBeNull();
+  });
+
+  test("waits with the switch until the launch has read what the server keeps", async () => {
+    const { model, browser, requests } = startPush({
+      permission: "granted",
+      saved: fakePushSubscription.endpoint,
+    });
+
+    browser.subscribe();
+    const loading = model.load();
+
+    expect(model.isSwitching()).toBe(true);
+    model.toggle(false);
+    await loading;
+
+    expect(model.state()).toBe("on");
+    expect(requests).toEqual([]);
   });
 });

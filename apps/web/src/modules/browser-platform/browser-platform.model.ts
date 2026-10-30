@@ -138,7 +138,9 @@ function pushOf(window: Window) {
     async pushSubscription() {
       const subscription = hasPush ? await wrap(currentSubscription()) : null;
 
-      return subscription === null ? undefined : pushSubscription.parse(subscription.toJSON());
+      return subscription === null
+        ? undefined
+        : pushSubscription.safeParse(subscription.toJSON()).data;
     },
   };
 }

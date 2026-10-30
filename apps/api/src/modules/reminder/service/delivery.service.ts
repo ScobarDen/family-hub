@@ -147,7 +147,7 @@ function textOf(source: Source, composed: Composed): string {
 function pushTextOf(source: Source, composed: Composed): PushText {
   return (
     source.pushOf?.(composed.occurrence, composed.timeZone) ?? {
-      title: headlineOf(source, composed),
+      title: source.title(composed.occurrence, composed.timeZone),
       body: composed.body ?? "",
     }
   );
