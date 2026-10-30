@@ -23,11 +23,14 @@ type PushServiceDependencies = {
 };
 
 // The Reminder whose «Готово» and «Отложить» a Push carries, each Device with a token of its own.
-export type Press = Pick<PressClaims, "dispatchId" | "occurrence">;
+export type PressTarget = Pick<PressClaims, "dispatchId" | "occurrence">;
 
-type Sending = { row: SubscriptionRow; message: Omit<PushMessage, "pressToken">; press?: Press };
+type Sending = {
+  row: SubscriptionRow;
+  message: Omit<PushMessage, "pressToken">;
+  press?: PressTarget;
+};
 
-// A push service that fails is logged and counted out; it never stops the other Devices or the bot.
 async function payloadOf(
   { pressTokens }: PushServiceDependencies,
   { row, message, press }: Sending,
@@ -38,6 +41,7 @@ async function payloadOf(
   return JSON.stringify(pressToken === undefined ? message : { ...message, pressToken });
 }
 
+// A push service that fails is logged and counted out; it never stops the other Devices or the bot.
 async function isDeliveredTo(
   dependencies: PushServiceDependencies,
   sending: Sending,
@@ -84,7 +88,6 @@ async function subscribe(
   return "subscribed";
 }
 
-// A browser that replaced its subscription saves the new one by the endpoint it replaced.
 async function rotate(
   { subscriptions, clock }: PushServiceDependencies,
   { oldEndpoint, subscription }: PushRotation,

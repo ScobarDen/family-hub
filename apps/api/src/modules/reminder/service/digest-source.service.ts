@@ -94,6 +94,7 @@ async function digestSource(
       return content && digestBody(content);
     },
     closesForEveryone: false,
+    isPressable: false,
     snoozeMs,
     isSkippedWhenLate: true,
   };

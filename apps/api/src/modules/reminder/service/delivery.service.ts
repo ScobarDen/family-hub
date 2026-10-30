@@ -28,7 +28,7 @@ type Sending = {
   source: Source;
   recipient: Membership;
   text: string;
-  push: PushText;
+  pushText: PushText;
 };
 
 async function sendToBot(
@@ -68,30 +68,20 @@ async function sendToBot(
   }
 }
 
-// A Push carries «Готово» and «Отложить» only where the bot's message has them as callbacks.
-function hasPressButtons(source: Source, row: DispatchRow): boolean {
-  return source
-    .buttons(row.id, row.occurrence ?? "")
-    .inline_keyboard.flat()
-    .some((button) => "callback_data" in button);
-}
-
 // A Push that fails never holds back the row, which the bot may already have delivered. The row's
 // id tags it, so the Reminder coming again replaces its earlier Push.
 async function pushToDevices(
   { push }: ReminderDependencies,
-  { row, source, recipient, push: text }: Sending,
+  { row, source, recipient, pushText }: Sending,
 ): Promise<number> {
   try {
     return await push.sendTo(recipient.member.id, {
       message: {
-        ...text,
+        ...pushText,
         tag: row.id,
         ...(source.deepLink === undefined ? {} : { startParam: encodeDeepLink(source.deepLink) }),
       },
-      ...(hasPressButtons(source, row)
-        ? { press: { dispatchId: row.id, occurrence: row.occurrence } }
-        : {}),
+      ...(source.isPressable ? { press: { dispatchId: row.id, occurrence: row.occurrence } } : {}),
     });
   } catch (error) {
     console.error("Push failed", { memberId: recipient.member.id, error });
@@ -162,7 +152,6 @@ function pushTextOf(source: Source, composed: Composed): PushText {
   );
 }
 
-// A source that composes its message and has nothing to say sends nothing.
 async function composedOf(
   source: Source,
   { occurrence, timeZone }: Omit<Composed, "body">,
@@ -206,8 +195,20 @@ async function attempt(
         source,
         recipient,
         text: textOf(source, composed),
-        push: pushTextOf(source, composed),
+        pushText: pushTextOf(source, composed),
       });
+}
+
+// A pushed Occurrence is remembered like a sent one, so «Готово» elsewhere marks it done and a
+// later «Отложить» on the Push cannot bring it back; it has no bot message to edit.
+function sentColumnsOf(row: DispatchRow, delivery: Delivery) {
+  if (delivery.status === "sent") {
+    return { sentOccurrence: row.occurrence, ...delivery.sent, doneAt: null, doneBy: null };
+  }
+
+  return delivery.status === "pushed"
+    ? { sentOccurrence: row.occurrence, chatId: null, messageId: null, doneAt: null, doneBy: null }
+    : {};
 }
 
 // Sent or not, the row moves on to the next Occurrence; the message it sent stays answerable.
@@ -219,10 +220,7 @@ async function advance(
     delivery,
   }: { row: DispatchRow; next: ReturnType<typeof fireAfter>; delivery: Delivery },
 ): Promise<void> {
-  const sentColumns =
-    delivery.status === "sent"
-      ? { sentOccurrence: row.occurrence, ...delivery.sent, doneAt: null, doneBy: null }
-      : {};
+  const sentColumns = sentColumnsOf(row, delivery);
 
   await dispatch.update(row.familyId, row.id, {
     occurrence: next?.occurrence ?? null,

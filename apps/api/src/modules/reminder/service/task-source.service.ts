@@ -95,7 +95,6 @@ type Sourcing = {
   recipientIds: string[];
   chatLink: string;
   openUrl: string;
-  // Where a Push says the Task belongs: its Pet, or the Tasks.
   section: string;
 };
 
@@ -132,6 +131,7 @@ function taskSource(
       }),
     deepLink: { kind: "task", id: row.id },
     closesForEveryone: true,
+    isPressable: true,
     complete: async (presser, occurrence) => {
       const { status } = await dependencies.tasks.complete(presser, { taskId: row.id, occurrence });
 

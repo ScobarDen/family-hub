@@ -450,8 +450,7 @@ prefetch().catch(noop);
 joinFamily.load();
 live.start();
 
-// The service worker shows Push, opens the app from one and answers its buttons; it caches nothing.
-// A static file reads no build env, so it learns where the API is from its own URL.
+// A static service worker reads no build env, so it learns where the API is from its own URL.
 if (browser !== undefined) {
   navigator.serviceWorker
     ?.register(`${import.meta.env.BASE_URL}sw.js?api=${encodeURIComponent(apiUrl)}`)

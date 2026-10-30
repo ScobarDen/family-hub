@@ -17,17 +17,18 @@ type PushDependencies = {
   haptics: Pick<Haptics, "error">;
 };
 
-const hints: Partial<Record<PushState | "on-android", string>> = {
+const hints: Partial<Record<PushState, string>> = {
   "needs-install":
     "На iPhone и iPad Push приходит, только когда приложение добавлено на экран «Домой»",
   denied:
     "Уведомления запрещены. Разрешите их для Домового в настройках браузера или системы и включите снова",
   on: "Напоминания приходят на это устройство",
-  // Samsung and Xiaomi put Chrome to sleep, so a Push can arrive late until it is exempted.
-  "on-android":
-    "Напоминания приходят на это устройство. Если опаздывают, уберите Chrome из экономии батареи",
   off: "Включите, чтобы напоминания приходили без Telegram",
 };
+
+// Samsung and Xiaomi put Chrome to sleep, so a Push can arrive late until it is exempted.
+const androidOnHint =
+  "Напоминания приходят на это устройство. Если опаздывают, уберите Chrome из экономии батареи";
 
 function stateOf(
   platform: BrowserPlatform,
@@ -161,7 +162,7 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
   return {
     state,
     hint: computed(
-      () => hints[state() === "on" && platform.isAndroid ? "on-android" : state()],
+      () => (state() === "on" && platform.isAndroid ? androidOnHint : hints[state()]),
       "push.hint",
     ),
     canToggle: computed(() => ["on", "off", "denied"].includes(state()), "push.canToggle"),

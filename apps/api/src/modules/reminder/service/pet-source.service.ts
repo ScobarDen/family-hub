@@ -29,6 +29,7 @@ export async function birthdaySources(
       buttons: (dispatchId) => reminderButtons(dispatchId),
       deepLink: { kind: "pet", id: pet.id },
       closesForEveryone: true,
+      isPressable: true,
       snoozeMs,
       isSkippedWhenLate: true,
     },

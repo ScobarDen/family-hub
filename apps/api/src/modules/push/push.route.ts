@@ -25,7 +25,7 @@ const refuse = refusalsOf({
     status: httpStatus.notFound,
   },
   pushNotFound: {
-    code: "PUSH_NOT_FOUND",
+    code: "PUSH_SUBSCRIPTION_NOT_FOUND",
     message: "No subscription with this endpoint",
     status: httpStatus.notFound,
   },

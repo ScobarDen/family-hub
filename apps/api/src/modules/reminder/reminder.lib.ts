@@ -93,7 +93,6 @@ export function formatFloatingDate(date: string): string {
   return dayMonth("UTC").format(new Date(`${date}T12:00:00Z`));
 }
 
-// How a Push names the day: today and tomorrow by name, any other day by its date.
 export function dayLabelOf(date: string, today: string): string {
   if (date === today) {
     return "Сегодня";

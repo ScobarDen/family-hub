@@ -9,7 +9,6 @@ export type InstallChoice = "accepted" | "dismissed";
 
 export type BrowserPlatform = {
   isIos: boolean;
-  // Android vendors put Chrome to sleep to save battery, which delays Push.
   isAndroid: boolean;
   isStandalone: () => boolean;
   canPromptInstall: () => boolean;

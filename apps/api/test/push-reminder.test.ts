@@ -431,6 +431,53 @@ describe("a Push", () => {
     expect(await again.json()).toEqual({ code: "PRESS_REFUSED", message: "Уже сделано" });
   });
 
+  test("«Готово» pressed twice on a single Task says it is already done", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    const again = await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    expect(await again.json()).toEqual({ code: "PRESS_REFUSED", message: "Уже сделано" });
+  });
+
+  test("«Отложить» after «Готово» does not bring a pushed birthday back", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await chooseChannel(worker, "push");
+    await request(worker, denis, {
+      method: "POST",
+      path: "/api/pets",
+      body: {
+        name: "Бьюик",
+        species: "dog",
+        breed: null,
+        sex: null,
+        birthDate: "2020-10-02",
+        chipNumber: null,
+        notes: null,
+      },
+    });
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    const birthday = worker.push.pushes().find(({ message }) => message.title.startsWith("🎂"));
+    const token = birthday?.message.pressToken ?? "";
+
+    await pressPush(worker, { token, action: "done" });
+    const snoozed = await pressPush(worker, { token, action: "snooze" });
+
+    await tickAt(worker, "2026-10-02T07:00:00Z");
+
+    expect(await snoozed.json()).toEqual({ code: "PRESS_REFUSED", message: "Уже сделано" });
+    expect(
+      worker.push.pushes().filter(({ message }) => message.title.startsWith("🎂")),
+    ).toHaveLength(1);
+  });
+
   test("buttons stop working once their Device is revoked", async () => {
     const worker = await startWithFamily();
     const { token, device } = await subscribe(worker, phone);

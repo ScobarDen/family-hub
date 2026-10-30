@@ -63,7 +63,12 @@ async function openApp(url) {
   await open.navigate(url);
 }
 
-async function isPressed(token, action) {
+const notPressedText = "Не получилось отметить, откройте приложение";
+const refusedStatus = 409;
+
+// Nothing when the press did what it says, or what the Worker refused it with, such as «Уже
+// сделано» after «Готово» on another Device.
+async function refusalOf(token, action) {
   try {
     const response = await fetch(new URL("/api/reminders/press", apiUrl), {
       method: "POST",
@@ -71,9 +76,17 @@ async function isPressed(token, action) {
       body: JSON.stringify({ token, action }),
     });
 
-    return response.ok;
+    if (response.ok) {
+      return null;
+    }
+
+    const { message } = await response.json();
+
+    return response.status === refusedStatus && typeof message === "string"
+      ? message
+      : notPressedText;
   } catch {
-    return false;
+    return notPressedText;
   }
 }
 
@@ -81,12 +94,14 @@ async function isPressed(token, action) {
 async function press(notification, action) {
   notification.close();
 
-  if (await isPressed(notification.data.pressToken, action)) {
+  const refusal = await refusalOf(notification.data.pressToken, action);
+
+  if (refusal === null) {
     return;
   }
 
   await self.registration.showNotification(notification.title, {
-    body: "Не получилось отметить, откройте приложение",
+    body: refusal,
     icon,
     tag: notification.tag,
     data: { url: notification.data.url },
