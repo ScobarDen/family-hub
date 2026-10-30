@@ -64,6 +64,7 @@ import {
   photoStorageRoute,
 } from "@/modules/photo-storage";
 import {
+  createPressTokens,
   createPushRepo,
   createPushService,
   pushRoute,
@@ -81,6 +82,7 @@ import {
   createDispatchRepo,
   createReminderService,
   createSourceRepo,
+  reminderRoute,
   type ReminderService,
 } from "@/modules/reminder";
 import {
@@ -380,6 +382,7 @@ function pushServiceOf(
     subscriptions: createPushRepo(db),
     devices: { isLive: devices.isLive },
     transport: createPushTransport(vapid),
+    pressTokens: createPressTokens(vapid.privateKey),
     clock,
     publicKey: vapid.publicKey,
   });
@@ -442,6 +445,7 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", webhookRoute)
     .route("/", sessionRoute)
     .route("/", pushRoute)
+    .route("/", reminderRoute)
     .route("/", familyRequestRoute)
     .route("/", inviteRoute)
     .route("/", memberRoute)
@@ -468,6 +472,7 @@ async function runScheduled(env: Env, dependencies: WorkerDependencies): Promise
     await services.invites.sweep();
     await services.familyRequests.sweep();
     await services.commands.sweep();
+    await services.auth.sweepDevices();
   }
 }
 

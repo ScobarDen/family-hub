@@ -45,17 +45,23 @@ function blockOf(
   return [heading, ...shown, ...(rest > 0 ? [`…и ещё ${rest}`] : [])].join("\n");
 }
 
+function headingOf(day: string): string {
+  return `Сводка на ${formatFloatingDate(day)}`;
+}
+
 // Only what this Member sees, and nothing at all on a day with nothing to say.
-function digestText(
-  { overdue, today }: { overdue: FeedUpcoming[]; today: FeedUpcoming[] },
-  day: string,
-): string | undefined {
+function digestBody({
+  overdue,
+  today,
+}: {
+  overdue: FeedUpcoming[];
+  today: FeedUpcoming[];
+}): string | undefined {
   if (overdue.length === 0 && today.length === 0) {
     return undefined;
   }
 
   const blocks = [
-    `☀️ Сводка на ${formatFloatingDate(day)}`,
     blockOf("⚠️ Просрочено", overdue, { isOverdue: true }),
     blockOf("📅 Сегодня", today, { isOverdue: false }),
   ];
@@ -80,12 +86,12 @@ async function digestSource(
     fireAt: (occurrence, timeZone) =>
       occurrenceMoment(occurrence, { time: settings.digestTime, timeZone }),
     emoji: "☀️",
-    title: (occurrence) => `Сводка на ${formatFloatingDate(occurrence)}`,
+    title: headingOf,
     buttons: () => openAppButton({ text: "Открыть ленту", url: appUrl }),
-    compose: async (occurrence) => {
+    compose: async () => {
       const content = await dependencies.digests.contentOf(memberId);
 
-      return content && digestText(content, occurrence);
+      return content && digestBody(content);
     },
     closesForEveryone: false,
     snoozeMs,
@@ -110,9 +116,8 @@ export async function sendToday(
 
   const day = dateInZone(clock.now(), membership.member.timeZone ?? fallbackTimeZone);
   const content = await dependencies.digests.contentOf(membership.member.id);
-  const text =
-    (content && digestText(content, day)) ??
-    `☀️ Сводка на ${formatFloatingDate(day)}\n\nНа сегодня ничего нет`;
+  const body = (content && digestBody(content)) ?? "На сегодня ничего нет";
+  const text = `☀️ ${headingOf(day)}\n\n${body}`;
 
   await ignoringBotErrors(
     bot.call("sendMessage", {

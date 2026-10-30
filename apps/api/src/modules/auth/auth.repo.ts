@@ -112,6 +112,10 @@ function deviceRemovalsOf(db: Db) {
       await db.delete(devices).where(eq(devices.id, id));
     },
 
+    async removeUnused(usedSince: number): Promise<void> {
+      await db.delete(devices).where(lte(devices.lastUsedAt, usedSince));
+    },
+
     async removeUnusedOf(memberId: string, usedSince: number): Promise<void> {
       await db
         .delete(devices)

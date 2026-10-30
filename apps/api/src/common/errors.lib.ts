@@ -7,6 +7,7 @@ import type { ApiError, ErrorCode } from "@family-hub/contract";
 
 export const httpStatus = {
   created: 201,
+  noContent: 204,
   badRequest: 400,
   unauthorized: 401,
   forbidden: 403,

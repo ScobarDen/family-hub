@@ -27,8 +27,19 @@ type DigestContent = {
   ): Promise<{ overdue: FeedUpcoming[]; today: FeedUpcoming[] } | undefined>;
 };
 
-// Push is its own module; the app wires in sending to every Device of a Recipient.
-type PushPort = { sendTo(memberId: string, message: PushMessage): Promise<number> };
+type PushPress = { dispatchId: string; occurrence: string | null };
+
+// Push is its own module; the app wires in sending to every Device of a Recipient and reading
+// back the press a Push's button sent.
+type PushPort = {
+  sendTo(
+    memberId: string,
+    sending: { message: Omit<PushMessage, "pressToken">; press?: PushPress },
+  ): Promise<number>;
+  pressOf(token: string): Promise<(PushPress & { memberId: string }) | undefined>;
+};
+
+export type PushText = Pick<PushMessage, "title" | "body">;
 
 export type ReminderDependencies = {
   push: PushPort;
@@ -67,8 +78,10 @@ export type Source = {
   closesForEveryone: boolean;
   // False when the source refused, so the messages are left as they were.
   complete?: (presser: Membership, occurrence: string | null) => Promise<boolean>;
-  // A message built when it is due; nothing to say means nothing is sent.
+  // A message body built when it is due, under the title; nothing to say means nothing is sent.
   compose?: (occurrence: string, timeZone: string) => Promise<string | undefined>;
+  // A Push says what in its title and when in its body; without it the title is the whole line.
+  pushOf?: (occurrence: string, timeZone: string) => PushText;
   snoozeMs: number;
   isSkippedWhenLate: boolean;
 };

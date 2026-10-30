@@ -62,7 +62,35 @@ export const pushKey = z.object({ publicKey: z.string() });
 
 export type PushKey = z.infer<typeof pushKey>;
 
-// What the service worker receives; `startParam` opens a record as a `start_param` would.
-export const pushMessage = z.object({ text: z.string(), startParam: z.string().optional() });
+// What the Device holds for itself; `null` when the server keeps no subscription for it.
+export const pushEndpoint = z.object({ endpoint: z.string().nullable() });
+
+export type PushEndpoint = z.infer<typeof pushEndpoint>;
+
+// The browser replaced a subscription; the old endpoint, known only to the Device and the Worker,
+// stands in for a session the service worker does not have (ADR 0016).
+export const pushRotation = z.object({
+  oldEndpoint: z.string().min(1),
+  subscription: pushSubscription,
+});
+
+export type PushRotation = z.infer<typeof pushRotation>;
+
+// What the service worker receives. `tag` replaces the Push of the same Reminder, `startParam`
+// opens a record as a `start_param` would, and `pressToken` answers «Готово» or «Отложить».
+export const pushMessage = z.object({
+  title: z.string(),
+  body: z.string(),
+  tag: z.string(),
+  startParam: z.string().optional(),
+  pressToken: z.string().optional(),
+});
 
 export type PushMessage = z.infer<typeof pushMessage>;
+
+export const pushPress = z.object({
+  token: z.string().min(1),
+  action: z.enum(["done", "snooze"]),
+});
+
+export type PushPress = z.infer<typeof pushPress>;

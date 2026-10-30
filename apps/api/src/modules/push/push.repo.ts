@@ -1,4 +1,4 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, getTableColumns, gt } from "drizzle-orm";
 
 import { devices, pushSubscriptions, type Db } from "@/modules/db";
 
@@ -7,6 +7,7 @@ export type SubscriptionRow = typeof pushSubscriptions.$inferSelect;
 // A subscription belongs to a Member's Device, not to a Family, so it is addressed by memberId.
 export function createPushRepo(db: Db) {
   return {
+    ...endpointsOf(db),
     async save(row: SubscriptionRow): Promise<void> {
       await db
         .insert(pushSubscriptions)
@@ -33,18 +34,41 @@ export function createPushRepo(db: Db) {
     // An expired Device keeps its row until it signs in again, so its subscription is skipped here.
     listOf: async (memberId: string, usedSince: number): Promise<SubscriptionRow[]> =>
       db
-        .select({
-          deviceId: pushSubscriptions.deviceId,
-          memberId: pushSubscriptions.memberId,
-          endpoint: pushSubscriptions.endpoint,
-          p256dh: pushSubscriptions.p256dh,
-          auth: pushSubscriptions.auth,
-          createdAt: pushSubscriptions.createdAt,
-        })
+        .select(getTableColumns(pushSubscriptions))
         .from(pushSubscriptions)
         .innerJoin(devices, eq(devices.id, pushSubscriptions.deviceId))
         .where(and(eq(pushSubscriptions.memberId, memberId), gt(devices.lastUsedAt, usedSince)))
         .all(),
+  };
+}
+
+function endpointsOf(db: Db) {
+  return {
+    async endpointOf(memberId: string, deviceId: string): Promise<string | null> {
+      const row = await db
+        .select({ endpoint: pushSubscriptions.endpoint })
+        .from(pushSubscriptions)
+        .where(
+          and(eq(pushSubscriptions.deviceId, deviceId), eq(pushSubscriptions.memberId, memberId)),
+        )
+        .get();
+
+      return row?.endpoint ?? null;
+    },
+
+    // The old endpoint names the row: the service worker that asks has no session (ADR 0016).
+    async rotate(
+      oldEndpoint: string,
+      next: Pick<SubscriptionRow, "endpoint" | "p256dh" | "auth" | "createdAt">,
+    ): Promise<boolean> {
+      const rotated = await db
+        .update(pushSubscriptions)
+        .set(next)
+        .where(eq(pushSubscriptions.endpoint, oldEndpoint))
+        .returning({ deviceId: pushSubscriptions.deviceId });
+
+      return rotated.length > 0;
+    },
   };
 }
 

@@ -1,6 +1,6 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import { timeInZone } from "@family-hub/recurrence";
+import { daysAfter, timeInZone } from "@family-hub/recurrence";
 
 export const callbackPrefix = "rd";
 export const snoozeMs = 3_600_000;
@@ -91,6 +91,15 @@ function dayMonth(timeZone: string) {
 // A floating date is the same day everywhere, so it is shown as that day in UTC.
 export function formatFloatingDate(date: string): string {
   return dayMonth("UTC").format(new Date(`${date}T12:00:00Z`));
+}
+
+// How a Push names the day: today and tomorrow by name, any other day by its date.
+export function dayLabelOf(date: string, today: string): string {
+  if (date === today) {
+    return "Сегодня";
+  }
+
+  return date === daysAfter(today, 1) ? "Завтра" : formatFloatingDate(date);
 }
 
 export function formatMomentIn(moment: number, timeZone: string): string {
