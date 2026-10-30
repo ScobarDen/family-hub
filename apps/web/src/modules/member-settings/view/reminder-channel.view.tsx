@@ -11,11 +11,7 @@ export const ReminderChannelSetting = reatomComponent(({ model }: ReminderChanne
 
   return (
     <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-      <ChipGroup
-        label="Куда слать напоминания"
-        hint="Push приходит на устройства, где включён в установленном приложении"
-        role="radiogroup"
-      >
+      <ChipGroup label="Куда слать напоминания" hint={model.hint()} role="radiogroup">
         {model.choices.map(({ value, label }) => (
           <Chip
             key={value}

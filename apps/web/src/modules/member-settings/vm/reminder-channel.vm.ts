@@ -21,14 +21,24 @@ export const reminderChannelChoices: Array<{ value: ReminderChannel; label: stri
   { value: "push", label: "Только Push" },
 ];
 
+// The bot backs Push up under «both», and stands in under «push» only when no Device took it.
+const hints: Record<ReminderChannel, string> = {
+  both: "Надёжнее всего: Push на устройства, где он включён, и сообщение от бота",
+  telegram: "Только сообщение от бота",
+  push: "Для тех, кто без Telegram под рукой. Если ни одно устройство не примет Push, напомнит бот",
+};
+
 export function reatomReminderChannel({ api, saved, haptics }: ReminderChannelDependencies) {
   const setting = reatomSavedSetting("reminderChannel", { send: api.saveReminderChannel, saved });
 
+  const current = computed(
+    (): ReminderChannel => setting.current() ?? defaultReminderChannel,
+    "reminderChannel.current",
+  );
+
   return {
-    channel: computed(
-      (): ReminderChannel => setting.current() ?? defaultReminderChannel,
-      "reminderChannel.current",
-    ),
+    channel: current,
+    hint: computed(() => hints[current()], "reminderChannel.hint"),
     choices: reminderChannelChoices,
     failure: reatomFailure(setting.save, {
       message: "Не получилось сохранить, куда слать напоминания. Попробуйте ещё раз.",

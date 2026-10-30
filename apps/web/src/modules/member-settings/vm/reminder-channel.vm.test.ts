@@ -45,6 +45,11 @@ describe("where Reminders go", () => {
     expect(startChannel().model.channel()).toBe("both");
   });
 
+  test("says «both» is the most reliable and «push» falls back to the bot", () => {
+    expect(startChannel().model.hint()).toContain("Надёжнее всего");
+    expect(startChannel({ saved: "push" }).model.hint()).toContain("напомнит бот");
+  });
+
   test("starts from the Member's saved choice", () => {
     expect(startChannel({ saved: "telegram" }).model.channel()).toBe("telegram");
   });

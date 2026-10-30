@@ -8,13 +8,13 @@ The Member's own settings in the Profile, which belong to no Family: whether the
 
 - **Telegram shortcut** — `load()`, started by `app/main.tsx`, asks Telegram for the home screen status (`checkHomeScreenStatus`, 8.0+). The Profile shows «Ярлык Telegram на экране «Домой»» with «Добавить» wherever Telegram supports it, and «Уже добавлен» once it is there. It never offers itself.
 - **Installed App** — «Установить как приложение» in the Mini App opens the install page (`install-app`) in the device's own browser through Telegram's `openLink`. Inside the Installed App neither entry shows.
-- **Push** — only in the Installed App: «Push на этом устройстве» asks the browser for permission only when switched on, subscribes through `BrowserPlatform` and saves the subscription for this Device; switched off, it drops both. A denied permission says where to allow it; on iOS outside the home screen it says to add the app first.
-- **Reminder channel** — «Куда слать напоминания»: the bot, Push or both (the default), saved like the digest. The server falls back to the bot when «Push» finds no live subscription.
+- **Push** — only in the Installed App: «Push на этом устройстве» asks the browser for permission only when switched on, subscribes through `BrowserPlatform` and saves the subscription for this Device; switched off, it drops both. At launch it reads the endpoint the server keeps for this Device: a subscription only the browser holds is saved again, one only the server holds is made again while notifications are allowed and forgotten when they are not, so the switch shows what actually rings. A denied permission says where to allow it; on iOS outside the home screen it says to add the app first; on Android it says to take Chrome out of battery saving if Push comes late.
+- **Reminder channel** — «Куда слать напоминания»: the bot, Push or both (the default), saved like the digest, with a hint that «both» is the most reliable. The server falls back to the bot when «Push» finds no Device that takes it.
 - **Devices** — where the Member is signed in to the Installed App, with when each was last used. «Выйти» asks first; signing out of this Device leaves the app on its sign-in screen.
 
 ## Injected
 
-- `api` — `createMemberSettingsApi(httpClient)`: saves the digest, the time zone and the reminder channel of the session Member, lists and revokes their Devices, and saves or drops this Device's push subscription.
+- `api` — `createMemberSettingsApi(httpClient)`: saves the digest, the time zone and the reminder channel of the session Member, lists and revokes their Devices, and reads, saves or drops this Device's push subscription.
 - `saved` — the Member's `settings.digest` / `settings.timeZone` from the session: `undefined` until they arrive, a `null` zone while the server knows none.
 - `canMessage` — the Member's `settings.canMessage`. The server turns it on when initData reports `allows_write_to_pm`; only a 403 from the bot turns it off.
 - `telegram` — `requestWriteAccess`, `addToHomeScreen`, `checkHomeScreenStatus`, `openLink`, `isInTelegram` and `showPopup` from `modules/telegram`.

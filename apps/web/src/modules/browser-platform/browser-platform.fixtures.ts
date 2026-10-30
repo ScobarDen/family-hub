@@ -20,6 +20,7 @@ export const fakePushSubscription: PushSubscriptionChange = {
 
 export type FakeBrowserPlatformOptions = {
   isIos?: boolean;
+  isAndroid?: boolean;
   isStandalone?: boolean;
   pushAvailability?: PushAvailability;
   permission?: PushPermission;
@@ -54,13 +55,13 @@ function fakePush({
       unsubscribePush: async () => {
         subscription.set(undefined);
       },
-      hasPushSubscription: async () => subscription() !== undefined,
+      pushSubscription: async () => subscription(),
     },
   };
 }
 
 export function fakeBrowserPlatform(options: FakeBrowserPlatformOptions = {}) {
-  const { isIos = false, isStandalone = false, installChoice = "accepted" } = options;
+  const { isIos = false, isAndroid = false, isStandalone = false } = options;
   const installPrompt = atom(false, "fakeBrowser.installPrompt");
   const push = fakePush(options);
   const visited: string[] = [];
@@ -69,12 +70,13 @@ export function fakeBrowserPlatform(options: FakeBrowserPlatformOptions = {}) {
   const platform: BrowserPlatform = {
     ...push.platform,
     isIos,
+    isAndroid,
     isStandalone: () => isStandalone,
     canPromptInstall: () => installPrompt(),
     promptInstall: async () => {
       installPrompt.set(false);
 
-      return installChoice;
+      return options.installChoice ?? "accepted";
     },
     goTo: (url) => {
       visited.push(url);

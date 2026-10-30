@@ -1,5 +1,7 @@
 import { action, atom, computed, noop, withAsync, wrap, type Atom } from "@reatom/core";
 
+import type { PushSubscriptionChange } from "@family-hub/contract";
+
 import type { BrowserPlatform, PushPermission } from "@/modules/browser-platform";
 import { detached, reatomFailure } from "@/modules/changes";
 import type { Haptics } from "@/modules/telegram";
@@ -9,18 +11,21 @@ import type { MemberSettingsApi } from "../member-settings.api.ts";
 export type PushState = "unsupported" | "needs-install" | "denied" | "off" | "on";
 
 type PushDependencies = {
-  api: Pick<MemberSettingsApi, "pushKey" | "savePush" | "deletePush">;
+  api: Pick<MemberSettingsApi, "pushKey" | "pushEndpoint" | "savePush" | "deletePush">;
   platform: BrowserPlatform;
   deviceId: () => string | undefined;
   haptics: Pick<Haptics, "error">;
 };
 
-const hints: Partial<Record<PushState, string>> = {
+const hints: Partial<Record<PushState | "on-android", string>> = {
   "needs-install":
     "На iPhone и iPad Push приходит, только когда приложение добавлено на экран «Домой»",
   denied:
     "Уведомления запрещены. Разрешите их для Домового в настройках браузера или системы и включите снова",
   on: "Напоминания приходят на это устройство",
+  // Samsung and Xiaomi put Chrome to sleep, so a Push can arrive late until it is exempted.
+  "on-android":
+    "Напоминания приходят на это устройство. Если опаздывают, уберите Chrome из экономии батареи",
   off: "Включите, чтобы напоминания приходили без Telegram",
 };
 
@@ -70,11 +75,67 @@ async function turnOn({ api, platform, permission, isOn }: PushSwitch, device: s
   isOn.set(true);
 }
 
+// At launch a subscription only one side holds is mended: the browser's is saved, a lost one is
+// made again while notifications are allowed and forgotten on the server when they are not.
+async function mend(
+  pushSwitch: PushSwitch,
+  { device, held }: { device: string; held: PushSubscriptionChange | undefined },
+) {
+  const { api, permission, isOn } = pushSwitch;
+
+  if (held !== undefined) {
+    await wrap(api.savePush(device, held));
+    isOn.set(true);
+  } else if (permission() === "granted") {
+    await wrap(turnOn(pushSwitch, device));
+  } else {
+    await wrap(api.deletePush(device));
+    isOn.set(false);
+  }
+}
+
+// The switch shows what the server keeps, which the push service may have dropped (ADR 0016).
+// Offline, the server is taken to agree with the browser.
+async function reconcile(pushSwitch: PushSwitch, device: string) {
+  const { api, platform, isOn } = pushSwitch;
+  const held = await wrap(platform.pushSubscription());
+  const { endpoint } = await wrap(
+    api.pushEndpoint(device).catch(() => ({ endpoint: held?.endpoint ?? null })),
+  );
+
+  if (held?.endpoint === (endpoint ?? undefined)) {
+    isOn.set(held !== undefined);
+
+    return;
+  }
+
+  await wrap(
+    mend(pushSwitch, { device, held }).catch(() => {
+      isOn.set(false);
+    }),
+  );
+}
+
 // The server forgets the subscription first, so a failure leaves Push on as it was.
 async function turnOff({ api, platform, isOn }: PushSwitch, device: string) {
   await wrap(api.deletePush(device));
   await wrap(platform.unsubscribePush());
   isOn.set(false);
+}
+
+// Permission can change in the browser's settings while the app is closed.
+async function load(pushSwitch: PushSwitch, device: string | undefined) {
+  const { platform, permission, isOn } = pushSwitch;
+
+  permission.set(platform.pushPermission());
+
+  if (device === undefined || platform.pushAvailability() !== "available") {
+    isOn.set((await wrap(platform.pushSubscription())) !== undefined);
+
+    return;
+  }
+
+  await wrap(reconcile(pushSwitch, device));
 }
 
 export function reatomPush({ api, platform, deviceId, haptics }: PushDependencies) {
@@ -99,7 +160,10 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
 
   return {
     state,
-    hint: computed(() => hints[state()], "push.hint"),
+    hint: computed(
+      () => hints[state() === "on" && platform.isAndroid ? "on-android" : state()],
+      "push.hint",
+    ),
     canToggle: computed(() => ["on", "off", "denied"].includes(state()), "push.canToggle"),
     isOn: computed(() => state() === "on", "push.isOn"),
     isSwitching: computed(() => !switchPush.ready(), "push.isSwitching"),
@@ -109,11 +173,7 @@ export function reatomPush({ api, platform, deviceId, haptics }: PushDependencie
       haptics,
     }),
 
-    // Permission can change in the browser's settings while the app is closed.
-    load: action(async () => {
-      permission.set(platform.pushPermission());
-      isOn.set(await wrap(platform.hasPushSubscription()));
-    }, "push.load"),
+    load: action(async () => load(pushSwitch, deviceId()), "push.load"),
     toggle: action((isWanted: boolean) => {
       if (switchPush.ready()) {
         detachedSwitch(isWanted);
