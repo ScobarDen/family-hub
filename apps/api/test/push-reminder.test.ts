@@ -234,6 +234,7 @@ describe("a Reminder", () => {
         message: {
           title: "Вынести мусор",
           body: "Сегодня · Дела",
+          text: "Вынести мусор",
           tag: expect.any(String),
           startParam: `task_${task.id}`,
           pressToken: expect.any(String),
@@ -431,6 +432,26 @@ describe("a Push", () => {
     expect(await again.json()).toEqual({ code: "PRESS_REFUSED", message: "Уже сделано" });
   });
 
+  test("«Отложить» on a Push left behind by a later Occurrence does not bring it back", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await chooseChannel(worker, "push");
+    await remindWeekly(worker, "Полить цветы");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    const stale = pressTokenOf(worker);
+
+    await chooseChannel(worker, "telegram");
+    await tickAt(worker, "2026-10-09T06:00:00Z");
+
+    const response = await pressPush(worker, { token: stale, action: "snooze" });
+
+    expect(await response.json()).toEqual({
+      code: "PRESS_REFUSED",
+      message: "Это напоминание уже прошло",
+    });
+  });
+
   test("«Готово» pressed twice on a single Task says it is already done", async () => {
     const worker = await startWithFamily();
 
@@ -555,6 +576,29 @@ describe("a replaced subscription", () => {
 });
 
 describe("the subscription a Device holds", () => {
+  test("is not told to another Device of the same Member", async () => {
+    const worker = await startWithFamily();
+    const { device } = await subscribe(worker, phone);
+    const other = await subscribe(worker, laptop);
+
+    const response = await worker.request(`/api/devices/${device.id}/push`, {
+      headers: { authorization: `Bearer ${other.token}` },
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  test("is taken over by a Device that signs in again in the same browser", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await subscribe(worker, phone);
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    expect(taskPushes(worker)).toHaveLength(1);
+  });
+
   test("is told by its endpoint, or null once the push service called it gone", async () => {
     const worker = await startWithFamily();
     const { token, device } = await subscribe(worker, phone);

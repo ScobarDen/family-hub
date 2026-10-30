@@ -1,26 +1,25 @@
-import { and, eq, getTableColumns, gt } from "drizzle-orm";
+import { and, eq, getTableColumns, gt, ne } from "drizzle-orm";
 
 import { devices, pushSubscriptions, type Db } from "@/modules/db";
 
 export type SubscriptionRow = typeof pushSubscriptions.$inferSelect;
 
+type Keys = Pick<SubscriptionRow, "endpoint" | "p256dh" | "auth" | "createdAt">;
+
 // A subscription belongs to a Member's Device, not to a Family, so it is addressed by memberId.
 export function createPushRepo(db: Db) {
   return {
-    ...endpointsOf(db),
-    async save(row: SubscriptionRow): Promise<void> {
-      await db
-        .insert(pushSubscriptions)
-        .values(row)
-        .onConflictDoUpdate({
-          target: pushSubscriptions.deviceId,
-          set: {
-            endpoint: row.endpoint,
-            p256dh: row.p256dh,
-            auth: row.auth,
-            createdAt: row.createdAt,
-          },
-        });
+    ...writesOf(db),
+    async endpointOf(memberId: string, deviceId: string): Promise<string | null> {
+      const row = await db
+        .select({ endpoint: pushSubscriptions.endpoint })
+        .from(pushSubscriptions)
+        .where(
+          and(eq(pushSubscriptions.deviceId, deviceId), eq(pushSubscriptions.memberId, memberId)),
+        )
+        .get();
+
+      return row?.endpoint ?? null;
     },
 
     async remove(memberId: string, deviceId: string): Promise<void> {
@@ -42,32 +41,46 @@ export function createPushRepo(db: Db) {
   };
 }
 
-function endpointsOf(db: Db) {
-  return {
-    async endpointOf(memberId: string, deviceId: string): Promise<string | null> {
-      const row = await db
-        .select({ endpoint: pushSubscriptions.endpoint })
-        .from(pushSubscriptions)
-        .where(
-          and(eq(pushSubscriptions.deviceId, deviceId), eq(pushSubscriptions.memberId, memberId)),
-        )
-        .get();
+// One browser is one endpoint: a Device that signs in again in the same browser takes the
+// endpoint over, so the browser never gets the same Push twice.
+function othersWith(db: Db, { endpoint, deviceId }: { endpoint: string; deviceId: string }) {
+  return db
+    .delete(pushSubscriptions)
+    .where(and(eq(pushSubscriptions.endpoint, endpoint), ne(pushSubscriptions.deviceId, deviceId)));
+}
 
-      return row?.endpoint ?? null;
+function writesOf(db: Db) {
+  return {
+    async save(row: SubscriptionRow): Promise<void> {
+      const { endpoint, p256dh, auth, createdAt } = row;
+
+      await db.batch([
+        othersWith(db, { endpoint, deviceId: row.deviceId }),
+        db.insert(pushSubscriptions).values(row).onConflictDoUpdate({
+          target: pushSubscriptions.deviceId,
+          set: { endpoint, p256dh, auth, createdAt },
+        }),
+      ]);
     },
 
     // The old endpoint names the row: the service worker that asks has no session (ADR 0016).
-    async rotate(
-      oldEndpoint: string,
-      next: Pick<SubscriptionRow, "endpoint" | "p256dh" | "auth" | "createdAt">,
-    ): Promise<boolean> {
-      const rotated = await db
-        .update(pushSubscriptions)
-        .set(next)
+    async rotate(oldEndpoint: string, next: Keys): Promise<boolean> {
+      const row = await db
+        .select({ deviceId: pushSubscriptions.deviceId })
+        .from(pushSubscriptions)
         .where(eq(pushSubscriptions.endpoint, oldEndpoint))
-        .returning({ deviceId: pushSubscriptions.deviceId });
+        .get();
 
-      return rotated.length > 0;
+      if (row === undefined) {
+        return false;
+      }
+
+      await db.batch([
+        othersWith(db, { endpoint: next.endpoint, deviceId: row.deviceId }),
+        db.update(pushSubscriptions).set(next).where(eq(pushSubscriptions.deviceId, row.deviceId)),
+      ]);
+
+      return true;
     },
   };
 }

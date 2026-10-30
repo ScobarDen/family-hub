@@ -56,7 +56,6 @@ export function createPressTokens(vapidPrivateKey: string) {
     },
     async read(token: string): Promise<PressClaims | undefined> {
       const [part = "", signature = ""] = token.split(".");
-      const claims = claimsOf(part);
 
       try {
         const isSigned = await crypto.subtle.verify(
@@ -66,7 +65,7 @@ export function createPressTokens(vapidPrivateKey: string) {
           encoder.encode(part),
         );
 
-        return isSigned ? claims : undefined;
+        return isSigned ? claimsOf(part) : undefined;
       } catch {
         return undefined;
       }

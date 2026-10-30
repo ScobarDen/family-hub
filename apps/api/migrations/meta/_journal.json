@@ -204,6 +204,13 @@
       "when": 1793274409796,
       "tag": "0028_installed_app_devices",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1793344208523,
+      "tag": "0029_push_subscription_endpoint_index",
+      "breakpoints": true
     }
   ]
 }

@@ -80,6 +80,8 @@ export const notDoneText = "Не получилось отметить, откр
 
 export const alreadyDoneText = "Уже сделано";
 
+export const passedText = "Это напоминание уже прошло";
+
 export function openAppButton({ text, url }: { text: string; url: string }): InlineKeyboardMarkup {
   return { inline_keyboard: [[{ text, url }]] };
 }

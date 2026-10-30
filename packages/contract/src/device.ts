@@ -43,6 +43,9 @@ export const deviceList = z.array(device);
 
 export type DeviceList = z.infer<typeof deviceList>;
 
+// Session-less routes take these, so a request cannot make the Worker parse a megabyte.
+const pushTextMaxLength = 2048;
+
 // The Worker posts to whatever endpoint it is given, so only the browsers' own push services pass.
 const pushServiceHost =
   /^(?:fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com|[\w.-]+\.push\.apple\.com|[\w.-]+\.notify\.windows\.com)$/u;
@@ -62,7 +65,7 @@ export const pushKey = z.object({ publicKey: z.string() });
 
 export type PushKey = z.infer<typeof pushKey>;
 
-// What the Device holds for itself; `null` when the server keeps no subscription for it.
+// The endpoint the server keeps for a Device, `null` when it keeps none.
 export const pushEndpoint = z.object({ endpoint: z.string().nullable() });
 
 export type PushEndpoint = z.infer<typeof pushEndpoint>;
@@ -70,7 +73,7 @@ export type PushEndpoint = z.infer<typeof pushEndpoint>;
 // The browser replaced a subscription; the old endpoint, known only to the Device and the Worker,
 // stands in for a session the service worker does not have (ADR 0016).
 export const pushRotation = z.object({
-  oldEndpoint: z.string().min(1),
+  oldEndpoint: z.string().min(1).max(pushTextMaxLength),
   subscription: pushSubscription,
 });
 
@@ -84,12 +87,15 @@ export const pushMessage = z.object({
   tag: z.string(),
   startParam: z.string().optional(),
   pressToken: z.string().optional(),
+  // shortcut: the title again for service workers older than title and body, which read only
+  // `text`; drop it once a release has passed and they have updated.
+  text: z.string().optional(),
 });
 
 export type PushMessage = z.infer<typeof pushMessage>;
 
 export const pushPress = z.object({
-  token: z.string().min(1),
+  token: z.string().min(1).max(pushTextMaxLength),
   action: z.enum(["done", "snooze"]),
 });
 

@@ -6,7 +6,7 @@ import { deviceLifetimeMs, type Membership } from "@/modules/auth";
 
 import type { PressClaims, PressTokens } from "./lib/press-token.lib.ts";
 import type { PushRepo, SubscriptionRow } from "./push.repo.ts";
-import type { PushTransport } from "./push.types.ts";
+import type { PressTarget, PushTransport } from "./push.types.ts";
 
 // Devices are the auth module's; the app wires in its check of a Member's unexpired Device.
 type DevicePort = {
@@ -21,9 +21,6 @@ type PushServiceDependencies = {
   clock: Clock;
   publicKey: string;
 };
-
-// The Reminder whose «Готово» and «Отложить» a Push carries, each Device with a token of its own.
-export type PressTarget = Pick<PressClaims, "dispatchId" | "occurrence">;
 
 type Sending = {
   row: SubscriptionRow;

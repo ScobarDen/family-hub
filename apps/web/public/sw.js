@@ -1,7 +1,9 @@
 // Push, opening the app from one and answering its buttons; nothing is cached here (ADR 0012
 // keeps the device cache). The worker has no session: a Push's buttons and a replaced
 // subscription carry their own proof (ADR 0016).
-const apiUrl = new URL(self.location.href).searchParams.get("api") ?? self.location.origin;
+// Registered before this worker learned the API's address, it shows no buttons until the app
+// registers it again with `?api=`.
+const apiUrl = new URL(self.location.href).searchParams.get("api");
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -25,7 +27,7 @@ const icon = new URL("icons/icon-192.png", self.registration.scope).href;
 
 // iOS shows no buttons; there a Push only opens what it is about.
 function actionsOf(pressToken) {
-  return typeof pressToken === "string"
+  return typeof pressToken === "string" && apiUrl !== null
     ? [
         { action: "done", title: "Готово" },
         { action: "snooze", title: "Отложить" },
@@ -35,14 +37,14 @@ function actionsOf(pressToken) {
 
 // The same tag replaces the Reminder's earlier Push; renotify makes the replacement ring again.
 self.addEventListener("push", (event) => {
-  const message = event.data === null ? { title: "Домовой", body: "", tag: "" } : event.data.json();
+  const message = event.data === null ? { title: "Домовой", body: "" } : event.data.json();
   const url = urlOf(message.startParam);
 
   event.waitUntil(
     self.registration.showNotification(message.title, {
       body: message.body,
       icon,
-      ...(message.tag === "" ? {} : { tag: message.tag, renotify: true }),
+      ...(typeof message.tag === "string" ? { tag: message.tag, renotify: true } : {}),
       actions: actionsOf(message.pressToken),
       data: { url, pressToken: message.pressToken },
     }),
@@ -122,7 +124,7 @@ self.addEventListener("notificationclick", (event) => {
 // Without the old subscription there is nothing to prove the Device with; the app saves the new
 // one at its next launch instead.
 async function rotate(previous, next) {
-  if (previous === null || previous === undefined) {
+  if (previous === null || previous === undefined || apiUrl === null) {
     return;
   }
 

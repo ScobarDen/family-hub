@@ -30,7 +30,7 @@ type DigestContent = {
 // What «Готово» and «Отложить» on a Push name: its row and the Occurrence it showed.
 export type PressTarget = { dispatchId: string; occurrence: string | null };
 
-export type PressClaims = PressTarget & { memberId: string };
+export type PushPressClaims = PressTarget & { memberId: string };
 
 // Push is its own module; the app wires in sending to every Device of a Recipient and reading
 // back the press a Push's button sent.
@@ -39,7 +39,7 @@ type PushPort = {
     memberId: string,
     sending: { message: Omit<PushMessage, "pressToken">; press?: PressTarget },
   ): Promise<number>;
-  pressOf(token: string): Promise<PressClaims | undefined>;
+  pressOf(token: string): Promise<PushPressClaims | undefined>;
 };
 
 export type PushText = Pick<PushMessage, "title" | "body">;

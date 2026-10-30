@@ -78,6 +78,7 @@ async function pushToDevices(
     return await push.sendTo(recipient.member.id, {
       message: {
         ...pushText,
+        text: pushText.title,
         tag: row.id,
         ...(source.deepLink === undefined ? {} : { startParam: encodeDeepLink(source.deepLink) }),
       },

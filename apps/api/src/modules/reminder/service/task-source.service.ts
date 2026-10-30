@@ -67,7 +67,7 @@ function whenOf(
   return `${dayLabelOf(dateInZone(moment, timeZone), today)}, ${timeInZone(moment, timeZone)}`;
 }
 
-function pushTextOf(
+function taskPushText(
   row: TaskRow,
   { section, ...when }: { occurrence: string; timeZone: string; now: number; section: string },
 ): PushText {
@@ -123,7 +123,7 @@ function taskSource(
     emoji: row.petId === null ? "📌" : "🐾",
     title: (occurrence, timeZone) => titleOf(row, { occurrence, timeZone }),
     pushOf: (occurrence, timeZone) =>
-      pushTextOf(row, { occurrence, timeZone, now: dependencies.clock.now(), section }),
+      taskPushText(row, { occurrence, timeZone, now: dependencies.clock.now(), section }),
     buttons: (dispatchId, occurrence) =>
       reminderButtons(dispatchId, {
         recordUrl: recordUrlOf(occurrence),

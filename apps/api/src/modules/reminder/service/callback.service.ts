@@ -11,14 +11,16 @@ import {
   notDoneText,
   notYoursText,
   parseCallback,
+  passedText,
   snoozedText,
 } from "../reminder.lib.ts";
-import type { PressClaims, ReminderDependencies, Source } from "../reminder.types.ts";
+import type { PushPressClaims, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
 import { fireAfter, zoneOf } from "./schedule.service.ts";
 import { sourceOfRow } from "./source.service.ts";
 
-// `occurrence` is the one the pressed message showed; `isClosed` tells it was already done.
+// `occurrence` is the one the pressed message showed; `isClosed` tells it was already done, or for
+// a Push also that its source no longer reminds of it.
 type Press = {
   row: DispatchRow;
   source: Source;
@@ -134,17 +136,17 @@ async function didComplete(dependencies: ReminderDependencies, press: Press): Pr
 }
 
 // Only the Recipient of the row, still a Member of its Family, may press its buttons.
+function isRecipient(presser: Membership | undefined, row: DispatchRow): presser is Membership {
+  return presser?.member.id === row.memberId && presser.family.id === row.familyId;
+}
+
 async function pressedRow(
   dependencies: ReminderDependencies,
   { dispatchId, presser }: { dispatchId: string; presser: Membership | undefined },
 ): Promise<Omit<Press, "occurrence" | "isClosed"> | undefined> {
   const row = await dependencies.dispatch.find(dispatchId);
 
-  if (
-    row === undefined ||
-    presser?.member.id !== row.memberId ||
-    presser.family.id !== row.familyId
-  ) {
+  if (row === undefined || !isRecipient(presser, row)) {
     return undefined;
   }
 
@@ -178,14 +180,26 @@ function isClosedOn({ row, source }: Pick<Press, "row" | "source">, occurrence: 
   );
 }
 
+// A signed press whose row or source is gone was answered already: a completed single Task drops
+// its rows. The refusal comes back as its text.
 async function pushPressOf(
   dependencies: ReminderDependencies,
-  { dispatchId, occurrence, memberId }: PressClaims,
-): Promise<Press | undefined> {
-  const presser = await dependencies.memberships.findByMemberId(memberId);
-  const found = await pressedRow(dependencies, { dispatchId, presser });
+  { dispatchId, occurrence, memberId }: PushPressClaims,
+): Promise<Press | string> {
+  const row = await dependencies.dispatch.find(dispatchId);
+  const source = row && (await sourceOfRow(dependencies, row));
 
-  return found && { ...found, occurrence, isClosed: isClosedOn(found, occurrence) };
+  if (row === undefined || source === undefined) {
+    return alreadyDoneText;
+  }
+
+  const presser = await dependencies.memberships.findByMemberId(memberId);
+
+  if (!isRecipient(presser, row)) {
+    return notYoursText;
+  }
+
+  return { row, source, presser, occurrence, isClosed: isClosedOn({ row, source }, occurrence) };
 }
 
 // The text the pressed button answers with, or nothing when it did what it says.
@@ -229,21 +243,24 @@ export async function handleReminderCallback(
 }
 
 // «Готово» or «Отложить» on a Push: what the bot's buttons do, with the presser read from the
-// token instead of Telegram (ADR 0016). A signed token whose row or source is gone was answered
-// already: a completed single Task drops its rows.
+// token instead of Telegram (ADR 0016). A Push left on screen after a later Occurrence was
+// delivered may still be done, but snoozing it would push that later one aside.
 export async function handlePushPress(
   dependencies: ReminderDependencies,
   { token, action }: PushPress,
 ): Promise<string | undefined> {
   const claims = await dependencies.push.pressOf(token);
+  const press = claims && (await pushPressOf(dependencies, claims));
 
-  if (claims === undefined) {
+  if (press === undefined) {
     return notYoursText;
   }
 
-  const press = await pushPressOf(dependencies, claims);
+  if (typeof press === "string") {
+    return press;
+  }
 
-  return press === undefined
-    ? alreadyDoneText
+  return action === "snooze" && press.row.sentOccurrence !== press.occurrence
+    ? passedText
     : pressed(dependencies, { press, isDone: action === "done" });
 }
