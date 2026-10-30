@@ -9,6 +9,7 @@ export type InstallChoice = "accepted" | "dismissed";
 
 export type BrowserPlatform = {
   isIos: boolean;
+  isAndroid: boolean;
   isStandalone: () => boolean;
   canPromptInstall: () => boolean;
   promptInstall: () => Promise<InstallChoice>;
@@ -17,7 +18,7 @@ export type BrowserPlatform = {
   requestPushPermission: () => Promise<PushPermission>;
   subscribePush: (publicKey: string) => Promise<PushSubscriptionChange>;
   unsubscribePush: () => Promise<void>;
-  hasPushSubscription: () => Promise<boolean>;
+  pushSubscription: () => Promise<PushSubscriptionChange | undefined>;
   goTo: (url: string) => void;
   // The system share sheet with the file where the browser can, or the link, or the clipboard.
   shareFile: (url: string) => Promise<void>;

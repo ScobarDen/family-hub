@@ -135,7 +135,13 @@ function pushOf(window: Window) {
 
       await wrap(subscription?.unsubscribe() ?? Promise.resolve(false));
     },
-    hasPushSubscription: async () => hasPush && (await wrap(currentSubscription())) !== null,
+    async pushSubscription() {
+      const subscription = hasPush ? await wrap(currentSubscription()) : null;
+
+      return subscription === null
+        ? undefined
+        : pushSubscription.safeParse(subscription.toJSON()).data;
+    },
   };
 }
 
@@ -145,6 +151,7 @@ export function reatomBrowserPlatform(window: Window): BrowserPlatform {
   const isIos =
     /iPhone|iPad/u.test(window.navigator.userAgent) ||
     (/Macintosh/u.test(window.navigator.userAgent) && window.navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/u.test(window.navigator.userAgent);
   const { hasPush, ...push } = pushOf(window);
 
   function isStandalone(): boolean {
@@ -156,6 +163,7 @@ export function reatomBrowserPlatform(window: Window): BrowserPlatform {
 
   return {
     isIos,
+    isAndroid,
     isStandalone,
     ...installPromptOf(window),
     ...push,

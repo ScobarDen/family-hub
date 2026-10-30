@@ -5,7 +5,7 @@ import type { Membership } from "@/modules/auth";
 import { BotApiError } from "@/modules/telegram";
 
 import { latenessLimitMs } from "../reminder.lib.ts";
-import type { ReminderDependencies, Source } from "../reminder.types.ts";
+import type { PushText, ReminderDependencies, Source } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
 import { fireAfter, upcoming, zoneOf } from "./schedule.service.ts";
 import { sourceOfRow } from "./source.service.ts";
@@ -21,7 +21,15 @@ type Delivery =
   | { status: "departed" }
   | { status: "rate-limited" };
 
-type Sending = { row: DispatchRow; source: Source; recipient: Membership; text: string };
+type Composed = { occurrence: string; timeZone: string; body: string | undefined };
+
+type Sending = {
+  row: DispatchRow;
+  source: Source;
+  recipient: Membership;
+  text: string;
+  pushText: PushText;
+};
 
 async function sendToBot(
   { bot, memberships, clock }: ReminderDependencies,
@@ -60,15 +68,21 @@ async function sendToBot(
   }
 }
 
-// A Push that fails never holds back the row, which the bot may already have delivered.
+// A Push that fails never holds back the row, which the bot may already have delivered. The row's
+// id tags it, so the Reminder coming again replaces its earlier Push.
 async function pushToDevices(
   { push }: ReminderDependencies,
-  { source, recipient, text }: Sending,
+  { row, source, recipient, pushText }: Sending,
 ): Promise<number> {
   try {
     return await push.sendTo(recipient.member.id, {
-      text,
-      ...(source.deepLink === undefined ? {} : { startParam: encodeDeepLink(source.deepLink) }),
+      message: {
+        ...pushText,
+        text: pushText.title,
+        tag: row.id,
+        ...(source.deepLink === undefined ? {} : { startParam: encodeDeepLink(source.deepLink) }),
+      },
+      ...(source.isPressable ? { press: { dispatchId: row.id, occurrence: row.occurrence } } : {}),
     });
   } catch (error) {
     console.error("Push failed", { memberId: recipient.member.id, error });
@@ -120,13 +134,36 @@ async function send(dependencies: ReminderDependencies, sending: Sending): Promi
     : sendToBot(dependencies, sending);
 }
 
-async function textOf(
+function headlineOf(source: Source, { occurrence, timeZone }: Omit<Composed, "body">): string {
+  return `${source.emoji} ${source.title(occurrence, timeZone)}`;
+}
+
+function textOf(source: Source, composed: Composed): string {
+  const headline = headlineOf(source, composed);
+
+  return composed.body === undefined ? headline : `${headline}\n\n${composed.body}`;
+}
+
+function pushTextOf(source: Source, composed: Composed): PushText {
+  return (
+    source.pushOf?.(composed.occurrence, composed.timeZone) ?? {
+      title: source.title(composed.occurrence, composed.timeZone),
+      body: composed.body ?? "",
+    }
+  );
+}
+
+async function composedOf(
   source: Source,
-  { occurrence, timeZone }: { occurrence: string; timeZone: string },
-) {
-  return source.compose === undefined
-    ? `${source.emoji} ${source.title(occurrence, timeZone)}`
-    : source.compose(occurrence, timeZone);
+  { occurrence, timeZone }: Omit<Composed, "body">,
+): Promise<Composed | undefined> {
+  if (source.compose === undefined) {
+    return { occurrence, timeZone, body: undefined };
+  }
+
+  const body = await source.compose(occurrence, timeZone);
+
+  return body === undefined ? undefined : { occurrence, timeZone, body };
 }
 
 // A Reminder more than 12 hours late moves on without a stale message.
@@ -150,11 +187,29 @@ async function attempt(
     return { status: "skipped" };
   }
 
-  const text = await textOf(source, { occurrence: row.occurrence ?? "", timeZone });
+  const composed = await composedOf(source, { occurrence: row.occurrence ?? "", timeZone });
 
-  return text === undefined
+  return composed === undefined
     ? { status: "skipped" }
-    : send(dependencies, { row, source, recipient, text });
+    : send(dependencies, {
+        row,
+        source,
+        recipient,
+        text: textOf(source, composed),
+        pushText: pushTextOf(source, composed),
+      });
+}
+
+// A pushed Occurrence is remembered like a sent one, so «Готово» elsewhere marks it done and a
+// later «Отложить» on the Push cannot bring it back; it has no bot message to edit.
+function sentColumnsOf(row: DispatchRow, delivery: Delivery) {
+  if (delivery.status === "sent") {
+    return { sentOccurrence: row.occurrence, ...delivery.sent, doneAt: null, doneBy: null };
+  }
+
+  return delivery.status === "pushed"
+    ? { sentOccurrence: row.occurrence, chatId: null, messageId: null, doneAt: null, doneBy: null }
+    : {};
 }
 
 // Sent or not, the row moves on to the next Occurrence; the message it sent stays answerable.
@@ -166,10 +221,7 @@ async function advance(
     delivery,
   }: { row: DispatchRow; next: ReturnType<typeof fireAfter>; delivery: Delivery },
 ): Promise<void> {
-  const sentColumns =
-    delivery.status === "sent"
-      ? { sentOccurrence: row.occurrence, ...delivery.sent, doneAt: null, doneBy: null }
-      : {};
+  const sentColumns = sentColumnsOf(row, delivery);
 
   await dispatch.update(row.familyId, row.id, {
     occurrence: next?.occurrence ?? null,

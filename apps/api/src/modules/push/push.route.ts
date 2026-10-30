@@ -3,23 +3,30 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import {
+  pushRotation,
   pushSubscription,
   type Deleted,
+  type PushEndpoint,
   type PushKey,
   type PushSubscriptionChange,
 } from "@family-hub/contract";
 
 import { httpStatus, jsonBody, refusalsOf } from "@/common/errors.lib.ts";
-import { requireMember, type AuthEnv } from "@/modules/auth";
+import { requireMember, type MemberEnv } from "@/modules/auth";
 
 import type { PushService } from "./push.service.ts";
 
-type PushEnv = { Variables: AuthEnv["Variables"] & { push: PushService } };
+type PushEnv = { Variables: MemberEnv["Variables"] & { push: PushService } };
 
 const refuse = refusalsOf({
   deviceNotFound: {
     code: "DEVICE_NOT_FOUND",
     message: "No such Device of this Member",
+    status: httpStatus.notFound,
+  },
+  pushNotFound: {
+    code: "PUSH_SUBSCRIPTION_NOT_FOUND",
+    message: "No subscription with this endpoint",
     status: httpStatus.notFound,
   },
 });
@@ -29,6 +36,25 @@ const deviceParameter = sValidator("param", z.object({ id: z.string().min(1) }))
 export const pushRoute = new Hono<PushEnv>()
   .get("/api/push/key", requireMember, async (context) =>
     context.json<PushKey>({ publicKey: context.var.push.publicKey() }),
+  )
+  // The endpoint is what rotation trusts, so only the Device that holds the session reads its own.
+  .get("/api/devices/:id/push", requireMember, deviceParameter, async (context) => {
+    const { id } = context.req.valid("param");
+
+    return id === context.var.deviceId
+      ? context.json<PushEndpoint>({
+          endpoint: await context.var.push.endpointOf(context.var.membership, id),
+        })
+      : refuse(context, "deviceNotFound");
+  })
+  // No session: the service worker that calls it proves itself with the old endpoint (ADR 0016).
+  .put(
+    "/api/push/rotation",
+    jsonBody(pushRotation, "The old endpoint and the new subscription are required"),
+    async (context) =>
+      (await context.var.push.rotate(context.req.valid("json"))) === "rotated"
+        ? context.json<PushSubscriptionChange>(context.req.valid("json").subscription)
+        : refuse(context, "pushNotFound"),
   )
   .put(
     "/api/devices/:id/push",

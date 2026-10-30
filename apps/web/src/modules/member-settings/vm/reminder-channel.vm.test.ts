@@ -45,6 +45,24 @@ describe("where Reminders go", () => {
     expect(startChannel().model.channel()).toBe("both");
   });
 
+  test("says «both» is the most reliable", () => {
+    expect(startChannel().model.hint()).toContain("Надёжнее всего");
+  });
+
+  test("says «push» still falls back to Telegram", () => {
+    expect(startChannel({ saved: "push" }).model.hint()).toContain("придёт в Telegram");
+  });
+
+  test("reads the hint out only once the Member picks a channel", () => {
+    const { model } = startChannel();
+    const before = model.announcement();
+
+    model.choose("push");
+
+    expect(before).toBe("");
+    expect(model.announcement()).toContain("придёт в Telegram");
+  });
+
   test("starts from the Member's saved choice", () => {
     expect(startChannel({ saved: "telegram" }).model.channel()).toBe("telegram");
   });

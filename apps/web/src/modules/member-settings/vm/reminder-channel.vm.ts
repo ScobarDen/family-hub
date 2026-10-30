@@ -1,4 +1,4 @@
-import { action, computed, noop } from "@reatom/core";
+import { action, atom, computed, noop } from "@reatom/core";
 
 import { defaultReminderChannel, type ReminderChannel } from "@family-hub/contract";
 
@@ -21,13 +21,29 @@ export const reminderChannelChoices: Array<{ value: ReminderChannel; label: stri
   { value: "push", label: "Только Push" },
 ];
 
+// Telegram backs Push up under «both», and stands in under «push» only when no Device took it.
+const hints: Record<ReminderChannel, string> = {
+  both: "Надёжнее всего: Push на устройства, где он включён, и сообщение в Telegram",
+  telegram: "Только сообщение в Telegram",
+  push: "Если ни одно устройство не примет Push, напоминание всё равно придёт в Telegram",
+};
+
 export function reatomReminderChannel({ api, saved, haptics }: ReminderChannelDependencies) {
   const setting = reatomSavedSetting("reminderChannel", { send: api.saveReminderChannel, saved });
 
+  const hasChosen = atom(false, "reminderChannel.hasChosen");
+  const current = computed(
+    (): ReminderChannel => setting.current() ?? defaultReminderChannel,
+    "reminderChannel.current",
+  );
+
   return {
-    channel: computed(
-      (): ReminderChannel => setting.current() ?? defaultReminderChannel,
-      "reminderChannel.current",
+    channel: current,
+    hint: computed(() => hints[current()], "reminderChannel.hint"),
+    // Read out once the Member picks a channel, as the hint under the chips changes with it.
+    announcement: computed(
+      () => (hasChosen() ? hints[current()] : ""),
+      "reminderChannel.announcement",
     ),
     choices: reminderChannelChoices,
     failure: reatomFailure(setting.save, {
@@ -38,6 +54,7 @@ export function reatomReminderChannel({ api, saved, haptics }: ReminderChannelDe
 
     choose: action((channel: ReminderChannel) => {
       haptics.select();
+      hasChosen.set(true);
       setting.save(channel).catch(noop);
     }, "reminderChannel.choose"),
   };

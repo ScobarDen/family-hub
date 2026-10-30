@@ -76,7 +76,10 @@ export const pushSubscriptions = sqliteTable(
     auth: text("auth").notNull(),
     createdAt: integer("created_at").notNull(),
   },
-  (table) => [index("push_subscriptions_member_id_idx").on(table.memberId)],
+  (table) => [
+    index("push_subscriptions_member_id_idx").on(table.memberId),
+    index("push_subscriptions_endpoint_idx").on(table.endpoint),
+  ],
 );
 
 export const families = sqliteTable("families", {

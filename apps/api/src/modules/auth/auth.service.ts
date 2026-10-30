@@ -193,6 +193,8 @@ export function createAuthService(dependencies: AuthServiceDependencies) {
       { ...dependencies, sessionTokens },
       { signIn, signInWithLogin, signInWithDevice, devicesOf, revokeDevice },
     ),
+    // A Device left unused past its lifetime goes, and its push subscription with it.
+    sweepDevices: async () => devices.removeUnused(clock.now() - deviceLifetimeMs),
     // Renewing is use too: an Installed App kept open never signs in with its Device again.
     async renew({ member }: Membership, deviceId: string | undefined): Promise<string> {
       const now = clock.now();

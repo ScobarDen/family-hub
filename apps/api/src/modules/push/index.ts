@@ -1,3 +1,4 @@
+export { createPressTokens } from "./lib/press-token.lib.ts";
 export type { Vapid } from "./lib/vapid.lib.ts";
 export { createWebPushTransport } from "./push.api.ts";
 export { createPushRepo } from "./push.repo.ts";

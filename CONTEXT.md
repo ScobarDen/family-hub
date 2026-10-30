@@ -121,7 +121,7 @@ A Member responsible for a Task or Subtask; a Task may have several or none, and
 _Avoid_: Owner, executor, responsible
 
 **Completed**:
-The state of a Task Occurrence or Subtask a Member has marked as done, in the app or from the bot's Reminder; a Task becomes Completed when all its Subtasks are.
+The state of a Task Occurrence or Subtask a Member has marked as done, in the app or from a Reminder, in the bot or on a Push; a Task becomes Completed when all its Subtasks are.
 _Avoid_: Done, finished, closed
 
 **Recurrence**:

@@ -1,6 +1,6 @@
 import { reatomComponent } from "@reatom/react";
 
-import { Chip, ChipGroup, FieldError } from "@/modules/ui";
+import { Chip, ChipGroup, FieldError, LiveRegion } from "@/modules/ui";
 
 import type { ReminderChannelModel } from "../vm/reminder-channel.vm.ts";
 
@@ -11,11 +11,7 @@ export const ReminderChannelSetting = reatomComponent(({ model }: ReminderChanne
 
   return (
     <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-      <ChipGroup
-        label="Куда слать напоминания"
-        hint="Push приходит на устройства, где включён в установленном приложении"
-        role="radiogroup"
-      >
+      <ChipGroup label="Куда слать напоминания" hint={model.hint()} role="radiogroup">
         {model.choices.map(({ value, label }) => (
           <Chip
             key={value}
@@ -29,6 +25,7 @@ export const ReminderChannelSetting = reatomComponent(({ model }: ReminderChanne
           </Chip>
         ))}
       </ChipGroup>
+      <LiveRegion className="sr-only">{model.announcement()}</LiveRegion>
       <FieldError>{model.failure()}</FieldError>
     </div>
   );

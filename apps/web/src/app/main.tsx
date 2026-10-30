@@ -62,8 +62,9 @@ const platform = browser && reatomBrowserPlatform(window);
 
 // Built first: it reads the launch params before the first navigation rewrites the URL.
 const telegram = reatomTelegram(browser?.webApp ?? window.Telegram.WebApp);
+const apiUrl = import.meta.env.VITE_API_URL ?? window.location.origin;
 const httpClient = createHttpClient({
-  baseUrl: import.meta.env.VITE_API_URL ?? window.location.origin,
+  baseUrl: apiUrl,
   fetch: async (input, init) => fetch(input, init),
   page: document,
   holdUntilSignedIn: true,
@@ -449,9 +450,11 @@ prefetch().catch(noop);
 joinFamily.load();
 live.start();
 
-// The service worker only shows Push and opens the app from one; it caches nothing.
+// A static service worker reads no build env, so it learns where the API is from its own URL.
 if (browser !== undefined) {
-  navigator.serviceWorker?.register(`${import.meta.env.BASE_URL}sw.js`).catch(noop);
+  navigator.serviceWorker
+    ?.register(`${import.meta.env.BASE_URL}sw.js?api=${encodeURIComponent(apiUrl)}`)
+    .catch(noop);
 }
 
 createRoot(root).render(

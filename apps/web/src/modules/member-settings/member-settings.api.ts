@@ -2,6 +2,7 @@ import {
   deleted,
   deviceList,
   digestSettings,
+  pushEndpoint,
   pushKey,
   pushSubscription,
   reminderChannelSettings,
@@ -13,6 +14,27 @@ import {
 } from "@family-hub/contract";
 
 import type { HttpClient } from "@/common/http-client.api.ts";
+
+function pushApiOf(client: HttpClient) {
+  return {
+    pushKey: async () => client.request("/api/push/key", { schema: pushKey }),
+    pushEndpoint: async (deviceId: string) =>
+      client.request(`/api/devices/${encodeURIComponent(deviceId)}/push`, {
+        schema: pushEndpoint,
+      }),
+    savePush: async (deviceId: string, subscription: PushSubscriptionChange) =>
+      client.request(`/api/devices/${encodeURIComponent(deviceId)}/push`, {
+        method: "PUT",
+        body: subscription,
+        schema: pushSubscription,
+      }),
+    deletePush: async (deviceId: string) =>
+      client.request(`/api/devices/${encodeURIComponent(deviceId)}/push`, {
+        method: "DELETE",
+        schema: deleted,
+      }),
+  };
+}
 
 export function createMemberSettingsApi(client: HttpClient) {
   return {
@@ -39,18 +61,7 @@ export function createMemberSettingsApi(client: HttpClient) {
         method: "DELETE",
         schema: deleted,
       }),
-    pushKey: async () => client.request("/api/push/key", { schema: pushKey }),
-    savePush: async (deviceId: string, subscription: PushSubscriptionChange) =>
-      client.request(`/api/devices/${encodeURIComponent(deviceId)}/push`, {
-        method: "PUT",
-        body: subscription,
-        schema: pushSubscription,
-      }),
-    deletePush: async (deviceId: string) =>
-      client.request(`/api/devices/${encodeURIComponent(deviceId)}/push`, {
-        method: "DELETE",
-        schema: deleted,
-      }),
+    ...pushApiOf(client),
   };
 }
 

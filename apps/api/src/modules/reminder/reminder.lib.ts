@@ -1,6 +1,6 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 
-import { timeInZone } from "@family-hub/recurrence";
+import { daysAfter, timeInZone } from "@family-hub/recurrence";
 
 export const callbackPrefix = "rd";
 export const snoozeMs = 3_600_000;
@@ -80,6 +80,8 @@ export const notDoneText = "Не получилось отметить, откр
 
 export const alreadyDoneText = "Уже сделано";
 
+export const passedText = "Это напоминание уже прошло";
+
 export function openAppButton({ text, url }: { text: string; url: string }): InlineKeyboardMarkup {
   return { inline_keyboard: [[{ text, url }]] };
 }
@@ -91,6 +93,14 @@ function dayMonth(timeZone: string) {
 // A floating date is the same day everywhere, so it is shown as that day in UTC.
 export function formatFloatingDate(date: string): string {
   return dayMonth("UTC").format(new Date(`${date}T12:00:00Z`));
+}
+
+export function dayLabelOf(date: string, today: string): string {
+  if (date === today) {
+    return "Сегодня";
+  }
+
+  return date === daysAfter(today, 1) ? "Завтра" : formatFloatingDate(date);
 }
 
 export function formatMomentIn(moment: number, timeZone: string): string {

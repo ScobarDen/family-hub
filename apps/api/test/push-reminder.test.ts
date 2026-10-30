@@ -101,7 +101,51 @@ function botTexts(worker: Worker) {
 
 // The morning digest comes at the same 09:00; only the Task's Reminder is looked at.
 function taskPushes(worker: Worker) {
-  return worker.push.pushes().filter(({ message }) => message.text.startsWith("📌"));
+  return worker.push
+    .pushes()
+    .filter(({ message }) => message.startParam?.startsWith("task_") === true);
+}
+
+function pressTokenOf(worker: Worker): string {
+  const token = taskPushes(worker).at(-1)?.message.pressToken;
+
+  if (token === undefined) {
+    throw new Error("No Push with buttons arrived");
+  }
+
+  return token;
+}
+
+async function pressPush(worker: Worker, body: { token: string; action: "done" | "snooze" }) {
+  return worker.request("/api/reminders/press", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function remindWeekly(worker: Worker, title: string): Promise<Task> {
+  const change: TaskChange = {
+    title,
+    when: { date: "2026-10-02", ...dateOnly },
+    recurrence: { frequency: "weekly", until: null },
+    reminderOffsets: ["at-start"],
+  };
+  const response = await request(worker, denis, {
+    method: "POST",
+    path: "/api/tasks",
+    body: change,
+  });
+
+  return response.json<Task>();
+}
+
+async function completionsOf(worker: Worker, id: string): Promise<Array<string | null>> {
+  const response = await request(worker, denis, { method: "GET", path: "/api/tasks" });
+  const tasks = await response.json<Task[]>();
+  const task = tasks.find((candidate) => candidate.id === id);
+
+  return task?.completions.map(({ occurrence }) => occurrence) ?? [];
 }
 
 const phone = "https://fcm.googleapis.com/fcm/send/phone";
@@ -187,7 +231,14 @@ describe("a Reminder", () => {
     expect(taskPushes(worker)).toEqual([
       {
         endpoint: phone,
-        message: { text: "📌 Вынести мусор · 2 октября", startParam: `task_${task.id}` },
+        message: {
+          title: "Вынести мусор",
+          body: "Сегодня · Дела",
+          text: "Вынести мусор",
+          tag: expect.any(String),
+          startParam: `task_${task.id}`,
+          pressToken: expect.any(String),
+        },
       },
     ]);
   });
@@ -285,8 +336,327 @@ describe("a Reminder", () => {
     await tickAt(worker, "2026-10-02T06:01:00Z");
 
     expect(botTexts(worker)).toEqual(["📌 Вынести мусор · 2 октября"]);
-    expect(taskPushes(worker).map(({ message }) => message.text)).toEqual([
-      "📌 Полить цветы · 2 октября",
+    expect(taskPushes(worker).map(({ message }) => message.title)).toEqual(["Полить цветы"]);
+  });
+});
+
+describe("a Push", () => {
+  test("of a Reminder replaces its earlier Push when it comes again after «Отложить»", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await chooseChannel(worker, "push");
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    await pressPush(worker, { token: pressTokenOf(worker), action: "snooze" });
+    await tickAt(worker, "2026-10-03T06:00:00Z");
+
+    const [first, again] = taskPushes(worker);
+
+    expect(again?.message.title).toBe("Вынести мусор");
+    expect(again?.message.tag).toBe(first?.message.tag);
+  });
+
+  test("names the Pet of a Pet-linked Task and says tomorrow for a Reminder a day ahead", async () => {
+    const worker = await startWithFamily();
+    const pet = await request(worker, denis, {
+      method: "POST",
+      path: "/api/pets",
+      body: {
+        name: "Бьюик",
+        species: "dog",
+        breed: null,
+        sex: null,
+        birthDate: null,
+        chipNumber: null,
+        notes: null,
+      },
+    });
+    const { id: petId } = await pet.json<{ id: string }>();
+
+    await subscribe(worker, phone);
+    await request(worker, denis, {
+      method: "POST",
+      path: "/api/tasks",
+      body: {
+        title: "Привить",
+        when: { date: "2026-10-03", ...dateOnly },
+        petId,
+        reminderOffsets: ["1d"],
+      } satisfies TaskChange,
+    });
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    expect(taskPushes(worker).map(({ message }) => message.body)).toEqual(["Завтра · Бьюик"]);
+  });
+
+  test("«Готово» completes the Occurrence it showed and closes the bot's message under «both»", async () => {
+    const worker = await startWithFamily();
+    const task = await remindTomorrow(worker, "Вынести мусор");
+
+    await subscribe(worker, phone);
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    const response = await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    expect(response.status).toBe(204);
+    expect(await completionsOf(worker, task.id)).toHaveLength(1);
+    expect(worker.bot.editedMessages().map(({ text }) => text)).toEqual([
+      "✅ Сделал(а) Денис: Вынести мусор · 2 октября",
     ]);
+  });
+
+  test("«Готово» under «push» completes the shown Occurrence, not the next one the row moved to", async () => {
+    const worker = await startWithFamily();
+    const task = await remindWeekly(worker, "Полить цветы");
+
+    await subscribe(worker, phone);
+    await chooseChannel(worker, "push");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    expect(await completionsOf(worker, task.id)).toEqual(["2026-10-02"]);
+  });
+
+  test("«Готово» pressed twice says it is already done", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await remindWeekly(worker, "Полить цветы");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    const again = await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    expect(again.status).toBe(409);
+    expect(await again.json()).toEqual({ code: "PRESS_REFUSED", message: "Уже сделано" });
+  });
+
+  test("«Отложить» on a Push left behind by a later Occurrence does not bring it back", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await chooseChannel(worker, "push");
+    await remindWeekly(worker, "Полить цветы");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    const stale = pressTokenOf(worker);
+
+    await chooseChannel(worker, "telegram");
+    await tickAt(worker, "2026-10-09T06:00:00Z");
+
+    const response = await pressPush(worker, { token: stale, action: "snooze" });
+
+    await tickAt(worker, "2026-10-10T06:00:00Z");
+
+    expect(await response.json()).toEqual({
+      code: "PRESS_REFUSED",
+      message: "Это напоминание уже прошло",
+    });
+    expect(botTexts(worker)).toEqual(["📌 Полить цветы · 9 октября"]);
+  });
+
+  test("«Готово» pressed twice on a single Task says it is already done", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    const again = await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    expect(await again.json()).toEqual({ code: "PRESS_REFUSED", message: "Уже сделано" });
+  });
+
+  test("«Отложить» after «Готово» does not bring a pushed birthday back", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await chooseChannel(worker, "push");
+    await request(worker, denis, {
+      method: "POST",
+      path: "/api/pets",
+      body: {
+        name: "Бьюик",
+        species: "dog",
+        breed: null,
+        sex: null,
+        birthDate: "2020-10-02",
+        chipNumber: null,
+        notes: null,
+      },
+    });
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    const birthday = worker.push
+      .pushes()
+      .find(({ message }) => message.title.startsWith("День рождения"));
+    const token = birthday?.message.pressToken ?? "";
+
+    await pressPush(worker, { token, action: "done" });
+    const snoozed = await pressPush(worker, { token, action: "snooze" });
+
+    await tickAt(worker, "2026-10-02T07:00:00Z");
+
+    expect(await snoozed.json()).toEqual({ code: "PRESS_REFUSED", message: "Уже сделано" });
+    expect(
+      worker.push.pushes().filter(({ message }) => message.title.startsWith("День рождения")),
+    ).toHaveLength(1);
+  });
+
+  test("buttons stop working once their Device is revoked", async () => {
+    const worker = await startWithFamily();
+    const { token, device } = await subscribe(worker, phone);
+
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    const pressToken = pressTokenOf(worker);
+
+    await worker.request(`/api/devices/${device.id}`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    const response = await pressPush(worker, { token: pressToken, action: "done" });
+
+    expect(response.status).toBe(409);
+  });
+
+  test("buttons with a forged token do nothing", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    const [claims = ""] = pressTokenOf(worker).split(".");
+
+    const response = await pressPush(worker, { token: `${claims}.forged`, action: "done" });
+
+    expect(response.status).toBe(409);
+  });
+
+  test("of the digest comes without buttons", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    const digest = worker.push.pushes().find(({ message }) => message.title.startsWith("Сводка"));
+
+    expect(digest?.message.pressToken).toBeUndefined();
+    expect(digest?.message.body).toContain("Вынести мусор");
+  });
+});
+
+describe("a replaced subscription", () => {
+  test("takes over its new endpoint from another Device that held it", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await subscribe(worker, laptop);
+    await worker.request("/api/push/rotation", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ oldEndpoint: phone, subscription: subscriptionOf(laptop) }),
+    });
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    expect(taskPushes(worker).map(({ endpoint }) => endpoint)).toEqual([laptop]);
+  });
+
+  test("is saved by its old endpoint without a session", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    const response = await worker.request("/api/push/rotation", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ oldEndpoint: phone, subscription: subscriptionOf(laptop) }),
+    });
+
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    expect(response.status).toBe(200);
+    expect(taskPushes(worker).map(({ endpoint }) => endpoint)).toEqual([laptop]);
+  });
+
+  test("is refused for an endpoint the Worker does not know", async () => {
+    const worker = await startWithFamily();
+
+    const response = await worker.request("/api/push/rotation", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ oldEndpoint: phone, subscription: subscriptionOf(laptop) }),
+    });
+
+    expect(response.status).toBe(404);
+  });
+});
+
+describe("the subscription a Device holds", () => {
+  test("is not told to another Device of the same Member", async () => {
+    const worker = await startWithFamily();
+    const { device } = await subscribe(worker, phone);
+    const other = await subscribe(worker, laptop);
+
+    const response = await worker.request(`/api/devices/${device.id}/push`, {
+      headers: { authorization: `Bearer ${other.token}` },
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  test("is taken over by a Device that signs in again in the same browser", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    await subscribe(worker, phone);
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+
+    expect(taskPushes(worker)).toHaveLength(1);
+  });
+
+  test("is told by its endpoint", async () => {
+    const worker = await startWithFamily();
+    const { token, device } = await subscribe(worker, phone);
+
+    const response = await worker.request(`/api/devices/${device.id}/push`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(await response.json()).toEqual({ endpoint: phone });
+  });
+
+  test("is told as none once the push service called it gone", async () => {
+    const worker = await startWithFamily();
+    const { token, device } = await subscribe(worker, phone);
+
+    worker.push.answer(phone, "gone");
+    await remindTomorrow(worker, "Вынести мусор");
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    const response = await worker.request(`/api/devices/${device.id}/push`, {
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(await response.json()).toEqual({ endpoint: null });
+  });
+
+  test("goes with its Device once the Device is unused for 90 days, while a used one stays", async () => {
+    const worker = await startWithFamily();
+
+    await subscribe(worker, phone);
+    worker.clock.set("2026-11-15T09:00:00Z");
+    await subscribe(worker, laptop);
+    await tickAt(worker, "2026-12-31T03:00:00Z");
+
+    const { results } = await worker.env.DB.prepare("SELECT endpoint FROM push_subscriptions").all<{
+      endpoint: string;
+    }>();
+
+    expect(results.map(({ endpoint }) => endpoint)).toEqual([laptop]);
   });
 });

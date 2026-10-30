@@ -1,6 +1,8 @@
 import { context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
+import { pushSubscription } from "@family-hub/contract";
+
 import { createHttpClient } from "@/common/http-client.api.ts";
 import {
   fakeBrowserPlatform,
@@ -18,32 +20,59 @@ type Options = {
   answer?: PushPermission;
   pushAvailability?: PushAvailability;
   // Requests to the subscription the server answers with 500.
-  failing?: "PUT" | "DELETE";
+  failing?: "GET" | "PUT" | "DELETE";
+  // The endpoint the server keeps for this Device.
+  saved?: string;
+  isAndroid?: boolean;
 };
 
-function startPush(options: Options = {}) {
+// What the server keeps for this Device, and every request but the launch's read of it.
+function fakeServer(options: Options) {
+  let saved = options.saved ?? null;
   const requests: Array<{ path: string; method: string; body: unknown }> = [];
 
-  async function fetch(url: URL, init: RequestInit): Promise<Response> {
-    const body: unknown = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
-
-    requests.push({ path: url.pathname, method: init.method ?? "GET", body });
-
-    if (init.method !== undefined && init.method === options.failing) {
-      return Response.json({ code: "INTERNAL", message: "" }, { status: 500 });
-    }
-
+  function answer(url: URL, method: string, body: unknown): Response {
     if (url.pathname === "/api/push/key") {
       return Response.json({ publicKey: "BPublicKey" });
     }
 
-    return Response.json(init.method === "DELETE" ? { status: "deleted" } : body);
+    if (method === "GET") {
+      return Response.json({ endpoint: saved });
+    }
+
+    if (method === "DELETE") {
+      saved = null;
+
+      return Response.json({ status: "deleted" });
+    }
+
+    saved = pushSubscription.parse(body).endpoint;
+
+    return Response.json(body);
   }
 
+  async function fetch(url: URL, init: RequestInit): Promise<Response> {
+    const method = init.method ?? "GET";
+    const body: unknown = typeof init.body === "string" ? JSON.parse(init.body) : undefined;
+
+    if (!(method === "GET" && url.pathname.endsWith("/push"))) {
+      requests.push({ path: url.pathname, method, body });
+    }
+
+    return method === options.failing
+      ? Response.json({ code: "INTERNAL", message: "" }, { status: 500 })
+      : answer(url, method, body);
+  }
+
+  return { fetch, requests, saved: () => saved };
+}
+
+function startPush(options: Options = {}) {
+  const server = fakeServer(options);
   const browser = fakeBrowserPlatform(options);
   const model = reatomPush({
     api: createMemberSettingsApi(
-      createHttpClient({ baseUrl: "https://api.family-hub.test", fetch }),
+      createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: server.fetch }),
     ),
     platform: browser.platform,
     deviceId: () => "device-1",
@@ -52,7 +81,7 @@ function startPush(options: Options = {}) {
 
   model.state.subscribe(noop);
 
-  return { model, browser, requests };
+  return { model, browser, requests: server.requests, server };
 }
 
 beforeEach(() => {
@@ -124,7 +153,10 @@ describe("Push on this Device", () => {
   });
 
   test("turns off, dropping the subscription here and on the server", async () => {
-    const { model, browser, requests } = startPush({ permission: "granted" });
+    const { model, browser, requests } = startPush({
+      permission: "granted",
+      saved: fakePushSubscription.endpoint,
+    });
 
     browser.subscribe();
     await model.load();
@@ -145,5 +177,111 @@ describe("Push on this Device", () => {
     expect(model.state()).toBe("needs-install");
     expect(model.hint()).toContain("«Домой»");
     expect(model.canToggle()).toBe(false);
+  });
+
+  test("comes back on at launch when the server lost the subscription this browser holds", async () => {
+    const { model, browser, server } = startPush({ permission: "granted" });
+
+    browser.subscribe();
+    await model.load();
+
+    expect(model.state()).toBe("on");
+    expect(server.saved()).toBe(fakePushSubscription.endpoint);
+  });
+
+  test("saves at launch the subscription the browser replaced", async () => {
+    const { model, browser, server } = startPush({
+      permission: "granted",
+      saved: "https://fcm.googleapis.com/fcm/send/old",
+    });
+
+    browser.subscribe();
+    await model.load();
+
+    expect(model.state()).toBe("on");
+    expect(server.saved()).toBe(fakePushSubscription.endpoint);
+  });
+
+  test("subscribes again at launch when the browser lost the subscription the Member wanted", async () => {
+    const { model, browser, server } = startPush({
+      permission: "granted",
+      saved: "https://old.test",
+    });
+
+    await model.load();
+
+    expect(model.state()).toBe("on");
+    expect(browser.isSubscribed()).toBe(true);
+    expect(server.saved()).toBe(fakePushSubscription.endpoint);
+  });
+
+  test("is off at launch and forgotten on the server once notifications are no longer allowed", async () => {
+    const { model, server } = startPush({ permission: "default", saved: "https://old.test" });
+
+    await model.load();
+
+    expect(model.state()).toBe("off");
+    expect(server.saved()).toBeNull();
+  });
+
+  test("is off at launch when the server cannot save what this browser holds", async () => {
+    const { model, browser } = startPush({ permission: "granted", failing: "PUT" });
+
+    browser.subscribe();
+    await model.load();
+
+    expect(model.state()).toBe("off");
+  });
+
+  test("on Android says how to keep battery saving from delaying Push", async () => {
+    const { model, browser } = startPush({
+      permission: "granted",
+      saved: fakePushSubscription.endpoint,
+      isAndroid: true,
+    });
+
+    browser.subscribe();
+    await model.load();
+
+    expect(model.hint()).toContain("экономии батареи");
+  });
+
+  test("trusts the browser at launch when the server cannot be reached", async () => {
+    const { model, browser } = startPush({ permission: "granted", failing: "GET" });
+
+    browser.subscribe();
+    await model.load();
+
+    expect(model.state()).toBe("on");
+  });
+
+  test("is forgotten on the server at launch once notifications are denied", async () => {
+    const { model, browser, server } = startPush({
+      permission: "denied",
+      saved: fakePushSubscription.endpoint,
+    });
+
+    browser.subscribe();
+    await model.load();
+
+    expect(model.state()).toBe("denied");
+    expect(server.saved()).toBeNull();
+  });
+
+  test("waits with the switch until the launch has read what the server keeps", async () => {
+    const { model, browser, requests } = startPush({
+      permission: "granted",
+      saved: fakePushSubscription.endpoint,
+    });
+
+    browser.subscribe();
+    const loading = model.load();
+
+    expect(model.isSwitching()).toBe(true);
+    model.toggle(false);
+    await loading;
+
+    expect(model.state()).toBe("on");
+    expect(requests).toEqual([]);
   });
 });
