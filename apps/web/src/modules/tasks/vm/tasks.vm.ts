@@ -34,7 +34,7 @@ import { reatomTasks, type SharedLists, type TasksModel } from "../tasks.model.t
 import { reatomCalendar } from "./calendar.vm.ts";
 import { reatomSubtaskForm } from "./subtask-form.vm.ts";
 import { reatomTaskActions, type CareRecord } from "./task-actions.vm.ts";
-import { reatomTaskForm, type TaskDraftOpening } from "./task-form.vm.ts";
+import { reatomTaskForm } from "./task-form.vm.ts";
 
 export type TasksScreen =
   | { kind: "loading" }
@@ -58,7 +58,6 @@ type TasksDependencies = SharedLists &
     onOpenAlbum: (albumId: string) => void;
     onOpenPet: (petId: string) => void;
     onRecord: (record: CareRecord) => void;
-    onDraftSaved: (draftId: string) => void;
     slide?: Slide;
   };
 
@@ -274,11 +273,6 @@ function reatomAdding({ editing, opened, view, selected }: Navigation, forms: Fo
       forms.taskForm.startCreating({ petId });
       editing.set("task");
     }, "tasks.addForPet"),
-    openDraft: action((opening: TaskDraftOpening) => {
-      opened.set(undefined);
-      forms.taskForm.startFromDraft(opening);
-      editing.set("task");
-    }, "tasks.openDraft"),
   };
 }
 

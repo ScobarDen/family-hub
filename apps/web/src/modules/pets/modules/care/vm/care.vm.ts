@@ -45,7 +45,7 @@ import {
   type WeightSummary,
 } from "../care.lib.ts";
 import { reatomCareData, type CareData } from "../care.model.ts";
-import { reatomCareForm, type CareEntryDraftOpening, type CareFormModel } from "./care-form.vm.ts";
+import { reatomCareForm, type CareFormModel } from "./care-form.vm.ts";
 import { reatomCarePhotos } from "./care-photos.vm.ts";
 
 export type CareScreen = { kind: "blocks" } | { kind: "expenses" };
@@ -63,7 +63,6 @@ export type CareDependencies = LiveVersion & {
   photoHint: () => string | undefined;
   onMakeAvatar: (photoId: string) => void;
   onOpenPet: (petId: string) => void;
-  onDraftSaved: (draftId: string) => void;
 };
 
 // What the pet card's summary leads with; the month reads as nothing spent until it arrives.
@@ -172,16 +171,6 @@ function reatomRemove(
       refusal: "Не получилось удалить запись. Попробуйте ещё раз.",
     },
   );
-}
-
-// «Изменить» on a Command Draft lands in the ordinary form, filled in from the draft.
-function reatomDraftEditing({ form, isFormOpen }: Sources) {
-  return {
-    editDraft: action((opening: CareEntryDraftOpening) => {
-      form.startFromDraft(opening);
-      isFormOpen.setTrue();
-    }, "care.editDraft"),
-  };
 }
 
 // A link or the Feed may name an entry before its Pet's journal has loaded, or of another Pet.
@@ -325,7 +314,6 @@ export function reatomCare(dependencies: CareDependencies) {
     ...reatomSummarizedViews(sources, weightRange),
     ...reatomMoves(sources, weightRange),
     ...reatomOpening(sources),
-    ...reatomDraftEditing(sources),
     remove: detached(remove, "care.removeEntry"),
     reload: data.reload,
   };

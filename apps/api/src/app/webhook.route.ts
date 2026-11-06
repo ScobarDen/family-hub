@@ -1,11 +1,10 @@
-import type { CallbackQuery, Message, Update, Voice } from "@grammyjs/types";
+import type { CallbackQuery, Message, Update } from "@grammyjs/types";
 import { Hono } from "hono";
 
 import type { AppModule } from "@family-hub/contract";
 
 import { httpStatus } from "@/common/errors.lib.ts";
-import { commandCallbackPrefix } from "@/modules/command";
-import { commandCallbackModules, reminderCallbackModules, signalFamily } from "@/modules/live";
+import { reminderCallbackModules, signalFamily } from "@/modules/live";
 import { reminderCallbackPrefix } from "@/modules/reminder";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -43,13 +42,6 @@ async function handleCallback(
   services: AppServices,
   { query, background }: { query: CallbackQuery; background: Background },
 ): Promise<void> {
-  if (query.data?.startsWith(`${commandCallbackPrefix}:`) === true) {
-    await services.commands.handleCallback(query);
-    await signalPresser(services, { query, modules: commandCallbackModules, background });
-
-    return;
-  }
-
   if (query.data?.startsWith(`${reminderCallbackPrefix}:`) === true) {
     await services.reminders.handleCallback(query);
     await signalPresser(services, { query, modules: reminderCallbackModules, background });
@@ -60,15 +52,12 @@ async function handleCallback(
   await services.familyRequests.handleCallback(query);
 }
 
-// Any plain message in a private chat is a command; the AI work outlasts Telegram's patience.
-function isCommand(message: Message | undefined): message is Message & { text: string } {
-  return (
-    message?.chat.type === "private" && message.text !== undefined && !message.text.startsWith("/")
-  );
-}
+function isFreeMessage(message: Message | undefined): message is Message {
+  if (message?.chat.type !== "private") {
+    return false;
+  }
 
-function isVoiceCommand(message: Message | undefined): message is Message & { voice: Voice } {
-  return message?.chat.type === "private" && message.voice !== undefined;
+  return message.voice !== undefined || message.text?.startsWith("/") === false;
 }
 
 function botCommandOf(message: Message | undefined): string | undefined {
@@ -83,10 +72,6 @@ function handleBotCommand(
 ): void {
   const botCommand = botCommandOf(message);
 
-  if (message && botCommand === "/remind") {
-    background.waitUntil(services.commands.handleRemind(message));
-  }
-
   if (message && botCommand === "/today") {
     background.waitUntil(services.reminders.sendToday(message));
   }
@@ -98,15 +83,11 @@ async function handleUpdate(
 ): Promise<void> {
   const { waitUntil } = background;
 
-  if (isCommand(update.message)) {
-    waitUntil(services.commands.handleText(update.message));
+  if (isFreeMessage(update.message)) {
+    waitUntil(services.chat.answerFreeMessage(update.message));
   }
 
   handleBotCommand(services, { message: update.message, background });
-
-  if (isVoiceCommand(update.message)) {
-    waitUntil(services.commands.handleVoice(update.message));
-  }
 
   if (update.callback_query) {
     await handleCallback(services, { query: update.callback_query, background });

@@ -3,14 +3,14 @@ import { describe, expect, test } from "vite-plus/test";
 import {
   buttonsOf,
   denis,
-  internet,
   lastTo,
   request,
   say,
   speak,
   startWithFamily,
   stranger,
-} from "./command-fixtures.ts";
+  type Worker,
+} from "./bot-fixtures.ts";
 
 describe("/today", () => {
   test("sends what the morning digest shows", async () => {
@@ -55,56 +55,30 @@ describe("/today", () => {
   });
 });
 
-describe("/remind", () => {
-  test("answers with the Command Draft of the text after it", async () => {
+describe("a message the bot does not read", () => {
+  test.each([
+    { what: "text", send: async (worker: Worker) => say(worker, denis, "купить корм Бьюику") },
+    { what: "a voice message", send: async (worker: Worker) => speak(worker, denis) },
+  ])("answers $what with a button into the app", async ({ send }) => {
     const worker = await startWithFamily();
 
-    worker.ai.answer({ response: internet });
-    await say(worker, denis, "/remind в пятницу в 19:00 оплатить интернет");
+    await send(worker);
 
-    const preview = lastTo(worker, denis);
+    const answer = lastTo(worker, denis);
 
-    expect(preview?.text).toMatch(/^⏰ Оплатить интернет · пт 16 окт, 19:00/u);
-    expect(buttonsOf(preview).map(({ text }) => text)).toEqual(["Создать", "Изменить", "×"]);
-    expect(JSON.stringify(worker.ai.calls.at(-1)?.input)).not.toContain("/remind");
+    expect(answer?.text).toBe(
+      "Я больше не разбираю сообщения. Добавляйте дела и записи в приложении — там это быстрее.",
+    );
+    expect(buttonsOf(answer)).toEqual([
+      { text: "Открыть", web_app: { url: "https://scobarden.github.io/family-hub/" } },
+    ]);
   });
 
-  test("asks what to remind of without asking the model", async () => {
+  test("leaves an unknown /command unanswered", async () => {
     const worker = await startWithFamily();
 
-    await say(worker, denis, "/remind");
+    await say(worker, denis, "/remind купить корм");
 
-    expect(lastTo(worker, denis)?.text).toMatch(/^Напишите, что напомнить/u);
-    expect(worker.ai.calls).toEqual([]);
-  });
-
-  test("tells a stranger the bot works by invitation", async () => {
-    const worker = await startWithFamily();
-
-    await say(worker, stranger, "/remind купить корм");
-
-    expect(lastTo(worker, stranger)?.text).toMatch(/работает по приглашениям/u);
-    expect(worker.ai.calls).toEqual([]);
-  });
-});
-
-describe("a command being parsed", () => {
-  test("shows «печатает…» for a text command", async () => {
-    const worker = await startWithFamily();
-
-    worker.ai.answer({ response: internet });
-    await say(worker, denis, "напомни в пятницу оплатить интернет");
-
-    expect(worker.bot.countCalls("sendChatAction")).toBe(1);
-  });
-
-  test("shows «печатает…» for a voice command", async () => {
-    const worker = await startWithFamily();
-
-    worker.ai.hear("напомни в пятницу оплатить интернет");
-    worker.ai.answer({ response: internet });
-    await speak(worker, denis);
-
-    expect(worker.bot.countCalls("sendChatAction")).toBe(1);
+    expect(lastTo(worker, denis)).toBeUndefined();
   });
 });

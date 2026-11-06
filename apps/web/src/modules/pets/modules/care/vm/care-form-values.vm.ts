@@ -7,11 +7,8 @@ import {
   type CareDetails,
   type CareEntry,
   type CareEntryChange,
-  type CareEntryDraft,
   type CareKind,
-  type CommandPhrase,
 } from "@family-hub/contract";
-import { momentOfPhrase } from "@family-hub/recurrence";
 
 import { careKindOfTask } from "../care.lib.ts";
 
@@ -129,20 +126,6 @@ export function valuesOf(entry: CareEntry, timeZone: string): EntryValues {
     occurredAt: wallClockOf(entry.occurredAt, timeZone),
     note: entry.note ?? "",
     ...kindValuesOf(entry.details),
-  };
-}
-
-export function valuesOfDraft(
-  draft: CareEntryDraft,
-  { phrase, timeZone }: { phrase: CommandPhrase; timeZone: string },
-): EntryValues {
-  return {
-    ...emptyEntry,
-    kind: draft.details?.kind ?? "note",
-    occurredAt: wallClockOf(momentOfPhrase(draft, phrase), timeZone),
-    note: draft.note ?? "",
-    repeatOn: draft.repeatOn ?? "",
-    ...(draft.details === null ? {} : kindValuesOf(draft.details)),
   };
 }
 

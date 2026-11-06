@@ -180,7 +180,6 @@ describe("a session", () => {
     const paths = [
       "/api/albums",
       "/api/photos",
-      "/api/commands",
       "/api/feed",
       "/api/goals",
       "/api/pets",

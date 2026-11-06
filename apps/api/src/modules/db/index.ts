@@ -1,12 +1,11 @@
 export { createDb, type Db } from "./db.lib.ts";
-export type { CommandSource, DispatchSource, PhotoVariants, RecipientsMode } from "./schema.ts";
+export type { DispatchSource, PhotoVariants, RecipientsMode } from "./schema.ts";
 export {
   albumPhotos,
   albumUploadBatches,
   albums,
   careEntries,
   careEntryPhotos,
-  commandDrafts,
   devices,
   families,
   familyMembers,

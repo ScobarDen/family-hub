@@ -14,7 +14,6 @@ const deepLinkKind = z.enum([
   "event",
   "goal",
   "plan",
-  "cmd",
   "recipe",
   "album",
 ]);

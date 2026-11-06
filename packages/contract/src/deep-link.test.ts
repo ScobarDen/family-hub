@@ -36,13 +36,6 @@ describe("parsing", () => {
     });
   });
 
-  test("reads a Command Draft link the bot's «Изменить» opens", () => {
-    expect(parseDeepLink("cmd_0199b4d2-6c00-7abc-8def-0123456789ab")).toEqual({
-      kind: "cmd",
-      id: "0199b4d2-6c00-7abc-8def-0123456789ab",
-    });
-  });
-
   test.each(["recipe", "album"] as const)(
     "reads back a %s link, not taken for «Записать»",
     (kind) => {

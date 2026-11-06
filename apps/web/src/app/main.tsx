@@ -5,10 +5,8 @@ import { Temporal } from "temporal-polyfill";
 
 import { deviceTimeZone, today as todayIn } from "@/common/format-date.lib.ts";
 import { createHttpClient } from "@/common/http-client.api.ts";
-import { createVoiceRecorder } from "@/common/voice-recorder.lib.ts";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
 import { reatomBrowserPlatform } from "@/modules/browser-platform";
-import { createCommandApi, reatomCommandSheet, reatomMicrophone } from "@/modules/command";
 import { reatomDeviceCache } from "@/modules/device-cache";
 import { createFamilyApi, reatomFamily, reatomFamilyMembers } from "@/modules/family";
 import { createFamilyRequestApi, reatomFamilyRequest } from "@/modules/family-request";
@@ -31,6 +29,7 @@ import {
 import { createCareApi, createPetsApi, reatomPets, reatomPetTab } from "@/modules/pets";
 import { preparePhoto } from "@/modules/photo";
 import { createPhotoStorageApi, reatomPhotoStorage } from "@/modules/photo-storage";
+import { reatomQuickAdd } from "@/modules/quick-add";
 import { createRecipesApi, reatomRecipesScreen } from "@/modules/recipes";
 import { createSessionApi, reatomSession } from "@/modules/session";
 import {
@@ -131,7 +130,6 @@ async function wait(ms: number): Promise<void> {
 
 const live = reatomLiveUpdates({ open: () => openLiveSocket(httpClient), page: document, wait });
 
-const commandApi = createCommandApi(httpClient);
 const familyApi = createFamilyApi(httpClient);
 // One query each for the Family's Members and Pets, so every picker sees the same list.
 const members = reatomFamilyMembers(familyApi);
@@ -193,9 +191,6 @@ const tasks = reatomTasksScreen({
   onRecord: (record) => {
     opener.open({ kind: "care-entry-for-pet", ...record });
   },
-  onDraftSaved: (draftId) => {
-    commandApi.markCreated(draftId).catch(noop);
-  },
   slide: slideScreens,
 });
 const goals = reatomGoalsScreen({
@@ -236,35 +231,6 @@ const pet = reatomPetTab({
   onAddTask: (petId) => {
     opener.open({ kind: "task-for-pet", petId });
   },
-  onDraftSaved: (draftId) => {
-    commandApi.markCreated(draftId).catch(noop);
-  },
-});
-const commandSheet = reatomCommandSheet({
-  api: commandApi,
-  members,
-  pets: petsModel.list,
-  telegram,
-  onEdit: (opened) => {
-    opener.editDraft(opened);
-  },
-  onCreated: () => {
-    tasks.reload();
-    pet.care.reload();
-    feed.reload();
-    todayHub.reload();
-  },
-});
-const microphone = reatomMicrophone({
-  recorder: createVoiceRecorder(),
-  telegram,
-  botChat: async () => {
-    const chat = await commandApi.botChat();
-
-    return chat.url;
-  },
-  wait,
-  onRecorded: commandSheet.send,
 });
 
 const feed = reatomFeed({
@@ -332,7 +298,6 @@ const opener = reatomOpener({
   goals,
   albums,
   recipes,
-  commandSheet,
 });
 const prefetch = reatomPrefetch({
   isSignedIn: session.isSignedIn,
@@ -361,14 +326,17 @@ const home = {
     },
   }),
   tabBarMenu: reatomTabBarMenu({ modules: tabBarModules, telegram }),
+  quickAdd: reatomQuickAdd({
+    contributionGoalId: todayHub.nearestGoalId,
+    canAddPhoto: () => photoStorage.view()?.isConnected === true,
+    onQuickAdd: opener.open,
+    onAddPhotos: opener.uploadPhotos,
+    telegram,
+  }),
   today: todayHub,
   sections: reatomSections({
     modules: tabBarModules,
-    contributionGoalId: todayHub.nearestGoalId,
-    canAddPhoto: () => photoStorage.view()?.isConnected === true,
     onOpen: navigation.openModule,
-    onQuickAdd: opener.open,
-    onAddPhotos: opener.uploadPhotos,
     onConfigure: navigation.openTabBarMenu,
     onOpenSettings: navigation.openProfile,
   }),
@@ -426,8 +394,6 @@ const home = {
   goals,
   albums,
   recipes,
-  microphone,
-  commandSheet,
 };
 
 telegram.launch(deviceCache.whenRead([session.member, todayHub.header]));
@@ -439,7 +405,6 @@ if (browser) {
 }
 
 navigation.start();
-commandSheet.start();
 home.homeScreen.load().catch(noop);
 home.push?.load().catch(noop);
 opener.launch();

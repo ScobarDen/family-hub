@@ -18,14 +18,6 @@ export type TelegramButton = {
   offClick(handler: () => void): void;
 };
 
-export type BottomButtonParams = { text?: string; is_visible?: boolean };
-
-export type BottomButton = TelegramButton & {
-  setParams(params: BottomButtonParams): void;
-  showProgress(): void;
-  hideProgress(): void;
-};
-
 export type PopupButton = {
   id: string;
   type?: "default" | "ok" | "close" | "cancel" | "destructive";
@@ -74,11 +66,7 @@ export type TelegramWebApp = {
     notificationOccurred(type: HapticNotification): void;
     selectionChanged(): void;
   };
-  enableVerticalSwipes(): void;
-  disableVerticalSwipes(): void;
   DeviceStorage: DeviceStorage;
-  MainButton: BottomButton;
-  SecondaryButton: BottomButton;
   BackButton: TelegramButton;
   SettingsButton: TelegramButton;
   onEvent(event: WebAppEvent, handler: () => void): void;

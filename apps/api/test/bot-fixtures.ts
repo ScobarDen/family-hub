@@ -1,36 +1,11 @@
 import type { InlineKeyboardMarkup, Update } from "@grammyjs/types";
 
-import type { CommandOutcome, TaskList } from "@family-hub/contract";
-
 import { type TelegramUserFixture } from "./init-data.ts";
-import { asya, denis, request, tokenOf, startWorker } from "./worker-harness.ts";
+import { asya, denis, request, startWorker } from "./worker-harness.ts";
 
-export { asya, denis, request };
+export { denis, request };
 
 export const stranger = { id: 999, first_name: "Незнакомец" };
-
-// What the Mini App's microphone posts: the recording as the body, typed by its format.
-export async function record(
-  worker: ReturnType<typeof startWorker>,
-  user: TelegramUserFixture,
-  {
-    audio = "mp4:recording",
-    type = "audio/mp4",
-    length = audio.length,
-  }: { audio?: string; type?: string; length?: number } = {},
-) {
-  const token = await tokenOf(worker, user);
-
-  return worker.request("/api/commands/voice", {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${token}`,
-      "content-type": type,
-      "content-length": String(length),
-    },
-    body: audio,
-  });
-}
 
 export async function startWithFamily() {
   const worker = startWorker({ now: "2026-10-13T09:00:00Z" });
@@ -101,56 +76,4 @@ export function buttonsOf(message: ReturnType<typeof lastTo>) {
   const markup = message?.reply_markup as InlineKeyboardMarkup | undefined;
 
   return markup?.inline_keyboard.flat() ?? [];
-}
-
-export async function press(worker: Worker, user: TelegramUserFixture, data: string) {
-  updateId += 1;
-
-  await worker.webhook({
-    update_id: updateId,
-    callback_query: {
-      id: `callback-${updateId}`,
-      from: { ...user, is_bot: false },
-      chat_instance: "instance",
-      data,
-    },
-  });
-}
-
-export function dataOf(message: ReturnType<typeof lastTo>, text: string): string {
-  const button = buttonsOf(message).find((each) => each.text === text);
-
-  return button !== undefined && "callback_data" in button ? (button.callback_data ?? "") : "";
-}
-
-export const internet = {
-  outcome: "task",
-  title: "Оплатить интернет",
-  note: null,
-  date: "2026-10-16",
-  time: "19:00",
-  endDate: null,
-  endTime: null,
-  recurrence: { frequency: "monthly", until: null },
-  visibility: "shared",
-  reminderOffsets: ["at-start"],
-  recipientIds: null,
-  petId: null,
-  missing: [],
-  ambiguities: [],
-};
-
-export async function tasks(worker: Worker, user: TelegramUserFixture) {
-  const response = await request(worker, user, { path: "/api/tasks" });
-
-  return response.json<TaskList>();
-}
-
-export async function recorded(
-  worker: ReturnType<typeof startWorker>,
-  user: TelegramUserFixture,
-): Promise<CommandOutcome> {
-  const response = await record(worker, user);
-
-  return response.json<CommandOutcome>();
 }

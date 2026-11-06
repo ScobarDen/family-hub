@@ -13,6 +13,6 @@ The first tab: the Today hub. It answers «what needs doing now and what's comin
 - `today` — the Member's date, for «Сегодня» / «Завтра» and Overdue.
 - `onOpen`, `onOpenSection`, `onOpenFeed` — the app's opener and navigation: a Task (`{ kind: "task", taskId }`), a Pet, adding a Pet, a section and the Feed open on top of the Today tab.
 
-`nearestGoalId` hands «Разделы» the Goal for «+ Взнос» from the same payload. `reload` refetches; the app calls it whenever the hub is shown again and after a Command Draft is saved.
+`nearestGoalId` hands the quick-add sheet the Goal for «Взнос» from the same payload. `reload` refetches; the app calls it whenever the hub is shown again.
 
 Out of scope: editing a record beyond ticking it off (its own module), the Feed's chronology (`feed`), each section's title, icon and colour (`sections`).

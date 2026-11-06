@@ -1,6 +1,3 @@
-import { effect, noop } from "@reatom/core";
-
-import type { BottomButtonState } from "./model/telegram.model.ts";
 import type { ClosingConfirmation, Fullscreen, Haptics, HomeScreen } from "./telegram.lib.ts";
 import type { DeviceStorage, HomeScreenStatus } from "./telegram.types.ts";
 
@@ -56,43 +53,6 @@ export function fakeDeviceStorage({
   };
 
   fake.deviceStorage = isSupported ? deviceStorage : undefined;
-
-  return fake;
-}
-
-export type FakeBottomButton = {
-  isAvailable: boolean;
-  follow(state: () => BottomButtonState | undefined, onClick: () => void): () => void;
-  states: Array<BottomButtonState | undefined>;
-  click(): void;
-};
-
-export function fakeBottomButton({ isAvailable = true } = {}): FakeBottomButton {
-  let onClick = noop;
-  const fake: FakeBottomButton = {
-    isAvailable,
-    states: [],
-    click: () => {
-      onClick();
-    },
-    follow(state, handler) {
-      if (!isAvailable) {
-        return noop;
-      }
-
-      onClick = handler;
-
-      const shown = effect(() => {
-        fake.states.push(state());
-      }, "fakeBottomButton");
-
-      return () => {
-        shown.unsubscribe();
-        onClick = noop;
-        fake.states.push(undefined);
-      };
-    },
-  };
 
   return fake;
 }

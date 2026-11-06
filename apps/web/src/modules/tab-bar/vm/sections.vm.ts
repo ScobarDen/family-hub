@@ -6,49 +6,17 @@ import { sectionTitles } from "@/modules/sections";
 
 import type { TabBarModules } from "../tab-bar.model.ts";
 
-export type QuickAdd =
-  | { kind: "new-task" }
-  | { kind: "new-care-entry" }
-  | { kind: "new-contribution"; goalId: string };
-
 export type SectionRow = { module: AppModule; title: string };
-
-export type QuickAddButton = { title: string; label: string; target: QuickAdd };
 
 type SectionsDependencies = {
   modules: Pick<TabBarModules, "modules">;
-  // A Contribution goes to the Savings Goal whose deadline is nearest; none means no button.
-  contributionGoalId: () => string | undefined;
-  canAddPhoto: () => boolean;
   onOpen: (module: AppModule) => void;
-  onQuickAdd: (target: QuickAdd) => void;
-  onAddPhotos: (files: Blob[]) => void;
   onConfigure: () => void;
   onOpenSettings: () => void;
 };
 
 function rowsOf(modules: AppModule[]) {
   return modules.map((module): SectionRow => ({ module, title: sectionTitles[module] }));
-}
-
-function quickAddsOf(goalId: string | undefined): QuickAddButton[] {
-  return [
-    { title: "Дело", label: "Добавить дело", target: { kind: "new-task" } },
-    {
-      title: "Запись питомцу",
-      label: "Добавить запись питомцу",
-      target: { kind: "new-care-entry" },
-    },
-    ...(goalId === undefined
-      ? []
-      : [
-          {
-            title: "Взнос",
-            label: "Добавить взнос",
-            target: { kind: "new-contribution" as const, goalId },
-          },
-        ]),
-  ];
 }
 
 export function reatomSections(dependencies: SectionsDependencies) {
@@ -61,20 +29,10 @@ export function reatomSections(dependencies: SectionsDependencies) {
 
       return rowsOf(appModule.options.filter((module) => !slots.includes(module)));
     }, "sections.rest"),
-    quickAdds: computed(() => quickAddsOf(dependencies.contributionGoalId()), "sections.quickAdds"),
-    canAddPhoto: computed(() => dependencies.canAddPhoto(), "sections.canAddPhoto"),
 
     open: action((module: AppModule) => {
       dependencies.onOpen(module);
     }, "sections.open"),
-    quickAdd: action((target: QuickAdd) => {
-      dependencies.onQuickAdd(target);
-    }, "sections.quickAdd"),
-    addPhotos: action((files: Blob[]) => {
-      if (files.length > 0) {
-        dependencies.onAddPhotos(files);
-      }
-    }, "sections.addPhotos"),
     configure: action(() => {
       dependencies.onConfigure();
     }, "sections.configure"),

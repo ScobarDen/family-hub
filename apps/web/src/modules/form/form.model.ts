@@ -12,8 +12,6 @@ import {
   type Computed,
 } from "@reatom/core";
 
-import type { CommandPhrase } from "@family-hub/contract";
-
 import { detached } from "@/modules/changes";
 import {
   isConfirmed,
@@ -61,15 +59,7 @@ export function reatomSubmitFailure(
   }, name);
 }
 
-type Mode<Edited> =
-  | { kind: "creating" }
-  | { kind: "editing"; edited: Edited }
-  | { kind: "drafting"; draftId: string; phrase: CommandPhrase };
-
-export type DraftOpening<Draft> = { draftId: string; draft: Draft; phrase: CommandPhrase };
-
-// A record created from a Command Draft knows the phrase, so its moments keep the phrase's zone.
-export type Creation = { phrase: CommandPhrase | undefined };
+type Mode<Edited> = { kind: "creating" } | { kind: "editing"; edited: Edited };
 
 type RecordForm<Values> = Fillable<Values> &
   Submittable & {
@@ -85,15 +75,9 @@ export type EditableRecordOptions<Values, Form extends RecordForm<Values>, Edite
   haptics: Pick<Haptics, "success" | "error">;
   closingConfirmation: ClosingConfirmation;
   valuesOf: (edited: Edited) => Values;
-  create: (values: Values, creation: Creation) => Promise<Saved>;
+  create: (values: Values) => Promise<Saved>;
   update: (edited: Edited, values: Values) => Promise<Saved>;
   onSaved: (saved: Saved) => void;
-};
-
-export type DraftOptions<Values, Draft> = {
-  valuesOfDraft: (draft: Draft, phrase: CommandPhrase) => Values;
-  // A record saved from a draft settles that draft, once.
-  onDraftSaved: (draftId: string) => void;
 };
 
 export type EditableRecord<Values, Form, Edited> = {
@@ -109,53 +93,20 @@ export type EditableRecord<Values, Form, Edited> = {
   confirmClosingWhileDirty: () => () => void;
 };
 
-export type DraftableRecord<Values, Form, Edited, Draft> = EditableRecord<Values, Form, Edited> & {
-  startFromDraft: Action<[opening: DraftOpening<Draft>], void>;
-};
-
-type AnyOptions<
-  Values,
-  Form extends RecordForm<Values>,
-  Edited,
-  Draft,
-  Saved,
-> = EditableRecordOptions<Values, Form, Edited, Saved> & Partial<DraftOptions<Values, Draft>>;
-
-function submitWith<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(
-  options: AnyOptions<Values, Form, Edited, Draft, Saved>,
+function submitWith<Values, Form extends RecordForm<Values>, Edited, Saved>(
+  options: EditableRecordOptions<Values, Form, Edited, Saved>,
   mode: Atom<Mode<Edited>>,
   onDone: () => void,
 ) {
   return async (values: Values): Promise<void> => {
     const current = mode();
     const saved = await wrap(
-      current.kind === "editing"
-        ? options.update(current.edited, values)
-        : options.create(values, {
-            phrase: current.kind === "drafting" ? current.phrase : undefined,
-          }),
+      current.kind === "editing" ? options.update(current.edited, values) : options.create(values),
     );
-
-    if (current.kind === "drafting") {
-      mode.set({ kind: "creating" });
-      options.onDraftSaved?.(current.draftId);
-    }
 
     onDone();
     options.onSaved(saved);
   };
-}
-
-function reatomDraftStart<Values, Edited, Draft>(
-  {
-    name,
-    valuesOfDraft,
-  }: { name: string; valuesOfDraft: DraftOptions<Values, Draft>["valuesOfDraft"] },
-  start: (next: Mode<Edited>, values: Values) => void,
-) {
-  return action(({ draftId, draft, phrase }: DraftOpening<Draft>) => {
-    start({ kind: "drafting", draftId, phrase }, valuesOfDraft(draft, phrase));
-  }, `${name}.startFromDraft`);
 }
 
 function reatomSave(
@@ -227,17 +178,10 @@ export function reatomFormBack({
   }, name);
 }
 
-export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(
-  options: EditableRecordOptions<Values, Form, Edited, Saved> & DraftOptions<Values, Draft>,
-): DraftableRecord<Values, Form, Edited, Draft>;
 export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Edited, Saved>(
   options: EditableRecordOptions<Values, Form, Edited, Saved>,
-): EditableRecord<Values, Form, Edited>;
-
-export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Edited, Draft, Saved>(
-  options: AnyOptions<Values, Form, Edited, Draft, Saved>,
-): EditableRecord<Values, Form, Edited> | DraftableRecord<Values, Form, Edited, Draft> {
-  const { name, valuesOfDraft } = options;
+): EditableRecord<Values, Form, Edited> {
+  const { name } = options;
   const mode = atom<Mode<Edited>>({ kind: "creating" }, `${name}.mode`);
   const isSaved = reatomBoolean(false, `${name}.isSaved`);
   const form = options.form(submitWith(options, mode, isSaved.setTrue));
@@ -249,14 +193,14 @@ export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Ed
     fillForm(form, values);
   }
 
-  const record: EditableRecord<Values, Form, Edited> = {
+  return {
     form,
     edited: computed(() => {
       const current = mode();
 
       return current.kind === "editing" ? current.edited : undefined;
     }, `${name}.edited`),
-    isCreating: computed(() => mode().kind !== "editing", `${name}.isCreating`),
+    isCreating: computed(() => mode().kind === "creating", `${name}.isCreating`),
     isSaving: computed(() => !form.submit.ready(), `${name}.isSaving`),
     failure: reatomSubmitFailure(form, {
       message: options.failureMessage,
@@ -272,8 +216,4 @@ export function reatomEditableRecord<Values, Form extends RecordForm<Values>, Ed
     save: reatomSave(form, { name, haptics: options.haptics }),
     confirmClosingWhileDirty: confirmingClosing(options.closingConfirmation, { name, isUnsaved }),
   };
-
-  return valuesOfDraft === undefined
-    ? record
-    : { ...record, startFromDraft: reatomDraftStart({ name, valuesOfDraft }, start) };
 }

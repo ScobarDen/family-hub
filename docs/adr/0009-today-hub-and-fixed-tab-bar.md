@@ -1,5 +1,7 @@
 # The first tab is a Today hub and the tab bar has two configurable slots
 
+The microphone in the centre of the tab bar became a quick-add «+» in [ADR 0017](0017-a-quick-add-sheet-replaces-voice-and-ai-commands.md).
+
 A Member used to pick 2–5 of the seven modules for the tab bar (`members.tab_bar`), with the Feed first by default; the rest lived behind the Profile as hidden modules that opened without the tab bar or the microphone. Now the tab bar is `Сегодня · slot · microphone · slot · Разделы`: only the two slots are the Member's choice (Plans and Calendar by default), every module is reachable from «Разделы», and the first tab is a hub that shows what the morning digest shows — Overdue and today's Plans and Due Dates — then the next three Upcoming and one tile per module. The Feed stays the full chronology and becomes a section the hub links to.
 
 ## Decisions

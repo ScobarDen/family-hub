@@ -6,11 +6,10 @@ import {
   careKind,
   type CareEntry,
   type CareEntryChange,
-  type CareEntryDraft,
   type CareKind,
 } from "@family-hub/contract";
 
-import { reatomEditableRecord, type DraftOpening } from "@/modules/form";
+import { reatomEditableRecord } from "@/modules/form";
 import type { PhotoAttachmentsModel } from "@/modules/photo-attachments";
 import type { ClosingConfirmation, Haptics } from "@/modules/telegram";
 
@@ -21,7 +20,6 @@ import {
   detailsOf,
   emptyEntry,
   valuesOf,
-  valuesOfDraft,
   valuesOfTask,
   type EntryValues,
 } from "./care-form-values.vm.ts";
@@ -35,11 +33,7 @@ type CareFormDependencies = {
   haptics: Pick<Haptics, "success" | "error">;
   closingConfirmation: ClosingConfirmation;
   onSaved: () => void;
-  // An entry saved from a Command Draft settles that draft.
-  onDraftSaved: (draftId: string) => void;
 };
-
-export type CareEntryDraftOpening = DraftOpening<CareEntryDraft>;
 
 const fieldOfIssue: Record<string, keyof EntryValues> = {
   vaccine: "name",
@@ -100,11 +94,6 @@ function reatomStarts({ now, photos }: CareFormDependencies, record: CareRecord)
       photos.reset([]);
       record.startCreating({ ...emptyEntry, ...valuesOfTask(taskTitle), occurredAt: now() });
     }, "care.form.startFromTask"),
-    // Photos never come by voice; the form is where they are added.
-    startFromDraft: action((opening: CareEntryDraftOpening) => {
-      photos.reset([]);
-      record.startFromDraft(opening);
-    }, "care.form.startFromDraft"),
     startEditing: action((entry: CareEntry) => {
       photos.reset(entry.photos);
       record.startEditing(entry);
@@ -126,8 +115,6 @@ function reatomCareRecord(dependencies: CareFormDependencies) {
     haptics: dependencies.haptics,
     closingConfirmation: dependencies.closingConfirmation,
     valuesOf: (entry: CareEntry) => valuesOf(entry, timeZone()),
-    valuesOfDraft: (draft: CareEntryDraft, phrase) =>
-      valuesOfDraft(draft, { phrase, timeZone: timeZone() }),
     create: async (values) => {
       const pet = petId();
 
@@ -139,7 +126,6 @@ function reatomCareRecord(dependencies: CareFormDependencies) {
     },
     update: async (entry: CareEntry, values) => api.update(entry.id, changeFor(values)),
     onSaved: dependencies.onSaved,
-    onDraftSaved: dependencies.onDraftSaved,
   });
 }
 

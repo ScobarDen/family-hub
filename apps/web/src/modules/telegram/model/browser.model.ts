@@ -3,7 +3,6 @@ import { action, noop } from "@reatom/core";
 import { shareOrCopy } from "@/modules/browser-platform";
 
 import type {
-  BottomButton,
   ColorScheme,
   DeviceStorage,
   PopupParams,
@@ -39,15 +38,7 @@ export type BrowserWindow = Pick<
   };
 };
 
-const hiddenButton: BottomButton = {
-  show: noop,
-  hide: noop,
-  onClick: noop,
-  offClick: noop,
-  setParams: noop,
-  showProgress: noop,
-  hideProgress: noop,
-};
+const hiddenButton: TelegramButton = { show: noop, hide: noop, onClick: noop, offClick: noop };
 
 // Telegram's DeviceStorage answers later, never inside the call; so does this one.
 function answerLater<Result>(
@@ -312,10 +303,6 @@ const telegramOnly = {
   requestFullscreen: noop,
   exitFullscreen: noop,
   HapticFeedback: { impactOccurred: noop, notificationOccurred: noop, selectionChanged: noop },
-  enableVerticalSwipes: noop,
-  disableVerticalSwipes: noop,
-  MainButton: hiddenButton,
-  SecondaryButton: hiddenButton,
   SettingsButton: hiddenButton,
 };
 
