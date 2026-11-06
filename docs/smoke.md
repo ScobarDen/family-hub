@@ -44,7 +44,7 @@ Bring up the Worker, the Mini App and the tunnel on the dev bot as in [docs/dev.
 
 Each item on iOS, Android and Telegram Desktop.
 
-- [ ] The «+» in the centre of the tab bar gives a light haptic tick and opens the «Добавить» sheet with Дело, Запись питомцу, Взнос and Фото.
+- [ ] The «+» in the centre of the tab bar gives a light haptic tick and opens a sheet with no heading, only the tiles Дело, Запись питомцу, Взнос and Фото.
 - [ ] «Дело» closes the sheet and opens the new Task form in «Дела»; «Запись питомцу» asks for a Pet when there are several, then opens the Care Entry form; «Взнос» opens the Contribution form of the nearest Savings Goal; «Фото» opens the system photo picker and uploads to the Family's photos.
 - [ ] Without a Savings Goal there is no «Взнос»; without Photo Storage there is no «Фото».
 - [ ] A text or a voice message to the bot answers «Я больше не разбираю сообщения…» with «Открыть», which opens the Mini App; `/today` still answers with the digest.
@@ -100,7 +100,7 @@ With a keyboard in Telegram Desktop or the browser, then with VoiceOver and Talk
 
 - [ ] Opening a photo from a thumb puts focus on «Закрыть»; Tab cycles only through the viewer's bar and the step buttons, never onto the screen behind; ArrowLeft and ArrowRight step through the photos; Escape closes the viewer and focus lands back on that thumb. The screen reader announces a dialog «Фото».
 - [ ] A refused photo deletion shows its failure bar over the open viewer, read once; «Скрыть» there dismisses it.
-- [ ] The «+» opens a bottom drawer «Добавить» with focus inside it; Tab stays inside it; Escape, a swipe down and a tap on the dimmed page close it and focus returns to the «+».
+- [ ] The «+» opens a bottom drawer that a screen reader names «Добавить», with focus inside it; Tab stays inside it; Escape, a swipe down and a tap on the dimmed page close it and focus returns to the «+».
 
 ### Keyboard focus
 
@@ -151,7 +151,7 @@ Each item on iOS and Android, once with the system's reduced motion off and once
 - [ ] Buttons, rows, Today's tiles, chips and the completion circle shrink a little while pressed and spring back; a disabled or spinning button does not move.
 - [ ] Opening a section from «Разделы» or a record from Today or the Feed slides the new screen in from the right; Telegram's Back slides it out to the right, inside a module (a Task's card) too, and closes an open form's drawer first. Opening a record inside a module's own list swaps at once.
 - [ ] A tab-bar tap swaps the screen at once, with no slide.
-- [ ] The «Добавить» sheet rises from the bottom; a swipe down lets it sink and fade, quicker than it came.
+- [ ] The quick-add sheet rises from the bottom; a swipe down lets it sink and fade, quicker than it came.
 - [ ] Completing a Task in «Сделать сегодня» turns the circle into a check (it grows out of a blur), then the row folds away and the rows below close the gap; «Отменить» opens it up again. Completing the last one folds the whole card.
 - [ ] The undo and failure bars rise from the bottom as they appear.
 - [ ] On a first launch with the cache cleared, Today's blocks come in one after another, 100 ms apart; every other screen's content fades in over its skeleton. A second launch shows everything at once.
