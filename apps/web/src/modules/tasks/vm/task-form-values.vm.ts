@@ -1,4 +1,4 @@
-import type { Recurrence, Task, TaskDraft, TaskWhen } from "@family-hub/contract";
+import type { Recurrence, Task, TaskWhen } from "@family-hub/contract";
 
 export const emptyTask = {
   title: "",
@@ -52,21 +52,5 @@ export function valuesOf(task: Task): TaskValues {
     petId: orEmpty(task.pet?.id ?? null),
     albumId: orEmpty(task.album?.id ?? null),
     note: orEmpty(task.note),
-  };
-}
-
-export function valuesOfDraft(draft: TaskDraft): TaskValues {
-  return {
-    ...emptyTask,
-    ...recurrenceValuesOf(draft.recurrence),
-    title: orEmpty(draft.title),
-    date: orEmpty(draft.date),
-    time: orEmpty(draft.time),
-    endDate: orEmpty(draft.endDate),
-    endTime: orEmpty(draft.endTime),
-    recipients: draft.recipientIds === null ? "default" : "members",
-    visibility: draft.visibility,
-    petId: orEmpty(draft.petId),
-    note: orEmpty(draft.note),
   };
 }

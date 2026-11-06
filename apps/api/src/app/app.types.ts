@@ -1,7 +1,6 @@
 import type { AlbumService } from "@/modules/album";
 import type { AuthService } from "@/modules/auth";
 import type { CareEntryService } from "@/modules/care-entry";
-import type { CommandService } from "@/modules/command";
 import type { Db } from "@/modules/db";
 import type { FamilyService } from "@/modules/family";
 import type { FamilyRequestService } from "@/modules/family-request";
@@ -16,6 +15,7 @@ import type { PushService } from "@/modules/push";
 import type { RecipeService } from "@/modules/recipe";
 import type { ReminderService } from "@/modules/reminder";
 import type { TaskService } from "@/modules/task";
+import type { ChatService } from "@/modules/telegram";
 import type { TodayService } from "@/modules/today";
 
 export type AppServices = {
@@ -23,7 +23,7 @@ export type AppServices = {
   auth: AuthService;
   albums: AlbumService;
   careEntries: CareEntryService;
-  commands: CommandService;
+  chat: ChatService;
   families: FamilyService;
   feed: FeedService;
   goals: GoalService;

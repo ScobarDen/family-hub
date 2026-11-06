@@ -180,12 +180,6 @@ _Avoid_: Done, reached, finished
 A Savings Goal a Member has closed as either fulfilled or cancelled; it is read-only.
 _Avoid_: Archived goal, closed goal
 
-### Commands
-
-**Command Draft**:
-A record the app assembled from what a Member said or typed, shown for confirmation; nothing is created until the Member confirms it.
-_Avoid_: Intent, suggestion, AI draft, voice command
-
 ### Visibility
 
 **Shared**:

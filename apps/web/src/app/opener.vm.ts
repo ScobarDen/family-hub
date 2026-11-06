@@ -4,15 +4,11 @@ import {
   parseDeepLink,
   parseRecordLink,
   type AppModule,
-  type CareEntryDraft,
   type DeepLink,
   type MovementKind,
   type RecordLink,
 } from "@family-hub/contract";
 
-import type { OpenedDraft } from "@/modules/command";
-import type { DraftOpening } from "@/modules/form";
-import type { TaskDraftOpening } from "@/modules/tasks";
 import type { Telegram } from "@/modules/telegram";
 
 import type { Place } from "./app.route.ts";
@@ -28,20 +24,16 @@ type TargetFields = {
   goal: { goalId: string };
   album: { albumId: string };
   recipe: { recipeId: string };
-  draft: { draftId: string };
   "new-task": object;
   "new-care-entry": object;
   "new-contribution": { goalId: string };
-  "opened-draft": OpenedDraft;
 };
 
 type TargetKind = keyof TargetFields;
 
 type TargetOf<Kind extends TargetKind> = { kind: Kind } & TargetFields[Kind];
 
-type AnyTarget = { [Kind in TargetKind]: TargetOf<Kind> }[TargetKind];
-
-export type OpenTarget = Exclude<AnyTarget, { kind: "opened-draft" }>;
+export type OpenTarget = { [Kind in TargetKind]: TargetOf<Kind> }[TargetKind];
 
 type Open = (id: string) => void;
 
@@ -53,21 +45,19 @@ type OpenerDependencies = {
     launch: (place: Place | undefined) => void;
     shownModule: () => AppModule | undefined;
   };
-  // A draft or a Care Entry is fetched by its id with the session's token.
+  // A Care Entry or an Occurrence is fetched by its id with the session's token.
   isSignedIn: () => boolean;
   pets: { showChoice: () => void; openedPetId: () => string | undefined; add: () => void };
   tasks: {
     open: Open;
     add: () => void;
     addForPet: Open;
-    openDraft: (opening: TaskDraftOpening) => void;
     recordOccurrence: (target: RecordLink) => void;
   };
   care: {
     openEntry: Open;
     add: () => void;
     addFromTask: (taskTitle: string) => void;
-    editDraft: (opening: DraftOpening<CareEntryDraft>) => void;
   };
   goals: {
     open: Open;
@@ -76,10 +66,9 @@ type OpenerDependencies = {
   };
   albums: { open: Open; upload: (files: Blob[]) => void };
   recipes: { open: Open };
-  commandSheet: { openForEdit: Open };
 };
 
-// A draft's module is known only once the draft is at hand.
+// A Care Entry for a Pet from a Task is placed once its Pet is picked.
 const modules: Partial<Record<TargetKind, AppModule>> = {
   task: "tasks",
   "task-for-pet": "tasks",
@@ -96,7 +85,7 @@ const modules: Partial<Record<TargetKind, AppModule>> = {
 };
 
 // A Pet named by the target opens at its own address.
-function placeOf(target: AnyTarget): Place | undefined {
+function placeOf(target: OpenTarget): Place | undefined {
   const module = modules[target.kind];
   const petId = "petId" in target && target.kind !== "task-for-pet" ? target.petId : undefined;
 
@@ -118,7 +107,6 @@ const linkTargets: Record<DeepLink["kind"], (id: string) => OpenTarget | undefin
   event: (taskId) => ({ kind: "task", taskId }),
   rec: recordTargetOf,
   goal: (goalId) => ({ kind: "goal", goalId }),
-  cmd: (draftId) => ({ kind: "draft", draftId }),
   recipe: (recipeId) => ({ kind: "recipe", recipeId }),
   album: (albumId) => ({ kind: "album", albumId }),
 };
@@ -186,33 +174,12 @@ async function openForPet(
   }
 }
 
-async function openDraft(
-  dependencies: OpenerDependencies,
-  { draftId, draft, phrase }: OpenedDraft,
-) {
-  const { navigation, tasks, care } = dependencies;
-
-  if (draft.kind === "care_entry") {
-    await openForPet(dependencies, {
-      petId: draft.petId,
-      onPicked: () => {
-        care.editDraft({ draftId, draft, phrase });
-      },
-    });
-
-    return;
-  }
-
-  navigation.open({ module: "tasks" });
-  tasks.openDraft({ draftId, draft, phrase });
-}
-
 type Openers = {
   [Kind in TargetKind]: (target: TargetOf<Kind>) => void | Promise<void>;
 };
 
 function openersOf(dependencies: OpenerDependencies): Openers {
-  const { tasks, pets, care, goals, albums, recipes, commandSheet } = dependencies;
+  const { tasks, pets, care, goals, albums, recipes } = dependencies;
 
   async function signedInThen(open: () => void): Promise<void> {
     await wrap(untilTrue(dependencies.isSignedIn));
@@ -246,8 +213,6 @@ function openersOf(dependencies: OpenerDependencies): Openers {
     },
     album: ({ albumId }) => albums.open(albumId),
     recipe: ({ recipeId }) => recipes.open(recipeId),
-    draft: async ({ draftId }) => signedInThen(() => commandSheet.openForEdit(draftId)),
-    "opened-draft": async (opened) => openDraft(dependencies, opened),
   };
 }
 
@@ -263,7 +228,7 @@ async function openWith<Kind extends TargetKind>(
 export function reatomOpener(dependencies: OpenerDependencies) {
   const openers = openersOf(dependencies);
   // A new opening drops the one still waiting, for a sign-in or for a Pet to be picked.
-  const follow = action(async (target: AnyTarget, go: (place: Place) => void) => {
+  const follow = action(async (target: OpenTarget, go: (place: Place) => void) => {
     const place = placeOf(target);
 
     if (place !== undefined) {
@@ -277,9 +242,6 @@ export function reatomOpener(dependencies: OpenerDependencies) {
     open: action((target: OpenTarget) => {
       follow(target, dependencies.navigation.open).catch(noop);
     }, "opener.open"),
-    editDraft: action((opened: OpenedDraft) => {
-      follow({ kind: "opened-draft", ...opened }, dependencies.navigation.open).catch(noop);
-    }, "opener.editDraft"),
     // «+ Фото» uploads to the Family's photos, shown as the upload goes.
     uploadPhotos: action((files: Blob[]) => {
       follow.abort();

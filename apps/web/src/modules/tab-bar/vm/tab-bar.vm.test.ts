@@ -63,7 +63,7 @@ describe("the tab bar", () => {
     expect(titles(model.tabs().end)).toEqual(["Питомцы", "Разделы"]);
   });
 
-  test("puts the Member's two slots on either side of the microphone", () => {
+  test("puts the Member's two slots on either side of the quick-add", () => {
     const { model } = startTabBar(["recipes", "goals"]);
 
     expect(titles(model.tabs().start)).toEqual(["Сегодня", "Рецепты"]);

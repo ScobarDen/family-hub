@@ -49,9 +49,6 @@ export const errorCode = z.enum([
   "RECIPE_NOT_FOUND",
   "NOT_RECIPE_AUTHOR",
   "RECIPE_TAG_NOT_FOUND",
-  "COMMAND_DRAFT_NOT_FOUND",
-  "AUDIO_TOO_LARGE",
-  "AUDIO_TYPE_UNSUPPORTED",
 ]);
 
 export type ErrorCode = z.infer<typeof errorCode>;

@@ -3,7 +3,6 @@ import { vi } from "vite-plus/test";
 
 import { createWorker } from "@/app/worker.ts";
 
-import { createFakeAi, type FakeAi } from "./fake-ai.ts";
 import { createFakeBotApi } from "./fake-bot-api.ts";
 import { createFakeClock } from "./fake-clock.ts";
 import { createFakeLive, type FakeLive } from "./fake-live.ts";
@@ -35,11 +34,9 @@ async function withContext<Result>(
 }
 
 function createTestEnv({
-  ai,
   live,
   seedBefore,
 }: {
-  ai: FakeAi;
   live: FakeLive;
   seedBefore: SeedBefore | undefined;
 }): Env {
@@ -51,12 +48,7 @@ function createTestEnv({
     OPERATOR_TELEGRAM_ID: "1000",
     ALLOWED_ORIGINS: "https://scobarden.github.io,http://localhost:5173",
     MINI_APP_URL: "https://scobarden.github.io/family-hub/",
-    AI: ai.binding,
     LIVE: live.binding,
-    AI_COMMAND_MODEL: "primary-model",
-    AI_COMMAND_MODEL_FALLBACK: "fallback-model",
-    AI_SPEECH_MODEL: "speech-model",
-    AI_COMMANDS_PER_FAMILY_DAY: "3",
     VAPID_PUBLIC_KEY: "test-vapid-public-key",
     VAPID_PRIVATE_KEY: "test-vapid-private-key",
     VAPID_SUBJECT: "mailto:push@family-hub.test",
@@ -113,16 +105,14 @@ export async function request(
 type Worker = ReturnType<typeof startWorker>;
 
 function fakesOf({ now, seedBefore }: { now: string; seedBefore: SeedBefore | undefined }) {
-  const ai = createFakeAi();
   const live = createFakeLive();
 
   return {
     clock: createFakeClock(now),
     bot: createFakeBotApi(),
     push: createFakePush(),
-    ai,
     live,
-    env: createTestEnv({ ai, live, seedBefore }),
+    env: createTestEnv({ live, seedBefore }),
   };
 }
 
@@ -144,7 +134,7 @@ export function startWorker({
 }: { now?: string; seedBefore?: SeedBefore } = {}) {
   vi.stubGlobal("caches", { default: createEdgeCache() });
 
-  const { clock, bot, push, ai, live, env } = fakesOf({ now, seedBefore });
+  const { clock, bot, push, live, env } = fakesOf({ now, seedBefore });
   const worker = workerOver({ clock, bot, push });
 
   async function fetchPath(path: string, init?: RequestInit) {
@@ -158,7 +148,6 @@ export function startWorker({
     clock,
     bot,
     push,
-    ai,
     live,
     request: fetchPath,
     ...createFamilyFixtures(env.DB, clock),

@@ -6,7 +6,6 @@ import { TabButton } from "./tab-button.view.tsx";
 
 export type TabBarProps = {
   model: TabBarModel;
-  // The microphone is pressed and held, so the bar wraps it in no pointer handlers of its own.
   center?: ReactNode;
 };
 

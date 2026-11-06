@@ -7,14 +7,14 @@ The pet tab: the Family's Pets, each one's card and its Pet Memo, with the `care
 - `api` — `createPetsApi(httpClient)`: lists the Family's Pets, adds one, saves its card and its Pet Memo.
 - `deviceCache` — `modules/device-cache`: the Pets of the last launch with their Pet Memo show at once and stay on screen through a failed refresh.
 - `pets` — `reatomPets({ api })`, the Pets themselves (`withAsyncData`, loaded once the tab bar or the tab subscribes). Its `tabTitle` goes to the tab bar; a saved Pet replaces its old copy in the list.
-- `careApi`, `now`, `telegram`, `preparePhoto`, `photoHint`, `onDraftSaved` — handed on to the `care` submodule (see its README).
+- `careApi`, `now`, `telegram`, `preparePhoto`, `photoHint` — handed on to the `care` submodule (see its README).
 - `tasksOf`, `onOpenTask`, `onAddTask` — `tasksOf` is the Pet's Task rows from the `tasks` module (Overdue, today, upcoming and undated, already in order) for the card's «Дела» block, which adds «Просрочено» in words to an Overdue one. A tap opens the Task and «+» adds a Task for this Pet, both through the app's opener.
 - `isFamilyOwner` — from the session: only the Family Owner deletes a Pet forever.
 - `viewer` — today's date and the zone the age and «Обновлено …» are shown in; the Member's own zone, the device's until it is known.
 
 - `route` — the app's navigation: a Pet's card is the `/pets/:petId` screen on the current tab's stack, so Back, a deep link and a reload land on the same Pet. `open` pushes a card, `close` steps back off one (after the Pet is deleted).
 
-`showChoice` brings the list back for a Command Draft of a Care Entry that names no Pet; with one Pet in care its card opens at once. The app's opener waits for `openedPetId` before it opens the draft's form.
+`showChoice` brings the list back for a quick-add Care Entry, which names no Pet; with one Pet in care its card opens at once. The app's opener waits for `openedPetId` before it opens the form.
 
 `reatomPetTab` wires `reatomPetsScreen` and the `care` submodule: the open Pet, whether it is archived and its avatar go to care, and `PetTab` shows care's year of expenses instead of the card and its entry form in a drawer over either. `reatomPetsScreen` decides what the tab shows (list or card) and `openForm`: the profile form, the Pet Memo form or the deletion, each in a bottom `FormDrawer` over it. `app/main.tsx` hands the tab to the navigation as the pet module's `nestedBack`, so Telegram's BackButton closes care's screens, then a form; leaving a card is the navigation's own step back. A Pet is archived and brought back by any Member from its card; an archived Pet leaves the tab, waits under «Архив» in the list (reached from the card while one Pet is in care) and reads only. Deleting one forever is the Family Owner's, from an archived Pet, after typing its name.
 

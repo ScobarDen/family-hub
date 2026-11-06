@@ -12,7 +12,6 @@ import {
 
 import type {
   CareDetails,
-  CommandDraft,
   CareKind,
   ExpenseCategory,
   GoalColor,
@@ -632,11 +631,8 @@ export const recipeCooks = sqliteTable(
   ],
 );
 
-export type CommandSource = "bot_text" | "bot_voice" | "mini_app";
-
-type CommandStatus = "pending" | "creating" | "created" | "dismissed" | "failed";
-
-// One row per command handled, failed ones included: it is also the Family's daily count.
+// shortcut: voice and AI commands are gone (issue #193) but the previous Worker still writes here
+// until the deploy; drop the table in the next release (migrations/README.md, expand / contract).
 export const commandDrafts = sqliteTable(
   "command_drafts",
   {
@@ -647,13 +643,13 @@ export const commandDrafts = sqliteTable(
     memberId: text("member_id")
       .notNull()
       .references(() => members.id),
-    kind: text("kind").$type<CommandDraft["kind"]>(),
-    payload: text("payload", { mode: "json" }).$type<CommandDraft>(),
-    source: text("source").$type<CommandSource>().notNull(),
+    kind: text("kind"),
+    payload: text("payload", { mode: "json" }),
+    source: text("source").notNull(),
     chatId: integer("chat_id"),
     messageId: integer("message_id"),
     timeZone: text("time_zone"),
-    status: text("status").$type<CommandStatus>().notNull(),
+    status: text("status").notNull(),
     expiresAt: integer("expires_at").notNull(),
     createdAt: integer("created_at").notNull(),
     updatedAt: integer("updated_at").notNull(),

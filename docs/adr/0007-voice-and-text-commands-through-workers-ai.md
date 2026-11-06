@@ -1,5 +1,7 @@
 # Voice and text commands go through Workers AI and always end in a confirmed Command Draft
 
+Superseded by [ADR 0017](0017-a-quick-add-sheet-replaces-voice-and-ai-commands.md): voice and AI commands were removed.
+
 A Member can say or type what to do («напомни в пятницу в 19:00 оплатить интернет») in the bot or in the Mini App, and the app turns it into a record after the Member confirms. Everything runs on Cloudflare Workers AI through the `AI` binding, so there are no external keys and no new paid service: speech becomes text with Whisper (`@cf/openai/whisper-large-v3-turbo`), and text becomes a Command Draft with an LLM answering JSON against a schema. Model names live in `vars` (`AI_COMMAND_MODEL`, `AI_COMMAND_MODEL_FALLBACK`, `AI_SPEECH_MODEL`).
 
 The model never creates anything. It returns a Command Draft, the shared pipeline in `packages/` validates it against the schema from `@family-hub/contract`, the Member sees a preview and taps «Создать», and the record is created by the same use case the Mini App form calls. «Изменить» opens that ordinary form with the draft's fields filled in. The prompt carries today's date, the Family's time zone and the lists of Pets and Members, so «в пятницу» and «Бьюику» resolve to a date and an id instead of a guess; a reference the model cannot resolve uniquely comes back as an ambiguity with candidates, never as a picked value. Destructive and Operator commands are not supported at all.

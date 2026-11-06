@@ -112,7 +112,7 @@ function respond(state: FakeBotState, call: BotCall): unknown {
     return {
       file_id: id,
       file_unique_id: "",
-      file_path: id.startsWith("voice") ? `voice/${id}.oga` : `photos/${id}.jpg`,
+      file_path: `photos/${id}.jpg`,
     };
   }
 
@@ -133,9 +133,7 @@ function respond(state: FakeBotState, call: BotCall): unknown {
 async function fileOf(state: FakeBotState, filePath: string): Promise<Response> {
   state.files.push(filePath);
 
-  return filePath.startsWith("voice/")
-    ? new Response(`ogg:${filePath}`, { headers: { "content-type": "audio/ogg" } })
-    : new Response(`jpeg:${filePath}`, { headers: { "content-type": "image/jpeg" } });
+  return new Response(`jpeg:${filePath}`, { headers: { "content-type": "image/jpeg" } });
 }
 
 function emptyState(): FakeBotState {

@@ -4,5 +4,4 @@ export {
   reatomEditableRecord,
   reatomFormBack,
   reatomSubmitFailure,
-  type DraftOpening,
 } from "./form.model.ts";

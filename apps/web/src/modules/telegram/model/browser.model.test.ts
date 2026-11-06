@@ -215,11 +215,7 @@ describe("the Installed App's stand-in for Telegram", () => {
 
     expect(await telegram.checkHomeScreenStatus()).toBe("unsupported");
     expect(await telegram.requestWriteAccess()).toBe(false);
-    expect([
-      telegram.canShareMessage,
-      telegram.settingsButton.isAvailable,
-      telegram.mainButton.isAvailable,
-    ]).toEqual([false, false, false]);
+    expect([telegram.canShareMessage, telegram.settingsButton.isAvailable]).toEqual([false, false]);
   });
 
   test("shares an Invite through the system share sheet", async () => {

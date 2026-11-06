@@ -38,7 +38,7 @@ export function reatomTabBar({
   }
 
   return {
-    // The centre stays free for the microphone.
+    // The centre stays free for the quick-add «+».
     tabs: computed(() => {
       const [first, second] = modules.modules();
 

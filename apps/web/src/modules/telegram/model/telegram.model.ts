@@ -2,7 +2,6 @@ import { action, atom, effect, reatomBoolean, noop, withConnectHook, wrap } from
 
 import type { Haptics } from "../telegram.lib.ts";
 import type {
-  BottomButton,
   ColorScheme,
   HapticImpact,
   HapticNotification,
@@ -17,10 +16,7 @@ const writeAccessVersion = "6.9";
 const shareMessageVersion = "8.0";
 const backButtonVersion = "6.1";
 const settingsButtonVersion = "7.0";
-// MainButton is older, but the pair goes native only together so the layout stays one.
-const bottomButtonsVersion = "7.10";
 const hapticsVersion = "6.1";
-const verticalSwipesVersion = "7.7";
 const deviceStorageVersion = "9.0";
 const homeScreenVersion = "8.0";
 const fullscreenVersion = "8.0";
@@ -106,22 +102,6 @@ function reatomPrompts(webApp: TelegramWebApp) {
     openLink: action((url: string) => {
       webApp.openLink(url);
     }, "telegram.openLink"),
-  };
-}
-
-function reatomGestures(webApp: TelegramWebApp) {
-  return {
-    // A swipe down closes the Mini App, which would fight a finger held on the microphone.
-    disableVerticalSwipes: action(() => {
-      if (webApp.isVersionAtLeast(verticalSwipesVersion)) {
-        webApp.disableVerticalSwipes();
-      }
-    }, "telegram.disableVerticalSwipes"),
-    enableVerticalSwipes: action(() => {
-      if (webApp.isVersionAtLeast(verticalSwipesVersion)) {
-        webApp.enableVerticalSwipes();
-      }
-    }, "telegram.enableVerticalSwipes"),
   };
 }
 
@@ -235,7 +215,6 @@ function reatomInteractions(webApp: TelegramWebApp) {
   return {
     ...reatomDialogs(webApp),
     ...reatomPrompts(webApp),
-    ...reatomGestures(webApp),
     ...reatomHomeScreen(webApp),
     ...reatomWindow(webApp),
     haptics: createHaptics(webApp),
@@ -276,52 +255,6 @@ function reatomButton(
   };
 }
 
-export type BottomButtonState = { text: string; isInProgress: boolean };
-
-function reatomBottomButton(
-  webApp: TelegramWebApp,
-  { button, name }: { button: BottomButton; name: string },
-) {
-  const isAvailable = webApp.isVersionAtLeast(bottomButtonsVersion);
-
-  return {
-    isAvailable,
-    follow(state: () => BottomButtonState | undefined, onClick: () => void): () => void {
-      if (!isAvailable) {
-        return noop;
-      }
-
-      const handler = wrap(onClick);
-
-      button.onClick(handler);
-
-      const shown = effect(() => {
-        const current = state();
-
-        if (current === undefined) {
-          button.hide();
-
-          return;
-        }
-
-        button.setParams({ text: current.text, is_visible: true });
-
-        if (current.isInProgress) {
-          button.showProgress();
-        } else {
-          button.hideProgress();
-        }
-      }, name);
-
-      return () => {
-        shown.unsubscribe();
-        button.offClick(handler);
-        button.hide();
-      };
-    },
-  };
-}
-
 function reatomButtons(webApp: TelegramWebApp) {
   return {
     backButton: reatomButton(webApp, {
@@ -333,14 +266,6 @@ function reatomButtons(webApp: TelegramWebApp) {
       button: webApp.SettingsButton,
       version: settingsButtonVersion,
       name: "telegram.settingsButton",
-    }),
-    mainButton: reatomBottomButton(webApp, {
-      button: webApp.MainButton,
-      name: "telegram.mainButton",
-    }),
-    secondaryButton: reatomBottomButton(webApp, {
-      button: webApp.SecondaryButton,
-      name: "telegram.secondaryButton",
     }),
   };
 }

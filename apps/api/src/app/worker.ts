@@ -24,7 +24,6 @@ import {
   createPetTile,
   type CareEntryService,
 } from "@/modules/care-entry";
-import { commandRoute, createCommandRepo, createCommandService } from "@/modules/command";
 import { createDb, type Db } from "@/modules/db";
 import {
   createFamilyFeed,
@@ -94,7 +93,12 @@ import {
   type TaskRepo,
   type TaskService,
 } from "@/modules/task";
-import { createMiniAppLinks, type MiniAppLinks, type BotApi } from "@/modules/telegram";
+import {
+  createChatService,
+  createMiniAppLinks,
+  type BotApi,
+  type MiniAppLinks,
+} from "@/modules/telegram";
 import { createTodayService, todayRoute } from "@/modules/today";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -297,42 +301,6 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
   };
 }
 
-const defaultCommandsPerFamilyDay = 30;
-
-// Workers AI's typed catalogue knows each model by name; ours come from configuration.
-function workersAiModel(ai: Ai) {
-  const run: (model: string, input: Record<string, unknown>) => Promise<unknown> = ai.run.bind(ai);
-
-  return { run };
-}
-
-function commandServiceOf(
-  env: Env,
-  {
-    db,
-    shared,
-    records,
-  }: {
-    db: Db;
-    shared: Shared;
-    records: Pick<AppServices, "tasks" | "careEntries">;
-  },
-) {
-  const perDay = Number(env.AI_COMMANDS_PER_FAMILY_DAY);
-
-  return createCommandService({
-    drafts: createCommandRepo(db),
-    ...shared,
-    model: workersAiModel(env.AI),
-    models: { primary: env.AI_COMMAND_MODEL, fallback: env.AI_COMMAND_MODEL_FALLBACK },
-    speechModel: env.AI_SPEECH_MODEL,
-    commandsPerFamilyDay:
-      Number.isFinite(perDay) && perDay > 0 ? perDay : defaultCommandsPerFamilyDay,
-    tasks: records.tasks,
-    careEntries: records.careEntries,
-  });
-}
-
 function authServiceOf(
   db: Db,
   env: Env,
@@ -416,7 +384,7 @@ function servicesFor(env: Env, dependencies: WorkerDependencies): AppServices {
     ...membershipServicesOf(db, { shared, familyRequests, schedule: records.reminders }),
     familyRequests,
     photoStorage: createPhotoStorageService({ storage: createPhotoStorageRepo(db), ...shared }),
-    commands: commandServiceOf(env, { db, shared, records }),
+    chat: createChatService({ bot, miniAppUrl: env.MINI_APP_URL }),
   };
 }
 
@@ -459,8 +427,7 @@ function createApp(dependencies: WorkerDependencies) {
     .route("/", albumRoute)
     .route("/", recipeRoute)
     .route("/", photoStorageRoute)
-    .route("/", careEntryRoute)
-    .route("/", commandRoute);
+    .route("/", careEntryRoute);
 }
 
 async function runScheduled(env: Env, dependencies: WorkerDependencies): Promise<void> {
@@ -471,7 +438,6 @@ async function runScheduled(env: Env, dependencies: WorkerDependencies): Promise
   if (isMaintenanceMinute(dependencies.clock.now())) {
     await services.invites.sweep();
     await services.familyRequests.sweep();
-    await services.commands.sweep();
     await services.auth.sweepDevices();
   }
 }

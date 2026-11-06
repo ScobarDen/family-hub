@@ -4,12 +4,6 @@ import { useEffect, type ReactNode } from "react";
 import type { AppModule } from "@family-hub/contract";
 
 import { Albums, type AlbumsScreenModel } from "@/modules/albums";
-import {
-  CommandSheet,
-  Microphone,
-  type CommandSheetModel,
-  type MicrophoneModel,
-} from "@/modules/command";
 import type { FamilyModel } from "@/modules/family";
 import { Feed, type FeedModel } from "@/modules/feed";
 import { Goals, type GoalsScreenModel } from "@/modules/goals";
@@ -27,6 +21,7 @@ import {
 } from "@/modules/member-settings";
 import { PetTab, type PetTabModel } from "@/modules/pets";
 import type { PhotoStorageModel } from "@/modules/photo-storage";
+import { QuickAddButton, QuickAddSheet, type QuickAddModel } from "@/modules/quick-add";
 import { Recipes, type RecipesScreenModel } from "@/modules/recipes";
 import type { SessionModel } from "@/modules/session";
 import {
@@ -49,6 +44,7 @@ export type HomeProps = {
   session: SessionModel;
   tabBar: TabBarModel;
   tabBarMenu: TabBarMenuModel;
+  quickAdd: QuickAddModel;
   today: TodayModel;
   sections: SectionsModel;
   notifications: NotificationsModel;
@@ -69,8 +65,6 @@ export type HomeProps = {
   recipes: RecipesScreenModel;
   tasks: TasksScreenModel;
   photoStorage: PhotoStorageModel;
-  microphone: MicrophoneModel;
-  commandSheet: CommandSheetModel;
 };
 
 function profileOf(props: HomeProps): ReactNode {
@@ -136,13 +130,13 @@ function contentOf(props: HomeProps): ReactNode {
     : pageOf(props, contents[screen.module](props));
 }
 
-// Every screen keeps the tab bar and the microphone: there are no hidden modules any more.
+// Every screen keeps the tab bar and its «+»: there are no hidden modules any more.
 function screenOf(props: HomeProps): ReactNode {
   return (
     <>
       <div data-screen>{contentOf(props)}</div>
-      <TabBar model={props.tabBar} center={<Microphone model={props.microphone} />} />
-      <CommandSheet model={props.commandSheet} />
+      <TabBar model={props.tabBar} center={<QuickAddButton model={props.quickAdd} />} />
+      <QuickAddSheet model={props.quickAdd} />
     </>
   );
 }

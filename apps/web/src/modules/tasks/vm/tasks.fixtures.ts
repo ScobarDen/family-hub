@@ -329,7 +329,6 @@ export function startTasks(
     onRecord: (record) => {
       recorded.push(record);
     },
-    onDraftSaved: noop,
     slide,
   });
 

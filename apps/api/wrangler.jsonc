@@ -15,16 +15,9 @@
     "bindings": [{ "name": "LIVE", "class_name": "FamilyLive" }],
   },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["FamilyLive"] }],
-  "ai": {
-    "binding": "AI",
-  },
   "vars": {
     "ALLOWED_ORIGINS": "https://scobarden.github.io",
     "MINI_APP_URL": "https://scobarden.github.io/family-hub/",
-    "AI_COMMAND_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
-    "AI_COMMAND_MODEL_FALLBACK": "@cf/meta/llama-4-scout-17b-16e-instruct",
-    "AI_SPEECH_MODEL": "@cf/openai/whisper-large-v3-turbo",
-    "AI_COMMANDS_PER_FAMILY_DAY": "30",
     "VAPID_SUBJECT": "https://scobarden.github.io/family-hub/",
   },
   "secrets": {

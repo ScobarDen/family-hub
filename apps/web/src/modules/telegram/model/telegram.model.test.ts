@@ -1,16 +1,10 @@
 import { context, noop } from "@reatom/core";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { BottomButton, TelegramButton, TelegramWebApp } from "../telegram.types.ts";
+import type { TelegramButton, TelegramWebApp } from "../telegram.types.ts";
 import { reatomTelegram } from "./telegram.model.ts";
 
 const button: TelegramButton = { show: noop, hide: noop, onClick: noop, offClick: noop };
-const bottomButton: BottomButton = {
-  ...button,
-  setParams: noop,
-  showProgress: noop,
-  hideProgress: noop,
-};
 
 function fakeWebApp({ version = "9.0" } = {}) {
   const calls: string[] = [];
@@ -39,11 +33,7 @@ function fakeWebApp({ version = "9.0" } = {}) {
       notificationOccurred: (type) => calls.push(type),
       selectionChanged: () => calls.push("select"),
     },
-    enableVerticalSwipes: noop,
-    disableVerticalSwipes: noop,
     DeviceStorage: { setItem: noop, getItem: noop, removeItem: noop, clear: noop },
-    MainButton: bottomButton,
-    SecondaryButton: bottomButton,
     BackButton: button,
     SettingsButton: button,
     onEvent: noop,

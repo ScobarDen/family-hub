@@ -40,38 +40,14 @@ Bring up the Worker, the Mini App and the tunnel on the dev bot as in [docs/dev.
 - [ ] A Pet-linked Task's Reminder also has «📝 Записать»: it opens the Mini App, completes that Occurrence and opens a Care Entry for the Pet.
 - [ ] «Открыть» opens the Mini App on that Task, from a private chat and from a group the Reminder was forwarded to.
 
-### Voice and commands
-
-Run on the dev bot with the real `AI` binding (`wrangler dev --remote`), since the models answer only on Cloudflare.
-
-- [ ] «напомни в пятницу в 19:00 оплатить интернет» answers with «⏰ Оплатить интернет · пт <date>, 19:00 · в момент · напомнить мне» and «Создать / ×» within a few seconds, with «печатает…» meanwhile.
-- [ ] «Создать» creates the Task: it shows in «Дела» and the bot sends its Reminder at the time; the preview turns into «✅ Создано».
-- [ ] «напомни мне завтра в 9 позвонить врачу» makes a Private Task that reminds the speaker only.
-- [ ] A phrase without a subject shows «Не хватает: что за дело» and no «Создать»; nonsense answers «Не понял» with examples; «удали все напоминания» is refused.
-- [ ] After `AI_COMMANDS_PER_FAMILY_DAY` commands the bot says commands are over for today, without calling the model.
-- [ ] A voice message from a phone, «напомни в пятницу в семь вечера оплатить интернет», answers with «🎙 «…»» over the same preview, and «Создать» creates the Task.
-- [ ] A voice message over 30 seconds is turned down at once; a silent one answers «Не расслышал».
-- [ ] `wrangler tail` shows the voice command's CPU time within 10 ms.
-- [ ] «Изменить» in the bot's preview opens the Mini App on the Task form filled from the draft; saving it turns the preview into «✅ Создано».
-- [ ] «в субботу в 12 груминг Бьюика, напомни за день» answers «⏰ Груминг Бьюика · сб <date>, 12:00 · за день · напомнить мне · Бьюик»; «Создать» puts it in «Дела» and the Reminder arrives a day before.
-- [ ] «Бьюику сделали прививку от бешенства, 1800 рублей, следующая через год» previews a vaccination with its cost, «повторить <date>» and the photo hint; «Создать» puts it in the journal and the month's expenses and adds a Task for the Pet on that date, assigned to the speaker.
-- [ ] «Бьюик весит 12,4» becomes a weight entry and shows on the chart; «вчера купили корм за 3200» is dated yesterday; with two Pets, a phrase without a name asks which Pet with buttons.
-- [ ] «каждый год 3 марта день рождения мамы» becomes a yearly Task without a time or Assignees; «Изменить» on it opens the Task form.
-
-### Microphone in the Mini App
+### Quick add
 
 Each item on iOS, Android and Telegram Desktop.
 
-- [ ] Holding the microphone records with a running timer and a haptic tick; releasing shows the preview sheet with the heard phrase, and «Создать» creates the Reminder.
-- [ ] The very first hold asks for the microphone and sends nothing, saying «Держите кнопку и говорите»; the next hold records.
-- [ ] Later holds record without asking again, Android included; after the Mini App is minimised and reopened it may ask once more.
-- [ ] Sliding the finger off the button cancels: no sheet, no request in the network log.
-- [ ] Holding for 30 seconds stops and sends by itself.
-- [ ] While the finger is down, dragging it downwards neither scrolls the page nor closes the Mini App; after release the swipe-to-close works again.
-- [ ] With the microphone refused in the system settings, the button opens the bot chat and says to send a voice message there.
-- [ ] «Изменить» in the sheet opens the Reminder form filled from the draft; «×» closes the sheet.
-- [ ] The draft sheet shows «Создать» and «Изменить» as Telegram's own bottom buttons, not inside the sheet; «Создать» spins in Telegram's progress until «Дело создано» or «Запись добавлена в журнал», then both buttons go away; «×» on a draft takes them away too.
-- [ ] On Telegram older than 7.10 (or in Telegram Web K) both buttons sit inside the sheet, and «Создать» shows a spinner the same width as its label.
+- [ ] The «+» in the centre of the tab bar gives a light haptic tick and opens the «Добавить» sheet with Дело, Запись питомцу, Взнос and Фото.
+- [ ] «Дело» closes the sheet and opens the new Task form in «Дела»; «Запись питомцу» asks for a Pet when there are several, then opens the Care Entry form; «Взнос» opens the Contribution form of the nearest Savings Goal; «Фото» opens the system photo picker and uploads to the Family's photos.
+- [ ] Without a Savings Goal there is no «Взнос»; without Photo Storage there is no «Фото».
+- [ ] A text or a voice message to the bot answers «Я больше не разбираю сообщения…» with «Открыть», which opens the Mini App; `/today` still answers with the digest.
 
 ### Buttons
 
@@ -82,7 +58,7 @@ Each item on iOS, Android and Telegram Desktop.
 
 On iOS and Android at 320px wide, in the light and the dark theme.
 
-- [ ] Every tab shows its title under the icon; «Сегодня» and «Разделы» fit whole beside the microphone, and the screen reader reads each tab by that title, the open one as current.
+- [ ] Every tab shows its title under the icon; «Сегодня» and «Разделы» fit whole beside the «+», and the screen reader reads each tab by that title, the open one as current.
 - [ ] With the screen in greyscale (Accessibility → Colour filters), the open tab still stands out by the pill behind its icon and its bolder title.
 
 ### Narrow screens
@@ -108,8 +84,6 @@ On iOS and Android at 320px and 375px wide, in the light and the dark theme.
 
 With VoiceOver on iOS and TalkBack on Android.
 
-- [ ] Holding the microphone reads it as pressed and never reads the ticking timer; a refused or first hold announces its hint.
-- [ ] After release the screen reader reads the recognised draft, then «Дело создано» or «Запись добавлена в журнал» after «Создать», or the Command's failure, each once.
 - [ ] Reaching a Savings Goal's target reads «Цель достигнута!» once.
 - [ ] Uploading photos to an Album reads the count as it grows; the row shows an upload icon, not an empty circle.
 - [ ] A Task's card shows one failure bar when a change is rolled back, and it is read once.
@@ -126,7 +100,7 @@ With a keyboard in Telegram Desktop or the browser, then with VoiceOver and Talk
 
 - [ ] Opening a photo from a thumb puts focus on «Закрыть»; Tab cycles only through the viewer's bar and the step buttons, never onto the screen behind; ArrowLeft and ArrowRight step through the photos; Escape closes the viewer and focus lands back on that thumb. The screen reader announces a dialog «Фото».
 - [ ] A refused photo deletion shows its failure bar over the open viewer, read once; «Скрыть» there dismisses it.
-- [ ] The Command Sheet slides up as a bottom drawer «Команда» with focus on «Закрыть»; Tab stays inside it; Escape, a swipe down and a tap on the dimmed page close it like «×» (a pending draft is dropped) and focus returns to the microphone.
+- [ ] The «+» opens a bottom drawer «Добавить» with focus inside it; Tab stays inside it; Escape, a swipe down and a tap on the dimmed page close it and focus returns to the «+».
 
 ### Keyboard focus
 
@@ -177,7 +151,7 @@ Each item on iOS and Android, once with the system's reduced motion off and once
 - [ ] Buttons, rows, Today's tiles, chips and the completion circle shrink a little while pressed and spring back; a disabled or spinning button does not move.
 - [ ] Opening a section from «Разделы» or a record from Today or the Feed slides the new screen in from the right; Telegram's Back slides it out to the right, inside a module (a Task's card) too, and closes an open form's drawer first. Opening a record inside a module's own list swaps at once.
 - [ ] A tab-bar tap swaps the screen at once, with no slide.
-- [ ] The command sheet rises from the bottom; «×» lets it sink a little and fade, quicker than it came.
+- [ ] The «Добавить» sheet rises from the bottom; a swipe down lets it sink and fade, quicker than it came.
 - [ ] Completing a Task in «Сделать сегодня» turns the circle into a check (it grows out of a blur), then the row folds away and the rows below close the gap; «Отменить» opens it up again. Completing the last one folds the whole card.
 - [ ] The undo and failure bars rise from the bottom as they appear.
 - [ ] On a first launch with the cache cleared, Today's blocks come in one after another, 100 ms apart; every other screen's content fades in over its skeleton. A second launch shows everything at once.

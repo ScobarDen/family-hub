@@ -102,8 +102,7 @@ jobs:
           bot setMyCommands "$(jq -n '{
             commands: [
               {command: "start", description: "Открыть Family Hub"},
-              {command: "today", description: "Что на сегодня"},
-              {command: "remind", description: "Напомнить: /remind в пятницу в 19:00 оплатить интернет"}
+              {command: "today", description: "Что на сегодня"}
             ]
           }')"
           bot setChatMenuButton "$(jq -n '{

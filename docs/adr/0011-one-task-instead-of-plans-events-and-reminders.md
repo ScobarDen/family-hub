@@ -1,5 +1,7 @@
 # One Task replaces Plans, Events, Reminders and Pet Due Dates
 
+Command Drafts and the voice model mentioned below were removed in [ADR 0017](0017-a-quick-add-sheet-replaces-voice-and-ai-commands.md).
+
 Members kept stopping at «+» to decide whether they were creating a Plan, an Event or a Reminder, and a Pet's next vaccination was a fourth thing again — a Due Date on a Care Entry. All four describe the same idea: something ahead of the Family. They become one Task with an optional date (and time and end), optional Assignees, Recurrence, Reminders, Subtasks and a linked Pet or Album. There is no kind field: what used to be an Event is a Task without Assignees, what used to be a Reminder is a Task with a Reminder on it. Care Entries stay separate because they record the past, which nobody completes or is reminded about.
 
 ## Decisions

@@ -1,26 +1,7 @@
 import { context } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { TaskDraft } from "@family-hub/contract";
-
 import { cleaning, fakeBackend, loaded, startTasks } from "./tasks.fixtures.ts";
-
-const groomingDraft: TaskDraft = {
-  kind: "task",
-  title: "Груминг Бьюика",
-  note: null,
-  date: "2026-10-24",
-  time: "11:00",
-  endDate: null,
-  endTime: null,
-  recurrence: { frequency: "monthly", until: null },
-  visibility: "shared",
-  reminderOffsets: ["1d"],
-  recipientIds: ["member-2"],
-  petId: "pet-1",
-  missing: [],
-  ambiguities: [],
-};
 
 beforeEach(() => {
   context.reset();
@@ -87,41 +68,6 @@ describe("the Task form", () => {
       request: "PUT /api/tasks/task-cleaning",
       body: expect.objectContaining({ title: "Генеральная уборка", recurrence: null }),
     });
-  });
-
-  test("fills the form from a Command Draft", async () => {
-    const { model } = startTasks();
-
-    await loaded(model);
-    model.openDraft({
-      draftId: "draft-1",
-      draft: groomingDraft,
-      phrase: { saidAt: Date.parse("2026-10-16T06:00:00Z"), timeZone: "Europe/Moscow" },
-    });
-
-    expect(model.openForm()).toBe("task");
-    expect({
-      title: model.taskForm.form.fields.title(),
-      date: model.taskForm.form.fields.date(),
-      time: model.taskForm.form.fields.time(),
-      frequency: model.taskForm.form.fields.frequency(),
-      petId: model.taskForm.form.fields.petId(),
-      recipients: model.taskForm.form.fields.recipients(),
-    }).toEqual({
-      title: "Груминг Бьюика",
-      date: "2026-10-24",
-      time: "11:00",
-      frequency: "monthly",
-      petId: "pet-1",
-      recipients: "members",
-    });
-    expect(model.taskForm.isPickingRecipients()).toBe(true);
-    expect(
-      model.taskForm
-        .recipientChoices()
-        .filter(({ isChosen }) => isChosen)
-        .map(({ id }) => id),
-    ).toEqual(["member-2"]);
   });
 
   test("offers only day-sized Reminders without a time", async () => {

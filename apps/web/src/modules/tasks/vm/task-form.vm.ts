@@ -1,7 +1,6 @@
 import { action, atom, computed, reatomBoolean, reatomForm, type Atom } from "@reatom/core";
 import { z } from "zod";
 
-import { offsetTitles } from "@family-hub/commands";
 import {
   dateOnlyOffsets,
   reminderMaxCount,
@@ -12,22 +11,16 @@ import {
   type ReminderOffset,
   type Task,
   type TaskChange,
-  type TaskDraft,
 } from "@family-hub/contract";
 
-import { reatomEditableRecord, type DraftOpening } from "@/modules/form";
+import { reatomEditableRecord } from "@/modules/form";
 import type { ClosingConfirmation, Haptics } from "@/modules/telegram";
 import type { AvatarMember, Choice } from "@/modules/ui";
 
 import type { TasksApi } from "../tasks.api.ts";
+import { offsetTitles } from "../tasks.config.ts";
 import type { TasksModel } from "../tasks.model.ts";
-import {
-  emptyTask,
-  orNull,
-  valuesOf,
-  valuesOfDraft,
-  type TaskValues,
-} from "./task-form-values.vm.ts";
+import { emptyTask, orNull, valuesOf, type TaskValues } from "./task-form-values.vm.ts";
 
 type TaskFormDependencies = {
   api: TasksApi;
@@ -37,10 +30,7 @@ type TaskFormDependencies = {
   haptics: Pick<Haptics, "success" | "error" | "select">;
   closingConfirmation: ClosingConfirmation;
   onSaved: (task: Task) => void;
-  onDraftSaved: (draftId: string) => void;
 };
-
-export type TaskDraftOpening = DraftOpening<TaskDraft>;
 
 const schema = z
   .object({
@@ -109,8 +99,7 @@ function changeOf(values: TaskValues, { picks, timeZone }: { picks: Picks; timeZ
   });
 }
 
-// A timed Task keeps the zone it was set in; a new one takes the zone of whoever creates it, or of
-// the phrase its Command Draft was said in.
+// A timed Task keeps the zone it was set in; a new one takes the zone of whoever creates it.
 function reatomTaskRecord(dependencies: TaskFormDependencies, picks: Picks) {
   return reatomEditableRecord({
     name: "tasks.taskRecord",
@@ -119,11 +108,8 @@ function reatomTaskRecord(dependencies: TaskFormDependencies, picks: Picks) {
     haptics: dependencies.haptics,
     closingConfirmation: dependencies.closingConfirmation,
     valuesOf,
-    valuesOfDraft,
-    create: async (values, { phrase }) =>
-      dependencies.api.create(
-        changeOf(values, { picks, timeZone: phrase?.timeZone ?? dependencies.timeZone() }),
-      ),
+    create: async (values) =>
+      dependencies.api.create(changeOf(values, { picks, timeZone: dependencies.timeZone() })),
     update: async (task: Task, values) =>
       dependencies.api.update(
         task.id,
@@ -133,7 +119,6 @@ function reatomTaskRecord(dependencies: TaskFormDependencies, picks: Picks) {
       dependencies.tasks.keep(saved);
       dependencies.onSaved(saved);
     },
-    onDraftSaved: dependencies.onDraftSaved,
   });
 }
 
@@ -300,15 +285,6 @@ function reatomStarts(
       isExpanded.set(petId !== "");
       record.startCreating({ ...emptyTask, date, petId });
     }, "tasks.taskForm.startCreating"),
-    startFromDraft: action((opening: TaskDraftOpening) => {
-      pick(picks, {
-        assigneeIds: [],
-        recipientIds: opening.draft.recipientIds ?? [],
-        offsets: opening.draft.reminderOffsets,
-      });
-      isExpanded.set(true);
-      record.startFromDraft(opening);
-    }, "tasks.taskForm.startFromDraft"),
     startEditing: action((task: Task) => {
       pick(picks, {
         assigneeIds: task.assignees.map(({ id }) => id),

@@ -10,16 +10,14 @@ export {
   type HomeScreen,
 } from "./telegram.lib.ts";
 export {
-  fakeBottomButton,
   fakeDeviceStorage,
   fakeHaptics,
   fakeWindow,
-  type FakeBottomButton,
   type FakeDeviceStorage,
   type FakeHaptics,
   type FakeWindow,
 } from "./telegram.fixtures.ts";
-export { reatomTelegram, type BottomButtonState, type Telegram } from "./model/telegram.model.ts";
+export { reatomTelegram, type Telegram } from "./model/telegram.model.ts";
 export { TelegramLoginWidget } from "./view/login-widget.view.tsx";
 export type {
   DeviceStorage,
