@@ -1,6 +1,6 @@
 # quick-add
 
-The «+» in the centre of the tab bar and the «Добавить» sheet it opens. The sheet offers Дело, Запись питомцу, Взнос and Фото; a tile closes the sheet and opens that module's own create form, and Фото opens the file picker straight away. Each tile carries its section's icon and colour (`sections`).
+The «+» in the centre of the tab bar and the sheet it opens: tiles alone, with no visible heading (screen readers hear «Добавить»). The sheet offers Дело, Запись питомцу, Взнос and Фото; a tile closes the sheet and opens that module's own create form, and Фото opens the file picker straight away. Each tile carries its section's icon and colour (`sections`).
 
 ## Injected
 

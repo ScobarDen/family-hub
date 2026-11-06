@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { AppModule } from "@family-hub/contract";
 
 import { sectionColors, sectionIcons } from "@/modules/sections";
-import { cn, FilePick, FormDrawer } from "@/modules/ui";
+import { cn, Drawer, DrawerContent, DrawerTitle, FilePick } from "@/modules/ui";
 
 import type { QuickAddModel } from "../quick-add.vm.ts";
 
@@ -24,27 +24,30 @@ function tileOf(module: AppModule, title: string): ReactNode {
 
 export const QuickAddSheet = reatomComponent(
   ({ model }: { model: QuickAddModel }) => (
-    <FormDrawer open={model.isOpen()} title="Добавить" onClose={model.close}>
-      <div className="grid grid-cols-2 gap-3 px-4 pt-2 pb-4">
-        {model.tiles().map(({ title, module, target }) => (
-          <button
-            key={target.kind}
-            type="button"
-            className={tileClass}
-            onClick={() => {
-              model.add(target);
-            }}
-          >
-            {tileOf(module, title)}
-          </button>
-        ))}
-        {model.canAddPhoto() && (
-          <FilePick className={tileClass} aria-label="Фото" onPick={model.addPhotos}>
-            {tileOf("albums", "Фото")}
-          </FilePick>
-        )}
-      </div>
-    </FormDrawer>
+    <Drawer open={model.isOpen()} onClose={model.close}>
+      <DrawerContent>
+        <DrawerTitle className="sr-only">Добавить</DrawerTitle>
+        <div className="grid grid-cols-2 gap-3 px-4 pt-2 pb-4">
+          {model.tiles().map(({ title, module, target }) => (
+            <button
+              key={target.kind}
+              type="button"
+              className={tileClass}
+              onClick={() => {
+                model.add(target);
+              }}
+            >
+              {tileOf(module, title)}
+            </button>
+          ))}
+          {model.canAddPhoto() && (
+            <FilePick className={tileClass} aria-label="Фото" onPick={model.addPhotos}>
+              {tileOf("albums", "Фото")}
+            </FilePick>
+          )}
+        </div>
+      </DrawerContent>
+    </Drawer>
   ),
   "QuickAddSheet",
 );
