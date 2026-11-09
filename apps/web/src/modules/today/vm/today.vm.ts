@@ -29,6 +29,8 @@ export type TodayTarget =
 
 export type TodayDependencies = LiveVersion & {
   api: TodayApi;
+  // While the live socket is up, Today is kept current without reading it again on every visit.
+  isLive?: () => boolean;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
   today: () => string;
   telegram: { haptics: Pick<Haptics, "success" | "select" | "error"> };
@@ -328,6 +330,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
 export function reatomToday(dependencies: TodayDependencies) {
   const { data, reload } = reatomData(dependencies);
   const completion = reatomCompletion(dependencies, reload);
+  const blocks = reatomBlocks(dependencies, data, completion);
 
   return {
     isLoading: computed(() => data.data() === undefined && !data.ready(), "today.isLoading"),
@@ -352,7 +355,16 @@ export function reatomToday(dependencies: TodayDependencies) {
         : { title: completing.title, hasPet: completing.petId !== undefined };
     }, "today.undo"),
     reload,
-    ...reatomBlocks(dependencies, data, completion),
+    shown: action(() => {
+      if (
+        dependencies.isLive?.() !== true ||
+        blocks.isDueOutdated() ||
+        data.error() !== undefined
+      ) {
+        reload();
+      }
+    }, "today.shown"),
+    ...blocks,
     ...reatomTaps(dependencies, data, completion),
   };
 }

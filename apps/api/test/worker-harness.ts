@@ -90,13 +90,19 @@ export async function tokenOf(worker: Worker, user: TelegramUserFixture): Promis
 export async function request(
   worker: Worker,
   user: TelegramUserFixture,
-  { method = "GET", path, body }: { method?: string; path: string; body?: unknown },
+  {
+    method = "GET",
+    path,
+    body,
+    headers,
+  }: { method?: string; path: string; body?: unknown; headers?: Record<string, string> },
 ): Promise<Response> {
   return worker.request(path, {
     method,
     headers: {
       authorization: `Bearer ${await tokenOf(worker, user)}`,
       "content-type": "application/json",
+      ...headers,
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });

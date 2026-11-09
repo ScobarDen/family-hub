@@ -163,7 +163,6 @@ function reatomRemove(
       data.entries.data.set(withoutId(data.entries.data() ?? [], entryId));
       isFormOpen.setFalse();
       await wrap(api.remove(entryId));
-      data.reload();
     },
     {
       name: "care.remove",
@@ -290,7 +289,6 @@ export function reatomCare(dependencies: CareDependencies) {
     haptics: dependencies.telegram.haptics,
     closingConfirmation: dependencies.telegram,
     onSaved: () => {
-      data.reload();
       isFormOpen.setFalse();
     },
   });

@@ -225,23 +225,19 @@ function reatomRecipeSharing({ api, telegram }: RecipesDependencies, opened: Ope
 }
 
 function reatomRecipeActions(dependencies: RecipesDependencies, sources: Sources) {
-  const { data, navigation, opened } = sources;
+  const { navigation, opened } = sources;
   const { api, telegram } = dependencies;
   const remove = reatomRecipeRemoval(dependencies, sources);
   const favorite = action(async () => {
     const recipe = opened.data();
 
-    const isMarked =
-      recipe !== undefined &&
-      (await wrap(
+    if (recipe !== undefined) {
+      await wrap(
         didSucceedOrAlert(telegram, {
           failure: "Не получилось отметить рецепт. Попробуйте ещё раз.",
           call: api.setFavorite(recipe.id, !recipe.isFavorite),
         }),
-      ));
-
-    if (isMarked) {
-      data.reload();
+      );
     }
   }, "recipes.favorite").extend(withAsync());
 
@@ -376,7 +372,6 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     onSaved: (saved) => {
       navigation.editing.set(undefined);
       navigation.openedId.set(saved.id);
-      data.reload();
     },
   });
   const screen = reatomScreen({ ...dependencies, data, navigation, opened });

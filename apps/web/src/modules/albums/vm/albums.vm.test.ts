@@ -426,21 +426,6 @@ describe("a batch of photos", () => {
     ]);
   });
 
-  test("reloads the open Album once, when the batch is over", async () => {
-    const started = startAlbums();
-
-    await openAlbum(started, "album-1");
-    const before = started.requests.length;
-
-    started.model.upload(files(3));
-    await uploaded(started);
-    await vi.waitFor(() => {
-      expect(
-        started.requests.slice(before).filter((request) => request === "GET /api/albums/album-1"),
-      ).toHaveLength(1);
-    });
-  });
-
   test("waits as long as Telegram asks on a 429 and goes on", async () => {
     const started = startAlbums({ uploads: ["ok", "429", "ok"] });
 

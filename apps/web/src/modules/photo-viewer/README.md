@@ -7,7 +7,7 @@ The full-screen viewer over a record's photos: Telegram goes full screen while i
 - `api` — the owning module's `deletePhoto`.
 - `telegram` — `modules/telegram`: the confirmation dialog, full screen and haptics.
 - `onPick` — optional: the module's own action on the photo shown, such as making it a Pet's avatar.
-- `onDeleted` — the module refreshes what showed the photo.
+- `onDeleted` — optional: the module refreshes what showed the photo where the live signal of a photo's deletion, which names only Albums, does not reach it.
 - `failure` — the module's failure bar.
 - `sharing` — optional: sharing the photo to a Telegram chat.
 

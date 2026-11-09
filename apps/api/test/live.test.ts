@@ -1,7 +1,7 @@
 import type { InlineKeyboardMarkup } from "@grammyjs/types";
 import { describe, expect, test } from "vite-plus/test";
 
-import { liveProtocol, type TaskChange } from "@family-hub/contract";
+import { liveClientHeader, liveProtocol, type TaskChange } from "@family-hub/contract";
 
 import { asya, denis, request, startWorker, tokenOf } from "./worker-harness.ts";
 
@@ -36,6 +36,29 @@ describe("live updates", () => {
     });
 
     expect(worker.live.signals).toEqual([{ familyId: worker.familyId, modules: ["tasks", "pet"] }]);
+  });
+
+  test("a write names the open app that made it, so its own echo is told apart", async () => {
+    const worker = await startWithFamily();
+    const writer = "0f8f2a52-3c4e-4b8a-9d55-6a1f0e2b7c11";
+
+    await request(worker, asya, {
+      method: "POST",
+      path: "/api/tasks",
+      body: ceiling,
+      headers: { [liveClientHeader]: writer },
+    });
+    await request(worker, asya, {
+      method: "POST",
+      path: "/api/tasks",
+      body: ceiling,
+      headers: { [liveClientHeader]: "<script>" },
+    });
+
+    expect(worker.live.signals).toEqual([
+      { familyId: worker.familyId, modules: ["tasks", "pet"], writer },
+      { familyId: worker.familyId, modules: ["tasks", "pet"] },
+    ]);
   });
 
   test("a read and a Member's own settings signal nothing", async () => {

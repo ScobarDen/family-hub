@@ -25,7 +25,8 @@ export type PhotoViewerDependencies = {
   telegram: Dialogs & Fullscreen & { haptics: Haptics };
   // A module's own action on the photo shown, such as making it a Pet's avatar.
   onPick?: (photoId: string) => void;
-  onDeleted: () => void;
+  // Only where the live signal of a photo's deletion (Albums) does not reach what showed it.
+  onDeleted?: () => void;
   failure: RollbackFailure;
   sharing?: { isAvailable: () => boolean; share: (photoId: string) => Promise<unknown> };
 };
@@ -86,7 +87,7 @@ function reatomPhotoRemoval(
 
       opened.set(without(current, photo.id));
       await wrap(dependencies.api.deletePhoto(photo.id));
-      dependencies.onDeleted();
+      dependencies.onDeleted?.();
     },
     {
       name: "photoViewer.remove",
