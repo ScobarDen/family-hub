@@ -58,6 +58,8 @@ type HttpClientOptions = {
   holdUntilSignedIn?: boolean;
   // The Installed App signs in again with its Device once, on a 401, before the session is lost.
   reauthenticate?: () => Promise<string | undefined>;
+  writeHeaders?: Record<string, string>;
+  onWrite?: (path: string) => void;
 };
 
 type RequestOptions<Schema extends z.ZodType> = {
@@ -72,8 +74,11 @@ function isRaw(body: unknown): body is FormData | Blob {
 }
 
 // A FormData body sets its own multipart content type; a Blob, such as a recording, carries its own.
-function headersFor(body: unknown, token: string | undefined): Headers {
-  const headers = new Headers();
+function headersFor(
+  body: unknown,
+  { token, extra }: { token: string | undefined; extra: Record<string, string> },
+): Headers {
+  const headers = new Headers(extra);
 
   if (body instanceof Blob) {
     headers.set("content-type", body.type);
@@ -161,10 +166,11 @@ type Transport = {
   baseUrl: string;
   timeoutMs: number;
   session: ReturnType<typeof reatomSessionToken>;
+  writeHeaders: Record<string, string>;
 };
 
 async function send(
-  { fetch, baseUrl, timeoutMs, session }: Transport,
+  { fetch, baseUrl, timeoutMs, session, writeHeaders }: Transport,
   {
     path,
     options: { method = "GET", body, withoutSession },
@@ -181,7 +187,10 @@ async function send(
       url: new URL(path, baseUrl),
       init: {
         method,
-        headers: headersFor(body, session.token()),
+        headers: headersFor(body, {
+          token: session.token(),
+          extra: method === "GET" ? {} : writeHeaders,
+        }),
         body: body === undefined || isRaw(body) ? body : JSON.stringify(body),
       },
       timeoutMs,
@@ -223,11 +232,20 @@ async function sendOrRetry(
   return wrap(send(transport, { path, options }));
 }
 
+function transportOf({
+  baseUrl,
+  fetch,
+  timeoutMs = defaultTimeoutMs,
+  writeHeaders = {},
+}: HttpClientOptions): Omit<Transport, "session"> {
+  return { baseUrl, fetch, timeoutMs, writeHeaders };
+}
+
 export function createHttpClient(options: HttpClientOptions) {
-  const { baseUrl, fetch, timeoutMs = defaultTimeoutMs, page, now = Date.now } = options;
+  const { baseUrl, page, now = Date.now } = options;
   const session = reatomSessionToken({ now, isHeld: options.holdUntilSignedIn === true });
   const isSessionLost = reatomBoolean(false, "httpClient.isSessionLost");
-  const transport = { fetch, baseUrl, timeoutMs, session };
+  const transport = { ...transportOf(options), session };
 
   async function request<Schema extends z.ZodType>(
     path: string,
@@ -247,6 +265,10 @@ export function createHttpClient(options: HttpClientOptions) {
 
     if (!response.ok) {
       throw await wrap(httpErrorOf(response));
+    }
+
+    if (requestOptions.method !== undefined && requestOptions.method !== "GET") {
+      options.onWrite?.(path);
     }
 
     return requestOptions.schema.parse(await wrap(response.json()));

@@ -3,6 +3,8 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Temporal } from "temporal-polyfill";
 
+import { liveClientHeader } from "@family-hub/contract";
+
 import { deviceTimeZone, today as todayIn } from "@/common/format-date.lib.ts";
 import { createHttpClient } from "@/common/http-client.api.ts";
 import { createAlbumsApi, reatomAlbumsScreen } from "@/modules/albums";
@@ -62,12 +64,17 @@ const platform = browser && reatomBrowserPlatform(window);
 // Built first: it reads the launch params before the first navigation rewrites the URL.
 const telegram = reatomTelegram(browser?.webApp ?? window.Telegram.WebApp);
 const apiUrl = import.meta.env.VITE_API_URL ?? window.location.origin;
+const liveClientId = crypto.randomUUID();
 const httpClient = createHttpClient({
   baseUrl: apiUrl,
   fetch: async (input, init) => fetch(input, init),
   page: document,
   holdUntilSignedIn: true,
   reauthenticate: browser && (async () => sessionApi.reauthenticate()),
+  writeHeaders: { [liveClientHeader]: liveClientId },
+  onWrite: (path) => {
+    live.wrote(path);
+  },
 });
 const deviceCache = reatomDeviceCache(telegram.deviceStorage);
 const sessionApi = createSessionApi(httpClient, window.localStorage);
@@ -128,7 +135,12 @@ async function wait(ms: number): Promise<void> {
   });
 }
 
-const live = reatomLiveUpdates({ open: () => openLiveSocket(httpClient), page: document, wait });
+const live = reatomLiveUpdates({
+  open: () => openLiveSocket(httpClient),
+  page: document,
+  wait,
+  clientId: liveClientId,
+});
 
 const familyApi = createFamilyApi(httpClient);
 // One query each for the Family's Members and Pets, so every picker sees the same list.
@@ -248,6 +260,7 @@ const todayHub = reatomToday({
   api: createTodayApi(httpClient),
   deviceCache,
   liveVersion: live.all,
+  isLive: live.isConnected,
   today,
   telegram,
   onOpen: (target) => {
@@ -268,9 +281,7 @@ const invites = reatomInvites({
 const navigation = reatomNavigation({
   base: import.meta.env.BASE_URL,
   slots: tabBarModules.modules,
-  onTodayShown: () => {
-    todayHub.reload();
-  },
+  onTodayShown: todayHub.shown,
   isSignedIn: () => session.member() !== undefined,
   telegram,
   slide: slideScreens,

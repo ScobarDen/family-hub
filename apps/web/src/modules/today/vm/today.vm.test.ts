@@ -78,6 +78,7 @@ type Launch = {
   device?: FakeDeviceStorage;
   today?: string;
   isOffline?: boolean;
+  isLive?: boolean;
 };
 
 function startToday(
@@ -88,6 +89,7 @@ function startToday(
     device = fakeDeviceStorage(),
     today = "2026-10-16",
     isOffline = false,
+    isLive = false,
   }: Launch = {},
 ) {
   const calls: string[] = [];
@@ -116,6 +118,7 @@ function startToday(
     api: createTodayApi(client),
     deviceCache: reatomDeviceCache(device.deviceStorage),
     today: () => today,
+    isLive: () => isLive,
     telegram: { haptics },
     onOpen: (target) => {
       opened.push(target);
@@ -542,5 +545,38 @@ describe("launching from the device cache", () => {
       expect(model.rows().map(({ title }) => title)).toEqual(["Дело 3"]);
     });
     expect(model.isDueOutdated()).toBe(false);
+  });
+});
+
+function loads(calls: string[]): number {
+  return calls.filter((call) => call === "GET /api/today").length;
+}
+
+describe("coming back to Today", () => {
+  test("reads Today again while the live socket is down", async () => {
+    const { model, calls } = startToday();
+
+    await vi.waitFor(() => {
+      expect(loads(calls)).toBe(1);
+    });
+    model.shown();
+
+    await vi.waitFor(() => {
+      expect(loads(calls)).toBe(2);
+    });
+  });
+
+  test("keeps Today as it is while the live socket keeps it current", async () => {
+    const { model, calls } = startToday({}, { isLive: true });
+
+    await vi.waitFor(() => {
+      expect(model.header()).toBe("День свободен");
+    });
+    model.shown();
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    expect(loads(calls)).toBe(1);
   });
 });

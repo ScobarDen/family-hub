@@ -1,10 +1,4 @@
-import { liveProtocol, type AppModule } from "@family-hub/contract";
-
-import { modulesByPath } from "./live.config.ts";
-
-export function modulesOfPath(path: string): AppModule[] {
-  return modulesByPath.get(path.split("/")[2] ?? "") ?? [];
-}
+import { liveClientId, liveProtocol } from "@family-hub/contract";
 
 export function tokenOfProtocols(header: string | undefined): string | undefined {
   const protocols = (header ?? "").split(",").map((protocol) => protocol.trim());
@@ -12,4 +6,9 @@ export function tokenOfProtocols(header: string | undefined): string | undefined
   return protocols.includes(liveProtocol)
     ? protocols.find((protocol) => protocol !== liveProtocol && protocol !== "")
     : undefined;
+}
+
+// Relayed to every Member of the Family, so only a well-formed id goes through.
+export function writerOf(header: string | undefined): string | undefined {
+  return liveClientId.safeParse(header).data;
 }

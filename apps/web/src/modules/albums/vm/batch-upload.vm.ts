@@ -25,7 +25,6 @@ export type BatchUploadDependencies = {
   upload: (prepared: PreparedPhoto) => Promise<Photo>;
   // Each photo joins the Album as soon as it is up, so a closed app loses only the rest.
   addToAlbum: (albumId: string, photo: Photo) => Promise<unknown>;
-  onFinished: () => void;
   haptics: Pick<Haptics, "success" | "error">;
   wait: (ms: number) => Promise<void>;
 };
@@ -114,19 +113,15 @@ function reatomRun(
       return;
     }
 
-    try {
-      for (const item of items().filter(({ status }) => status === "waiting")) {
-        mark(item.key, "uploading");
-        mark(item.key, await wrap(uploadOne(dependencies, target, item)));
-      }
+    for (const item of items().filter(({ status }) => status === "waiting")) {
+      mark(item.key, "uploading");
+      mark(item.key, await wrap(uploadOne(dependencies, target, item)));
+    }
 
-      if (countOf(items(), "failed") > 0) {
-        dependencies.haptics.error();
-      } else {
-        dependencies.haptics.success();
-      }
-    } finally {
-      dependencies.onFinished();
+    if (countOf(items(), "failed") > 0) {
+      dependencies.haptics.error();
+    } else {
+      dependencies.haptics.success();
     }
   }, "albums.batch.run").extend(withAsync(), withAbort());
 }

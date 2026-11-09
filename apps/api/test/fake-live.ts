@@ -1,8 +1,10 @@
 import { liveProtocol } from "@family-hub/contract";
 
-// The Family Durable Objects, reduced to the module names each one was told to relay.
+type Signal = { modules: string[]; writer?: string };
+
+// The Family Durable Objects, reduced to the signals each one was told to relay.
 export function createFakeLive() {
-  const signals: Array<{ familyId: string; modules: string[] }> = [];
+  const signals: Array<Signal & { familyId: string }> = [];
   const opened: string[] = [];
 
   const binding = {
@@ -14,7 +16,7 @@ export function createFakeLive() {
           return new Response(null, { headers: { "sec-websocket-protocol": liveProtocol } });
         }
 
-        signals.push({ familyId, modules: JSON.parse(init?.body as string) as string[] });
+        signals.push({ familyId, ...(JSON.parse(init?.body as string) as Signal) });
 
         return new Response(null, { status: 204 });
       },

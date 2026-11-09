@@ -156,7 +156,6 @@ function reatomRemoval(
       data.list.data.set(withoutId(data.list.data() ?? [], albumId));
       navigation.openedId.set(undefined);
       await wrap(dependencies.api.remove(albumId, choice));
-      data.reload();
     },
     {
       name: "albums.remove",
@@ -214,7 +213,6 @@ function reatomAlbumViewer(
         coverPhotoId: photoId,
       }),
     );
-    data.reload();
   }, "albums.pickCover").extend(withAsync());
 
   return reatomPhotoViewer({
@@ -222,7 +220,6 @@ function reatomAlbumViewer(
     onPick: (photoId) => {
       pickCover(photoId).catch(noop);
     },
-    onDeleted: data.reload,
     failure: sources.failure,
     sharing: photoSharing(dependencies, sources),
   });
@@ -246,7 +243,6 @@ function reatomParts(
       onSaved: (saved) => {
         navigation.isEditing.setFalse();
         navigation.openedId.set(saved.id);
-        data.reload();
       },
     }),
     batch: reatomBatchUpload({
@@ -254,7 +250,6 @@ function reatomParts(
       haptics: dependencies.telegram.haptics,
       upload: async (prepared) => api.uploadPhoto(prepared),
       addToAlbum: async (albumId, photo) => api.addPhotos(albumId, [photo.id]),
-      onFinished: data.reload,
     }),
     viewer: reatomAlbumViewer(dependencies, { data, navigation, failure }),
   };

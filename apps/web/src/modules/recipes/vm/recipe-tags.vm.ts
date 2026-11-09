@@ -79,7 +79,6 @@ export function reatomTagEditing(
 ) {
   const change = action(async (doing: () => Promise<unknown>) => {
     await wrap(doing());
-    data.reload();
   }, "recipes.tags.change").extend(withAsync());
   const remove = reatomOptimistic(
     async (tagId: string) => {
@@ -89,7 +88,6 @@ export function reatomTagEditing(
 
       data.tags.data.set(withoutId(data.tags.data() ?? [], tagId));
       await wrap(api.removeTag(tagId));
-      data.reload();
     },
     {
       name: "recipes.tags.removeAsked",

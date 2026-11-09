@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { SessionToken } from "@family-hub/contract";
 
 import { createHttpClient } from "./http-client.api.ts";
+import { HttpError } from "./http-error.lib.ts";
 
 const hourMs = 3_600_000;
 
@@ -168,5 +169,56 @@ describe("a request made before sign-in", () => {
     });
 
     expect(requests).toEqual([{ path: "/api/session", authorization: null }]);
+  });
+});
+
+function startWritingClient() {
+  const sent: Array<{ method: string; client: string | null }> = [];
+  const written: string[] = [];
+  const client = createHttpClient({
+    baseUrl: "https://api.family-hub.test",
+    fetch: async (url, init) => {
+      sent.push({
+        method: init.method ?? "GET",
+        client: new Headers(init.headers).get("x-live-client"),
+      });
+
+      return url.pathname === "/api/goals/refused"
+        ? Response.json({}, { status: 422 })
+        : Response.json({});
+    },
+    writeHeaders: { "x-live-client": "this-app" },
+    onWrite: (path) => {
+      written.push(path);
+    },
+  });
+
+  client.token.set("signed-in");
+
+  return { client, sent, written };
+}
+
+describe("a write", () => {
+  test("names this app and is reported once the server takes it", async () => {
+    const { client, sent, written } = startWritingClient();
+
+    await client.request("/api/tasks", { schema: z.unknown() });
+    await client.request("/api/tasks", { method: "POST", schema: z.unknown() });
+
+    expect(sent).toEqual([
+      { method: "GET", client: null },
+      { method: "POST", client: "this-app" },
+    ]);
+    expect(written).toEqual(["/api/tasks"]);
+  });
+
+  test("the server refused is not reported", async () => {
+    const { client, written } = startWritingClient();
+
+    await expect(
+      client.request("/api/goals/refused", { method: "PUT", schema: z.unknown() }),
+    ).rejects.toBeInstanceOf(HttpError);
+
+    expect(written).toEqual([]);
   });
 });

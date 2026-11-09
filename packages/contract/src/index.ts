@@ -18,7 +18,15 @@ export {
   type ExpenseCategory,
   type ExpenseSummary,
 } from "./care-entry.ts";
-export { livePath, liveProtocol } from "./live.ts";
+export {
+  liveClientHeader,
+  liveClientId,
+  liveMessage,
+  livePath,
+  liveProtocol,
+  modulesOfPath,
+  type LiveMessage,
+} from "./live.ts";
 export { apiError, errorCode, type ApiError, type ErrorCode } from "./error.ts";
 export { deleted, named, telegramLogin, type Deleted, type Named } from "./primitive.ts";
 export {

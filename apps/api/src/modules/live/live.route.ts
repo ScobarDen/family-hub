@@ -1,11 +1,13 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 
+import { liveClientHeader, modulesOfPath } from "@family-hub/contract";
+
 import { apiError, httpStatus } from "@/common/errors.lib.ts";
 import type { AuthEnv, Membership } from "@/modules/auth";
 
 import { signalFamily } from "./live.api.ts";
-import { modulesOfPath, tokenOfProtocols } from "./live.lib.ts";
+import { tokenOfProtocols, writerOf } from "./live.lib.ts";
 
 type LiveEnv = {
   Bindings: Env;
@@ -54,6 +56,7 @@ export const signalWrites = createMiddleware<LiveEnv>(async (context, next) => {
     signalFamily(context.env.LIVE, {
       familyId: membership.family.id,
       modules: modulesOfPath(context.req.path),
+      writer: writerOf(context.req.header(liveClientHeader)),
     }),
   );
 });
