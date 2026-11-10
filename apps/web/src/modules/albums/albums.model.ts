@@ -1,67 +1,67 @@
-import {
-  action,
-  atom,
-  computed,
-  reatomBoolean,
-  withAsyncData,
-  withRollback,
-  wrap,
-  type Atom,
-} from "@reatom/core";
+import { action, reatomBoolean, type Atom } from "@reatom/core";
 
 import { albumList } from "@family-hub/contract";
 
 import { rolledBackById } from "@/common/records.lib.ts";
 import type { DeviceCache } from "@/modules/device-cache";
+import { reatomLiveResource } from "@/modules/live-resource";
 import type { LiveVersion } from "@/modules/live-updates";
 
 import type { AlbumsApi } from "./albums.api.ts";
 
-// Every upload, edit or deletion may change the list, the open Album and «Все фото» at once,
-// so they reload together.
-export function reatomAlbumsData({
-  api,
-  openedId,
-  liveVersion,
-  deviceCache,
-}: {
+type AlbumsDataDependencies = {
   api: AlbumsApi;
   openedId: Atom<string | undefined>;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
-} & LiveVersion) {
-  const version = atom(0, "albums.version");
+} & LiveVersion;
+
+function reatomShownAlbums({ api, openedId, liveVersion }: AlbumsDataDependencies) {
   const isAllShown = reatomBoolean(false, "albums.isAllShown");
-  const list = computed(async () => {
-    version();
-    liveVersion?.();
-
-    return wrap(api.list());
-  }, "albums.list").extend(withAsyncData());
-
-  list.data.extend(
-    deviceCache.withDeviceCache({ key: "albums", schema: albumList, version: 1 }),
-    withRollback({ onRollback: rolledBackById }),
-  );
 
   return {
     isAllShown,
+    opened: reatomLiveResource({
+      name: "albums.opened",
+      liveVersion,
+      load: async () => {
+        const albumId = openedId();
+
+        return albumId === undefined ? undefined : api.get(albumId);
+      },
+    }),
+    allPhotos: reatomLiveResource({
+      name: "albums.allPhotos",
+      liveVersion,
+      load: async () => (isAllShown() ? api.allPhotos() : undefined),
+    }),
+  };
+}
+
+// Every upload, edit or deletion may change the list, the open Album and «Все фото» at once,
+// so they reload together.
+export function reatomAlbumsData(dependencies: AlbumsDataDependencies) {
+  const { api, liveVersion, deviceCache } = dependencies;
+  const list = reatomLiveResource({
+    name: "albums.list",
+    liveVersion,
+    load: async () => api.list(),
+    cache: {
+      withDeviceCache: deviceCache.withDeviceCache,
+      key: "albums",
+      schema: albumList,
+      version: 1,
+    },
+    rollback: { onRollback: rolledBackById },
+  });
+  const shown = reatomShownAlbums(dependencies);
+
+  return {
+    ...shown,
     list,
-    opened: computed(async () => {
-      version();
-      liveVersion?.();
-      const albumId = openedId();
-
-      return albumId === undefined ? undefined : wrap(api.get(albumId));
-    }, "albums.opened").extend(withAsyncData()),
-    allPhotos: computed(async () => {
-      version();
-      liveVersion?.();
-
-      return isAllShown() ? wrap(api.allPhotos()) : undefined;
-    }, "albums.allPhotos").extend(withAsyncData()),
-
     reload: action(() => {
-      version.set(version() + 1);
+      list.reload();
+      shown.opened.reload();
+      shown.allPhotos.reload();
     }, "albums.reload"),
   };
 }
