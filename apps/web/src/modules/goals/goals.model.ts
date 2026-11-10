@@ -1,9 +1,10 @@
-import { action, atom, computed, withAsyncData, withRollback, wrap } from "@reatom/core";
+import { action } from "@reatom/core";
 
 import { goalList, type FamilyMember, type Goal, type GoalList } from "@family-hub/contract";
 
 import { rolledBackById, upserted } from "@/common/records.lib.ts";
 import type { DeviceCache } from "@/modules/device-cache";
+import { reatomLiveResource } from "@/modules/live-resource";
 import type { LiveVersion } from "@/modules/live-updates";
 
 import type { GoalsApi } from "./goals.api.ts";
@@ -18,34 +19,32 @@ export function reatomGoals({
   members: { data: () => FamilyMember[] | undefined };
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
 } & LiveVersion) {
-  const version = atom(0, "goals.version");
-  const list = computed(async () => {
-    version();
-    liveVersion?.();
-
-    return wrap(api.list());
-  }, "goals.list").extend(withAsyncData());
-
-  list.data.extend(
-    deviceCache.withDeviceCache({ key: "goals", schema: goalList, version: 1 }),
-    withRollback({ onRollback: rolledBackList }),
-  );
+  const list = reatomLiveResource({
+    name: "goals.list",
+    liveVersion,
+    load: async () => api.list(),
+    cache: {
+      withDeviceCache: deviceCache.withDeviceCache,
+      key: "goals",
+      schema: goalList,
+      version: 1,
+    },
+    rollback: { onRollback: rolledBackList },
+  });
 
   return {
     list,
-    reload: action(() => {
-      version.set(version() + 1);
-    }, "goals.reload"),
+    reload: list.reload,
     members,
 
     // The total is the server's to count, so a saved Goal brings a fresh list with it.
     keep: action((saved: Goal) => {
-      const current = list.data();
+      if (list.data() !== undefined) {
+        list.change((current) => {
+          const goals = upserted(current?.goals ?? [], saved);
 
-      if (current !== undefined) {
-        const goals = upserted(current.goals, saved);
-
-        list.data.set({ goals, totalSaved: totalOf(goals) });
+          return { goals, totalSaved: totalOf(goals) };
+        });
       }
     }, "goals.keep"),
   };
