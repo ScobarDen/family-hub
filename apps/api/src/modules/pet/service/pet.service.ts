@@ -2,18 +2,17 @@ import type { PetMemoChange, PetProfile } from "@family-hub/contract";
 
 import { bindFirst } from "@/common/bind.lib.ts";
 import type { Membership } from "@/modules/auth";
+import { reportingChanges } from "@/modules/live";
 
 import type { PetDependencies } from "../pet.types.ts";
 import { deletePet, setArchived } from "./archive.service.ts";
 import { create, list, saveMemo, saveProfile, setAvatar } from "./profile.service.ts";
 
 export function createPetService(dependencies: PetDependencies) {
-  return {
-    ...bindFirst(dependencies, { list, create }),
+  const commands = {
+    ...bindFirst(dependencies, { create }),
     saveProfile: async (membership: Membership, petId: string, values: PetProfile) =>
       saveProfile(dependencies, membership, { petId, values }),
-    saveMemo: async (membership: Membership, petId: string, values: PetMemoChange) =>
-      saveMemo(dependencies, membership, { petId, values }),
     archive: async (membership: Membership, petId: string) =>
       setArchived(dependencies, membership, { petId, isArchived: true }),
     unarchive: async (membership: Membership, petId: string) =>
@@ -22,6 +21,18 @@ export function createPetService(dependencies: PetDependencies) {
       setAvatar(dependencies, membership, { petId, photoId }),
     delete: async (membership: Membership, petId: string, petName: string) =>
       deletePet(dependencies, membership, { petId, petName }),
+  };
+
+  const memoCommands = {
+    saveMemo: async (membership: Membership, petId: string, values: PetMemoChange) =>
+      saveMemo(dependencies, membership, { petId, values }),
+  };
+
+  // A Task shows its Pet's name and avatar, never its Memo.
+  return {
+    ...bindFirst(dependencies, { list }),
+    ...reportingChanges(dependencies.live, { modules: ["pet", "tasks"], commands }),
+    ...reportingChanges(dependencies.live, { modules: ["pet"], commands: memoCommands }),
   };
 }
 

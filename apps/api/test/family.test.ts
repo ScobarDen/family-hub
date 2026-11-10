@@ -312,3 +312,29 @@ describe("deleting the Family", () => {
     expect(await membersSeenBy(worker, vika)).toHaveLength(1);
   });
 });
+
+describe("departures and the Family's open apps", () => {
+  test("a Member who leaves shows up in the Feed and hands their Tasks and Goals over", async () => {
+    const { worker, familyId } = await startWithFamily();
+
+    await leave(worker, asya);
+
+    expect(worker.live.signals).toEqual([{ familyId, modules: ["feed", "tasks", "goals"] }]);
+  });
+
+  test("a Member removed by the Family Owner shows up in the Feed the same way", async () => {
+    const { worker, familyId, asyaId } = await startWithFamily();
+
+    await remove(worker, denis, asyaId);
+
+    expect(worker.live.signals).toEqual([{ familyId, modules: ["feed", "tasks", "goals"] }]);
+  });
+
+  test("a refused removal tells nothing", async () => {
+    const { worker, denisId } = await startWithFamily();
+
+    await remove(worker, asya, denisId);
+
+    expect(worker.live.signals).toEqual([]);
+  });
+});

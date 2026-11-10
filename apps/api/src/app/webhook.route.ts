@@ -1,10 +1,7 @@
 import type { CallbackQuery, Message, Update } from "@grammyjs/types";
 import { Hono } from "hono";
 
-import type { AppModule } from "@family-hub/contract";
-
 import { httpStatus } from "@/common/errors.lib.ts";
-import { reminderCallbackModules, signalFamily } from "@/modules/live";
 import { reminderCallbackPrefix } from "@/modules/reminder";
 
 import type { AppEnv, AppServices } from "./app.types.ts";
@@ -18,38 +15,12 @@ async function readUpdate(request: Request): Promise<Update | undefined> {
   }
 }
 
-type Background = { waitUntil: (work: Promise<unknown>) => void; live: Env["LIVE"] };
+type Background = { waitUntil: (work: Promise<unknown>) => void };
 
-// A press may change what the presser's Family sees, so their open apps refetch.
-async function signalPresser(
-  services: AppServices,
-  {
-    query,
-    modules,
-    background,
-  }: { query: CallbackQuery; modules: AppModule[]; background: Background },
-): Promise<void> {
-  const membership = await services.auth.memberOf(query.from.id);
-
-  if (membership) {
-    background.waitUntil(
-      signalFamily(background.live, { familyId: membership.family.id, modules }),
-    );
-  }
-}
-
-async function handleCallback(
-  services: AppServices,
-  { query, background }: { query: CallbackQuery; background: Background },
-): Promise<void> {
-  if (query.data?.startsWith(`${reminderCallbackPrefix}:`) === true) {
-    await services.reminders.handleCallback(query);
-    await signalPresser(services, { query, modules: reminderCallbackModules, background });
-
-    return;
-  }
-
-  await services.familyRequests.handleCallback(query);
+async function handleCallback(services: AppServices, query: CallbackQuery): Promise<void> {
+  await (query.data?.startsWith(`${reminderCallbackPrefix}:`) === true
+    ? services.reminders.handleCallback(query)
+    : services.familyRequests.handleCallback(query));
 }
 
 function isFreeMessage(message: Message | undefined): message is Message {
@@ -90,7 +61,7 @@ async function handleUpdate(
   handleBotCommand(services, { message: update.message, background });
 
   if (update.callback_query) {
-    await handleCallback(services, { query: update.callback_query, background });
+    await handleCallback(services, update.callback_query);
   }
 
   // Writing to the bot again is how a Member who had blocked it turns Reminders back on.
@@ -119,7 +90,6 @@ export const webhookRoute = new Hono<AppEnv>().post("/bot/webhook", async (conte
         waitUntil: (work) => {
           context.executionCtx.waitUntil(work);
         },
-        live: context.env.LIVE,
       },
     });
   }

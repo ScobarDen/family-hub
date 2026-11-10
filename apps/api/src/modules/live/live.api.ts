@@ -1,5 +1,7 @@
 import { liveProtocol, type AppModule, type LiveMessage } from "@family-hub/contract";
 
+import type { Membership } from "@/modules/auth";
+
 const switchingProtocols = 101;
 const noContent = 204;
 const signalUrl = "https://live/signal";
@@ -73,13 +75,69 @@ export class FamilyLive implements DurableObject {
   }
 }
 
-export async function signalFamily(
+async function signalFamily(
   live: Env["LIVE"],
   { familyId, ...signal }: LiveSignal & { familyId: string },
 ): Promise<void> {
-  if (signal.modules.length === 0) {
-    return;
-  }
-
   await live.getByName(familyId).fetch(signalUrl, { method: "POST", body: JSON.stringify(signal) });
+}
+
+export type LiveChanges = {
+  changed(familyId: string, modules: AppModule[]): void;
+};
+
+type Command = (membership: Membership, ...rest: never[]) => Promise<object>;
+
+// A command wrote when it returned its record or said so; a refusal carries any other status.
+function isWritten(result: object): boolean {
+  return !("status" in result) || result.status === "ok" || result.status === "deleted";
+}
+
+export function reportingChanges<Commands extends Record<string, Command>>(
+  live: LiveChanges,
+  { modules, commands }: { modules: AppModule[]; commands: Commands },
+): Commands {
+  const reporting = Object.fromEntries(
+    Object.entries(commands).map(([name, command]) => [
+      name,
+      async (membership: Membership, ...rest: never[]) => {
+        const result = await command(membership, ...rest);
+
+        if (isWritten(result)) {
+          live.changed(membership.family.id, modules);
+        }
+
+        return result;
+      },
+    ]),
+  );
+
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries drops the names and signatures it keeps
+  return reporting as Commands;
+}
+
+export function createLiveChanges(live: Env["LIVE"], { writer }: { writer?: string } = {}) {
+  const changedByFamily = new Map<string, Set<AppModule>>();
+
+  return {
+    changed: (familyId: string, modules: AppModule[]) => {
+      const changed = changedByFamily.get(familyId) ?? new Set();
+
+      for (const module of modules) {
+        changed.add(module);
+      }
+
+      changedByFamily.set(familyId, changed);
+    },
+    flush: async () => {
+      const signals = [...changedByFamily];
+
+      changedByFamily.clear();
+      await Promise.all(
+        signals.map(async ([familyId, modules]) =>
+          signalFamily(live, { familyId, modules: [...modules], writer }),
+        ),
+      );
+    },
+  } satisfies LiveChanges & { flush(): Promise<void> };
 }

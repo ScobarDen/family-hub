@@ -406,6 +406,65 @@ describe("a Push", () => {
     ]);
   });
 
+  test("«Готово» tells the Family's open apps that its Tasks changed", async () => {
+    const worker = await startWithFamily();
+
+    await remindTomorrow(worker, "Вынести мусор");
+    await subscribe(worker, phone);
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    worker.live.signals.length = 0;
+    await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    expect(worker.live.signals).toEqual([{ familyId: worker.familyId, modules: ["tasks"] }]);
+  });
+
+  test("«Готово» on a Task linked to a Pet tells the Pet's card too", async () => {
+    const worker = await startWithFamily();
+    const pet = await request(worker, denis, {
+      method: "POST",
+      path: "/api/pets",
+      body: {
+        name: "Бьюик",
+        species: "dog",
+        breed: null,
+        sex: null,
+        birthDate: null,
+        chipNumber: null,
+        notes: null,
+      },
+    });
+    const { id: petId } = await pet.json<{ id: string }>();
+
+    await subscribe(worker, phone);
+    await request(worker, denis, {
+      method: "POST",
+      path: "/api/tasks",
+      body: {
+        title: "Привить",
+        when: { date: "2026-10-02", ...dateOnly },
+        petId,
+        reminderOffsets: ["at-start"],
+      } satisfies TaskChange,
+    });
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    worker.live.signals.length = 0;
+    await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    expect(worker.live.signals).toEqual([{ familyId: worker.familyId, modules: ["tasks", "pet"] }]);
+  });
+
+  test("«Отложить» on a Push tells the open apps nothing", async () => {
+    const worker = await startWithFamily();
+
+    await remindTomorrow(worker, "Вынести мусор");
+    await subscribe(worker, phone);
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    worker.live.signals.length = 0;
+    await pressPush(worker, { token: pressTokenOf(worker), action: "snooze" });
+
+    expect(worker.live.signals).toEqual([]);
+  });
+
   test("«Готово» under «push» completes the shown Occurrence, not the next one the row moved to", async () => {
     const worker = await startWithFamily();
     const task = await remindWeekly(worker, "Полить цветы");

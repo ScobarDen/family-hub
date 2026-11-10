@@ -1,20 +1,28 @@
-import { photoMaxBytes, uuidv7, type Photo, type PhotoVariant } from "@family-hub/contract";
+import {
+  photoMaxBytes,
+  uuidv7,
+  type AppModule,
+  type Photo,
+  type PhotoVariant,
+} from "@family-hub/contract";
 
 import { bindFirst } from "@/common/bind.lib.ts";
 import type { Clock } from "@/common/clock.lib.ts";
 import { httpStatus } from "@/common/errors.lib.ts";
 import type { Membership } from "@/modules/auth";
+import type { LiveChanges } from "@/modules/live";
 import { BotApiError } from "@/modules/telegram";
 
 import type { PhotoFiles } from "./photo-file.api.ts";
 import type { PhotoLinks } from "./photo-link.lib.ts";
-import type { PhotoRepo } from "./photo.repo.ts";
+import type { PhotoPlaces, PhotoRepo } from "./photo.repo.ts";
 
 export type PhotoDependencies = {
   photos: PhotoRepo;
   files: PhotoFiles;
   links: PhotoLinks;
   clock: Clock;
+  live: LiveChanges;
 };
 
 export type PhotoRefusal = "storage-unavailable" | "too-large" | "not-found" | "not-uploader";
@@ -94,14 +102,23 @@ async function upload(
   };
 
   await dependencies.photos.add(fresh);
+  dependencies.live.changed(familyId, ["albums"]);
 
   const row = (await dependencies.photos.findByUnique(familyId, uploaded.fileUniqueId)) ?? fresh;
 
   return { status: "ok", photo: await dependencies.links.photoOf(row, viewerOf(membership)) };
 }
 
+function modulesShowing({ isOnPet, isInRecipe }: PhotoPlaces): AppModule[] {
+  return [
+    "albums",
+    ...(isOnPet ? (["pet"] as const) : []),
+    ...(isInRecipe ? (["recipes"] as const) : []),
+  ];
+}
+
 async function remove(
-  { photos }: PhotoDependencies,
+  { photos, live }: PhotoDependencies,
   membership: Membership,
   photoId: string,
 ): Promise<DeleteResult> {
@@ -116,7 +133,10 @@ async function remove(
     return { status: "not-uploader" };
   }
 
+  const places = await photos.placesOf(target);
+
   await photos.delete(target);
+  live.changed(target.familyId, modulesShowing(places));
 
   return { status: "deleted" };
 }

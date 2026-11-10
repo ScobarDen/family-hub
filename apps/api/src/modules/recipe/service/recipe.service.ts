@@ -2,6 +2,7 @@ import type { RecipeChange } from "@family-hub/contract";
 
 import { bindFirst } from "@/common/bind.lib.ts";
 import type { Membership } from "@/modules/auth";
+import { reportingChanges } from "@/modules/live";
 
 import type { RecipeDependencies } from "../recipe.types.ts";
 import { list } from "./recipe-read.service.ts";
@@ -10,23 +11,19 @@ import { share } from "./share.service.ts";
 import { addTag, removeTag, renameTag, tags } from "./tag.service.ts";
 
 export function createRecipeService(dependencies: RecipeDependencies) {
-  return {
-    ...bindFirst(dependencies, {
-      list,
-      get: current,
-      create,
-      remove,
-      share,
-      tags,
-      addTag,
-      removeTag,
-    }),
+  const commands = {
+    ...bindFirst(dependencies, { create, remove, addTag, removeTag }),
     update: async (membership: Membership, recipeId: string, change: RecipeChange) =>
       update(dependencies, membership, { recipeId, change }),
     setFavorite: async (membership: Membership, recipeId: string, isFavorite: boolean) =>
       setFavorite(dependencies, membership, { recipeId, isFavorite }),
     renameTag: async (membership: Membership, tagId: string, name: string) =>
       renameTag(dependencies, membership, { tagId, name }),
+  };
+
+  return {
+    ...bindFirst(dependencies, { list, get: current, share, tags }),
+    ...reportingChanges(dependencies.live, { modules: ["recipes"], commands }),
   };
 }
 

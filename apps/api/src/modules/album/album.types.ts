@@ -2,6 +2,7 @@ import type { Album } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock.lib.ts";
 import type { Membership } from "@/modules/auth";
+import type { LiveChanges } from "@/modules/live";
 import type { PhotoLinks } from "@/modules/photo";
 import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
@@ -22,6 +23,7 @@ export type AlbumDependencies = {
   bot: BotApi;
   appLinks: MiniAppLinks;
   petNotes: PetNotes;
+  live: LiveChanges;
 };
 
 export type AlbumRefusal = "not-found" | "not-owner" | "pet-album-fixed" | "photo-not-found";

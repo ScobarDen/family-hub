@@ -1,6 +1,7 @@
 import type { Pet } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock.lib.ts";
+import type { LiveChanges } from "@/modules/live";
 import type { PhotoLinks } from "@/modules/photo";
 
 import type { PetRepo } from "./pet.repo.ts";
@@ -14,6 +15,7 @@ export type PetDependencies = {
   pets: PetRepo;
   clock: Clock;
   schedule: PetSchedule;
+  live: LiveChanges;
   links: PhotoLinks;
 };
 

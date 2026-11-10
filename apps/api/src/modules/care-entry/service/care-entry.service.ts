@@ -8,6 +8,7 @@ import {
 import { bindFirst } from "@/common/bind.lib.ts";
 import type { Clock } from "@/common/clock.lib.ts";
 import type { Membership } from "@/modules/auth";
+import { reportingChanges, type LiveChanges } from "@/modules/live";
 import type { PhotoLinks } from "@/modules/photo";
 
 import { careTitleOf, columnsOf, summaryOf } from "../care-entry.lib.ts";
@@ -26,6 +27,7 @@ type CareEntryDependencies = {
   entries: CareEntryRepo;
   clock: Clock;
   followUps: CareFollowUps;
+  live: LiveChanges;
   links: PhotoLinks;
 };
 
@@ -202,18 +204,22 @@ async function remove(
 export function createCareEntryService(dependencies: CareEntryDependencies) {
   const { entries } = dependencies;
 
+  const commands = {
+    ...bindFirst(dependencies, { remove }),
+    create: async (membership: Membership, petId: string, change: CareEntryChange) =>
+      create(dependencies, membership, { petId, change }),
+    update: async (membership: Membership, entryId: string, change: CareEntryChange) =>
+      update(dependencies, membership, { entryId, change }),
+  };
+
   return {
-    ...bindFirst(dependencies, { get: current, remove }),
+    ...bindFirst(dependencies, { get: current }),
+    ...reportingChanges(dependencies.live, { modules: ["pet"], commands }),
     async list(membership: Membership, petId: string): Promise<CareEntry[]> {
       const rows = await entries.list(membership.family.id, petId);
 
       return withPhotos(dependencies, membership, rows);
     },
-    create: async (membership: Membership, petId: string, change: CareEntryChange) =>
-      create(dependencies, membership, { petId, change }),
-    update: async (membership: Membership, entryId: string, change: CareEntryChange) =>
-      update(dependencies, membership, { entryId, change }),
-
     async expenses({ family }: Membership, petId: string, range: Range): Promise<ExpenseSummary> {
       return summaryOf(await entries.expenses({ familyId: family.id, petId, ...range }));
     },

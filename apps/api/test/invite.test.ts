@@ -405,3 +405,25 @@ describe("a pending Family Request of the invited person", () => {
     expect(response.status).toBe(201);
   });
 });
+
+describe("joining and the Family's open apps", () => {
+  test("a person who joined by an Invite shows up in the Family's Feed", async () => {
+    const { worker, familyId } = await startWithFamily();
+    const { token } = await createInvite(worker);
+
+    await accept(worker, asya, token);
+
+    expect(worker.live.signals).toEqual([{ familyId, modules: ["feed"] }]);
+  });
+
+  test("a spent Invite tells nothing", async () => {
+    const { worker } = await startWithFamily();
+    const { token } = await createInvite(worker);
+
+    await accept(worker, asya, token);
+    worker.live.signals.length = 0;
+    await accept(worker, { id: 333, first_name: "Вика" }, token);
+
+    expect(worker.live.signals).toEqual([]);
+  });
+});

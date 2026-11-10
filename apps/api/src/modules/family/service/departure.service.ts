@@ -11,14 +11,25 @@ export type RemoveResult =
   | { status: "not-owner" }
   | { status: "not-found" };
 
+// A departing Member's Tasks and Savings Goals pass to the Family Owner.
+async function departed(
+  { families, schedule, live, clock }: FamilyDependencies,
+  { familyId, memberId }: { familyId: string; memberId: string },
+): Promise<void> {
+  await families.depart({ familyId, memberId, now: clock.now() });
+  await schedule.membershipChanged(familyId);
+  live.changed(familyId, ["feed", "tasks", "goals"]);
+}
+
 // The last Member leaving takes the Family with them; an Owner among others hands over first.
 export async function leave(
-  { families, schedule, clock }: FamilyDependencies,
+  dependencies: FamilyDependencies,
   { family, member, isFamilyOwner }: Membership,
 ): Promise<LeaveResult> {
+  const { families } = dependencies;
+
   if (!isFamilyOwner) {
-    await families.depart({ familyId: family.id, memberId: member.id, now: clock.now() });
-    await schedule.membershipChanged(family.id);
+    await departed(dependencies, { familyId: family.id, memberId: member.id });
 
     return { status: "left" };
   }
@@ -33,10 +44,12 @@ export async function leave(
 }
 
 export async function remove(
-  { families, schedule, bot, clock }: FamilyDependencies,
+  dependencies: FamilyDependencies,
   { family, member, isFamilyOwner }: Membership,
   memberId: string,
 ): Promise<RemoveResult> {
+  const { families, bot } = dependencies;
+
   if (!isFamilyOwner) {
     return { status: "not-owner" };
   }
@@ -48,8 +61,7 @@ export async function remove(
     return { status: "not-found" };
   }
 
-  await families.depart({ familyId: family.id, memberId, now: clock.now() });
-  await schedule.membershipChanged(family.id);
+  await departed(dependencies, { familyId: family.id, memberId });
   await ignoringBotErrors(
     bot.call("sendMessage", { chat_id: removed.telegramId, text: removedText(family.name) }),
   );
