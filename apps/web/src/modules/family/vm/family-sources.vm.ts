@@ -1,5 +1,7 @@
-import { type Atom, computed, withAsyncData, wrap } from "@reatom/core";
+import type { Atom } from "@reatom/core";
 
+import { reatomLiveResource } from "@/modules/live-resource";
+import type { LiveVersion } from "@/modules/live-updates";
 import type { Dialogs, Haptics } from "@/modules/telegram";
 
 import type { FamilyApi } from "../family.api.ts";
@@ -13,8 +15,12 @@ export type FamilyDependencies = {
 };
 
 // The Family's Members, one query shared by every module that names them.
-export function reatomFamilyMembers(api: FamilyApi) {
-  return computed(async () => wrap(api.members()), "family.members").extend(withAsyncData());
+export function reatomFamilyMembers({ api, liveVersion }: { api: FamilyApi } & LiveVersion) {
+  return reatomLiveResource({
+    name: "family.members",
+    liveVersion,
+    load: async () => api.members(),
+  });
 }
 
 export type FamilyMembers = ReturnType<typeof reatomFamilyMembers>;

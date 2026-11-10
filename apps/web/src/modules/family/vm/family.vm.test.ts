@@ -79,7 +79,7 @@ function startFamily({
   const api = createFamilyApi(client);
   const model = reatomFamily({
     api,
-    members: reatomFamilyMembers(api),
+    members: reatomFamilyMembers({ api, liveVersion: () => 0 }),
     telegram,
     self: () => ({ memberId, familyName: "Гущины" }),
     onLeft,

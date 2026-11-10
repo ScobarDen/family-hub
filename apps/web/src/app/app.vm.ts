@@ -132,7 +132,8 @@ function reatomShared({ httpClient, live, deviceCache }: Transport, session: Ses
   return {
     familyApi,
     petsApi,
-    members: reatomFamilyMembers(familyApi),
+    // A write to the Family moves the feed version, the only one that names it.
+    members: reatomFamilyMembers({ api: familyApi, liveVersion: () => live.versionOf("feed") }),
     petsModel: reatomPets({
       api: petsApi,
       liveVersion: () => live.versionOf("pet"),
