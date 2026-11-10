@@ -115,6 +115,7 @@ function startToday(
   const opened: Array<TodayTarget | string> = [];
   const haptics = fakeHaptics();
   const model = reatomToday({
+    liveVersion: () => 0,
     api: createTodayApi(client),
     deviceCache: reatomDeviceCache(device.deviceStorage),
     today: () => today,
@@ -221,10 +222,6 @@ describe("«Сделать сегодня»", () => {
     expect(model.undo()).toEqual({ title: "Дело 1", hasPet: false });
     await vi.waitFor(() => {
       expect(calls).toContain('POST /api/tasks/task-1/complete {"occurrence":"2026-10-12"}');
-    });
-
-    await vi.waitFor(() => {
-      expect(calls.filter((call) => call === "GET /api/today")).toHaveLength(2);
     });
     expect(model.undo()).toEqual({ title: "Дело 1", hasPet: false });
 
@@ -522,6 +519,18 @@ describe("launching from the device cache", () => {
     });
     expect(model.isDueOutdated()).toBe(false);
     expect(model.header()).toBe("1 дело");
+  });
+
+  test("reads Today again on a visit after its refresh failed, keeping what it shows", async () => {
+    const device = await loadedOn("2026-10-16");
+    const { model, calls } = startToday({}, { device, failing: "/api/today", isLive: true });
+
+    await vi.waitFor(() => {
+      model.shown();
+      expect(loads(calls)).toBeGreaterThan(1);
+    });
+    expect(model.rows()).toHaveLength(1);
+    expect(model.loadFailure()).toBeUndefined();
   });
 
   test("hides yesterday's «Сделать сегодня» but keeps «Впереди» and the tiles", async () => {

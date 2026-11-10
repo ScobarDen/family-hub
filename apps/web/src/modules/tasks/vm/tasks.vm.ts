@@ -50,6 +50,7 @@ export type EmptyList = { title: string; hint: string | undefined };
 
 type TasksDependencies = SharedLists &
   LiveVersion & {
+    albumsVersion: () => number;
     api: TasksApi;
     deviceCache: Pick<DeviceCache, "withDeviceCache">;
     telegram: Pick<Dialogs, "showPopup"> & ClosingConfirmation & { haptics: Haptics };
@@ -178,9 +179,7 @@ function reatomScreen(
     const viewer = dependencies.viewer();
 
     if (tasks === undefined) {
-      return dependencies.tasks.list.error() === undefined
-        ? { kind: "loading" }
-        : { kind: "failed" };
+      return { kind: dependencies.tasks.list.status() === "failed" ? "failed" : "loading" };
     }
 
     return task === undefined

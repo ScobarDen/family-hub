@@ -1,19 +1,11 @@
-import {
-  action,
-  atom,
-  computed,
-  withAbort,
-  withAsync,
-  withAsyncData,
-  withRollback,
-  wrap,
-} from "@reatom/core";
+import { action, atom, computed, withAbort, withAsync, wrap } from "@reatom/core";
 
 import { feedPage, type FeedActivity, type FeedPage } from "@family-hub/contract";
 
 import { rolledBack } from "@/common/records.lib.ts";
 import { detached, reatomOptimistic, reatomRollbackFailure, readOnly } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
+import { reatomLiveResource } from "@/modules/live-resource";
 import type { LiveVersion } from "@/modules/live-updates";
 import { reatomPhotoViewer } from "@/modules/photo-viewer";
 import type { Dialogs, Fullscreen, Haptics } from "@/modules/telegram";
@@ -95,40 +87,35 @@ function rolledBackPage({ beforeState, transactionState, currentState }: PageSta
   return { ...currentState, overdue: lines("overdue"), upcoming: lines("upcoming") };
 }
 
-type OlderPages = { live: number | undefined; activity: FeedActivity[]; next: string | null };
+type OlderPages = { live: number; activity: FeedActivity[]; next: string | null };
 
 type PagesDependencies = Pick<FeedDependencies, "api" | "liveVersion" | "deviceCache">;
 
-function reatomFirstPage(
-  { api, liveVersion, deviceCache }: PagesDependencies,
-  version: () => number,
-) {
-  const first = computed(async () => {
-    version();
-    liveVersion?.();
-
-    return wrap(api.page());
-  }, "feed.first").extend(withAsyncData());
-
-  first.data.extend(
-    deviceCache.withDeviceCache({ key: "feed", schema: feedPage, version: 1 }),
-    withRollback({ onRollback: rolledBackPage }),
-  );
-
-  return first;
+function reatomFirstPage({ api, liveVersion, deviceCache }: PagesDependencies) {
+  return reatomLiveResource({
+    name: "feed.first",
+    liveVersion,
+    load: async () => api.page(),
+    cache: {
+      withDeviceCache: deviceCache.withDeviceCache,
+      key: "feed",
+      schema: feedPage,
+      version: 1,
+    },
+    rollback: rolledBackPage,
+  });
 }
 
 function reatomPages(dependencies: PagesDependencies) {
   const { api, liveVersion } = dependencies;
-  const version = atom(0, "feed.version");
-  const first = reatomFirstPage(dependencies, version);
+  const first = reatomFirstPage(dependencies);
   // Older pages hang off the first one's cursor, so a first page refetched for another Member's
   // change drops them as well.
   const loaded = atom<OlderPages | undefined>(undefined, "feed.loaded");
   const current = computed(() => {
     const pages = loaded();
 
-    return pages?.live === liveVersion?.() ? pages : undefined;
+    return pages?.live === liveVersion() ? pages : undefined;
   }, "feed.current");
   const older = computed(() => current()?.activity ?? [], "feed.older");
   // Until an older page comes, the first one says where the next begins; null is the end.
@@ -139,7 +126,7 @@ function reatomPages(dependencies: PagesDependencies) {
   }, "feed.next");
   const loadMore = action(async () => {
     const cursor = next();
-    const live = liveVersion?.();
+    const live = liveVersion();
 
     if (cursor !== null) {
       const page = await wrap(api.page(cursor));
@@ -150,7 +137,7 @@ function reatomPages(dependencies: PagesDependencies) {
   const reload = action(() => {
     loadMore.abort();
     loaded.set(undefined);
-    version.set(version() + 1);
+    first.reload();
   }, "feed.reload");
 
   return { first, older, next, loadMore, reload };
@@ -179,11 +166,11 @@ function reatomCompletion({ api, telegram }: FeedDependencies, pages: Pages) {
 
       if (item?.kind === "task" && "occurrence" in item && page !== undefined) {
         telegram.haptics.success();
-        pages.first.data.set({
+        pages.first.change(() => ({
           ...page,
           overdue: page.overdue.filter((other) => other.key !== key),
           upcoming: page.upcoming.filter((other) => other.key !== key),
-        });
+        }));
         await wrap(api.complete(item));
       }
     },
@@ -237,10 +224,7 @@ export function reatomFeed(dependencies: FeedDependencies) {
 
   return {
     filter: readOnly(filter),
-    isLoading: computed(
-      () => pages.first.data() === undefined && !pages.first.ready(),
-      "feed.isLoading",
-    ),
+    isLoading: computed(() => pages.first.status() === "loading", "feed.isLoading"),
     blocks: reatomBlocks(dependencies, pages, filter),
     summary: computed((): string | undefined => {
       const page = pages.first.data();

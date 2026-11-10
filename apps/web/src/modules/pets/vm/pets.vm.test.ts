@@ -151,7 +151,11 @@ function startPets(
   const alerts: string[] = [];
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch: backend.fetch });
   const api = createPetsApi(client);
-  const pets = reatomPets({ api, deviceCache: reatomDeviceCache(device.deviceStorage) });
+  const pets = reatomPets({
+    api,
+    liveVersion: () => 0,
+    deviceCache: reatomDeviceCache(device.deviceStorage),
+  });
   const routePetId = atom<string | undefined>(undefined, "test.petRoute");
   const model = reatomPetsScreen({
     api,

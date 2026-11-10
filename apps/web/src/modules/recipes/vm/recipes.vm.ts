@@ -6,8 +6,6 @@ import {
   reatomSet,
   type SetAtom,
   withAsync,
-  withAsyncData,
-  withRollback,
   wrap,
 } from "@reatom/core";
 
@@ -26,6 +24,7 @@ import {
 } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
 import { reatomFormBack } from "@/modules/form";
+import { reatomLiveResource } from "@/modules/live-resource";
 import type { LiveVersion } from "@/modules/live-updates";
 import type { PreparedPhoto } from "@/modules/photo";
 import { reatomPhotoViewer } from "@/modules/photo-viewer";
@@ -114,19 +113,19 @@ const deleteQuestion: Confirmation = {
 };
 
 function reatomOpened(
-  api: RecipesApi,
-  { data, navigation }: { data: RecipesData; navigation: Navigation },
+  { api, liveVersion }: Pick<RecipesDependencies, "api" | "liveVersion">,
+  navigation: Navigation,
 ) {
-  const opened = computed(async () => {
-    data.version();
-    const recipeId = navigation.openedId();
+  return reatomLiveResource({
+    name: "recipes.opened",
+    liveVersion,
+    load: async () => {
+      const recipeId = navigation.openedId();
 
-    return recipeId === undefined ? undefined : wrap(api.get(recipeId));
-  }, "recipes.opened").extend(withAsyncData());
-
-  opened.data.extend(withRollback());
-
-  return opened;
+      return recipeId === undefined ? undefined : api.get(recipeId);
+    },
+    rollback: "whole",
+  });
 }
 
 type Opened = ReturnType<typeof reatomOpened>;
@@ -160,7 +159,7 @@ function reatomScreen({
     const list = data.list.data();
 
     if (list === undefined) {
-      return data.list.error() === undefined ? { kind: "loading" } : { kind: "failed" };
+      return { kind: data.list.status() === "failed" ? "failed" : "loading" };
     }
 
     return listScreenOf(list, { tags, isFiltered: isFilteredBy(data) });
@@ -187,7 +186,7 @@ function reatomRecipeRemoval(
         return;
       }
 
-      data.list.data.set(withoutId(data.list.data() ?? [], recipe.id));
+      data.list.change((recipes) => withoutId(recipes ?? [], recipe.id));
       navigation.openedId.set(undefined);
       await wrap(api.remove(recipe.id));
     },
@@ -357,6 +356,14 @@ function reatomFormState(
   };
 }
 
+// A photo deleted from a Recipe moves no live version, and «Повторить» reads everything again.
+function reatomReloadAll(data: RecipesData, opened: Opened) {
+  return action(() => {
+    data.reload();
+    opened.reload();
+  }, "recipes.reloadAll");
+}
+
 export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   const navigation: Navigation = {
     openedId: atom<string | undefined>(undefined, "recipes.openedId"),
@@ -364,7 +371,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     checked: reatomSet<number>([], "recipes.checked"),
   };
   const data = reatomRecipesData(dependencies);
-  const opened = reatomOpened(dependencies.api, { data, navigation });
+  const opened = reatomOpened(dependencies, navigation);
   const form = reatomRecipeForm({
     ...dependencies,
     haptics: dependencies.telegram.haptics,
@@ -376,6 +383,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
   });
   const screen = reatomScreen({ ...dependencies, data, navigation, opened });
   const failure = reatomRollbackFailure("recipes.failure", dependencies.telegram.haptics);
+  const reload = reatomReloadAll(data, opened);
 
   return {
     screen,
@@ -383,9 +391,9 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     photoHint: readOnly(dependencies.photoHint),
     title: computed(() => titleOf(screen()), "recipes.title"),
     screenKey: reatomScreenKey(navigation),
-    retry: data.reload,
+    retry: reload,
     ...reatomFormState({ navigation, data }, form),
-    viewer: reatomPhotoViewer({ ...dependencies, onDeleted: data.reload, failure }),
+    viewer: reatomPhotoViewer({ ...dependencies, onDeleted: reload, failure }),
     ...reatomFilters(data, dependencies.telegram.haptics),
     failure: failure.failure,
     dismissFailure: failure.dismiss,

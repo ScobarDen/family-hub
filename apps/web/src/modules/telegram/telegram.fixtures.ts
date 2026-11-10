@@ -1,5 +1,12 @@
+import { noop } from "@reatom/core";
+
 import type { ClosingConfirmation, Fullscreen, Haptics, HomeScreen } from "./telegram.lib.ts";
-import type { DeviceStorage, HomeScreenStatus } from "./telegram.types.ts";
+import type {
+  DeviceStorage,
+  HomeScreenStatus,
+  TelegramButton,
+  TelegramWebApp,
+} from "./telegram.types.ts";
 
 // Telegram answers storage calls later, never inside the call.
 function answer(callback: (() => void) | undefined, isSilent = false): void {
@@ -116,4 +123,54 @@ export function fakeWindow({
     enableClosingConfirmation: record("enableClosingConfirmation"),
     disableClosingConfirmation: record("disableClosingConfirmation"),
   };
+}
+
+const button: TelegramButton = { show: noop, hide: noop, onClick: noop, offClick: noop };
+
+const silentStorage: DeviceStorage = {
+  setItem: noop,
+  getItem: noop,
+  removeItem: noop,
+  clear: noop,
+};
+
+export function fakeWebApp({
+  version = "9.0",
+  initData = "",
+  deviceStorage = silentStorage,
+}: { version?: string; initData?: string; deviceStorage?: DeviceStorage } = {}) {
+  const calls: string[] = [];
+  const webApp: TelegramWebApp = {
+    initData,
+    initDataUnsafe: {},
+    platform: "ios",
+    colorScheme: "light",
+    ready: () => calls.push("ready"),
+    expand: () => calls.push("expand"),
+    showAlert: noop,
+    showPopup: noop,
+    isVersionAtLeast: (wanted) => Number.parseFloat(version) >= Number.parseFloat(wanted),
+    requestWriteAccess: noop,
+    shareMessage: noop,
+    openTelegramLink: noop,
+    openLink: noop,
+    addToHomeScreen: () => calls.push("addToHomeScreen"),
+    checkHomeScreenStatus: (callback) => callback?.("missed"),
+    requestFullscreen: () => calls.push("requestFullscreen"),
+    exitFullscreen: () => calls.push("exitFullscreen"),
+    enableClosingConfirmation: () => calls.push("enableClosingConfirmation"),
+    disableClosingConfirmation: () => calls.push("disableClosingConfirmation"),
+    HapticFeedback: {
+      impactOccurred: (style) => calls.push(`impact ${style}`),
+      notificationOccurred: (type) => calls.push(type),
+      selectionChanged: () => calls.push("select"),
+    },
+    DeviceStorage: deviceStorage,
+    BackButton: button,
+    SettingsButton: button,
+    onEvent: noop,
+    offEvent: noop,
+  };
+
+  return { webApp, calls };
 }

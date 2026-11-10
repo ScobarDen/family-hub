@@ -1,9 +1,10 @@
-import { action, atom, computed, withAsyncData, wrap } from "@reatom/core";
+import { action, computed } from "@reatom/core";
 
 import { petList, type Pet } from "@family-hub/contract";
 
 import { upserted, withoutId } from "@/common/records.lib.ts";
 import type { DeviceCache } from "@/modules/device-cache";
+import { reatomLiveResource } from "@/modules/live-resource";
 import type { LiveVersion } from "@/modules/live-updates";
 
 import type { PetsApi } from "./pets.api.ts";
@@ -14,26 +15,21 @@ type PetsDependencies = LiveVersion & {
 };
 
 function reatomList({ api, liveVersion, deviceCache }: PetsDependencies) {
-  const version = atom(0, "pets.version");
-  const list = computed(async () => {
-    version();
-    liveVersion?.();
-
-    return wrap(api.list());
-  }, "pets.list").extend(withAsyncData());
-
-  list.data.extend(deviceCache.withDeviceCache({ key: "pets", schema: petList, version: 1 }));
-
-  return {
-    list,
-    reload: action(() => {
-      version.set(version() + 1);
-    }, "pets.reload"),
-  };
+  return reatomLiveResource({
+    name: "pets.list",
+    liveVersion,
+    load: async () => api.list(),
+    cache: {
+      withDeviceCache: deviceCache.withDeviceCache,
+      key: "pets",
+      schema: petList,
+      version: 1,
+    },
+  });
 }
 
 export function reatomPets(dependencies: PetsDependencies) {
-  const { list, reload } = reatomList(dependencies);
+  const list = reatomList(dependencies);
   const active = computed(
     () => (list.data() ?? []).filter((pet) => pet.archivedAt === null),
     "pets.active",
@@ -41,7 +37,7 @@ export function reatomPets(dependencies: PetsDependencies) {
 
   return {
     list,
-    reload,
+    reload: list.reload,
     active,
     archived: computed(
       () => (list.data() ?? []).filter((pet) => pet.archivedAt !== null),
@@ -60,10 +56,10 @@ export function reatomPets(dependencies: PetsDependencies) {
     }, "pets.tabTitle"),
 
     keep: action((saved: Pet) => {
-      list.data.set(upserted(list.data() ?? [], saved));
+      list.change((pets) => upserted(pets ?? [], saved));
     }, "pets.keep"),
     drop: action((petId: string) => {
-      list.data.set(withoutId(list.data() ?? [], petId));
+      list.change((pets) => withoutId(pets ?? [], petId));
     }, "pets.drop"),
   };
 }

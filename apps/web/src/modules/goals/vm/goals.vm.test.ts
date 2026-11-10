@@ -136,8 +136,9 @@ function startGoals({
   const client = createHttpClient({ baseUrl: "https://api.family-hub.test", fetch });
   const haptics = fakeHaptics();
   const model = reatomGoalsScreen({
+    liveVersion: () => 0,
     api: createGoalsApi(client),
-    members: reatomFamilyMembers(createFamilyApi(client)),
+    members: reatomFamilyMembers({ api: createFamilyApi(client), liveVersion: () => 0 }),
     telegram: { ...fakeWindow(), showPopup: async () => pending.shift(), haptics },
     self: () => "member-1",
     today: () => "2026-10-14",

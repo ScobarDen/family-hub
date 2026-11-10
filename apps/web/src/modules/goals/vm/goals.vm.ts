@@ -147,9 +147,7 @@ function reatomScreen(
     const goal = openedGoal();
 
     if (list === undefined) {
-      return dependencies.goals.list.error() === undefined
-        ? { kind: "loading" }
-        : { kind: "failed" };
+      return { kind: dependencies.goals.list.status() === "failed" ? "failed" : "loading" };
     }
 
     return goal === undefined

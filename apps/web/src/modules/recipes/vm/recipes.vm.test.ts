@@ -126,6 +126,7 @@ function startRecipes({
 
   const haptics = fakeHaptics();
   const model = reatomRecipesScreen({
+    liveVersion: () => 0,
     api: createRecipesApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: {
       ...fakeWindow(),

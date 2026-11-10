@@ -112,7 +112,7 @@ function reatomScreen(
     const list = data.list.data();
 
     if (list === undefined) {
-      return data.list.error() === undefined ? { kind: "loading" } : { kind: "failed" };
+      return { kind: data.list.status() === "failed" ? "failed" : "loading" };
     }
 
     return listScreenOf(list, viewer());
@@ -153,7 +153,7 @@ function reatomRemoval(
         return;
       }
 
-      data.list.data.set(withoutId(data.list.data() ?? [], albumId));
+      data.list.change((albums) => withoutId(albums ?? [], albumId));
       navigation.openedId.set(undefined);
       await wrap(dependencies.api.remove(albumId, choice));
     },

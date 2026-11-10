@@ -1,20 +1,11 @@
-import {
-  action,
-  atom,
-  computed,
-  noop,
-  peek,
-  withAsync,
-  withAsyncData,
-  wrap,
-  type Atom,
-} from "@reatom/core";
+import { action, atom, computed, noop, peek, withAsync, wrap, type Atom } from "@reatom/core";
 import { z } from "zod";
 
 import { today, type FeedUpcoming, type SlotModule, type Today } from "@family-hub/contract";
 
 import { detached, reatomRollbackFailure, type RollbackFailure } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
+import { reatomLiveResource } from "@/modules/live-resource";
 import type { LiveVersion } from "@/modules/live-updates";
 import type { Haptics } from "@/modules/telegram";
 
@@ -84,23 +75,21 @@ function reatomData({
   deviceCache,
   today: dateOfToday,
 }: Pick<TodayDependencies, "api" | "liveVersion" | "deviceCache" | "today">) {
-  const version = atom(0, "today.version");
-  const data = computed(async (): Promise<TodayOn> => {
-    version();
-    liveVersion?.();
-    const date = peek(dateOfToday);
+  return reatomLiveResource({
+    name: "today.data",
+    liveVersion,
+    load: async (): Promise<TodayOn> => {
+      const date = peek(dateOfToday);
 
-    return { ...(await wrap(api.load())), date };
-  }, "today.data").extend(withAsyncData());
-
-  data.data.extend(deviceCache.withDeviceCache({ key: "today", schema: todayOn, version: 1 }));
-
-  return {
-    data,
-    reload: action(() => {
-      version.set(version() + 1);
-    }, "today.reload"),
-  };
+      return { ...(await api.load()), date };
+    },
+    cache: {
+      withDeviceCache: deviceCache.withDeviceCache,
+      key: "today",
+      schema: todayOn,
+      version: 1,
+    },
+  });
 }
 
 function reatomHidden() {
@@ -126,7 +115,7 @@ type CompletionState = ReturnType<typeof reatomHidden> & {
 // with no timer, until it is dismissed or the next Occurrence is completed.
 function reatomComplete(
   { api, telegram }: Pick<TodayDependencies, "api" | "telegram">,
-  { state, onSettled }: { state: CompletionState; onSettled: () => void },
+  state: CompletionState,
 ) {
   const { pending, failure, hide, show } = state;
 
@@ -151,18 +140,14 @@ function reatomComplete(
       show(key);
       pending.set(pending() === completing ? undefined : pending());
       failure.report(error, `Не получилось отметить «${title}». Попробуйте ещё раз.`);
-
-      return;
     }
-
-    onSettled();
   }, "today.complete").extend(withAsync());
 }
 
 // The undo reopens the Occurrence once its completion is in.
 function reatomRevert(
   { api, telegram }: Pick<TodayDependencies, "api" | "telegram">,
-  { state, onSettled }: { state: CompletionState; onSettled: () => void },
+  state: CompletionState,
 ) {
   const { pending, failure, show } = state;
 
@@ -183,15 +168,11 @@ function reatomRevert(
     } catch (error) {
       failure.report(error, `Не получилось вернуть «${completing.title}». Попробуйте ещё раз.`);
     }
-
-    onSettled();
   }, "today.revertCompletion").extend(withAsync());
 }
 
-function reatomCompletion(
-  dependencies: Pick<TodayDependencies, "api" | "onOpen" | "telegram">,
-  onSettled: () => void,
-) {
+// Completing and reopening write to the Tasks, whose live version brings Today back on its own.
+function reatomCompletion(dependencies: Pick<TodayDependencies, "api" | "onOpen" | "telegram">) {
   const state: CompletionState = {
     ...reatomHidden(),
     pending: atom<Completing | undefined>(undefined, "today.pending"),
@@ -202,7 +183,7 @@ function reatomCompletion(
     hidden: state.hidden,
     pending: state.pending,
     failure: state.failure,
-    complete: reatomComplete(dependencies, { state, onSettled }),
+    complete: reatomComplete(dependencies, state),
     dismiss: action(() => {
       state.pending.set(undefined);
     }, "today.dismissUndo"),
@@ -220,7 +201,7 @@ function reatomCompletion(
       }
     }, "today.recordCareEntry"),
     dismissFailure: state.failure.dismiss,
-    revert: reatomRevert(dependencies, { state, onSettled }),
+    revert: reatomRevert(dependencies, state),
   };
 }
 
@@ -328,18 +309,15 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
 }
 
 export function reatomToday(dependencies: TodayDependencies) {
-  const { data, reload } = reatomData(dependencies);
-  const completion = reatomCompletion(dependencies, reload);
+  const data = reatomData(dependencies);
+  const { reload } = data;
+  const completion = reatomCompletion(dependencies);
   const blocks = reatomBlocks(dependencies, data, completion);
 
   return {
-    isLoading: computed(() => data.data() === undefined && !data.ready(), "today.isLoading"),
-    // A failed refresh keeps what was already shown.
+    isLoading: computed(() => data.status() === "loading", "today.isLoading"),
     loadFailure: computed(
-      () =>
-        data.error() === undefined || data.data() !== undefined
-          ? undefined
-          : "Не получилось загрузить «Сегодня».",
+      () => (data.status() === "failed" ? "Не получилось загрузить «Сегодня»." : undefined),
       "today.loadFailure",
     ),
     // The undo bar and the failure bar share one place; the undo keeps it while it is offered.
@@ -359,7 +337,8 @@ export function reatomToday(dependencies: TodayDependencies) {
       if (
         dependencies.isLive?.() !== true ||
         blocks.isDueOutdated() ||
-        data.error() !== undefined
+        data.status() === "failed" ||
+        data.status() === "stale"
       ) {
         reload();
       }

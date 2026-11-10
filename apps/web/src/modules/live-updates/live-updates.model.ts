@@ -31,7 +31,7 @@ export type LiveUpdatesDependencies = {
   clientId: string;
 };
 
-export type LiveVersion = { liveVersion?: () => number };
+export type LiveVersion = { liveVersion: () => number };
 
 const coalesceMs = 300;
 const firstBackoffMs = 1000;

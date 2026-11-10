@@ -86,7 +86,7 @@ export function reatomTagEditing(
         return;
       }
 
-      data.tags.data.set(withoutId(data.tags.data() ?? [], tagId));
+      data.tags.change((tags) => withoutId(tags ?? [], tagId));
       await wrap(api.removeTag(tagId));
     },
     {

@@ -1,3 +1,4 @@
+export { FakePage, FakeSocket } from "./live-updates.fixtures.ts";
 export { openLiveSocket } from "./live-updates.api.ts";
 export {
   reatomLiveUpdates,

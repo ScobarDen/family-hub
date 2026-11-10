@@ -1,4 +1,4 @@
-import { action, atom, computed, reatomBoolean, retryComputed } from "@reatom/core";
+import { action, atom, computed, reatomBoolean } from "@reatom/core";
 
 import { detached, readOnly } from "@/modules/changes";
 import { fillForm, reatomSubmitFailure } from "@/modules/form";
@@ -82,7 +82,7 @@ export function reatomFamily(dependencies: FamilyDependencies) {
     members: reatomMembers(sources),
     loadFailure: computed(
       () =>
-        sources.list.error() === undefined ? undefined : "Не получилось загрузить участников.",
+        sources.list.status() === "failed" ? "Не получилось загрузить участников." : undefined,
       "family.loadFailure",
     ),
     failure: readOnly(sources.failure),
@@ -90,7 +90,7 @@ export function reatomFamily(dependencies: FamilyDependencies) {
     isBusy: computed(() => !manage.ready() || !leave.ready(), "family.isBusy"),
     ...deletionFlow,
 
-    retry: detached(async () => retryComputed(sources.list), "family.retry"),
+    retry: sources.list.reload,
     manage: detached(manage, "family.manageOne"),
     leave: detached(leave, "family.leaveFamily"),
   };

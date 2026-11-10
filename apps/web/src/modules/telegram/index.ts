@@ -12,6 +12,7 @@ export {
 export {
   fakeDeviceStorage,
   fakeHaptics,
+  fakeWebApp,
   fakeWindow,
   type FakeDeviceStorage,
   type FakeHaptics,
