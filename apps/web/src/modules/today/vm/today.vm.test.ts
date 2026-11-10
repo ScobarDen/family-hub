@@ -223,10 +223,6 @@ describe("«Сделать сегодня»", () => {
     await vi.waitFor(() => {
       expect(calls).toContain('POST /api/tasks/task-1/complete {"occurrence":"2026-10-12"}');
     });
-
-    await vi.waitFor(() => {
-      expect(calls.filter((call) => call === "GET /api/today")).toHaveLength(2);
-    });
     expect(model.undo()).toEqual({ title: "Дело 1", hasPet: false });
 
     model.dismissUndo();

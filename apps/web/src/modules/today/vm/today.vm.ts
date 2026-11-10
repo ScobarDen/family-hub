@@ -115,7 +115,7 @@ type CompletionState = ReturnType<typeof reatomHidden> & {
 // with no timer, until it is dismissed or the next Occurrence is completed.
 function reatomComplete(
   { api, telegram }: Pick<TodayDependencies, "api" | "telegram">,
-  { state, onSettled }: { state: CompletionState; onSettled: () => void },
+  state: CompletionState,
 ) {
   const { pending, failure, hide, show } = state;
 
@@ -140,18 +140,14 @@ function reatomComplete(
       show(key);
       pending.set(pending() === completing ? undefined : pending());
       failure.report(error, `Не получилось отметить «${title}». Попробуйте ещё раз.`);
-
-      return;
     }
-
-    onSettled();
   }, "today.complete").extend(withAsync());
 }
 
 // The undo reopens the Occurrence once its completion is in.
 function reatomRevert(
   { api, telegram }: Pick<TodayDependencies, "api" | "telegram">,
-  { state, onSettled }: { state: CompletionState; onSettled: () => void },
+  state: CompletionState,
 ) {
   const { pending, failure, show } = state;
 
@@ -172,15 +168,11 @@ function reatomRevert(
     } catch (error) {
       failure.report(error, `Не получилось вернуть «${completing.title}». Попробуйте ещё раз.`);
     }
-
-    onSettled();
   }, "today.revertCompletion").extend(withAsync());
 }
 
-function reatomCompletion(
-  dependencies: Pick<TodayDependencies, "api" | "onOpen" | "telegram">,
-  onSettled: () => void,
-) {
+// Completing and reopening write to the Tasks, whose live version brings Today back on its own.
+function reatomCompletion(dependencies: Pick<TodayDependencies, "api" | "onOpen" | "telegram">) {
   const state: CompletionState = {
     ...reatomHidden(),
     pending: atom<Completing | undefined>(undefined, "today.pending"),
@@ -191,7 +183,7 @@ function reatomCompletion(
     hidden: state.hidden,
     pending: state.pending,
     failure: state.failure,
-    complete: reatomComplete(dependencies, { state, onSettled }),
+    complete: reatomComplete(dependencies, state),
     dismiss: action(() => {
       state.pending.set(undefined);
     }, "today.dismissUndo"),
@@ -209,7 +201,7 @@ function reatomCompletion(
       }
     }, "today.recordCareEntry"),
     dismissFailure: state.failure.dismiss,
-    revert: reatomRevert(dependencies, { state, onSettled }),
+    revert: reatomRevert(dependencies, state),
   };
 }
 
@@ -319,7 +311,7 @@ function reatomTaps(dependencies: TodayDependencies, data: Loaded, completion: C
 export function reatomToday(dependencies: TodayDependencies) {
   const data = reatomData(dependencies);
   const { reload } = data;
-  const completion = reatomCompletion(dependencies, reload);
+  const completion = reatomCompletion(dependencies);
   const blocks = reatomBlocks(dependencies, data, completion);
 
   return {
