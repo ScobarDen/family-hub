@@ -189,3 +189,68 @@ describe("uploading in a burst", () => {
     expect(response.headers.get("retry-after")).toBe("7");
   });
 });
+
+describe("photos and the Family's open apps", () => {
+  test("an uploaded photo tells the Albums", async () => {
+    const worker = await startWithFamily();
+
+    await uploaded(worker, { size: 1, takenAt: null });
+
+    expect(worker.live.signals.map(({ modules }) => modules)).toEqual([["albums"]]);
+  });
+
+  test("a photo added to a Pet's Album tells the Albums and the Pet's card", async () => {
+    const worker = await startWithFamily();
+    const buick = await addBuick(worker);
+    const walk = await uploaded(worker, { size: 1, takenAt: null });
+
+    worker.live.signals.length = 0;
+    await addTo(worker, `pet-${buick.id}`, [walk]);
+
+    expect(worker.live.signals.map(({ modules }) => modules)).toEqual([["pet", "albums"]]);
+  });
+
+  test("a photo deleted from a Care Entry tells the Pet's card too", async () => {
+    const worker = await startWithFamily();
+    const buick = await addBuick(worker);
+    const walk = await uploaded(worker, { size: 1, takenAt: null });
+
+    await request(worker, asya, {
+      method: "POST",
+      path: `/api/pets/${buick.id}/care-entries`,
+      body: {
+        occurredAt: worker.clock.now(),
+        note: null,
+        details: { kind: "note" },
+        photoIds: [walk.id],
+      },
+    });
+    worker.live.signals.length = 0;
+    await request(worker, asya, { method: "DELETE", path: `/api/photos/${walk.id}` });
+
+    expect(worker.live.signals.map(({ modules }) => modules)).toEqual([["albums", "pet"]]);
+  });
+
+  test("a photo deleted from a Recipe tells the Recipes too", async () => {
+    const worker = await startWithFamily();
+    const dish = await uploaded(worker, { size: 1, takenAt: null });
+
+    await request(worker, asya, {
+      method: "POST",
+      path: "/api/recipes",
+      body: { title: "Лазанья", ingredients: "", method: null, photoIds: [dish.id] },
+    });
+    worker.live.signals.length = 0;
+    await request(worker, asya, { method: "DELETE", path: `/api/photos/${dish.id}` });
+
+    expect(worker.live.signals.map(({ modules }) => modules)).toEqual([["albums", "recipes"]]);
+  });
+
+  test("deleting a photo that is not there tells nothing", async () => {
+    const worker = await startWithFamily();
+
+    await request(worker, asya, { method: "DELETE", path: "/api/photos/missing" });
+
+    expect(worker.live.signals).toEqual([]);
+  });
+});

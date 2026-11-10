@@ -1,6 +1,7 @@
 import type { Recipe, RecipeTag } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock.lib.ts";
+import type { LiveChanges } from "@/modules/live";
 import type { PhotoLinks } from "@/modules/photo";
 import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
@@ -12,6 +13,7 @@ export type RecipeDependencies = {
   clock: Clock;
   bot: BotApi;
   appLinks: MiniAppLinks;
+  live: LiveChanges;
 };
 
 export type RecipeRefusal = "not-found" | "not-author" | "tag-not-found" | "photo-not-found";

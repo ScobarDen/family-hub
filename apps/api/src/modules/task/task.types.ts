@@ -2,6 +2,7 @@ import type { Task } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock.lib.ts";
 import type { MembershipRepo } from "@/modules/auth";
+import type { LiveChanges } from "@/modules/live";
 import type { PhotoLinks } from "@/modules/photo";
 import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
@@ -19,6 +20,7 @@ export type TaskDependencies = {
   appLinks: MiniAppLinks;
   clock: Clock;
   schedule: TaskSchedule;
+  live: LiveChanges;
   links: PhotoLinks;
 };
 

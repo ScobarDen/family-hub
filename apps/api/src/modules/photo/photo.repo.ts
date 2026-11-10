@@ -58,8 +58,44 @@ export async function forgetUnheldPhoto(db: Db, { familyId, photoId }: PhotoTarg
     );
 }
 
+async function isHeldBy(
+  db: Db,
+  holder: typeof careEntryPhotos | typeof recipePhotos,
+  { familyId, photoId }: PhotoTarget,
+): Promise<boolean> {
+  const row = await db
+    .select({ id: holder.photoId })
+    .from(holder)
+    .where(and(eq(holder.familyId, familyId), eq(holder.photoId, photoId)))
+    .get();
+
+  return row !== undefined;
+}
+
+async function isPetAvatar(db: Db, { familyId, photoId }: PhotoTarget): Promise<boolean> {
+  const row = await db
+    .select({ id: pets.id })
+    .from(pets)
+    .where(and(eq(pets.familyId, familyId), eq(pets.avatarPhotoId, photoId)))
+    .get();
+
+  return row !== undefined;
+}
+
+export type PhotoPlaces = { isOnPet: boolean; isInRecipe: boolean };
+
 export function createPhotoRepo(db: Db) {
   return {
+    // Albums show every photo; a Pet's card and a Recipe only the ones they hold.
+    async placesOf(target: PhotoTarget): Promise<PhotoPlaces> {
+      const [isInCareEntry, isAvatar, isInRecipe] = await Promise.all([
+        isHeldBy(db, careEntryPhotos, target),
+        isPetAvatar(db, target),
+        isHeldBy(db, recipePhotos, target),
+      ]);
+
+      return { isOnPet: isInCareEntry || isAvatar, isInRecipe };
+    },
     async channelOf(familyId: string): Promise<number | undefined> {
       const row = await storageChannelOf(db, familyId);
 

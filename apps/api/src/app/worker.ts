@@ -1,6 +1,8 @@
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 
+import { liveClientHeader } from "@family-hub/contract";
+
 import type { Clock } from "@/common/clock.lib.ts";
 import {
   albumRoute,
@@ -46,7 +48,7 @@ import {
   goalRoute,
 } from "@/modules/goal";
 import { createInviteRepo, createInviteService, inviteRoute } from "@/modules/invite";
-import { liveRoute, signalWrites } from "@/modules/live";
+import { createLiveChanges, liveRoute, writerOf, type LiveChanges } from "@/modules/live";
 import { createMemberRepo, createMemberService, memberRoute } from "@/modules/member";
 import { createPetFeed, createPetRepo, createPetService, petRoute } from "@/modules/pet";
 import {
@@ -142,6 +144,7 @@ type Shared = {
   appLinks: MiniAppLinks;
   clock: Clock;
   push: PushService;
+  live: LiveChanges;
 };
 
 type Records = Shared & { links: PhotoLinks };
@@ -163,6 +166,7 @@ function albumServiceOf(
     clock,
     bot: shared.bot,
     appLinks: shared.appLinks,
+    live: shared.live,
     petNotes: {
       addNote: async (membership, { petId, photoIds }) => {
         await careEntries.create(membership, petId, {
@@ -265,7 +269,7 @@ function reminderServiceOf(
 
 // The services of what a Family keeps: its Pets, journal and Tasks.
 function familyRecordServices(db: Db, { links, ...shared }: Records) {
-  const { clock } = shared;
+  const { clock, live } = shared;
   const feed = feedServiceOf(db, { links, clock });
   const reminders = reminderServiceOf(db, { shared, feed, tasks: () => tasks });
   const tasks = createTaskService({
@@ -278,6 +282,7 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     entries: createCareEntryRepo(db),
     clock,
     followUps: tasks,
+    live,
     links,
   });
 
@@ -286,17 +291,18 @@ function familyRecordServices(db: Db, { links, ...shared }: Records) {
     tasks,
     careEntries,
     albums: albumServiceOf(db, { careEntries, links, shared }),
-    pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders, links }),
+    pets: createPetService({ pets: createPetRepo(db), clock, schedule: reminders, live, links }),
     members: createMemberService({ members: createMemberRepo(db), clock, schedule: reminders }),
     feed,
     today: todayServiceOf(db, { links, clock }),
-    goals: createGoalService({ goals: createGoalRepo(db), clock }),
+    goals: createGoalService({ goals: createGoalRepo(db), clock, live }),
     recipes: createRecipeService({ recipes: createRecipeRepo(db), links, ...shared }),
     photos: createPhotoService({
       photos: createPhotoRepo(db),
       files: createTelegramPhotoFiles(shared.bot),
       links,
       clock,
+      live,
     }),
   };
 }
@@ -356,13 +362,16 @@ function pushServiceOf(
   });
 }
 
-function servicesFor(env: Env, dependencies: WorkerDependencies): AppServices {
+function servicesFor(
+  env: Env,
+  { dependencies, live }: { dependencies: WorkerDependencies; live: LiveChanges },
+): AppServices {
   const { clock, createBotApi } = dependencies;
   const db = createDb(env.DB);
   const bot = createBotApi(env.BOT_TOKEN);
   const memberships = createMembershipRepo(db);
   const push = pushServiceOf(db, env, dependencies);
-  const shared = { memberships, bot, appLinks: createMiniAppLinks(bot), clock, push };
+  const shared = { memberships, bot, appLinks: createMiniAppLinks(bot), clock, push, live };
   const records = familyRecordServices(db, {
     ...shared,
     links: createPhotoLinks({ secret: env.JWT_SECRET, clock }),
@@ -399,39 +408,45 @@ function expose(context: Context<AppEnv>, services: AppServices): void {
 }
 
 function createApp(dependencies: WorkerDependencies) {
-  return new Hono<AppEnv>()
-    .use("/api/*", cors({ origin: (origin, context) => allowedOrigin(origin, context.env) }))
-    .use(async (context, next) => {
-      const services = servicesFor(context.env, dependencies);
+  return (
+    new Hono<AppEnv>()
+      .use("/api/*", cors({ origin: (origin, context) => allowedOrigin(origin, context.env) }))
+      // Whatever the request wrote reaches the Family's open apps, even when it ended in an error.
+      .use(async (context, next) => {
+        const live = createLiveChanges(context.env.LIVE, {
+          writer: writerOf(context.req.header(liveClientHeader)),
+        });
 
-      expose(context, services);
-      await next();
-    })
-    .use("/api/*", signalWrites)
-    .route("/", healthRoute)
-    .route("/", liveRoute)
-    .route("/", webhookRoute)
-    .route("/", sessionRoute)
-    .route("/", pushRoute)
-    .route("/", reminderRoute)
-    .route("/", familyRequestRoute)
-    .route("/", inviteRoute)
-    .route("/", memberRoute)
-    .route("/", familyRoute)
-    .route("/", petRoute)
-    .route("/", taskRoute)
-    .route("/", feedRoute)
-    .route("/", todayRoute)
-    .route("/", goalRoute)
-    .route("/", photoRoute)
-    .route("/", albumRoute)
-    .route("/", recipeRoute)
-    .route("/", photoStorageRoute)
-    .route("/", careEntryRoute);
+        expose(context, servicesFor(context.env, { dependencies, live }));
+        await next();
+        context.executionCtx.waitUntil(live.flush());
+      })
+      .route("/", healthRoute)
+      .route("/", liveRoute)
+      .route("/", webhookRoute)
+      .route("/", sessionRoute)
+      .route("/", pushRoute)
+      .route("/", reminderRoute)
+      .route("/", familyRequestRoute)
+      .route("/", inviteRoute)
+      .route("/", memberRoute)
+      .route("/", familyRoute)
+      .route("/", petRoute)
+      .route("/", taskRoute)
+      .route("/", feedRoute)
+      .route("/", todayRoute)
+      .route("/", goalRoute)
+      .route("/", photoRoute)
+      .route("/", albumRoute)
+      .route("/", recipeRoute)
+      .route("/", photoStorageRoute)
+      .route("/", careEntryRoute)
+  );
 }
 
 async function runScheduled(env: Env, dependencies: WorkerDependencies): Promise<void> {
-  const services = servicesFor(env, dependencies);
+  const live = createLiveChanges(env.LIVE);
+  const services = servicesFor(env, { dependencies, live });
 
   await services.reminders.deliverDue();
 
@@ -440,6 +455,8 @@ async function runScheduled(env: Env, dependencies: WorkerDependencies): Promise
     await services.familyRequests.sweep();
     await services.auth.sweepDevices();
   }
+
+  await live.flush();
 }
 
 export function createWorker(dependencies: WorkerDependencies): Worker {

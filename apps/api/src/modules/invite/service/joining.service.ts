@@ -39,7 +39,7 @@ export async function preview(
 }
 
 async function joinClaimed(
-  { invites, memberships, schedule, clock }: InviteDependencies,
+  { invites, memberships, schedule, live, clock }: InviteDependencies,
   user: TelegramUser,
   token: string,
 ): Promise<AcceptResult> {
@@ -68,6 +68,7 @@ async function joinClaimed(
   }
 
   await schedule.membershipChanged(claimed.familyId);
+  live.changed(claimed.familyId, ["feed"]);
 
   return { status: "joined" };
 }

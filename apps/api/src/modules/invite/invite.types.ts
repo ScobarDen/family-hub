@@ -1,5 +1,6 @@
 import type { Clock } from "@/common/clock.lib.ts";
 import type { MembershipRepo } from "@/modules/auth";
+import type { LiveChanges } from "@/modules/live";
 import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
 import type { InviteRepo } from "./invite.repo.ts";
@@ -12,6 +13,7 @@ export type InviteDependencies = {
   // Wired by the app to the family-request module, which modules may not import directly.
   familyRequests: { cancelPending(telegramId: number): Promise<void> };
   schedule: InviteSchedule;
+  live: LiveChanges;
   bot: BotApi;
   appLinks: MiniAppLinks;
   clock: Clock;

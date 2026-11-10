@@ -1,10 +1,11 @@
 import type { Goal } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock.lib.ts";
+import type { LiveChanges } from "@/modules/live";
 
 import type { GoalRepo } from "./goal.repo.ts";
 
-export type GoalDependencies = { goals: GoalRepo; clock: Clock };
+export type GoalDependencies = { goals: GoalRepo; clock: Clock; live: LiveChanges };
 
 export type GoalRefusal =
   | "not-found"
