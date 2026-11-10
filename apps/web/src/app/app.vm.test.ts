@@ -1,9 +1,9 @@
-import { context, noop, sleep } from "@reatom/core";
-import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
+import { context, noop } from "@reatom/core";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { recipeChange, type Recipe, type Task, type Today } from "@family-hub/contract";
+import { recipeChange, type Goal, type Recipe, type Task, type Today } from "@family-hub/contract";
 
-import { startApp } from "./app.fixtures.ts";
+import { startApp, workerFailure } from "./app.fixtures.ts";
 
 const lasagna: Recipe = {
   id: "recipe-1",
@@ -61,6 +61,23 @@ const todayWithWalk: Today = {
   },
 };
 
+const savings: Goal = {
+  id: "goal-1",
+  title: "Отпуск в Турции",
+  target: 100_000,
+  deadline: null,
+  icon: "palmtree",
+  color: "teal",
+  note: null,
+  visibility: "shared",
+  isOwn: true,
+  balance: 40_000,
+  isAchieved: false,
+  completed: null,
+  shares: [],
+  movements: [],
+};
+
 function recipeBook(saved: Recipe = lasagna) {
   let current = saved;
 
@@ -95,10 +112,16 @@ async function openLasagna(app: App) {
   });
 }
 
-// The router mirrors the URL into the browser's history, which Node has none of.
+// The router mirrors the URL into the browser's history, which Node has none of. The clock is
+// faked so the live versions' 300 ms window passes on demand.
 beforeEach(() => {
   context.reset();
   vi.stubGlobal("history", { pushState: noop, replaceState: noop });
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("the open Recipe", () => {
@@ -153,8 +176,123 @@ describe("Today", () => {
     await vi.waitFor(() => {
       expect(countOf("GET /api/today")).toBe(2);
     });
-    await sleep(50);
+    await vi.runAllTimersAsync();
 
     expect(countOf("GET /api/today")).toBe(2);
+  });
+
+  test("loads once more after a completion on it is undone", async () => {
+    const { app, countOf } = startApp({
+      "GET /api/today": () => todayWithWalk,
+      "POST /api/tasks/task-1/complete": () => walk,
+      "POST /api/tasks/task-1/reopen": () => walk,
+    });
+    const { today } = app.home;
+
+    today.rows.subscribe(noop);
+    await vi.waitFor(() => {
+      expect(today.rows()).toHaveLength(1);
+    });
+    today.complete("task-1-2026-01-05");
+    await vi.waitFor(() => {
+      expect(countOf("GET /api/today")).toBe(2);
+    });
+    today.revert();
+    await vi.waitFor(() => {
+      expect(countOf("GET /api/today")).toBe(3);
+    });
+    await vi.runAllTimersAsync();
+
+    expect(countOf("GET /api/today")).toBe(3);
+  });
+});
+
+describe("a list whose refresh fails", () => {
+  test("keeps showing what it had", async () => {
+    let isDown = false;
+    const book = recipeBook();
+    const { app, connect, otherMemberChanged, countOf } = startApp({
+      ...book.routes,
+      "GET /api/recipes": () => (isDown ? workerFailure : [lasagna]),
+    });
+    const { recipes } = app.home;
+
+    recipes.screen.subscribe(noop);
+    await vi.waitFor(() => {
+      expect(recipes.screen()).toMatchObject({ kind: "list" });
+    });
+    connect({ recipes: 1 });
+    isDown = true;
+    otherMemberChanged({ recipes: 2 });
+    await vi.waitFor(() => {
+      expect(countOf("GET /api/recipes")).toBe(2);
+    });
+    await vi.runAllTimersAsync();
+
+    expect(recipes.screen()).toMatchObject({ kind: "list", recipes: [{ title: "Лазанья" }] });
+  });
+
+  test("says it failed when there was nothing to show", async () => {
+    const { app } = startApp({ ...recipeBook().routes, "GET /api/recipes": () => workerFailure });
+    const { recipes } = app.home;
+
+    recipes.screen.subscribe(noop);
+
+    await vi.waitFor(() => {
+      expect(recipes.screen()).toEqual({ kind: "failed" });
+    });
+  });
+});
+
+describe("a Savings Goal saved while the list is loading", () => {
+  test("stays as saved when the older answer arrives", async () => {
+    let saved = savings;
+    let answerStale = noop;
+    let isHeld = false;
+    const { app, connect, otherMemberChanged, countOf } = startApp({
+      "GET /api/goals": async () => {
+        const answer = { goals: [saved], totalSaved: saved.balance };
+
+        if (isHeld) {
+          isHeld = false;
+          await new Promise<void>((resolve) => {
+            answerStale = resolve;
+          });
+        }
+
+        return answer;
+      },
+      "POST /api/goals/goal-1/movements": () => {
+        saved = { ...savings, balance: 100_000, movements: [] };
+
+        return saved;
+      },
+    });
+    const { goals } = app.home;
+
+    goals.screen.subscribe(noop);
+    await vi.waitFor(() => {
+      expect(goals.screen()).toMatchObject({ kind: "list" });
+    });
+    connect({ goals: 1 });
+    isHeld = true;
+    otherMemberChanged({ goals: 2 });
+    await vi.waitFor(() => {
+      expect(countOf("GET /api/goals")).toBe(2);
+    });
+    goals.open("goal-1");
+    goals.addMovement("contribution");
+    goals.movementForm.form.fields.amount.set("60000");
+    goals.movementForm.save();
+    await vi.waitFor(() => {
+      expect(countOf("POST /api/goals/goal-1/movements")).toBe(1);
+    });
+    answerStale();
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(goals.screen()).toMatchObject({
+      kind: "goal",
+      goal: { progress: expect.stringMatching(/^100\s000\s₽ из 100\s000\s₽/u) },
+    });
   });
 });

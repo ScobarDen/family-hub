@@ -27,8 +27,14 @@ const signedIn: SessionResponse = {
   },
 };
 
-// What the Worker answers, by `METHOD /path`; the request body comes along for writes.
+// What the Worker answers, by `METHOD /path`: a body to send as JSON, or a whole Response; the
+// request body comes along for writes.
 export type Routes = Record<string, (body: unknown) => unknown>;
+
+export const workerFailure = Response.json(
+  { code: "INTERNAL", message: "D1 is down" },
+  { status: 500 },
+);
 
 function bodyOf(init: RequestInit | undefined): unknown {
   return typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
@@ -48,9 +54,13 @@ function fakeWorker(routes: Routes) {
 
     const route = routes[request];
 
-    return route === undefined
-      ? Response.json({ code: "NOT_FOUND", message: request }, { status: 404 })
-      : Response.json(route(bodyOf(init)));
+    if (route === undefined) {
+      return Response.json({ code: "NOT_FOUND", message: request }, { status: 404 });
+    }
+
+    const answer = await route(bodyOf(init));
+
+    return answer instanceof Response ? answer.clone() : Response.json(answer);
   }
 
   return { fetch, requests };
@@ -73,6 +83,12 @@ function fakeSockets() {
   };
 }
 
+async function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 // The whole app over a fake Worker and a fake socket, as a Member in Telegram sees it.
 export function startApp(routes: Routes) {
   const worker = fakeWorker(routes);
@@ -91,7 +107,7 @@ export function startApp(routes: Routes) {
     storage: memoryStorage(),
     liveClientId: crypto.randomUUID(),
     openSocket: sockets.open,
-    wait: async () => Promise.resolve(),
+    wait,
     slide: instantly,
     base: "/family-hub/",
     botUsername: undefined,
