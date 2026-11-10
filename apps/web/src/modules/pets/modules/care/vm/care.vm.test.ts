@@ -150,6 +150,7 @@ function startCare(choices: string[] = [], removing?: Removing) {
   const openedPet = atom<string | undefined>("pet-1", "test.openedPet");
   const isArchived = atom(false, "test.isArchived");
   const model = reatomCare({
+    liveVersion: () => 0,
     api: createCareApi(client),
     petId: () => openedPet(),
     today: () => "2026-10-11",

@@ -115,6 +115,7 @@ function startToday(
   const opened: Array<TodayTarget | string> = [];
   const haptics = fakeHaptics();
   const model = reatomToday({
+    liveVersion: () => 0,
     api: createTodayApi(client),
     deviceCache: reatomDeviceCache(device.deviceStorage),
     today: () => today,

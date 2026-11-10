@@ -184,6 +184,7 @@ function startFeed({
 
   const haptics = fakeHaptics();
   const model = reatomFeed({
+    liveVersion: () => 0,
     api: createFeedApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     today: () => "2026-10-14",
     timeZone: () => "Europe/Moscow",

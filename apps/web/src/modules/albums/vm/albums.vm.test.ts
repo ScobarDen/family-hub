@@ -154,6 +154,7 @@ function startAlbums({
 
   const haptics = fakeHaptics();
   const model = reatomAlbumsScreen({
+    liveVersion: () => 0,
     api: createAlbumsApi(createHttpClient({ baseUrl: "https://api.family-hub.test", fetch })),
     telegram: {
       ...fakeWindow(),
