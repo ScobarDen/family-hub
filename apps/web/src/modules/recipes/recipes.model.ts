@@ -48,7 +48,7 @@ function reatomTags({ api, liveVersion, deviceCache }: RecipesDataDependencies) 
       schema: recipeTagList,
       version: 1,
     },
-    rollback: { onRollback: rolledBackById },
+    rollback: rolledBackById,
   });
 }
 
@@ -67,7 +67,7 @@ export function reatomRecipesData({ api, liveVersion, deviceCache }: RecipesData
       version: 1,
       cachedPart: (recipes) => (peek(isWholeBook) ? cardsOf(recipes) : undefined),
     },
-    rollback: { onRollback: rolledBackById },
+    rollback: rolledBackById,
   });
   const tags = reatomTags({ api, liveVersion, deviceCache });
 

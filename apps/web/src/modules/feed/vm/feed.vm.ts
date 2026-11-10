@@ -102,7 +102,7 @@ function reatomFirstPage({ api, liveVersion, deviceCache }: PagesDependencies) {
       schema: feedPage,
       version: 1,
     },
-    rollback: { onRollback: rolledBackPage },
+    rollback: rolledBackPage,
   });
 }
 

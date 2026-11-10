@@ -124,7 +124,7 @@ function reatomOpened(
 
       return recipeId === undefined ? undefined : api.get(recipeId);
     },
-    rollback: {},
+    rollback: "whole",
   });
 }
 

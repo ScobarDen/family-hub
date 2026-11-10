@@ -2,6 +2,7 @@ import { atom, context, noop, sleep } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 import { z } from "zod";
 
+import { rolledBack } from "@/common/records.lib.ts";
 import { reatomOptimistic, reatomRollbackFailure } from "@/modules/changes";
 import { reatomDeviceCache } from "@/modules/device-cache";
 import { fakeDeviceStorage, fakeHaptics, type FakeDeviceStorage } from "@/modules/telegram";
@@ -80,7 +81,7 @@ describe("a live resource", () => {
     expect(resource.data()).toBeUndefined();
   });
 
-  test("keeps what it shows when a refresh fails", async () => {
+  test("keeps what it shows, marked stale, when a refresh fails", async () => {
     let isDown = false;
     const { resource, liveVersion } = startChores(async () =>
       isDown ? Promise.reject(new TypeError("Failed to fetch")) : chores,
@@ -91,9 +92,9 @@ describe("a live resource", () => {
     });
     isDown = true;
     liveVersion.set(1);
-    await sleep(0);
-
-    expect(resource.status()).toBe("ready");
+    await vi.waitFor(() => {
+      expect(resource.status()).toBe("stale");
+    });
     expect(resource.data()).toEqual(chores);
   });
 
@@ -152,7 +153,7 @@ describe("a live resource", () => {
   });
 
   test("returns to what it showed when the server refuses a change", async () => {
-    const { resource } = startChores(async () => chores, { rollback: {} });
+    const { resource } = startChores(async () => chores, { rollback: "whole" });
     const failure = reatomRollbackFailure("test.failure", fakeHaptics());
     const addChore = reatomOptimistic(
       async (chore: string) => {
@@ -168,5 +169,35 @@ describe("a live resource", () => {
     await addChore("Помыть лапы").catch(noop);
 
     expect(resource.data()).toEqual(chores);
+  });
+
+  test("rolls back only what the refused change touched", async () => {
+    const { resource } = startChores(async () => chores, {
+      rollback: (states) => rolledBack(states, (chore) => chore),
+    });
+    const failure = reatomRollbackFailure("test.failure", fakeHaptics());
+    let refuse = noop;
+    const addChore = reatomOptimistic(
+      async (chore: string) => {
+        resource.change((current) => [...(current ?? []), chore]);
+        await new Promise<void>((_resolve, reject) => {
+          refuse = () => {
+            reject(new TypeError("Failed to fetch"));
+          };
+        });
+      },
+      { name: "test.addChore", failure, refusal: "Не получилось" },
+    );
+
+    await vi.waitFor(() => {
+      expect(resource.status()).toBe("ready");
+    });
+    const adding = addChore("Помыть лапы").catch(noop);
+
+    resource.change((current) => [...(current ?? []), "Сварить борщ"]);
+    refuse();
+    await adding;
+
+    expect(resource.data()).toEqual([...chores, "Сварить борщ"]);
   });
 });

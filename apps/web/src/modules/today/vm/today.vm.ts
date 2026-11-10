@@ -316,7 +316,6 @@ export function reatomToday(dependencies: TodayDependencies) {
 
   return {
     isLoading: computed(() => data.status() === "loading", "today.isLoading"),
-    // A failed refresh keeps what was already shown.
     loadFailure: computed(
       () => (data.status() === "failed" ? "Не получилось загрузить «Сегодня»." : undefined),
       "today.loadFailure",
@@ -338,7 +337,8 @@ export function reatomToday(dependencies: TodayDependencies) {
       if (
         dependencies.isLive?.() !== true ||
         blocks.isDueOutdated() ||
-        data.status() === "failed"
+        data.status() === "failed" ||
+        data.status() === "stale"
       ) {
         reload();
       }

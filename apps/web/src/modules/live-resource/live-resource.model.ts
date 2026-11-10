@@ -3,7 +3,8 @@ import type { z } from "zod";
 
 import type { DeviceCache } from "@/modules/device-cache";
 
-export type ResourceStatus = "loading" | "failed" | "ready";
+// `stale` shows the data it has while its last refresh failed.
+export type ResourceStatus = "loading" | "failed" | "ready" | "stale";
 
 type RollbackStates<Data> = { beforeState: Data; transactionState: Data; currentState: Data };
 
@@ -19,24 +20,19 @@ export type LiveResourceOptions<Data> = {
     // undefined leaves the copy already on the device.
     cachedPart?: (state: Data) => Data | undefined;
   };
-  // Optimistic changes return to what was shown when the server refuses them; by default the
-  // whole value, unless a change made meanwhile replaced it.
-  rollback?: { onRollback?: (states: RollbackStates<Data>) => Data };
+  // An optimistic change the server refuses returns to what was shown: "whole" restores the value
+  // unless a change made meanwhile replaced it, a function decides what to keep.
+  rollback?: "whole" | ((states: RollbackStates<NoInfer<Data>>) => NoInfer<Data>);
 };
 
 type Loaded = { data: () => unknown; error: () => unknown; ready: () => boolean };
 
-// What was shown stays shown: a failed refresh is not a failure while there is data.
 function statusOf({ data, error, ready }: Loaded): ResourceStatus {
-  if (data() !== undefined) {
-    return "ready";
-  }
-
   if (error() !== undefined) {
-    return "failed";
+    return data() === undefined ? "failed" : "stale";
   }
 
-  return ready() ? "ready" : "loading";
+  return data() !== undefined || ready() ? "ready" : "loading";
 }
 
 export function reatomLiveResource<Data>({
@@ -64,7 +60,7 @@ export function reatomLiveResource<Data>({
   }
 
   if (rollback !== undefined) {
-    resource.data.extend(withRollback(rollback));
+    resource.data.extend(withRollback(rollback === "whole" ? {} : { onRollback: rollback }));
   }
 
   return {

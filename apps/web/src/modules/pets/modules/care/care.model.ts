@@ -41,7 +41,7 @@ export function reatomCareData(dependencies: CareModelDependencies) {
 
       return id === undefined ? [] : api.list(id);
     },
-    rollback: { onRollback: rolledBackById },
+    rollback: rolledBackById,
   });
   const month = reatomExpenses(dependencies, { name: "care.month", rangeOf: monthRange });
   const year = reatomExpenses(dependencies, { name: "care.year", rangeOf: yearRange });

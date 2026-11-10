@@ -29,7 +29,7 @@ export function reatomGoals({
       schema: goalList,
       version: 1,
     },
-    rollback: { onRollback: rolledBackList },
+    rollback: rolledBackList,
   });
 
   return {

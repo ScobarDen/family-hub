@@ -521,6 +521,18 @@ describe("launching from the device cache", () => {
     expect(model.header()).toBe("1 дело");
   });
 
+  test("reads Today again on a visit after its refresh failed, keeping what it shows", async () => {
+    const device = await loadedOn("2026-10-16");
+    const { model, calls } = startToday({}, { device, failing: "/api/today", isLive: true });
+
+    await vi.waitFor(() => {
+      model.shown();
+      expect(loads(calls)).toBeGreaterThan(1);
+    });
+    expect(model.rows()).toHaveLength(1);
+    expect(model.loadFailure()).toBeUndefined();
+  });
+
   test("hides yesterday's «Сделать сегодня» but keeps «Впереди» and the tiles", async () => {
     const device = await loadedOn("2026-10-15");
     const { model } = startToday({}, { device, isOffline: true });

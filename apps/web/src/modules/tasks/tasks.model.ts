@@ -60,7 +60,7 @@ export function reatomTasks(dependencies: TasksModelDependencies) {
       schema: taskList,
       version: 1,
     },
-    rollback: { onRollback: rolledBackById },
+    rollback: rolledBackById,
   });
 
   return {

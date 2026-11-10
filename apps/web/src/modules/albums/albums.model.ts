@@ -51,7 +51,7 @@ export function reatomAlbumsData(dependencies: AlbumsDataDependencies) {
       schema: albumList,
       version: 1,
     },
-    rollback: { onRollback: rolledBackById },
+    rollback: rolledBackById,
   });
   const shown = reatomShownAlbums(dependencies);
 
