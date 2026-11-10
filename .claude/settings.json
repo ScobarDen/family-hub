@@ -1,16 +1,5 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "skillOverrides": {
-    "vue": "off",
-    "pinia": "off",
-    "mobx-mvvm": "off",
-    "qt-mvvm": "off",
-    "qt-cmake-boundaries": "off",
-    "unocss": "off",
-    "antfu-design": "off",
-    "antfu": "off",
-    "reatom-jsx": "off"
-  },
   "permissions": {
     "allow": [
       "Bash(vp check)",
@@ -29,5 +18,19 @@
       "Bash(gh pr diff:*)",
       "Bash(gh pr checks:*)"
     ]
+  },
+  "skillOverrides": {
+    "vue": "off",
+    "pinia": "off",
+    "mobx-mvvm": "off",
+    "qt-mvvm": "off",
+    "qt-cmake-boundaries": "off",
+    "unocss": "off",
+    "antfu-design": "off",
+    "antfu": "off",
+    "reatom-jsx": "off"
+  },
+  "enabledPlugins": {
+    "mattpocock-skills@claude-plugins-official": true
   }
 }
