@@ -201,6 +201,7 @@ function reatomPlanning({ dependencies, transport, clock, shared, routing }: Par
     tasks: reatomTasksScreen({
       api: createTasksApi(httpClient),
       liveVersion: () => live.versionOf("tasks"),
+      albumsVersion: () => live.versionOf("albums"),
       deviceCache,
       members: shared.members,
       pets: shared.petsModel.list,

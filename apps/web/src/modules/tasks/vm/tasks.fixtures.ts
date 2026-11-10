@@ -318,6 +318,7 @@ export function startTasks(
     pets: { data: atom(pets) },
     telegram,
     liveVersion: atom(0),
+    albumsVersion: () => 0,
     self: () => "member-1",
     viewer: () => ({ timeZone: "Europe/Moscow", today: "2026-10-16" }),
     onOpenAlbum: (albumId) => {
