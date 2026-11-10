@@ -1,41 +1,8 @@
 import { atom, context } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { LiveMessage } from "@family-hub/contract";
-
-import { reatomLiveUpdates, type LiveSocket } from "./live-updates.model.ts";
-
-class FakeSocket extends EventTarget implements LiveSocket {
-  isClosed = false;
-
-  close(): void {
-    this.isClosed = true;
-    // A browser fires «close» later, never inside close().
-    queueMicrotask(() => {
-      this.dispatchEvent(new Event("close"));
-    });
-  }
-
-  connect(versions: LiveMessage["versions"] = {}): void {
-    this.dispatchEvent(new Event("open"));
-    this.receive({ versions });
-  }
-
-  receive(message: LiveMessage | string): void {
-    const data = typeof message === "string" ? message : JSON.stringify(message);
-
-    this.dispatchEvent(new MessageEvent("message", { data }));
-  }
-}
-
-class FakePage extends EventTarget {
-  visibilityState: DocumentVisibilityState = "visible";
-
-  show(state: DocumentVisibilityState): void {
-    this.visibilityState = state;
-    this.dispatchEvent(new Event("visibilitychange"));
-  }
-}
+import { FakePage, FakeSocket } from "./live-updates.fixtures.ts";
+import { reatomLiveUpdates } from "./live-updates.model.ts";
 
 const ownClientId = "6b1d3c1e-8a52-4f7e-9b0e-2f4c5d6e7a81";
 const otherClientId = "0f8f2a52-3c4e-4b8a-9d55-6a1f0e2b7c11";

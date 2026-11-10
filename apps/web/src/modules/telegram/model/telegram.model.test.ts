@@ -1,47 +1,8 @@
 import { context, noop } from "@reatom/core";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import type { TelegramButton, TelegramWebApp } from "../telegram.types.ts";
+import { fakeWebApp } from "../telegram.fixtures.ts";
 import { reatomTelegram } from "./telegram.model.ts";
-
-const button: TelegramButton = { show: noop, hide: noop, onClick: noop, offClick: noop };
-
-function fakeWebApp({ version = "9.0" } = {}) {
-  const calls: string[] = [];
-  const webApp: TelegramWebApp = {
-    initData: "",
-    initDataUnsafe: {},
-    platform: "ios",
-    colorScheme: "light",
-    ready: () => calls.push("ready"),
-    expand: () => calls.push("expand"),
-    showAlert: noop,
-    showPopup: noop,
-    isVersionAtLeast: (wanted) => Number.parseFloat(version) >= Number.parseFloat(wanted),
-    requestWriteAccess: noop,
-    shareMessage: noop,
-    openTelegramLink: noop,
-    openLink: noop,
-    addToHomeScreen: () => calls.push("addToHomeScreen"),
-    checkHomeScreenStatus: (callback) => callback?.("missed"),
-    requestFullscreen: () => calls.push("requestFullscreen"),
-    exitFullscreen: () => calls.push("exitFullscreen"),
-    enableClosingConfirmation: () => calls.push("enableClosingConfirmation"),
-    disableClosingConfirmation: () => calls.push("disableClosingConfirmation"),
-    HapticFeedback: {
-      impactOccurred: (style) => calls.push(`impact ${style}`),
-      notificationOccurred: (type) => calls.push(type),
-      selectionChanged: () => calls.push("select"),
-    },
-    DeviceStorage: { setItem: noop, getItem: noop, removeItem: noop, clear: noop },
-    BackButton: button,
-    SettingsButton: button,
-    onEvent: noop,
-    offEvent: noop,
-  };
-
-  return { webApp, calls };
-}
 
 function pendingRead() {
   let resolve = noop;
