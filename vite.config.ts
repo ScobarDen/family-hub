@@ -19,13 +19,23 @@ const reactuse = {
   message: "reactuse holds ephemeral DOM state and lives only in *.view.tsx.",
 };
 
+// ADR 0020: a read of Family data built by hand can forget its live version and stop refreshing.
+const asyncData = {
+  name: "@reatom/core",
+  importNames: ["withAsyncData"],
+  message: "Load Family data through reatomLiveResource from modules/live-resource.",
+};
+
 function restrict(
   patterns: Pattern[],
-  { allowReactuse = false }: { allowReactuse?: boolean } = {},
+  {
+    allowReactuse = false,
+    allowAsyncData = false,
+  }: { allowReactuse?: boolean; allowAsyncData?: boolean } = {},
 ): { "no-restricted-imports": ["error", object] } {
-  return {
-    "no-restricted-imports": ["error", { paths: allowReactuse ? [] : [reactuse], patterns }],
-  };
+  const paths = [...(allowReactuse ? [] : [reactuse]), ...(allowAsyncData ? [] : [asyncData])];
+
+  return { "no-restricted-imports": ["error", { paths, patterns }] };
 }
 
 function feodRules(app: string) {
@@ -34,7 +44,23 @@ function feodRules(app: string) {
   return configFromProject({ rootDir: appDirectory }).rules ?? {};
 }
 
-const reactuseOnly = restrict([]);
+const reactuseOnly = restrict([], { allowAsyncData: true });
+
+const modelBoundary = [role("vm", "view", "dto")];
+const vmBoundary = [role("view", "dto"), { ...role("api"), allowTypeImports: true }];
+
+// The live resource itself, and the reads that follow no live module: sign-in, an Invite preview,
+// Devices, Invites and Photo Storage.
+const asyncDataModels = [
+  "modules/live-resource/live-resource.model.ts",
+  "modules/session/session.model.ts",
+];
+const asyncDataViewModels = [
+  "modules/join-family/vm/join-family.vm.ts",
+  "modules/member-settings/vm/devices.vm.ts",
+  "modules/invites/vm/invites.vm.ts",
+  "modules/photo-storage/vm/photo-storage.vm.ts",
+];
 
 function webSource(glob: string): string {
   return `apps/web/src/${glob}`;
@@ -313,11 +339,19 @@ export default defineConfig({
       },
       {
         files: [webSource("**/*.model.ts")],
-        rules: restrict([role("vm", "view", "dto")]),
+        rules: restrict(modelBoundary),
       },
       {
         files: [webSource("**/*.vm.ts")],
-        rules: restrict([role("view", "dto"), { ...role("api"), allowTypeImports: true }]),
+        rules: restrict(vmBoundary),
+      },
+      {
+        files: asyncDataModels.map(webSource),
+        rules: restrict(modelBoundary, { allowAsyncData: true }),
+      },
+      {
+        files: asyncDataViewModels.map(webSource),
+        rules: restrict(vmBoundary, { allowAsyncData: true }),
       },
       {
         files: [webSource("**/*.view.tsx")],
