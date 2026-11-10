@@ -1,6 +1,7 @@
-import { action, atom, computed, withAsyncData, withRollback, wrap } from "@reatom/core";
+import { action } from "@reatom/core";
 
 import { rolledBackById } from "@/common/records.lib.ts";
+import { reatomLiveResource } from "@/modules/live-resource";
 import type { LiveVersion } from "@/modules/live-updates";
 
 import type { CareApi } from "./care.api.ts";
@@ -13,47 +14,46 @@ export type CareModelDependencies = {
   timeZone: () => string;
 } & LiveVersion;
 
+function reatomExpenses(
+  { api, petId, today, timeZone, liveVersion }: CareModelDependencies,
+  { name, rangeOf }: { name: string; rangeOf: typeof monthRange },
+) {
+  return reatomLiveResource({
+    name,
+    liveVersion,
+    load: async () => {
+      const id = petId();
+
+      return id === undefined ? undefined : api.expenses(id, rangeOf(today(), timeZone()));
+    },
+  });
+}
+
 // Every change of a Care Entry may move the journal, the chart and both expense totals, so all
 // three reload together after it.
-export function reatomCareData({
-  api,
-  petId,
-  today,
-  timeZone,
-  liveVersion,
-}: CareModelDependencies) {
-  const version = atom(0, "care.version");
-  const entries = computed(async () => {
-    version();
-    liveVersion?.();
-    const id = petId();
+export function reatomCareData(dependencies: CareModelDependencies) {
+  const { api, petId, liveVersion } = dependencies;
+  const entries = reatomLiveResource({
+    name: "care.entries",
+    liveVersion,
+    load: async () => {
+      const id = petId();
 
-    return id === undefined ? [] : wrap(api.list(id));
-  }, "care.entries").extend(withAsyncData());
-
-  entries.data.extend(withRollback({ onRollback: rolledBackById }));
+      return id === undefined ? [] : api.list(id);
+    },
+    rollback: { onRollback: rolledBackById },
+  });
+  const month = reatomExpenses(dependencies, { name: "care.month", rangeOf: monthRange });
+  const year = reatomExpenses(dependencies, { name: "care.year", rangeOf: yearRange });
 
   return {
     entries,
-
-    month: computed(async () => {
-      version();
-      liveVersion?.();
-      const id = petId();
-
-      return id === undefined ? undefined : wrap(api.expenses(id, monthRange(today(), timeZone())));
-    }, "care.month").extend(withAsyncData()),
-
-    year: computed(async () => {
-      version();
-      liveVersion?.();
-      const id = petId();
-
-      return id === undefined ? undefined : wrap(api.expenses(id, yearRange(today(), timeZone())));
-    }, "care.year").extend(withAsyncData()),
-
+    month,
+    year,
     reload: action(() => {
-      version.set(version() + 1);
+      entries.reload();
+      month.reload();
+      year.reload();
     }, "care.reload"),
   };
 }

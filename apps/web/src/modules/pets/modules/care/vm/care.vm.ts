@@ -160,7 +160,7 @@ function reatomRemove(
         return;
       }
 
-      data.entries.data.set(withoutId(data.entries.data() ?? [], entryId));
+      data.entries.change((entries) => withoutId(entries ?? [], entryId));
       isFormOpen.setFalse();
       await wrap(api.remove(entryId));
     },

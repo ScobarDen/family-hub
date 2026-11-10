@@ -74,9 +74,7 @@ function listOf({ pets, viewer }: PetsDependencies): PetsScreen {
 export function reatomScreen(dependencies: PetsDependencies, openedPet: () => Pet | undefined) {
   return computed((): PetsScreen => {
     if (dependencies.pets.list.data() === undefined) {
-      return dependencies.pets.list.error() === undefined
-        ? { kind: "loading" }
-        : { kind: "failed" };
+      return { kind: dependencies.pets.list.status() === "failed" ? "failed" : "loading" };
     }
 
     const pet = openedPet();
