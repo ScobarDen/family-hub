@@ -41,11 +41,9 @@ import { reatomNavigation, type NavigationModel } from "./app.route.ts";
 import { reatomOpener, type OpenTarget } from "./opener.vm.ts";
 import { reatomPrefetch } from "./prefetch.vm.ts";
 
-type Transport = AppTransport;
-
 function reatomEntry(
   { telegram, platform, botUsername }: AppDependencies,
-  { httpClient, sessionApi, deviceCache }: Transport,
+  { httpClient, sessionApi, deviceCache }: AppTransport,
 ) {
   const session = reatomSession({
     api: sessionApi,
@@ -125,7 +123,7 @@ function lateRouting() {
 type Routing = ReturnType<typeof lateRouting>;
 
 // One query each for the Family's Members and Pets, so every picker sees the same list.
-function reatomShared({ httpClient, live, deviceCache }: Transport, session: Session) {
+function reatomShared({ httpClient, live, deviceCache }: AppTransport, session: Session) {
   const familyApi = createFamilyApi(httpClient);
   const petsApi = createPetsApi(httpClient);
 
@@ -154,7 +152,7 @@ type Shared = ReturnType<typeof reatomShared>;
 
 type Parts = {
   dependencies: AppDependencies;
-  transport: Transport;
+  transport: AppTransport;
   session: Session;
   clock: Clock;
   shared: Shared;

@@ -44,7 +44,8 @@ function feodRules(app: string) {
   return configFromProject({ rootDir: appDirectory }).rules ?? {};
 }
 
-const reactuseOnly = restrict([], { allowAsyncData: true });
+const reactuseOnly = restrict([]);
+const testImports = restrict([], { allowAsyncData: true });
 
 const modelBoundary = [role("vm", "view", "dto")];
 const vmBoundary = [role("view", "dto"), { ...role("api"), allowTypeImports: true }];
@@ -331,7 +332,7 @@ export default defineConfig({
       { files: [webSource("**/*.{ts,tsx}")], rules: feodRules("web") },
       { files: [apiSource("**/*.ts")], rules: feodRules("api") },
       { files: ["apps/*/src/**/*.{ts,tsx}"], rules: restrict([role("dto")]) },
-      { files: ["apps/*/src/**/*.test.{ts,tsx}"], rules: reactuseOnly },
+      { files: ["apps/*/src/**/*.test.{ts,tsx}"], rules: testImports },
       { files: [webSource("**/*.dto.ts")], rules: reactuseOnly },
       {
         files: [webSource("**/*.api.ts")],

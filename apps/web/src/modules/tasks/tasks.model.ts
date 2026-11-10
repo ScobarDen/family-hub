@@ -43,7 +43,6 @@ async function loadedOf(list: TaskList): Promise<Task[]> {
 type TasksModelDependencies = {
   api: TasksApi;
   deviceCache: Pick<DeviceCache, "withDeviceCache">;
-  // The Albums a Task may link to follow their own module.
   albumsVersion: () => number;
 } & SharedLists &
   LiveVersion;

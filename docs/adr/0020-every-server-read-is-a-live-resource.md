@@ -5,9 +5,9 @@ Each loaded list assembled the same recipe by hand: a local version atom, an asy
 ## Decisions
 
 - **This narrows [ADR 0012](0012-screens-render-from-a-device-cache-before-sign-in.md)'s "one extension, not a resource framework".** The resource owns the version, the live subscription, the device cache, rollback and the status; it still has no cache by parameters and no `withCache`. A read that depends on other atoms (an opened id, today's date) reads them inside its load, and they restart it like any dependency.
-- **The live version is required.** A model receives `liveVersion: () => number` from the composition root (`live.versionOf(module)` or `live.all`), so a test passes a plain atom and a model never imports `live-updates`.
+- **The live version is required.** A model receives `liveVersion: () => number` from the composition root (`live.versionOf(module)` or `live.all`), so a test passes a plain atom and a model takes only the `LiveVersion` type from `live-updates`.
 - **A local change goes through the resource**, which restarts a fetch already in flight: a fetch sent before a save answers with the record as it was.
-- **The status is one union.** `ready` means there is data to show, cached or fresh; `failed` means an error and nothing to show; a failed refresh keeps what is shown.
+- **The status is one union.** `ready` means there is data to show, cached or fresh; `stale` that a refresh failed and the earlier data stays shown; `failed` an error with nothing to show. Today reads itself again on a visit while it is `stale` or `failed`.
 - **Rollback lives on the resource, the failure bar on the screen.** A resource may declare how its data rolls back; `reatomOptimistic` and the failure bar stay in `changes`, because one screen may write to a resource it does not show (Today completes a Task).
 - **The linter forbids `withAsyncData` outside the module**, except for tests and the reads that follow no live module (sign-in, an Invite preview, Devices, Invites, Photo Storage).
 - **The Family's Members follow the `feed` version**, the one a write to the Family moves; the Albums a Task may link follow `albums`.
