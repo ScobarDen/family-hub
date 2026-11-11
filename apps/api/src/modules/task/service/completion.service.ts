@@ -1,15 +1,55 @@
 import type { Membership } from "@/modules/auth";
 
-import { isAllDone, isOccurrenceOf, occurrenceKey } from "../task.lib.ts";
+import { isAllDone, isOccurrenceOf, occurrenceDateOf, occurrenceKey } from "../task.lib.ts";
+import type { CompletionRow, TaskRow } from "../task.repo.ts";
 import type { OccurrenceOf, SubtaskTarget, TaskDependencies, TaskResult } from "../task.types.ts";
 import { currentTask, hasSubtask, visibleTree } from "./access.service.ts";
 
+function completerOf(completion: CompletionRow | undefined) {
+  return completion?.byId === undefined || completion.byId === null || completion.by === null
+    ? undefined
+    : { id: completion.byId, name: completion.by };
+}
+
+// Named after the Member the completion records, so completing it again never renames who did it;
+// an Occurrence no Reminder can name still reschedules the Task.
+async function announceCompleted(
+  { tasks, schedule }: TaskDependencies,
+  familyId: string,
+  { taskId, occurrence }: OccurrenceOf,
+): Promise<void> {
+  const tree = await tasks.findTree(familyId, taskId);
+  const row = tree?.root.row;
+  const date = row && occurrenceDateOf(row, occurrence);
+  const by = completerOf(
+    row &&
+      tree?.root.completions.find((found) => found.occurrence === occurrenceKey(row, occurrence)),
+  );
+
+  await (date === undefined || date === null || by === undefined
+    ? schedule.sourceChanged(familyId, { kind: "task", id: taskId })
+    : schedule.occurrenceCompleted(familyId, { taskId, occurrence: date, by }));
+}
+
+async function announceReopened(
+  { schedule }: TaskDependencies,
+  familyId: string,
+  { row, occurrence }: { row: TaskRow; occurrence: string | null },
+): Promise<void> {
+  const date = occurrenceDateOf(row, occurrence);
+
+  await (date === null
+    ? schedule.sourceChanged(familyId, { kind: "task", id: row.id })
+    : schedule.occurrenceReopened(familyId, { taskId: row.id, occurrence: date }));
+}
+
 // The Task follows its Subtasks: Completed when the last one is, open again when any one is.
 export async function settle(
-  { tasks, clock }: TaskDependencies,
+  dependencies: TaskDependencies,
   { family, member }: Membership,
   taskId: string,
 ): Promise<void> {
+  const { tasks, clock } = dependencies;
   const tree = await tasks.findTree(family.id, taskId);
 
   if (!tree || tree.subtasks.length === 0) {
@@ -27,8 +67,10 @@ export async function settle(
       memberId: member.id,
       now: clock.now(),
     });
+    await announceCompleted(dependencies, family.id, { taskId, occurrence: null });
   } else if (!isDone && isRootDone) {
     await tasks.reopen({ familyId: family.id, taskId, occurrence: "" });
+    await announceReopened(dependencies, family.id, { row: tree.root.row, occurrence: null });
   }
 }
 
@@ -63,6 +105,7 @@ export async function complete(
     taskIds: [taskId],
     occurrence: occurrenceKey(tree.root.row, occurrence),
   });
+  await announceCompleted(dependencies, membership.family.id, { taskId, occurrence });
 
   return currentTask(dependencies, membership, taskId);
 }
@@ -87,6 +130,7 @@ export async function reopen(
     taskId,
     occurrence: occurrenceKey(tree.root.row, occurrence),
   });
+  await announceReopened(dependencies, membership.family.id, { row: tree.root.row, occurrence });
 
   return currentTask(dependencies, membership, taskId);
 }

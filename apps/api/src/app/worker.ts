@@ -93,7 +93,6 @@ import {
   createTaskTile,
   taskRoute,
   type TaskRepo,
-  type TaskService,
 } from "@/modules/task";
 import {
   createChatService,
@@ -241,19 +240,10 @@ function todayServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Cl
   });
 }
 
-// «Готово» in the bot completes a Task Occurrence, and the Task reschedules its Reminders; the
-// morning digest reads the Member's Feed.
-function reminderServiceOf(
-  db: Db,
-  { shared, feed, tasks }: { shared: Shared; feed: FeedService; tasks: () => TaskService },
-) {
-  const taskRepo = createTaskRepo(db);
-
+// A Task reads its Reminders' sources; the morning digest reads the Member's Feed.
+function reminderServiceOf(db: Db, { shared, feed }: { shared: Shared; feed: FeedService }) {
   return createReminderService({
-    tasks: {
-      findTree: taskRepo.findTree,
-      complete: async (membership, target) => tasks().complete(membership, target),
-    },
+    tasks: { findTree: createTaskRepo(db).findTree },
     digests: {
       contentOf: async (memberId) => {
         const membership = await shared.memberships.findByMemberId(memberId);
@@ -271,7 +261,7 @@ function reminderServiceOf(
 function familyRecordServices(db: Db, { links, ...shared }: Records) {
   const { clock, live } = shared;
   const feed = feedServiceOf(db, { links, clock });
-  const reminders = reminderServiceOf(db, { shared, feed, tasks: () => tasks });
+  const reminders = reminderServiceOf(db, { shared, feed });
   const tasks = createTaskService({
     tasks: createTaskRepo(db),
     ...shared,

@@ -19,7 +19,7 @@ type Background = { waitUntil: (work: Promise<unknown>) => void };
 
 async function handleCallback(services: AppServices, query: CallbackQuery): Promise<void> {
   await (query.data?.startsWith(`${reminderCallbackPrefix}:`) === true
-    ? services.reminders.handleCallback(query)
+    ? services.reminders.handleCallback(query, services.tasks)
     : services.familyRequests.handleCallback(query));
 }
 

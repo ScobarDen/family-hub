@@ -2,6 +2,7 @@ import { bindFirst } from "@/common/bind.lib.ts";
 
 import type { ChangedSource, ReminderDependencies } from "../reminder.types.ts";
 import { handlePushPress, handleReminderCallback } from "./callback.service.ts";
+import { occurrenceCompleted, occurrenceReopened } from "./closing.service.ts";
 import { deliverDue } from "./delivery.service.ts";
 import { sendToday } from "./digest-source.service.ts";
 import {
@@ -18,6 +19,8 @@ export function createReminderService(dependencies: ReminderDependencies) {
       handlePushPress,
       membershipChanged,
       digestChanged,
+      occurrenceCompleted,
+      occurrenceReopened,
       zoneChanged,
       sendToday,
     }),

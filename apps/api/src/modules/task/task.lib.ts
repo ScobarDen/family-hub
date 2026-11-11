@@ -21,6 +21,11 @@ export function occurrenceKey(row: TaskRow, occurrence: string | null): string {
   return row.frequency === null ? "" : (occurrence ?? "");
 }
 
+// The date a Reminder knows an Occurrence by: a Task without a Recurrence has only its own date.
+export function occurrenceDateOf(row: TaskRow, occurrence: string | null): string | null {
+  return row.frequency === null ? row.date : occurrence;
+}
+
 // Any date stands for the one Occurrence of a Task without a Recurrence.
 export function isOccurrenceOf(row: TaskRow, date: string | null): boolean {
   if (row.frequency === null) {

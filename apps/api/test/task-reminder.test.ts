@@ -249,6 +249,151 @@ describe("«Готово»", () => {
     expect(textsTo(worker, denis).at(-1)).toBe("📌 Таблетка Бьюику · 12 октября");
   });
 
+  test("after completing in the app, the messages name who did it and refuse a later press", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Таблетка Бьюику",
+      when: { date: "2026-10-05", ...dateOnly },
+      recurrence: { frequency: "weekly", until: null },
+      assigneeIds: [worker.denisId, worker.asyaId],
+      reminderOffsets: ["at-start"],
+    });
+
+    await tickAt(worker, "2026-10-05T06:00:00Z");
+    await request(worker, denis, {
+      method: "POST",
+      path: `/api/tasks/${task.id}/complete`,
+      body: { occurrence: "2026-10-05" },
+    });
+    await press(worker, asya, "✅ Готово");
+
+    expect(worker.bot.editedMessages().map(({ text }) => text)).toEqual([
+      "✅ Сделал(а) Денис: Таблетка Бьюику · 5 октября",
+      "✅ Сделал(а) Денис: Таблетка Бьюику · 5 октября",
+    ]);
+    expect(worker.bot.answeredCallbacks().at(-1)).toMatchObject({ text: "Уже сделано" });
+  });
+
+  test("on one offset's message also rewrites the other offset's message", async () => {
+    const worker = await startWithFamily();
+
+    await createTask(worker, {
+      title: "Стоматолог",
+      when: { ...dateOnly, date: "2026-10-05", time: "15:00", timeZone: "Europe/Moscow" },
+      reminderOffsets: ["1d", "1h"],
+    });
+    await tickAt(worker, "2026-10-04T12:00:00Z");
+    await tickAt(worker, "2026-10-05T11:00:00Z");
+    await press(worker, denis, "✅ Готово");
+
+    expect(worker.bot.editedMessages().map(({ text }) => text)).toEqual([
+      "✅ Сделал(а) Денис: Стоматолог · 5 октября, 15:00",
+      "✅ Сделал(а) Денис: Стоматолог · 5 октября, 15:00",
+    ]);
+  });
+
+  test("names who completed the last Subtask, which completed the Task", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Собрать Бьюика к грумеру",
+      when: { date: "2026-10-05", ...dateOnly },
+      recipients: "everyone",
+      reminderOffsets: ["at-start"],
+    });
+    const withSubtask = await bodyOf<Task>(
+      request(worker, denis, {
+        method: "POST",
+        path: `/api/tasks/${task.id}/subtasks`,
+        body: { title: "Найти поводок", assigneeIds: [] },
+      }),
+    );
+    const [subtask] = withSubtask.subtasks;
+
+    await tickAt(worker, "2026-10-05T06:00:00Z");
+    await request(worker, asya, {
+      method: "POST",
+      path: `/api/tasks/${task.id}/subtasks/${subtask?.id}/complete`,
+    });
+
+    expect(worker.bot.editedMessages().map(({ text }) => text)).toEqual([
+      "✅ Сделал(а) Ася: Собрать Бьюика к грумеру · 5 октября",
+      "✅ Сделал(а) Ася: Собрать Бьюика к грумеру · 5 октября",
+    ]);
+  });
+
+  test("keeps the name of whoever completed it first", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Таблетка Бьюику",
+      when: { date: "2026-10-05", ...dateOnly },
+      recurrence: { frequency: "weekly", until: null },
+      assigneeIds: [worker.denisId, worker.asyaId],
+      reminderOffsets: ["at-start"],
+    });
+
+    await tickAt(worker, "2026-10-05T06:00:00Z");
+    await press(worker, asya, "✅ Готово");
+    await request(worker, denis, {
+      method: "POST",
+      path: `/api/tasks/${task.id}/complete`,
+      body: { occurrence: "2026-10-05" },
+    });
+
+    expect(worker.bot.editedMessages().map(({ text }) => text)).toEqual([
+      "✅ Сделал(а) Ася: Таблетка Бьюику · 5 октября",
+      "✅ Сделал(а) Ася: Таблетка Бьюику · 5 октября",
+    ]);
+  });
+
+  test("completes again an Occurrence reopened in the app", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Таблетка Бьюику",
+      when: { date: "2026-10-05", ...dateOnly },
+      recurrence: { frequency: "weekly", until: null },
+      reminderOffsets: ["at-start"],
+    });
+
+    await tickAt(worker, "2026-10-05T06:00:00Z");
+    await press(worker, denis, "✅ Готово");
+    await request(worker, denis, {
+      method: "POST",
+      path: `/api/tasks/${task.id}/reopen`,
+      body: { occurrence: "2026-10-05" },
+    });
+    await press(worker, denis, "✅ Готово");
+
+    const tasks = await bodyOf<TaskList>(request(worker, denis, { path: "/api/tasks" }));
+
+    expect(worker.bot.answeredCallbacks().at(-1)).not.toHaveProperty("text");
+    expect(tasks.find(({ id }) => id === task.id)?.completions).toMatchObject([
+      { occurrence: "2026-10-05", by: "Денис" },
+    ]);
+  });
+
+  test("on a skipped Occurrence completes nothing and says it is closed", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Прогулка с Бьюиком",
+      when: { date: "2026-10-05", ...dateOnly },
+      recurrence: { frequency: "weekly", until: null },
+      reminderOffsets: ["at-start"],
+    });
+
+    await tickAt(worker, "2026-10-05T06:00:00Z");
+    await request(worker, denis, {
+      method: "POST",
+      path: `/api/tasks/${task.id}/skip`,
+      body: { date: "2026-10-05" },
+    });
+    await press(worker, denis, "✅ Готово");
+
+    const tasks = await bodyOf<TaskList>(request(worker, denis, { path: "/api/tasks" }));
+
+    expect(tasks.find(({ id }) => id === task.id)?.completions).toEqual([]);
+    expect(worker.bot.answeredCallbacks().at(-1)).toMatchObject({ text: "Уже сделано" });
+  });
+
   test.each([
     ["the Task is deleted", "DELETE"],
     ["the presser has left the Family", "LEAVE"],

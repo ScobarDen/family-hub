@@ -7,20 +7,26 @@ import { ignoringBotErrors } from "@/modules/telegram";
 
 import {
   alreadyDoneText,
-  doneText,
+  holderIdOf,
   notDoneText,
   notYoursText,
   parseCallback,
   passedText,
   snoozedText,
 } from "../reminder.lib.ts";
-import type { PushPressClaims, ReminderDependencies, Source } from "../reminder.types.ts";
+import type {
+  PushPressClaims,
+  ReminderDependencies,
+  Source,
+  TaskCompletion,
+} from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
-import { fireAfter, zoneOf } from "./schedule.service.ts";
+import { closeOccurrence } from "./closing.service.ts";
+import { zoneOf } from "./schedule.service.ts";
 import { sourceOfRow } from "./source.service.ts";
 
-// `occurrence` is the one the pressed message showed; `isClosed` tells it was already done, or for
-// a Push also that its source no longer reminds of it.
+// `occurrence` is the one the pressed message showed; `isClosed` tells it was already done, skipped
+// or is no longer one its source reminds of.
 type Press = {
   row: DispatchRow;
   source: Source;
@@ -28,70 +34,6 @@ type Press = {
   occurrence: string | null;
   isClosed: boolean;
 };
-
-type Closing = ReminderDependencies & Omit<Press, "isClosed"> & { now: number };
-
-async function closeMessage(closing: Closing, other: DispatchRow) {
-  const { dispatch, bot, source, presser, now, occurrence } = closing;
-
-  if (other.chatId !== null && other.messageId !== null) {
-    await ignoringBotErrors(
-      bot.call("editMessageText", {
-        chat_id: other.chatId,
-        message_id: other.messageId,
-        text: doneText({
-          text: source.title(
-            occurrence ?? "",
-            await zoneOf(closing, { memberId: other.memberId, source }),
-          ),
-          doneBy: presser.member.name,
-        }),
-      }),
-    );
-  }
-
-  await dispatch.update(other.familyId, other.id, {
-    doneAt: now,
-    doneBy: presser.member.id,
-    updatedAt: now,
-  });
-}
-
-async function moveOn(closing: Closing, other: DispatchRow) {
-  const { dispatch, source, occurrence, now } = closing;
-  const next =
-    occurrence === null
-      ? undefined
-      : fireAfter(source, {
-          occurrence,
-          timeZone: await zoneOf(closing, { memberId: other.memberId, source }),
-        });
-
-  await dispatch.update(other.familyId, other.id, {
-    occurrence: next?.occurrence ?? null,
-    nextFireAt: next?.fireAt ?? null,
-    updatedAt: now,
-  });
-}
-
-// «Готово» closes the Occurrence for every Recipient: sent messages turn into «Сделал(а) …» and
-// rows still waiting for it move on.
-async function markDone(
-  dependencies: ReminderDependencies,
-  { press, rows }: { press: Press; rows: DispatchRow[] },
-) {
-  const closing: Closing = { ...dependencies, ...press, now: dependencies.clock.now() };
-
-  for (const other of rows) {
-    if (other.sentOccurrence === closing.occurrence) {
-      await closeMessage(closing, other);
-    }
-
-    if (closing.occurrence !== null && other.occurrence === closing.occurrence) {
-      await moveOn(closing, other);
-    }
-  }
-}
 
 // «Отложить» is the presser's own: their row comes back for the same Occurrence later.
 async function didSnooze(
@@ -121,16 +63,29 @@ async function didSnooze(
   return true;
 }
 
-// The source closes first, so a message never says «Сделал(а)» about what the app still shows open;
-// its rows are read before, as completing a single Task drops them.
-async function didComplete(dependencies: ReminderDependencies, press: Press): Promise<boolean> {
-  const rows = await dependencies.dispatch.ofSource(press.row);
+// A Task completes in the task module, which tells every row of its Occurrence; a source with no
+// module of its own closes its rows here.
+async function didComplete(
+  dependencies: ReminderDependencies,
+  { press, tasks }: { press: Press; tasks: TaskCompletion },
+): Promise<boolean> {
+  const { row, source, presser, occurrence } = press;
 
-  if ((await press.source.complete?.(press.presser, press.occurrence)) === false) {
-    return false;
+  if (source.kind === "task") {
+    const { status } = await tasks.complete(presser, {
+      taskId: holderIdOf(row.sourceId),
+      occurrence,
+    });
+
+    return status === "ok";
   }
 
-  await markDone(dependencies, { press, rows });
+  await closeOccurrence(dependencies, {
+    rows: await dependencies.dispatch.ofSource(row),
+    occurrence,
+    by: presser.member,
+    sourceOf: () => source,
+  });
 
   return true;
 }
@@ -162,22 +117,16 @@ async function pressOf(
   const presser = await dependencies.memberships.findByTelegramId(telegramId);
   const found = await pressedRow(dependencies, { dispatchId, presser });
 
-  return (
-    found && {
-      ...found,
-      occurrence: found.row.sentOccurrence ?? found.row.occurrence,
-      isClosed: found.row.doneAt !== null,
-    }
-  );
+  const occurrence = found?.row.sentOccurrence ?? found?.row.occurrence ?? null;
+
+  return found && { ...found, occurrence, isClosed: isClosedOn(found, occurrence) };
 }
 
-// The Occurrence the Push showed is closed once «Готово» marked it on the row or the source no
-// longer reminds of it.
+// The one rule for the bot and a Push: the source tells, or the mark «Готово» left on the row.
 function isClosedOn({ row, source }: Pick<Press, "row" | "source">, occurrence: string | null) {
-  return (
-    (row.sentOccurrence === occurrence && row.doneAt !== null) ||
-    (occurrence !== null && source.first(occurrence) !== occurrence)
-  );
+  return occurrence !== null && source.isClosed !== undefined
+    ? source.isClosed(occurrence)
+    : row.sentOccurrence === occurrence && row.doneAt !== null;
 }
 
 // A signed press whose row or source is gone was answered already: a completed single Task drops
@@ -205,7 +154,7 @@ async function pushPressOf(
 // The text the pressed button answers with, or nothing when it did what it says.
 async function pressed(
   dependencies: ReminderDependencies,
-  { press, isDone }: { press: Press; isDone: boolean },
+  { press, isDone, tasks }: { press: Press; isDone: boolean; tasks: TaskCompletion },
 ): Promise<string | undefined> {
   // Snoozing an Occurrence someone already did would bring it back and push the next one aside.
   if (press.isClosed) {
@@ -213,7 +162,7 @@ async function pressed(
   }
 
   if (isDone && press.source.closesForEveryone) {
-    return (await didComplete(dependencies, press)) ? undefined : notDoneText;
+    return (await didComplete(dependencies, { press, tasks })) ? undefined : notDoneText;
   }
 
   await didSnooze(dependencies, press);
@@ -224,6 +173,7 @@ async function pressed(
 export async function handleReminderCallback(
   dependencies: ReminderDependencies,
   query: CallbackQuery,
+  tasks: TaskCompletion,
 ): Promise<void> {
   const parsed = parseCallback(query.data);
   const press =
@@ -232,7 +182,7 @@ export async function handleReminderCallback(
   const text =
     parsed === undefined || press === undefined
       ? notYoursText
-      : await pressed(dependencies, { press, isDone: parsed.action === "done" });
+      : await pressed(dependencies, { press, isDone: parsed.action === "done", tasks });
 
   await ignoringBotErrors(
     dependencies.bot.call(
@@ -248,6 +198,7 @@ export async function handleReminderCallback(
 export async function handlePushPress(
   dependencies: ReminderDependencies,
   { token, action }: PushPress,
+  tasks: TaskCompletion,
 ): Promise<string | undefined> {
   const claims = await dependencies.push.pressOf(token);
   const press = claims && (await pushPressOf(dependencies, claims));
@@ -262,5 +213,5 @@ export async function handlePushPress(
 
   return action === "snooze" && press.row.sentOccurrence !== press.occurrence
     ? passedText
-    : pressed(dependencies, { press, isDone: action === "done" });
+    : pressed(dependencies, { press, isDone: action === "done", tasks });
 }

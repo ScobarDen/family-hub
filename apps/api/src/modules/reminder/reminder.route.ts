@@ -4,9 +4,10 @@ import { pushPress } from "@family-hub/contract";
 
 import { apiError, httpStatus, jsonBody } from "@/common/errors.lib.ts";
 
+import type { TaskCompletion } from "./reminder.types.ts";
 import type { ReminderService } from "./service/reminder.service.ts";
 
-type ReminderEnv = { Variables: { reminders: ReminderService } };
+type ReminderEnv = { Variables: { reminders: ReminderService; tasks: TaskCompletion } };
 
 // No session: a Push's button comes from the service worker, and its token names the presser
 // (ADR 0016).
@@ -14,7 +15,10 @@ export const reminderRoute = new Hono<ReminderEnv>().post(
   "/api/reminders/press",
   jsonBody(pushPress, "A press token and «done» or «snooze» are required"),
   async (context) => {
-    const refusal = await context.var.reminders.handlePushPress(context.req.valid("json"));
+    const refusal = await context.var.reminders.handlePushPress(
+      context.req.valid("json"),
+      context.var.tasks,
+    );
 
     return refusal === undefined
       ? context.body(null, httpStatus.noContent)

@@ -21,13 +21,14 @@ import {
 } from "../reminder.lib.ts";
 import type { PushText, ReminderDependencies, Source, SourceHolder } from "../reminder.types.ts";
 
-// The Occurrences still to remind of: skipped and Completed ones are left out.
+// The Occurrences still to remind of: skipped and Completed ones are left out, and an Occurrence
+// that is not one of them is closed. A single Task's one completion is stored under "".
 function seriesSteps(root: TaskRecord, date: string) {
   const { row } = root;
   const recurrence = row.frequency === null ? null : { frequency: row.frequency, until: row.until };
   const closed = new Set([
     ...row.skippedDates,
-    ...root.completions.map(({ occurrence }) => occurrence),
+    ...root.completions.map(({ occurrence }) => (row.frequency === null ? date : occurrence)),
   ]);
 
   function from(day: string): string | undefined {
@@ -38,7 +39,11 @@ function seriesSteps(root: TaskRecord, date: string) {
       : occurrence;
   }
 
-  return { first: from, next: (occurrence: string) => from(daysAfter(occurrence, 1)) };
+  return {
+    first: from,
+    next: (occurrence: string) => from(daysAfter(occurrence, 1)),
+    isClosed: (occurrence: string) => from(occurrence) !== occurrence,
+  };
 }
 
 function titleOf(row: TaskRow, { occurrence, timeZone }: { occurrence: string; timeZone: string }) {
@@ -132,11 +137,6 @@ function taskSource(
     deepLink: { kind: "task", id: row.id },
     closesForEveryone: true,
     isPressable: true,
-    complete: async (presser, occurrence) => {
-      const { status } = await dependencies.tasks.complete(presser, { taskId: row.id, occurrence });
-
-      return status === "ok";
-    },
     snoozeMs: isTimed ? snoozeMs : daySnoozeMs,
     isSkippedWhenLate: true,
   };
@@ -158,12 +158,11 @@ function isSilent({ root }: TaskTree, pet: PetOfTask): boolean {
   return (row.frequency === null && completions.length > 0) || (pet?.archivedAt ?? null) !== null;
 }
 
-// Each offset of a Task is a source of its own, so «Готово» on one leaves the others; a Pet-linked
-// Task offers to record a Care Entry.
-export async function taskSources(
+async function loadTaskSources(
   dependencies: ReminderDependencies,
-  { familyId, id }: SourceHolder,
+  { holder, isKept }: { holder: SourceHolder; isKept: (tree: TaskTree, pet: PetOfTask) => boolean },
 ): Promise<Source[]> {
+  const { familyId, id } = holder;
   const tree = await dependencies.tasks.findTree(familyId, id);
   const date = tree?.root.row.date ?? null;
 
@@ -174,7 +173,7 @@ export async function taskSources(
   const { row } = tree.root;
   const pet = await petOfTask(dependencies, { familyId, petId: row.petId });
 
-  if (isSilent(tree, pet)) {
+  if (!isKept(tree, pet)) {
     return [];
   }
 
@@ -189,4 +188,21 @@ export async function taskSources(
       sourcing: { offset, recipientIds, chatLink, openUrl, section: pet?.name ?? "Дела" },
     }),
   );
+}
+
+// Each offset of a Task is a source of its own with rows of its own; a Pet-linked Task offers to
+// record a Care Entry.
+export async function taskSources(
+  dependencies: ReminderDependencies,
+  holder: SourceHolder,
+): Promise<Source[]> {
+  return loadTaskSources(dependencies, { holder, isKept: (tree, pet) => !isSilent(tree, pet) });
+}
+
+// The sources a just Completed Occurrence closes, even when completing it silenced them.
+export async function taskSourcesToClose(
+  dependencies: ReminderDependencies,
+  holder: SourceHolder,
+): Promise<Source[]> {
+  return loadTaskSources(dependencies, { holder, isKept: () => true });
 }
