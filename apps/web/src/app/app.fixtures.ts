@@ -89,17 +89,26 @@ async function wait(ms: number): Promise<void> {
   });
 }
 
+function confirmingTelegram() {
+  const { webApp } = fakeWebApp({
+    initData: "query_id=AAH&hash=abc",
+    deviceStorage: fakeDeviceStorage().deviceStorage,
+  });
+
+  return reatomTelegram({
+    ...webApp,
+    showPopup: (params, callback) => {
+      callback?.(params.buttons[0]?.id ?? null);
+    },
+  });
+}
+
 // The whole app over a fake Worker and a fake socket, as a Member in Telegram sees it.
 export function startApp(routes: Routes) {
   const worker = fakeWorker(routes);
   const sockets = fakeSockets();
   const app = reatomApp({
-    telegram: reatomTelegram(
-      fakeWebApp({
-        initData: "query_id=AAH&hash=abc",
-        deviceStorage: fakeDeviceStorage().deviceStorage,
-      }).webApp,
-    ),
+    telegram: confirmingTelegram(),
     platform: undefined,
     apiUrl: "https://api.family-hub.test",
     fetch: worker.fetch,

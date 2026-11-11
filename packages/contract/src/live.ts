@@ -21,14 +21,15 @@ export const liveMessage = z.object({
 export type LiveMessage = z.infer<typeof liveMessage>;
 
 // The first segment after `/api/` names what a write changed; the Feed and Today read every module.
-// Pets carry their Tasks and birthdays, and a Care Entry may create a follow-up Task.
+// Pets carry their Tasks and birthdays, and a Care Entry may create a follow-up Task. A Photo's
+// path does not say where it hung, so its deletion names every module a Photo hangs in.
 const modulesByPath = new Map<string, AppModule[]>([
   ["tasks", ["tasks", "pet"]],
   ["pets", ["pet", "tasks"]],
   ["care-entries", ["pet", "tasks"]],
   ["goals", ["goals"]],
   ["albums", ["albums"]],
-  ["photos", ["albums"]],
+  ["photos", ["albums", "pet", "recipes"]],
   ["recipes", ["recipes"]],
   ["recipe-tags", ["recipes"]],
   ["family", ["feed"]],

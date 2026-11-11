@@ -356,7 +356,7 @@ function reatomFormState(
   };
 }
 
-// A photo deleted from a Recipe moves no live version, and «Повторить» reads everything again.
+// «Повторить» reads everything again.
 function reatomReloadAll(data: RecipesData, opened: Opened) {
   return action(() => {
     data.reload();
@@ -393,7 +393,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     screenKey: reatomScreenKey(navigation),
     retry: reload,
     ...reatomFormState({ navigation, data }, form),
-    viewer: reatomPhotoViewer({ ...dependencies, onDeleted: reload, failure }),
+    viewer: reatomPhotoViewer({ ...dependencies, failure }),
     ...reatomFilters(data, dependencies.telegram.haptics),
     failure: failure.failure,
     dismissFailure: failure.dismiss,

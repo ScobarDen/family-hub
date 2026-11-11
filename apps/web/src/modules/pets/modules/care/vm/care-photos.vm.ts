@@ -38,7 +38,6 @@ export function reatomCarePhotos(dependencies: CarePhotosDependencies, data: Car
           dependencies.onMakeAvatar(photoId);
         }
       },
-      onDeleted: data.reload,
     }),
     petPhotos: computed((): Photo[] => petPhotosOf(data.entries.data() ?? []), "care.petPhotos"),
     photoHint: readOnly(dependencies.photoHint),

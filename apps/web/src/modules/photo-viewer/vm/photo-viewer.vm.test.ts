@@ -34,7 +34,6 @@ function startViewer({
       showAlert: noop,
       haptics,
     },
-    onDeleted: noop,
     failure,
   });
 
