@@ -1,6 +1,6 @@
 ## Code style
 
-The linter and formatter (`vite.config.ts`) set the style: run `vp run fix` before committing; the pre-commit hook does the same on staged files.
+The linter and formatter (`vite.config.ts`) set the style: run `vp run fix` before committing; the pre-commit hook does the same on staged files. Call `vp` directly, not through `npx`; `vp check` over the whole repo takes about two minutes, `vp lint --type-aware --type-check apps/<app>` checks one app.
 
 ## Architecture
 
