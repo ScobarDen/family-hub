@@ -313,7 +313,6 @@ export function reatomCare(dependencies: CareDependencies) {
     ...reatomMoves(sources, weightRange),
     ...reatomOpening(sources),
     remove: detached(remove, "care.removeEntry"),
-    reload: data.reload,
   };
 }
 

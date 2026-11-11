@@ -1,5 +1,3 @@
-import { action } from "@reatom/core";
-
 import { rolledBackById } from "@/common/records.lib.ts";
 import { reatomLiveResource } from "@/modules/live-resource";
 import type { LiveVersion } from "@/modules/live-updates";
@@ -30,7 +28,7 @@ function reatomExpenses(
 }
 
 // Every change of a Care Entry may move the journal, the chart and both expense totals, so all
-// three reload together after it.
+// three follow the Pet's live version.
 export function reatomCareData(dependencies: CareModelDependencies) {
   const { api, petId, liveVersion } = dependencies;
   const entries = reatomLiveResource({
@@ -46,16 +44,7 @@ export function reatomCareData(dependencies: CareModelDependencies) {
   const month = reatomExpenses(dependencies, { name: "care.month", rangeOf: monthRange });
   const year = reatomExpenses(dependencies, { name: "care.year", rangeOf: yearRange });
 
-  return {
-    entries,
-    month,
-    year,
-    reload: action(() => {
-      entries.reload();
-      month.reload();
-      year.reload();
-    }, "care.reload"),
-  };
+  return { entries, month, year };
 }
 
 export type CareData = ReturnType<typeof reatomCareData>;

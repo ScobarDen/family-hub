@@ -109,16 +109,22 @@ function recipeBook(saved: Recipe = lasagna) {
   };
 }
 
-const walkPhoto: Photo = {
-  id: "photo-1",
-  takenAt: null,
-  urls: {
-    thumb: "/photos/photo-1/thumb",
-    medium: "/photos/photo-1/medium",
-    full: "/photos/photo-1/full",
-  },
-  canDelete: true,
-};
+function photo(id: string): Photo {
+  return {
+    id,
+    takenAt: null,
+    urls: {
+      thumb: `/photos/${id}/thumb`,
+      medium: `/photos/${id}/medium`,
+      full: `/photos/${id}/full`,
+    },
+    canDelete: true,
+  };
+}
+
+const lasagnaPhoto = photo("photo-1");
+
+const walkPhoto = photo("photo-2");
 
 const buick: Pet = {
   id: "pet-1",
@@ -343,20 +349,23 @@ describe("a Savings Goal saved while the list is loading", () => {
 
 describe("a Photo deleted in the viewer", () => {
   test("leaves the open Recipe, which loads once more", async () => {
-    let current: Recipe = { ...lasagna, photos: [walkPhoto] };
-    const { app, countOf } = startApp({
-      ...recipeBook().routes,
-      "GET /api/recipes/recipe-1": () => current,
-      "DELETE /api/photos/photo-1": () => {
-        current = { ...current, photos: [] };
+    let current: Recipe = { ...lasagna, photos: [lasagnaPhoto] };
+    const { app, countOf } = startApp(
+      {
+        ...recipeBook().routes,
+        "GET /api/recipes/recipe-1": () => current,
+        "DELETE /api/photos/photo-1": () => {
+          current = { ...current, photos: [] };
 
-        return { status: "deleted" };
+          return { status: "deleted" };
+        },
       },
-    });
+      { popups: "confirmed" },
+    );
     const { recipes } = app.home;
 
     await openLasagna(app);
-    recipes.viewer.open([walkPhoto], "photo-1");
+    recipes.viewer.open([lasagnaPhoto], "photo-1");
     recipes.viewer.remove();
     await vi.waitFor(() => {
       expect(recipes.screen()).toMatchObject({ kind: "recipe", recipe: { photos: [] } });
@@ -368,22 +377,25 @@ describe("a Photo deleted in the viewer", () => {
 
   test("leaves the Pet's journal, which loads once more", async () => {
     let entry = parkWalk;
-    const { app, countOf } = startApp({
-      "GET /api/pets": () => [buick],
-      "GET /api/pets/pet-1/care-entries": () => [entry],
-      "DELETE /api/photos/photo-1": () => {
-        entry = { ...entry, photos: [] };
+    const { app, countOf } = startApp(
+      {
+        "GET /api/pets": () => [buick],
+        "GET /api/pets/pet-1/care-entries": () => [entry],
+        "DELETE /api/photos/photo-2": () => {
+          entry = { ...entry, photos: [] };
 
-        return { status: "deleted" };
+          return { status: "deleted" };
+        },
       },
-    });
+      { popups: "confirmed" },
+    );
     const { care } = app.home.pet;
 
     care.journal.subscribe(noop);
     await vi.waitFor(() => {
-      expect(care.journal()).toMatchObject([{ photos: [{ id: "photo-1" }] }]);
+      expect(care.journal()).toMatchObject([{ photos: [{ id: "photo-2" }] }]);
     });
-    care.viewer.open([walkPhoto], "photo-1");
+    care.viewer.open([walkPhoto], "photo-2");
     care.viewer.remove();
     await vi.waitFor(() => {
       expect(care.journal()).toMatchObject([{ photos: [] }]);
@@ -391,5 +403,60 @@ describe("a Photo deleted in the viewer", () => {
     await vi.runAllTimersAsync();
 
     expect(countOf("GET /api/pets/pet-1/care-entries")).toBe(2);
+  });
+
+  test("drops it from the Pet's card when it was the avatar", async () => {
+    let pet: Pet = { ...buick, avatar: walkPhoto.urls };
+    const { app } = startApp(
+      {
+        "GET /api/pets": () => [pet],
+        "GET /api/pets/pet-1/care-entries": () => [parkWalk],
+        "DELETE /api/photos/photo-2": () => {
+          pet = { ...pet, avatar: null };
+
+          return { status: "deleted" };
+        },
+      },
+      { popups: "confirmed" },
+    );
+    const { pets, care } = app.home.pet;
+
+    pets.screen.subscribe(noop);
+    await vi.waitFor(() => {
+      expect(pets.screen()).toMatchObject({
+        card: { avatar: "https://api.family-hub.test/photos/photo-2/medium" },
+      });
+    });
+    care.viewer.open([walkPhoto], "photo-2");
+    care.viewer.remove();
+
+    await vi.waitFor(() => {
+      expect(pets.screen()).toMatchObject({ card: { avatar: undefined } });
+    });
+  });
+
+  test("leaves the open Recipe when it is deleted from «Все фото»", async () => {
+    let current: Recipe = { ...lasagna, photos: [lasagnaPhoto] };
+    const { app } = startApp(
+      {
+        ...recipeBook().routes,
+        "GET /api/recipes/recipe-1": () => current,
+        "DELETE /api/photos/photo-1": () => {
+          current = { ...current, photos: [] };
+
+          return { status: "deleted" };
+        },
+      },
+      { popups: "confirmed" },
+    );
+    const { recipes, albums } = app.home;
+
+    await openLasagna(app);
+    albums.viewer.open([lasagnaPhoto], "photo-1");
+    albums.viewer.remove();
+
+    await vi.waitFor(() => {
+      expect(recipes.screen()).toMatchObject({ kind: "recipe", recipe: { photos: [] } });
+    });
   });
 });

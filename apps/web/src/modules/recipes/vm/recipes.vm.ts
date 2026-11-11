@@ -356,7 +356,6 @@ function reatomFormState(
   };
 }
 
-// «Повторить» reads everything again.
 function reatomReloadAll(data: RecipesData, opened: Opened) {
   return action(() => {
     data.reload();

@@ -89,26 +89,35 @@ async function wait(ms: number): Promise<void> {
   });
 }
 
-function confirmingTelegram() {
+// The button id that `isConfirmed` in `modules/telegram` takes for a yes.
+const confirmButton = "confirm";
+
+type Popups = "unanswered" | "confirmed";
+
+function telegramAnswering(popups: Popups) {
   const { webApp } = fakeWebApp({
     initData: "query_id=AAH&hash=abc",
     deviceStorage: fakeDeviceStorage().deviceStorage,
   });
 
+  if (popups === "unanswered") {
+    return reatomTelegram(webApp);
+  }
+
   return reatomTelegram({
     ...webApp,
     showPopup: (params, callback) => {
-      callback?.(params.buttons[0]?.id ?? null);
+      callback?.(params.buttons.find(({ id }) => id === confirmButton)?.id ?? null);
     },
   });
 }
 
 // The whole app over a fake Worker and a fake socket, as a Member in Telegram sees it.
-export function startApp(routes: Routes) {
+export function startApp(routes: Routes, { popups = "unanswered" }: { popups?: Popups } = {}) {
   const worker = fakeWorker(routes);
   const sockets = fakeSockets();
   const app = reatomApp({
-    telegram: confirmingTelegram(),
+    telegram: telegramAnswering(popups),
     platform: undefined,
     apiUrl: "https://api.family-hub.test",
     fetch: worker.fetch,
