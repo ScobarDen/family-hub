@@ -15,27 +15,43 @@ import { followUp, type FollowUp } from "./follow-up.service.ts";
 import { addSubtask, removeSubtask, updateSubtask } from "./subtask.service.ts";
 import { create, list, remove, update } from "./task-root.service.ts";
 
+type Written<Result> = { taskId: string; result: Result; wasLinkedToPet?: boolean };
+
+function isWritten(result: TaskResult | DeleteResult): boolean {
+  return result.status === "ok" || result.status === "deleted";
+}
+
 // A Pet's card lists its Tasks, so a Task linked to a Pet before or after the write changes it too.
-function afterWriteOf({ schedule, live }: TaskDependencies) {
-  return async function afterWrite<Result extends TaskResult | DeleteResult>(
+function liveChangeOf({ live }: TaskDependencies) {
+  return function liveChange<Result extends TaskResult | DeleteResult>(
     { family }: Membership,
-    {
-      taskId,
-      result,
-      wasLinkedToPet = false,
-    }: { taskId: string; result: Result; wasLinkedToPet?: boolean },
-  ): Promise<Result> {
-    if (result.status !== "ok" && result.status !== "deleted") {
-      return result;
+    { result, wasLinkedToPet = false }: Written<Result>,
+  ): Result {
+    if (isWritten(result)) {
+      const touchesPet = wasLinkedToPet || ("task" in result && result.task.pet !== null);
+
+      live.changed(family.id, touchesPet ? ["tasks", "pet"] : ["tasks"]);
     }
 
-    await schedule.sourceChanged(family.id, { kind: "task", id: taskId });
-
-    const touchesPet = wasLinkedToPet || ("task" in result && result.task.pet !== null);
-
-    live.changed(family.id, touchesPet ? ["tasks", "pet"] : ["tasks"]);
-
     return result;
+  };
+}
+
+function afterWriteOf(dependencies: TaskDependencies) {
+  const liveChange = liveChangeOf(dependencies);
+
+  return async function afterWrite<Result extends TaskResult | DeleteResult>(
+    membership: Membership,
+    written: Written<Result>,
+  ): Promise<Result> {
+    if (isWritten(written.result)) {
+      await dependencies.schedule.sourceChanged(membership.family.id, {
+        kind: "task",
+        id: written.taskId,
+      });
+    }
+
+    return liveChange(membership, written);
   };
 }
 
@@ -81,17 +97,19 @@ function subtaskCommands(dependencies: TaskDependencies) {
   };
 }
 
+// Completing and reopening reschedule through the Occurrence they announce (ADR 0021).
 function occurrenceCommands(dependencies: TaskDependencies) {
   const afterWrite = afterWriteOf(dependencies);
+  const liveChange = liveChangeOf(dependencies);
 
   return {
     complete: async (membership: Membership, target: OccurrenceOf) =>
-      afterWrite(membership, {
+      liveChange(membership, {
         taskId: target.taskId,
         result: await complete(dependencies, membership, target),
       }),
     reopen: async (membership: Membership, target: OccurrenceOf) =>
-      afterWrite(membership, {
+      liveChange(membership, {
         taskId: target.taskId,
         result: await reopen(dependencies, membership, target),
       }),

@@ -8,9 +8,20 @@ import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
 import type { TaskRepo } from "./task.repo.ts";
 
-// The Reminders of a Task are rewritten whenever it, its Subtasks or its completions change.
+export type CompletedOccurrence = {
+  taskId: string;
+  occurrence: string;
+  by: { id: string; name: string };
+};
+
+export type ReopenedOccurrence = Omit<CompletedOccurrence, "by">;
+
+// The Reminders of a Task are rewritten whenever it or its Subtasks change; a completed or reopened
+// Occurrence also tells its sent messages (ADR 0021).
 type TaskSchedule = {
   sourceChanged(familyId: string, source: { kind: "task"; id: string }): Promise<void>;
+  occurrenceCompleted(familyId: string, completed: CompletedOccurrence): Promise<void>;
+  occurrenceReopened(familyId: string, reopened: ReopenedOccurrence): Promise<void>;
 };
 
 export type TaskDependencies = {

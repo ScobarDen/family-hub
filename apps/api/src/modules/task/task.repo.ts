@@ -21,7 +21,12 @@ export type TaskRow = typeof tasks.$inferSelect;
 
 export type PersonRow = { id: string; name: string; profilePicture: string | null };
 
-export type CompletionRow = { occurrence: string; at: number; by: string | null };
+export type CompletionRow = {
+  occurrence: string;
+  at: number;
+  by: string | null;
+  byId: string | null;
+};
 
 // A Task as stored with its people and completions, before it is shaped for one viewer.
 export type TaskRecord = {
@@ -99,6 +104,7 @@ async function recordsWhere(db: Db, familyId: string, condition: SQL | undefined
         occurrence: taskCompletions.occurrence,
         at: taskCompletions.completedAt,
         by: completers.name,
+        byId: taskCompletions.completedBy,
       })
       .from(taskCompletions)
       .leftJoin(completers, eq(completers.id, taskCompletions.completedBy))

@@ -514,6 +514,26 @@ describe("a Push", () => {
     expect(botTexts(worker)).toEqual(["📌 Полить цветы · 9 октября"]);
   });
 
+  test("«Готово» after completing in the app is refused, and the bot's message names who did it", async () => {
+    const worker = await startWithFamily();
+    const task = await remindWeekly(worker, "Полить цветы");
+
+    await subscribe(worker, phone);
+    await tickAt(worker, "2026-10-02T06:00:00Z");
+    await request(worker, denis, {
+      method: "POST",
+      path: `/api/tasks/${task.id}/complete`,
+      body: { occurrence: "2026-10-02" },
+    });
+
+    const response = await pressPush(worker, { token: pressTokenOf(worker), action: "done" });
+
+    expect(await response.json()).toEqual({ code: "PRESS_REFUSED", message: "Уже сделано" });
+    expect(worker.bot.editedMessages().map(({ text }) => text)).toEqual([
+      "✅ Сделал(а) Денис: Полить цветы · 2 октября",
+    ]);
+  });
+
   test("«Готово» pressed twice on a single Task says it is already done", async () => {
     const worker = await startWithFamily();
 

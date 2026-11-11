@@ -11,9 +11,14 @@ import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 import type { DispatchRepo } from "./repo/dispatch.repo.ts";
 import type { FamilyHolderKind, SourceRepo } from "./repo/source.repo.ts";
 
-// «✅ Готово» completes an Occurrence in the task module, which the app wires in with its reads.
+// The app wires in the task module's reads.
 type TaskPort = {
   findTree(familyId: string, taskId: string): Promise<TaskTree | undefined>;
+};
+
+// «✅ Готово» on a Task completes its Occurrence in the task module, handed in by the route that
+// took the press, so the reminder module is built without it (ADR 0021).
+export type TaskCompletion = {
   complete(
     membership: Membership,
     target: { taskId: string; occurrence: string | null },
@@ -81,8 +86,8 @@ export type Source = {
   closesForEveryone: boolean;
   // Its Push carries «Готово» and «Отложить», as its bot message does.
   isPressable: boolean;
-  // False when the source refused, so the messages are left as they were.
-  complete?: (presser: Membership, occurrence: string | null) => Promise<boolean>;
+  // Without it an Occurrence is closed once «Готово» marked it on the row.
+  isClosed?: (occurrence: string) => boolean;
   // A message body built when it is due, under the title; nothing to say means nothing is sent.
   compose?: (occurrence: string, timeZone: string) => Promise<string | undefined>;
   // A Push says what in its title and when in its body; without it the title is the whole line.
