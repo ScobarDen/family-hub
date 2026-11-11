@@ -1,6 +1,10 @@
 ## Code style
 
-The linter and formatter (`vite.config.ts`) set the style: run `vp run fix` before committing; the pre-commit hook does the same on staged files.
+The linter and formatter (`vite.config.ts`) set the style: run `vp run fix` before committing; the pre-commit hook does the same on staged files. Call `vp` directly, not through `npx`; `vp check` over the whole repo takes about two minutes, `vp lint --type-aware --type-check apps/<app>` checks one app.
+
+## Language
+
+Issues (tickets, specs, comments) and pull requests (title, body, comments) are written in Russian; code, identifiers, paths, commands and quoted output inside them stay as they are. Commit messages, code comments, `GLOSSARY.md`, ADRs and the other repo docs stay in English.
 
 ## Architecture
 
@@ -36,4 +40,4 @@ Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `
 
 ### Domain docs
 
-Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
