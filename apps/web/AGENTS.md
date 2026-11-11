@@ -1,6 +1,6 @@
 # apps/web
 
-The Telegram Mini App, which outside Telegram is also the Installed App «Домовой» (`CONTEXT.md`): React 19 and Reatom v1001, shadcn on Base UI with Tailwind v4, a static build for GitHub Pages under `/family-hub/`.
+The Telegram Mini App, which outside Telegram is also the Installed App «Домовой» (`GLOSSARY.md`): React 19 and Reatom v1001, shadcn on Base UI with Tailwind v4, a static build for GitHub Pages under `/family-hub/`.
 
 ## Shape
 
