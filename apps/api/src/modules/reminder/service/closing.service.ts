@@ -14,14 +14,16 @@ type Closed = {
   sourceOf: (row: DispatchRow) => ReminderSource | undefined;
 };
 
-// A closed Occurrence is closed for every Recipient, each row read on its own Recipient's clock.
 export async function closeOccurrence(
   dependencies: ReminderDependencies,
   { rows, occurrence, by, sourceOf }: Closed,
 ): Promise<void> {
+  const now = dependencies.clock.now();
+
   for (const row of rows) {
     const source = sourceOf(row);
-    const reminder = source && (await reminderOfRow(dependencies, { row, occurrence, source }));
+    const reminder =
+      source && (await reminderOfRow(dependencies, { row, source, occurrence, now }));
     const closing = reminder?.closed(by);
 
     if (closing !== undefined) {

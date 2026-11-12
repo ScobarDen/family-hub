@@ -44,7 +44,6 @@ export async function taskSourcesToClose(
   return loadTaskSources(dependencies, { holder, isKept: () => true });
 }
 
-// A row names its Task and, after it, the offset that tells its sources apart.
 export async function taskSourceOf(
   dependencies: ReminderDependencies,
   { familyId, sourceId }: { familyId: string; sourceId: string },

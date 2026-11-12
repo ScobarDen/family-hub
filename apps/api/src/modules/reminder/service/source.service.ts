@@ -25,7 +25,7 @@ function onlySourceOf(load: SourceKind["load"]): SourceKind["one"] {
   return async (dependencies, { familyId, sourceId }) => {
     const [source] = await load(dependencies, { familyId, id: sourceId });
 
-    return source;
+    return source?.schedule.sourceId === sourceId ? source : undefined;
   };
 }
 

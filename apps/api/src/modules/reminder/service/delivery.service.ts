@@ -3,7 +3,7 @@ import type { Membership } from "@/modules/auth";
 import { BotApiError } from "@/modules/telegram";
 
 import type { Delivered, Due } from "../lib/recipient-reminder.lib.ts";
-import type { ReminderDependencies } from "../reminder.types.ts";
+import type { ReminderDependencies, ReminderSource } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
 import { reminderOfRow } from "./recipient-reminder.service.ts";
 import { rowReplanned } from "./schedule.service.ts";
@@ -114,33 +114,21 @@ async function send(dependencies: ReminderDependencies, sending: Sending): Promi
     : sendToBot(dependencies, sending);
 }
 
-// A Recipient who left without the Family telling us still has rows there; they go now.
 async function deliverRow(
   dependencies: ReminderDependencies,
-  row: DispatchRow & { occurrence: string },
+  reading: { row: DispatchRow; source: ReminderSource; occurrence: string; now: number },
 ): Promise<Delivery> {
-  const source = await sourceOfRow(dependencies, row);
-
-  if (source === undefined) {
-    await dependencies.dispatch.update(row.familyId, row.id, {
-      occurrence: null,
-      nextFireAt: null,
-      lockedUntil: null,
-      updatedAt: dependencies.clock.now(),
-    });
-
-    return { status: "skipped" };
-  }
-
+  const { row } = reading;
   const recipient = await dependencies.memberships.findByMemberId(row.memberId);
 
+  // A Recipient who left without the Family telling us still has rows there; they go now.
   if (recipient?.family.id !== row.familyId) {
     await dependencies.dispatch.removeDeparted(row.familyId);
 
     return { status: "departed" };
   }
 
-  const reminder = await reminderOfRow(dependencies, { row, occurrence: row.occurrence, source });
+  const reminder = await reminderOfRow(dependencies, reading);
   const due = await reminder.due();
   const delivery: Delivery =
     due.status === "send"
@@ -154,26 +142,32 @@ async function deliverRow(
   return delivery;
 }
 
-async function deliver(dependencies: ReminderDependencies, row: DispatchRow): Promise<Delivery> {
+async function deliver(
+  dependencies: ReminderDependencies,
+  { row, now }: { row: DispatchRow; now: number },
+): Promise<Delivery> {
+  const source = await sourceOfRow(dependencies, row);
   const { occurrence } = row;
 
-  if (occurrence === null) {
-    await rowReplanned(dependencies, row);
+  if (occurrence === null || source === undefined) {
+    await rowReplanned(dependencies, { row, source });
 
     return { status: "skipped" };
   }
 
-  return deliverRow(dependencies, { ...row, occurrence });
+  return deliverRow(dependencies, { row, source, occurrence, now });
 }
 
 // A row that fails for any other reason stays locked until its lock runs out and is tried again
 // then, while the rows after it go on.
 async function deliverOrLog(
   dependencies: ReminderDependencies,
-  row: DispatchRow,
+  claimed: { row: DispatchRow; now: number },
 ): Promise<Delivery | undefined> {
+  const { row } = claimed;
+
   try {
-    return await deliver(dependencies, row);
+    return await deliver(dependencies, claimed);
   } catch (error) {
     console.error("Reminder delivery failed", { dispatchId: row.id, error });
 
@@ -187,7 +181,7 @@ export async function deliverDue(dependencies: ReminderDependencies): Promise<vo
   const rows = await dependencies.dispatch.claimDue({ now, limit: batchSize });
 
   for (const [index, row] of rows.entries()) {
-    const delivery = await deliverOrLog(dependencies, row);
+    const delivery = await deliverOrLog(dependencies, { row, now });
 
     if (delivery?.status === "rate-limited") {
       await dependencies.dispatch.release(rows.slice(index).map(({ id }) => id));

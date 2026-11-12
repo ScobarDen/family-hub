@@ -9,21 +9,15 @@ import type { ReminderDependencies, ReminderSource } from "../reminder.types.ts"
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
 import { zoneOf } from "./schedule.service.ts";
 
-// A row read for one Occurrence on its Recipient's clock.
 export async function reminderOfRow(
   dependencies: ReminderDependencies,
-  {
-    row,
-    occurrence,
-    source,
-  }: { row: DispatchRow; occurrence: string | null; source: ReminderSource },
+  reading: { row: DispatchRow; source: ReminderSource; occurrence: string | null; now: number },
 ): Promise<RecipientReminder> {
+  const { row, source } = reading;
+
   return recipientReminder({
-    row,
-    source,
-    occurrence,
+    ...reading,
     timeZone: await zoneOf(dependencies, { memberId: row.memberId, schedule: source.schedule }),
-    now: dependencies.clock.now(),
   });
 }
 

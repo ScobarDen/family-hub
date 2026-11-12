@@ -5,7 +5,7 @@ import type { PushPress } from "@family-hub/contract";
 import type { Membership } from "@/modules/auth";
 import { ignoringBotErrors } from "@/modules/telegram";
 
-import type { PressOutcome, RecipientReminder } from "../lib/recipient-reminder.lib.ts";
+import type { PressOutcome } from "../lib/recipient-reminder.lib.ts";
 import { alreadyDoneText, notDoneText, notYoursText, parseCallback } from "../lib/reminder.lib.ts";
 import type {
   PushPressClaims,
@@ -21,7 +21,6 @@ import { sourceOfRow } from "./source.service.ts";
 type Press = {
   row: DispatchRow;
   source: ReminderSource;
-  reminder: RecipientReminder;
   presser: Membership;
   occurrence: string | null;
 };
@@ -51,17 +50,8 @@ async function botPressOf(
   }
 
   const source = await sourceOfRow(dependencies, row);
-  const occurrence = row.sentOccurrence ?? row.occurrence;
 
-  return (
-    source && {
-      row,
-      source,
-      reminder: await reminderOfRow(dependencies, { row, occurrence, source }),
-      presser,
-      occurrence,
-    }
-  );
+  return source && { row, source, presser, occurrence: row.sentOccurrence ?? row.occurrence };
 }
 
 // A signed press whose row or source is gone was answered already: a completed single Task drops
@@ -79,13 +69,7 @@ async function pushPressOf(
 
   const presser = await dependencies.memberships.findByMemberId(memberId);
 
-  if (!isRecipient(presser, row)) {
-    return notYoursText;
-  }
-
-  const reminder = await reminderOfRow(dependencies, { row, occurrence, source });
-
-  return { row, source, reminder, presser, occurrence };
+  return isRecipient(presser, row) ? { row, source, presser, occurrence } : notYoursText;
 }
 
 // A Birthday has no module of its own, so «Готово» closes its rows here for every Member.
@@ -117,15 +101,18 @@ async function pressed(
   dependencies: ReminderDependencies,
   { press, action, via, tasks }: Pressing,
 ): Promise<string | undefined> {
-  const outcome = press.reminder.press(action, via);
+  const { row, source, occurrence } = press;
+  const now = dependencies.clock.now();
+  const reminder = await reminderOfRow(dependencies, { row, source, occurrence, now });
+  const outcome = reminder.press(action, via);
 
   if (outcome.status === "refused") {
     return outcome.text;
   }
 
   if (outcome.status === "complete-task") {
-    const { taskId, occurrence } = outcome;
-    const { status } = await tasks.complete(press.presser, { taskId, occurrence });
+    const target = { taskId: outcome.taskId, occurrence: outcome.occurrence };
+    const { status } = await tasks.complete(press.presser, target);
 
     return status === "ok" ? undefined : notDoneText;
   }

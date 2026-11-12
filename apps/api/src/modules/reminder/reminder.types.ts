@@ -66,8 +66,6 @@ export type SourceHolder = { familyId: string; id: string };
 
 export type ChangedSource = { kind: "task" | "pet"; id: string };
 
-// What planning reads of a source: whom it reaches, its Occurrences and the moment each one fires
-// on a Recipient's clock.
 export type ReminderSchedule = {
   kind: DispatchSource;
   sourceId: string;
@@ -91,7 +89,6 @@ export type ReminderContent =
   | { status: "body"; body: string }
   | { status: "nothing-to-say" };
 
-// What a Reminder says and what its buttons do, for one kind of source.
 export type ReminderKind = {
   emoji: string;
   title: (occurrence: string, timeZone: string) => string;

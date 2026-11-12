@@ -7,6 +7,7 @@ import type {
   HolderKind,
   ReminderDependencies,
   ReminderSchedule,
+  ReminderSource,
   SourceHolder,
 } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
@@ -160,10 +161,12 @@ export async function membershipChanged(dependencies: ReminderDependencies, fami
 }
 
 // A row with a fire time but no Occurrence was written by a data migration, which cannot tell a
-// Recipient's zone: it is planned now instead of sent.
-export async function rowReplanned(dependencies: ReminderDependencies, row: DispatchRow) {
+// Recipient's zone: it is planned now instead of sent. A row whose source is gone rests.
+export async function rowReplanned(
+  dependencies: ReminderDependencies,
+  { row, source }: { row: DispatchRow; source: ReminderSource | undefined },
+) {
   const now = dependencies.clock.now();
-  const source = await sourceOfRow(dependencies, row);
   const schedule = source?.schedule;
   const timeZone = await zoneOf(dependencies, { memberId: row.memberId, schedule });
   const fire = schedule && upcoming(schedule, { timeZone, now });

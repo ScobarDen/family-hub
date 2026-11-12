@@ -234,8 +234,6 @@ function closingOf(reading: Reading, by: { id: string; name: string }): Closing 
     : closing;
 }
 
-// One dispatch row of one Recipient, read on their clock for one Occurrence: what to send when it
-// is due, and what a press or a closed Occurrence does to it. It decides; the services act.
 export function recipientReminder(reading: Reading) {
   return {
     due: async () => dueOf(reading),

@@ -33,7 +33,6 @@ function rowOf(row: Partial<DispatchRow> = {}): DispatchRow {
   };
 }
 
-// The task module's series, reduced to the Occurrences a test lists.
 function seriesOf(dates: string[]) {
   return {
     first: (day: string) => dates.find((date) => date >= day),
