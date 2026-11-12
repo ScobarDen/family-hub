@@ -1,6 +1,7 @@
 import type { Membership } from "@/modules/auth";
 
-import { isAllDone, isOccurrenceOf, occurrenceDateOf, occurrenceKey } from "../task.lib.ts";
+import { taskSeries } from "../lib/series.lib.ts";
+import { isAllDone, occurrenceDateOf, occurrenceKey } from "../lib/task.lib.ts";
 import type { CompletionRow, TaskRow } from "../task.repo.ts";
 import type { OccurrenceOf, SubtaskTarget, TaskDependencies, TaskResult } from "../task.types.ts";
 import { currentTask, hasSubtask, visibleTree } from "./access.service.ts";
@@ -87,7 +88,7 @@ export async function complete(
     return { status: "not-found" };
   }
 
-  if (!isOccurrenceOf(tree.root.row, occurrence)) {
+  if (!taskSeries(tree.root).isOccurrence(occurrence)) {
     return { status: "not-an-occurrence" };
   }
 
@@ -121,7 +122,7 @@ export async function reopen(
     return { status: "not-found" };
   }
 
-  if (!isOccurrenceOf(tree.root.row, occurrence)) {
+  if (!taskSeries(tree.root).isOccurrence(occurrence)) {
     return { status: "not-an-occurrence" };
   }
 
@@ -146,12 +147,18 @@ export async function skip(
     return { status: "not-found" };
   }
 
-  if (tree.root.row.frequency === null || !isOccurrenceOf(tree.root.row, date)) {
+  const { row } = tree.root;
+
+  if (row.skippedDates.includes(date)) {
+    return currentTask(dependencies, membership, taskId);
+  }
+
+  if (row.frequency === null || !taskSeries(tree.root).isOccurrence(date)) {
     return { status: "not-an-occurrence" };
   }
 
   await dependencies.tasks.update(membership.family.id, taskId, {
-    skippedDates: [...new Set([...tree.root.row.skippedDates, date])].toSorted(),
+    skippedDates: [...row.skippedDates, date].toSorted(),
     updatedAt: dependencies.clock.now(),
   });
 

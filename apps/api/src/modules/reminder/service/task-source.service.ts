@@ -1,14 +1,12 @@
 import { encodeRecordLink, type ReminderOffset } from "@family-hub/contract";
 import {
   dateInZone,
-  daysAfter,
-  firstOccurrenceFrom,
   occurrenceMoment,
   taskReminderMoment,
   timeInZone,
 } from "@family-hub/recurrence";
 
-import type { TaskRecord, TaskRow, TaskTree } from "@/modules/task";
+import type { RemindingTask } from "@/modules/task";
 
 import {
   dayLabelOf,
@@ -21,172 +19,112 @@ import {
 } from "../reminder.lib.ts";
 import type { PushText, ReminderDependencies, Source, SourceHolder } from "../reminder.types.ts";
 
-// The Occurrences still to remind of: skipped and Completed ones are left out, and an Occurrence
-// that is not one of them is closed. A single Task's one completion is stored under "".
-function seriesSteps(root: TaskRecord, date: string) {
-  const { row } = root;
-  const recurrence = row.frequency === null ? null : { frequency: row.frequency, until: row.until };
-  const closed = new Set([
-    ...row.skippedDates,
-    ...root.completions.map(({ occurrence }) => (row.frequency === null ? date : occurrence)),
-  ]);
+type RemindedTask = RemindingTask["task"];
 
-  function from(day: string): string | undefined {
-    const occurrence = firstOccurrenceFrom(date, recurrence, day);
-
-    return occurrence !== undefined && closed.has(occurrence)
-      ? from(daysAfter(occurrence, 1))
-      : occurrence;
+function titleOf(
+  { title, when }: RemindedTask,
+  { occurrence, timeZone }: { occurrence: string; timeZone: string },
+) {
+  if (when.time === null || when.timeZone === null) {
+    return `${title} · ${formatFloatingDate(occurrence)}`;
   }
 
-  return {
-    first: from,
-    next: (occurrence: string) => from(daysAfter(occurrence, 1)),
-    isClosed: (occurrence: string) => from(occurrence) !== occurrence,
-  };
-}
+  const moment = occurrenceMoment(occurrence, { time: when.time, timeZone: when.timeZone });
 
-function titleOf(row: TaskRow, { occurrence, timeZone }: { occurrence: string; timeZone: string }) {
-  if (row.time === null || row.timeZone === null) {
-    return `${row.title} · ${formatFloatingDate(occurrence)}`;
-  }
-
-  const moment = occurrenceMoment(occurrence, { time: row.time, timeZone: row.timeZone });
-
-  return `${row.title} · ${formatMomentIn(moment, timeZone)}`;
+  return `${title} · ${formatMomentIn(moment, timeZone)}`;
 }
 
 // «Сегодня, 18:00» on the Recipient's clock, or the day alone for a date-only Task.
-function whenOf(
-  row: TaskRow,
+function dayAndTimeOf(
+  { when }: RemindedTask,
   { occurrence, timeZone, now }: { occurrence: string; timeZone: string; now: number },
 ): string {
   const today = dateInZone(now, timeZone);
 
-  if (row.time === null || row.timeZone === null) {
+  if (when.time === null || when.timeZone === null) {
     return dayLabelOf(occurrence, today);
   }
 
-  const moment = occurrenceMoment(occurrence, { time: row.time, timeZone: row.timeZone });
+  const moment = occurrenceMoment(occurrence, { time: when.time, timeZone: when.timeZone });
 
   return `${dayLabelOf(dateInZone(moment, timeZone), today)}, ${timeInZone(moment, timeZone)}`;
 }
 
 function taskPushText(
-  row: TaskRow,
+  task: RemindedTask,
   { section, ...when }: { occurrence: string; timeZone: string; now: number; section: string },
 ): PushText {
-  return { title: row.title, body: `${whenOf(row, when)} · ${section}` };
-}
-
-// The Assignees by default, or the owner of a Task without them; a Private Task reaches its owner.
-async function recipientsOf({ sources }: ReminderDependencies, { root }: TaskTree) {
-  const { row } = root;
-  const owner = row.ownerMemberId === null ? [] : [row.ownerMemberId];
-
-  if (row.recipientsMode === "members") {
-    return root.recipients.map(({ id }) => id);
-  }
-
-  if (row.recipientsMode === "everyone") {
-    return row.visibility === "private" ? owner : sources.memberIdsOf(row.familyId);
-  }
-
-  return root.assignees.length > 0 ? root.assignees.map(({ id }) => id) : owner;
+  return { title: task.title, body: `${dayAndTimeOf(task, when)} · ${section}` };
 }
 
 type Sourcing = {
   offset: ReminderOffset;
-  recipientIds: string[];
   chatLink: string;
   openUrl: string;
-  section: string;
 };
 
 function taskSource(
   dependencies: ReminderDependencies,
-  { tree, date, sourcing }: { tree: TaskTree; date: string; sourcing: Sourcing },
+  { reminding, sourcing }: { reminding: RemindingTask; sourcing: Sourcing },
 ): Source {
-  const { row } = tree.root;
-  const { offset, recipientIds, chatLink, openUrl, section } = sourcing;
-  const isTimed = row.time !== null;
+  const { task, series, recipientIds } = reminding;
+  const { offset, chatLink, openUrl } = sourcing;
+  const section = task.pet?.name ?? "Дела";
 
   function recordUrlOf(occurrence: string): string | undefined {
-    return row.petId === null
+    return task.petId === null
       ? undefined
-      : `${chatLink}?startapp=${encodeRecordLink({ taskId: row.id, occurrence })}`;
+      : `${chatLink}?startapp=${encodeRecordLink({ taskId: task.id, occurrence })}`;
   }
 
   return {
     kind: "task",
-    sourceId: sourceIdOf(row.id, offset),
+    sourceId: sourceIdOf(task.id, offset),
     recipientIds,
-    homeZone: row.timeZone ?? undefined,
-    ...seriesSteps(tree.root, date),
+    homeZone: task.when.timeZone ?? undefined,
+    first: series.first,
+    next: series.next,
+    isClosed: (occurrence) => series.first(occurrence) !== occurrence,
     fireAt: (occurrence, timeZone) =>
-      taskReminderMoment(occurrence, { when: row, offset, recipientZone: timeZone }),
-    emoji: row.petId === null ? "📌" : "🐾",
-    title: (occurrence, timeZone) => titleOf(row, { occurrence, timeZone }),
+      taskReminderMoment(occurrence, { when: task.when, offset, recipientZone: timeZone }),
+    emoji: task.petId === null ? "📌" : "🐾",
+    title: (occurrence, timeZone) => titleOf(task, { occurrence, timeZone }),
     pushOf: (occurrence, timeZone) =>
-      taskPushText(row, { occurrence, timeZone, now: dependencies.clock.now(), section }),
+      taskPushText(task, { occurrence, timeZone, now: dependencies.clock.now(), section }),
     buttons: (dispatchId, occurrence) =>
       reminderButtons(dispatchId, {
         recordUrl: recordUrlOf(occurrence),
         openUrl,
       }),
-    deepLink: { kind: "task", id: row.id },
+    deepLink: { kind: "task", id: task.id },
     closesForEveryone: true,
     isPressable: true,
-    snoozeMs: isTimed ? snoozeMs : daySnoozeMs,
+    snoozeMs: task.when.time === null ? daySnoozeMs : snoozeMs,
     isSkippedWhenLate: true,
   };
 }
 
-type PetOfTask = { name: string; archivedAt: number | null } | undefined;
-
-async function petOfTask(
-  { sources }: ReminderDependencies,
-  { familyId, petId }: { familyId: string; petId: string | null },
-): Promise<PetOfTask> {
-  return petId === null ? undefined : sources.pet({ familyId, id: petId });
-}
-
 // A Completed single Task and an Archived Pet's Tasks remind of nothing.
-function isSilent({ root }: TaskTree, pet: PetOfTask): boolean {
-  const { row, completions } = root;
-
-  return (row.frequency === null && completions.length > 0) || (pet?.archivedAt ?? null) !== null;
+function isSilent({ task, series }: RemindingTask): boolean {
+  return series.isCompleted(null) || (task.pet?.archivedAt ?? null) !== null;
 }
 
 async function loadTaskSources(
   dependencies: ReminderDependencies,
-  { holder, isKept }: { holder: SourceHolder; isKept: (tree: TaskTree, pet: PetOfTask) => boolean },
+  { holder, isKept }: { holder: SourceHolder; isKept: (reminding: RemindingTask) => boolean },
 ): Promise<Source[]> {
-  const { familyId, id } = holder;
-  const tree = await dependencies.tasks.findTree(familyId, id);
-  const date = tree?.root.row.date ?? null;
+  const reminding = await dependencies.tasks.reminding(holder.familyId, holder.id);
 
-  if (tree === undefined || date === null) {
+  if (reminding === undefined || !isKept(reminding)) {
     return [];
   }
 
-  const { row } = tree.root;
-  const pet = await petOfTask(dependencies, { familyId, petId: row.petId });
-
-  if (!isKept(tree, pet)) {
-    return [];
-  }
-
-  const recipientIds = await recipientsOf(dependencies, tree);
+  const { task } = reminding;
   const chatLink = await dependencies.appLinks.chatLink();
-  const openUrl = await dependencies.appLinks.appLink({ kind: "task", id: row.id });
+  const openUrl = await dependencies.appLinks.appLink({ kind: "task", id: task.id });
 
-  return row.reminderOffsets.map((offset) =>
-    taskSource(dependencies, {
-      tree,
-      date,
-      sourcing: { offset, recipientIds, chatLink, openUrl, section: pet?.name ?? "Дела" },
-    }),
+  return task.reminderOffsets.map((offset) =>
+    taskSource(dependencies, { reminding, sourcing: { offset, chatLink, openUrl } }),
   );
 }
 
@@ -196,7 +134,7 @@ export async function taskSources(
   dependencies: ReminderDependencies,
   holder: SourceHolder,
 ): Promise<Source[]> {
-  return loadTaskSources(dependencies, { holder, isKept: (tree, pet) => !isSilent(tree, pet) });
+  return loadTaskSources(dependencies, { holder, isKept: (reminding) => !isSilent(reminding) });
 }
 
 // The sources a just Completed Occurrence closes, even when completing it silenced them.

@@ -394,6 +394,32 @@ describe("«Готово»", () => {
     expect(worker.bot.answeredCallbacks().at(-1)).toMatchObject({ text: "Уже сделано" });
   });
 
+  test("on a single Task's message from before its date moved completes nothing", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Отпуск",
+      when: { date: "2026-10-05", ...dateOnly },
+      reminderOffsets: ["at-start"],
+    });
+
+    await tickAt(worker, "2026-10-05T06:00:00Z");
+    await request(worker, denis, {
+      method: "PUT",
+      path: `/api/tasks/${task.id}`,
+      body: {
+        title: "Отпуск",
+        when: { date: "2026-10-12", ...dateOnly },
+        reminderOffsets: ["at-start"],
+      },
+    });
+    await press(worker, denis, "✅ Готово");
+
+    const tasks = await bodyOf<TaskList>(request(worker, denis, { path: "/api/tasks" }));
+
+    expect(tasks.find(({ id }) => id === task.id)?.completions).toEqual([]);
+    expect(worker.bot.answeredCallbacks().at(-1)).toMatchObject({ text: "Уже сделано" });
+  });
+
   test.each([
     ["the Task is deleted", "DELETE"],
     ["the presser has left the Family", "LEAVE"],

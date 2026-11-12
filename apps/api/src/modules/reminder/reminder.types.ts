@@ -5,15 +5,14 @@ import type { DeepLink, FeedUpcoming, PushMessage } from "@family-hub/contract";
 import type { Clock } from "@/common/clock.lib.ts";
 import type { Membership, MembershipRepo } from "@/modules/auth";
 import type { DispatchSource } from "@/modules/db";
-import type { TaskTree } from "@/modules/task";
+import type { RemindingTask } from "@/modules/task";
 import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
 import type { DispatchRepo } from "./repo/dispatch.repo.ts";
 import type { FamilyHolderKind, SourceRepo } from "./repo/source.repo.ts";
 
-// The app wires in the task module's reads.
 type TaskPort = {
-  findTree(familyId: string, taskId: string): Promise<TaskTree | undefined>;
+  reminding(familyId: string, taskId: string): Promise<RemindingTask | undefined>;
 };
 
 // «✅ Готово» on a Task completes its Occurrence in the task module, handed in by the route that

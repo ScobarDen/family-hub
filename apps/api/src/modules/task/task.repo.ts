@@ -175,6 +175,16 @@ async function areMembers(db: Db, familyId: string, memberIds: string[]): Promis
   return found.length === new Set(memberIds).size;
 }
 
+async function memberIdsOf(db: Db, familyId: string): Promise<string[]> {
+  const rows = await db
+    .select({ id: familyMembers.memberId })
+    .from(familyMembers)
+    .where(eq(familyMembers.familyId, familyId))
+    .all();
+
+  return rows.map(({ id }) => id);
+}
+
 async function petOf(db: Db, familyId: string, petId: string): Promise<PetOfTask | undefined> {
   return db
     .select({
@@ -364,6 +374,7 @@ export function createTaskRepo(db: Db) {
       listVisible,
       findTree,
       areMembers,
+      memberIdsOf,
       petOf,
       albumOf,
       save,
