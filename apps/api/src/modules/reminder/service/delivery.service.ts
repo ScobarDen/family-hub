@@ -1,39 +1,27 @@
-import { encodeDeepLink } from "@family-hub/contract";
-
 import { httpStatus } from "@/common/errors.lib.ts";
 import type { Membership } from "@/modules/auth";
 import { BotApiError } from "@/modules/telegram";
 
-import { latenessLimitMs } from "../reminder.lib.ts";
-import type { PushText, ReminderDependencies, Source } from "../reminder.types.ts";
+import type { Delivered, Due } from "../lib/recipient-reminder.lib.ts";
+import type { ReminderDependencies } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
-import { fireAfter, upcoming, zoneOf } from "./schedule.service.ts";
+import { reminderOfRow } from "./recipient-reminder.service.ts";
+import { rowReplanned } from "./schedule.service.ts";
 import { sourceOfRow } from "./source.service.ts";
 
 const batchSize = 50;
 
-type Sent = { chatId: number; messageId: number };
-
-type Delivery =
-  | { status: "sent"; sent: Sent }
-  | { status: "pushed" }
-  | { status: "skipped" }
-  | { status: "departed" }
-  | { status: "rate-limited" };
-
-type Composed = { occurrence: string; timeZone: string; body: string | undefined };
+type Delivery = Delivered | { status: "departed" } | { status: "rate-limited" };
 
 type Sending = {
   row: DispatchRow;
-  source: Source;
   recipient: Membership;
-  text: string;
-  pushText: PushText;
+  due: Extract<Due, { status: "send" }>;
 };
 
 async function sendToBot(
   { bot, memberships, clock }: ReminderDependencies,
-  { row, source, recipient, text }: Sending,
+  { row, recipient, due }: Sending,
 ): Promise<Delivery> {
   const telegramId = recipient.member.telegramId;
 
@@ -44,8 +32,8 @@ async function sendToBot(
   try {
     const message = await bot.call("sendMessage", {
       chat_id: telegramId,
-      text,
-      reply_markup: source.buttons(row.id, row.occurrence ?? ""),
+      text: due.bot.text,
+      reply_markup: due.bot.buttons,
     });
 
     return { status: "sent", sent: { chatId: telegramId, messageId: message.message_id } };
@@ -72,18 +60,10 @@ async function sendToBot(
 // id tags it, so the Reminder coming again replaces its earlier Push.
 async function pushToDevices(
   { push }: ReminderDependencies,
-  { row, source, recipient, pushText }: Sending,
+  { recipient, due }: Sending,
 ): Promise<number> {
   try {
-    return await push.sendTo(recipient.member.id, {
-      message: {
-        ...pushText,
-        text: pushText.title,
-        tag: row.id,
-        ...(source.deepLink === undefined ? {} : { startParam: encodeDeepLink(source.deepLink) }),
-      },
-      ...(source.isPressable ? { press: { dispatchId: row.id, occurrence: row.occurrence } } : {}),
-    });
+    return await push.sendTo(recipient.member.id, due.push);
   } catch (error) {
     console.error("Push failed", { memberId: recipient.member.id, error });
 
@@ -134,148 +114,56 @@ async function send(dependencies: ReminderDependencies, sending: Sending): Promi
     : sendToBot(dependencies, sending);
 }
 
-function headlineOf(source: Source, { occurrence, timeZone }: Omit<Composed, "body">): string {
-  return `${source.emoji} ${source.title(occurrence, timeZone)}`;
-}
-
-function textOf(source: Source, composed: Composed): string {
-  const headline = headlineOf(source, composed);
-
-  return composed.body === undefined ? headline : `${headline}\n\n${composed.body}`;
-}
-
-function pushTextOf(source: Source, composed: Composed): PushText {
-  return (
-    source.pushOf?.(composed.occurrence, composed.timeZone) ?? {
-      title: source.title(composed.occurrence, composed.timeZone),
-      body: composed.body ?? "",
-    }
-  );
-}
-
-async function composedOf(
-  source: Source,
-  { occurrence, timeZone }: Omit<Composed, "body">,
-): Promise<Composed | undefined> {
-  if (source.compose === undefined) {
-    return { occurrence, timeZone, body: undefined };
-  }
-
-  const body = await source.compose(occurrence, timeZone);
-
-  return body === undefined ? undefined : { occurrence, timeZone, body };
-}
-
-// A Reminder more than 12 hours late moves on without a stale message.
-async function attempt(
+// A Recipient who left without the Family telling us still has rows there; they go now.
+async function deliverRow(
   dependencies: ReminderDependencies,
-  {
-    row,
-    source,
-    now,
-    timeZone,
-  }: { row: DispatchRow; source: Source; now: number; timeZone: string },
+  row: DispatchRow & { occurrence: string },
 ): Promise<Delivery> {
-  const isLate = now - (row.nextFireAt ?? now) > latenessLimitMs;
-  const recipient = await dependencies.memberships.findByMemberId(row.memberId);
+  const source = await sourceOfRow(dependencies, row);
 
-  if (recipient?.family.id !== row.familyId) {
-    return { status: "departed" };
-  }
+  if (source === undefined) {
+    await dependencies.dispatch.update(row.familyId, row.id, {
+      occurrence: null,
+      nextFireAt: null,
+      lockedUntil: null,
+      updatedAt: dependencies.clock.now(),
+    });
 
-  if (isLate && source.isSkippedWhenLate) {
     return { status: "skipped" };
   }
 
-  const composed = await composedOf(source, { occurrence: row.occurrence ?? "", timeZone });
+  const recipient = await dependencies.memberships.findByMemberId(row.memberId);
 
-  return composed === undefined
-    ? { status: "skipped" }
-    : send(dependencies, {
-        row,
-        source,
-        recipient,
-        text: textOf(source, composed),
-        pushText: pushTextOf(source, composed),
-      });
-}
-
-// A pushed Occurrence is remembered like a sent one, so «Готово» elsewhere marks it done and a
-// later «Отложить» on the Push cannot bring it back; it has no bot message to edit.
-function sentColumnsOf(row: DispatchRow, delivery: Delivery) {
-  if (delivery.status === "sent") {
-    return { sentOccurrence: row.occurrence, ...delivery.sent, doneAt: null, doneBy: null };
-  }
-
-  return delivery.status === "pushed"
-    ? { sentOccurrence: row.occurrence, chatId: null, messageId: null, doneAt: null, doneBy: null }
-    : {};
-}
-
-// Sent or not, the row moves on to the next Occurrence; the message it sent stays answerable.
-async function advance(
-  { dispatch, clock }: ReminderDependencies,
-  {
-    row,
-    next,
-    delivery,
-  }: { row: DispatchRow; next: ReturnType<typeof fireAfter>; delivery: Delivery },
-): Promise<void> {
-  const sentColumns = sentColumnsOf(row, delivery);
-
-  await dispatch.update(row.familyId, row.id, {
-    occurrence: next?.occurrence ?? null,
-    nextFireAt: next?.fireAt ?? null,
-    lockedUntil: null,
-    updatedAt: clock.now(),
-    ...sentColumns,
-  });
-}
-
-// A row with a fire time but no Occurrence was written by a data migration, which cannot tell a
-// Recipient's zone: it is planned now instead of sent.
-async function plan(
-  dependencies: ReminderDependencies,
-  { row, source, timeZone }: { row: DispatchRow; source: Source | undefined; timeZone: string },
-): Promise<Delivery> {
-  const fire = source && upcoming(source, { timeZone, now: dependencies.clock.now() });
-
-  await dependencies.dispatch.update(row.familyId, row.id, {
-    occurrence: fire?.occurrence ?? null,
-    nextFireAt: fire?.fireAt ?? null,
-    lockedUntil: null,
-    updatedAt: dependencies.clock.now(),
-  });
-
-  return { status: "skipped" };
-}
-
-async function deliver(dependencies: ReminderDependencies, row: DispatchRow, now: number) {
-  const source = await sourceOfRow(dependencies, row);
-  const timeZone = await zoneOf(dependencies, { memberId: row.memberId, source });
-
-  if (row.occurrence === null) {
-    return plan(dependencies, { row, source, timeZone });
-  }
-
-  const delivery: Delivery =
-    source === undefined
-      ? { status: "skipped" }
-      : await attempt(dependencies, { row, source, now, timeZone });
-
-  // A Recipient who left without the Family telling us still has rows there; they go now.
-  if (delivery.status === "departed") {
+  if (recipient?.family.id !== row.familyId) {
     await dependencies.dispatch.removeDeparted(row.familyId);
-  } else if (delivery.status !== "rate-limited") {
-    const next =
-      source === undefined
-        ? undefined
-        : fireAfter(source, { occurrence: row.occurrence, timeZone });
 
-    await advance(dependencies, { row, next, delivery });
+    return { status: "departed" };
+  }
+
+  const reminder = await reminderOfRow(dependencies, { row, occurrence: row.occurrence, source });
+  const due = await reminder.due();
+  const delivery: Delivery =
+    due.status === "send"
+      ? await send(dependencies, { row, recipient, due })
+      : { status: "skipped" };
+
+  if (delivery.status !== "rate-limited" && delivery.status !== "departed") {
+    await dependencies.dispatch.update(row.familyId, row.id, reminder.advanced(delivery));
   }
 
   return delivery;
+}
+
+async function deliver(dependencies: ReminderDependencies, row: DispatchRow): Promise<Delivery> {
+  const { occurrence } = row;
+
+  if (occurrence === null) {
+    await rowReplanned(dependencies, row);
+
+    return { status: "skipped" };
+  }
+
+  return deliverRow(dependencies, { ...row, occurrence });
 }
 
 // A row that fails for any other reason stays locked until its lock runs out and is tried again
@@ -283,10 +171,9 @@ async function deliver(dependencies: ReminderDependencies, row: DispatchRow, now
 async function deliverOrLog(
   dependencies: ReminderDependencies,
   row: DispatchRow,
-  now: number,
 ): Promise<Delivery | undefined> {
   try {
-    return await deliver(dependencies, row, now);
+    return await deliver(dependencies, row);
   } catch (error) {
     console.error("Reminder delivery failed", { dispatchId: row.id, error });
 
@@ -300,7 +187,7 @@ export async function deliverDue(dependencies: ReminderDependencies): Promise<vo
   const rows = await dependencies.dispatch.claimDue({ now, limit: batchSize });
 
   for (const [index, row] of rows.entries()) {
-    const delivery = await deliverOrLog(dependencies, row, now);
+    const delivery = await deliverOrLog(dependencies, row);
 
     if (delivery?.status === "rate-limited") {
       await dependencies.dispatch.release(rows.slice(index).map(({ id }) => id));

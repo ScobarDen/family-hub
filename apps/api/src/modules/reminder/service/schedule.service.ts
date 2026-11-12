@@ -3,23 +3,29 @@ import { dateInZone, daysAfter } from "@family-hub/recurrence";
 
 import { fallbackTimeZone } from "@/common/clock.lib.ts";
 
-import type { SourceHolder, HolderKind, ReminderDependencies, Source } from "../reminder.types.ts";
+import type {
+  HolderKind,
+  ReminderDependencies,
+  ReminderSchedule,
+  SourceHolder,
+} from "../reminder.types.ts";
+import type { DispatchRow } from "../repo/dispatch.repo.ts";
 import { changesOf, rowKey, type PlannedRow } from "./dispatch-plan.service.ts";
-import { familySources, kindsOf, sourceOfRow, sourcesOf } from "./source.service.ts";
+import { familySchedules, kindsOf, schedulesOf, sourceOfRow } from "./source.service.ts";
 
 type Fire = { occurrence: string; fireAt: number };
 
 type Planning = {
-  sources: Source[];
+  schedules: ReminderSchedule[];
   now: number;
   isMissing?: (key: Omit<PlannedRow, "fire">) => boolean;
 };
 
 export async function zoneOf(
   { sources }: ReminderDependencies,
-  { memberId, source }: { memberId: string; source: Source | undefined },
+  { memberId, schedule }: { memberId: string; schedule: ReminderSchedule | undefined },
 ): Promise<string> {
-  return (await sources.timeZoneOf(memberId)) ?? source?.homeZone ?? fallbackTimeZone;
+  return (await sources.timeZoneOf(memberId)) ?? schedule?.homeZone ?? fallbackTimeZone;
 }
 
 const searchLeadDays = 2;
@@ -27,46 +33,35 @@ const searchLeadDays = 2;
 // The first Occurrence that still fires ahead of now on this Recipient's clock; the search starts
 // two days early, as zones lie up to 26 hours apart and a moment set in another zone may fall on
 // the Recipient's day after next.
-export function upcoming(
-  source: Source,
+function upcoming(
+  schedule: ReminderSchedule,
   { timeZone, now }: { timeZone: string; now: number },
 ): Fire | undefined {
-  let occurrence = source.first(daysAfter(dateInZone(now, timeZone), -searchLeadDays));
+  let occurrence = schedule.first(daysAfter(dateInZone(now, timeZone), -searchLeadDays));
 
-  while (occurrence !== undefined && source.fireAt(occurrence, timeZone) < now) {
-    occurrence = source.next(occurrence);
+  while (occurrence !== undefined && schedule.fireAt(occurrence, timeZone) < now) {
+    occurrence = schedule.next(occurrence);
   }
 
   return occurrence === undefined
     ? undefined
-    : { occurrence, fireAt: source.fireAt(occurrence, timeZone) };
-}
-
-export function fireAfter(
-  source: Source,
-  { occurrence, timeZone }: { occurrence: string; timeZone: string },
-): Fire | undefined {
-  const next = source.next(occurrence);
-
-  return next === undefined
-    ? undefined
-    : { occurrence: next, fireAt: source.fireAt(next, timeZone) };
+    : { occurrence, fireAt: schedule.fireAt(occurrence, timeZone) };
 }
 
 async function plannedOf(
   dependencies: ReminderDependencies,
-  { sources, now, isMissing = () => true }: Planning,
+  { schedules, now, isMissing = () => true }: Planning,
 ): Promise<PlannedRow[]> {
   const planned: PlannedRow[] = [];
 
-  for (const source of sources) {
-    for (const memberId of source.recipientIds) {
-      const key = { source: source.kind, sourceId: source.sourceId, memberId };
+  for (const schedule of schedules) {
+    for (const memberId of schedule.recipientIds) {
+      const key = { source: schedule.kind, sourceId: schedule.sourceId, memberId };
 
       if (isMissing(key)) {
-        const timeZone = await zoneOf(dependencies, { memberId, source });
+        const timeZone = await zoneOf(dependencies, { memberId, schedule });
 
-        planned.push({ ...key, fire: upcoming(source, { timeZone, now }) });
+        planned.push({ ...key, fire: upcoming(schedule, { timeZone, now }) });
       }
     }
   }
@@ -80,7 +75,7 @@ export async function sourceChanged(
 ): Promise<void> {
   const now = dependencies.clock.now();
   const planned = await plannedOf(dependencies, {
-    sources: await sourcesOf(dependencies, holder),
+    schedules: await schedulesOf(dependencies, holder),
     now,
   });
   const existing = await dependencies.dispatch.ofHolder({
@@ -125,13 +120,14 @@ export async function zoneChanged(dependencies: ReminderDependencies, memberId: 
 
   for (const row of rows.filter(({ source }) => source !== "digest")) {
     const source = await sourceOfRow(dependencies, row);
-    const timeZone = await zoneOf(dependencies, { memberId, source });
+    const schedule = source?.schedule;
+    const timeZone = await zoneOf(dependencies, { memberId, schedule });
 
     planned.push({
       source: row.source,
       sourceId: row.sourceId,
       memberId,
-      fire: source && upcoming(source, { timeZone, now }),
+      fire: schedule && upcoming(schedule, { timeZone, now }),
     });
   }
 
@@ -152,7 +148,7 @@ export async function membershipChanged(dependencies: ReminderDependencies, fami
   const rows = await dependencies.dispatch.ofFamily(familyId);
   const kept = new Set(rows.map(rowKey));
   const planned = await plannedOf(dependencies, {
-    sources: await familySources(dependencies, familyId),
+    schedules: await familySchedules(dependencies, familyId),
     now,
     isMissing: (key) => !kept.has(rowKey(key)),
   });
@@ -161,4 +157,21 @@ export async function membershipChanged(dependencies: ReminderDependencies, fami
     { familyId, now, ...changesOf({ existing: [], planned, now }) },
     () => uuidv7(now),
   );
+}
+
+// A row with a fire time but no Occurrence was written by a data migration, which cannot tell a
+// Recipient's zone: it is planned now instead of sent.
+export async function rowReplanned(dependencies: ReminderDependencies, row: DispatchRow) {
+  const now = dependencies.clock.now();
+  const source = await sourceOfRow(dependencies, row);
+  const schedule = source?.schedule;
+  const timeZone = await zoneOf(dependencies, { memberId: row.memberId, schedule });
+  const fire = schedule && upcoming(schedule, { timeZone, now });
+
+  await dependencies.dispatch.update(row.familyId, row.id, {
+    occurrence: fire?.occurrence ?? null,
+    nextFireAt: fire?.fireAt ?? null,
+    lockedUntil: null,
+    updatedAt: now,
+  });
 }
