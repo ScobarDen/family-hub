@@ -3,7 +3,12 @@ import { fileURLToPath } from "node:url";
 import { configFromProject } from "@o-feod/oxlint-structure-plugin/configs";
 import { defineConfig } from "vite-plus";
 
-type Pattern = { regex: string; message: string; allowTypeImports?: boolean };
+type Pattern = {
+  regex: string;
+  message: string;
+  allowTypeImports?: boolean;
+  importNamePattern?: string;
+};
 
 const extension = String.raw`(\.([cm]?[jt]sx?))?$`;
 
@@ -13,6 +18,13 @@ function role(...roles: string[]): Pattern {
     message: "Crosses a role boundary.",
   };
 }
+
+// ADR 0011, #201: a repo's rows are its module's internals; another module asks that module's API.
+const repoRows: Pattern = {
+  regex: "^@/modules/",
+  importNamePattern: String.raw`^\w+(Row|Record|Tree)$`,
+  message: "A repo's row types stay inside their module; ask the module's public API instead.",
+};
 
 const reactuse = {
   name: "@siberiacancode/reactuse",
@@ -332,6 +344,7 @@ export default defineConfig({
       { files: [webSource("**/*.{ts,tsx}")], rules: feodRules("web") },
       { files: [apiSource("**/*.ts")], rules: feodRules("api") },
       { files: ["apps/*/src/**/*.{ts,tsx}"], rules: restrict([role("dto")]) },
+      { files: [apiSource("**/*.ts")], rules: restrict([role("dto"), repoRows]) },
       { files: ["apps/*/src/**/*.test.{ts,tsx}"], rules: testImports },
       { files: [webSource("**/*.dto.ts")], rules: reactuseOnly },
       {
@@ -360,15 +373,15 @@ export default defineConfig({
       },
       {
         files: [apiSource("**/*.route.ts")],
-        rules: restrict([role("repo")]),
+        rules: restrict([role("repo"), repoRows]),
       },
       {
         files: [apiSource("**/*.service.ts")],
-        rules: restrict([role("route")]),
+        rules: restrict([role("route"), repoRows]),
       },
       {
         files: [apiSource("**/*.repo.ts")],
-        rules: restrict([role("route", "service")]),
+        rules: restrict([role("route", "service"), repoRows]),
       },
     ],
   },
