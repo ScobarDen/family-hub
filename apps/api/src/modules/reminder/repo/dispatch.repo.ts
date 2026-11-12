@@ -3,7 +3,7 @@ import { and, asc, eq, gte, inArray, isNull, lt, lte, notInArray, or } from "dri
 import { bindFirst } from "@/common/bind.lib.ts";
 import { familyMembers, reminderDispatch, type DispatchSource, type Db } from "@/modules/db";
 
-import { sourceIdOf } from "../reminder.lib.ts";
+import { sourceIdOf } from "../lib/reminder.lib.ts";
 
 export type DispatchRow = typeof reminderDispatch.$inferSelect;
 

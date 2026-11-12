@@ -66,9 +66,7 @@ export type SourceHolder = { familyId: string; id: string };
 
 export type ChangedSource = { kind: "task" | "pet"; id: string };
 
-// What a dispatch row reminds of, read the same way for every kind of source: its Occurrences on a
-// Recipient's calendar, the moment each one fires and what the message says.
-export type Source = {
+export type ReminderSchedule = {
   kind: DispatchSource;
   sourceId: string;
   recipientIds: string[];
@@ -77,20 +75,34 @@ export type Source = {
   first: (fromDay: string) => string | undefined;
   next: (occurrence: string) => string | undefined;
   fireAt: (occurrence: string, timeZone: string) => number;
+};
+
+// «Готово» completes a Task in the task module, closes a birthday on its rows here, and a Digest
+// offers no «Готово» at all.
+export type ReminderClosing =
+  | { by: "task"; taskId: string; isClosed: (occurrence: string) => boolean }
+  | { by: "row" }
+  | { by: "none" };
+
+export type ReminderContent =
+  | { status: "headline" }
+  | { status: "body"; body: string }
+  | { status: "nothing-to-say" };
+
+export type ReminderKind = {
   emoji: string;
   title: (occurrence: string, timeZone: string) => string;
+  pushText: (
+    occurrence: string,
+    context: { timeZone: string; now: number; body: string | undefined },
+  ) => PushText;
   buttons: (dispatchId: string, occurrence: string) => InlineKeyboardMarkup;
   // The record a Push opens; without one it opens the app.
-  deepLink?: DeepLink;
-  closesForEveryone: boolean;
-  // Its Push carries «Готово» and «Отложить», as its bot message does.
-  isPressable: boolean;
-  // Without it an Occurrence is closed once «Готово» marked it on the row.
-  isClosed?: (occurrence: string) => boolean;
-  // A message body built when it is due, under the title; nothing to say means nothing is sent.
-  compose?: (occurrence: string, timeZone: string) => Promise<string | undefined>;
-  // A Push says what in its title and when in its body; without it the title is the whole line.
-  pushOf?: (occurrence: string, timeZone: string) => PushText;
+  deepLink: DeepLink | undefined;
+  closing: ReminderClosing;
   snoozeMs: number;
-  isSkippedWhenLate: boolean;
+  // Read only when the Reminder is due: a Digest's body comes from the Feed.
+  content: () => Promise<ReminderContent>;
 };
+
+export type ReminderSource = { schedule: ReminderSchedule; kind: ReminderKind };

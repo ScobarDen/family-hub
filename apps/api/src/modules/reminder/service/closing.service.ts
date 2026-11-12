@@ -1,86 +1,37 @@
 import type { CompletedOccurrence, ReopenedOccurrence } from "@/modules/task";
-import { ignoringBotErrors } from "@/modules/telegram";
 
-import { doneText } from "../reminder.lib.ts";
-import type { ReminderDependencies, Source } from "../reminder.types.ts";
+import type { ReminderDependencies, ReminderSource } from "../reminder.types.ts";
 import type { DispatchRow } from "../repo/dispatch.repo.ts";
-import { fireAfter, sourceChanged, zoneOf } from "./schedule.service.ts";
+import { editMessage, reminderOfRow } from "./recipient-reminder.service.ts";
+import { sourceChanged } from "./schedule.service.ts";
 import { kindsOf } from "./source.service.ts";
 import { taskSourcesToClose } from "./task-source.service.ts";
 
 type Closed = {
+  rows: DispatchRow[];
   occurrence: string | null;
   by: { id: string; name: string };
-  sourceOf: (row: DispatchRow) => Source | undefined;
+  sourceOf: (row: DispatchRow) => ReminderSource | undefined;
 };
 
-type Closing = ReminderDependencies & Omit<Closed, "sourceOf"> & { now: number };
-
-async function closeMessage(
-  closing: Closing,
-  { row, source }: { row: DispatchRow; source: Source },
-) {
-  const { dispatch, bot, by, now, occurrence } = closing;
-
-  if (row.chatId !== null && row.messageId !== null) {
-    await ignoringBotErrors(
-      bot.call("editMessageText", {
-        chat_id: row.chatId,
-        message_id: row.messageId,
-        text: doneText({
-          text: source.title(
-            occurrence ?? "",
-            await zoneOf(closing, { memberId: row.memberId, source }),
-          ),
-          doneBy: by.name,
-        }),
-      }),
-    );
-  }
-
-  await dispatch.update(row.familyId, row.id, { doneAt: now, doneBy: by.id, updatedAt: now });
-}
-
-async function moveOn(closing: Closing, { row, source }: { row: DispatchRow; source: Source }) {
-  const { dispatch, occurrence, now } = closing;
-  const next =
-    occurrence === null
-      ? undefined
-      : fireAfter(source, {
-          occurrence,
-          timeZone: await zoneOf(closing, { memberId: row.memberId, source }),
-        });
-
-  await dispatch.update(row.familyId, row.id, {
-    occurrence: next?.occurrence ?? null,
-    nextFireAt: next?.fireAt ?? null,
-    updatedAt: now,
-  });
-}
-
-async function closeRow(closing: Closing, { row, source }: { row: DispatchRow; source: Source }) {
-  if (row.sentOccurrence === closing.occurrence && row.doneAt === null) {
-    await closeMessage(closing, { row, source });
-  }
-
-  if (closing.occurrence !== null && row.occurrence === closing.occurrence) {
-    await moveOn(closing, { row, source });
-  }
-}
-
-// A closed Occurrence is closed for every Recipient: sent messages turn into «Сделал(а) …», once,
-// and rows still waiting for it move on.
 export async function closeOccurrence(
   dependencies: ReminderDependencies,
-  { rows, sourceOf, ...closed }: Closed & { rows: DispatchRow[] },
+  { rows, occurrence, by, sourceOf }: Closed,
 ): Promise<void> {
-  const closing: Closing = { ...dependencies, ...closed, now: dependencies.clock.now() };
+  const now = dependencies.clock.now();
 
   for (const row of rows) {
     const source = sourceOf(row);
+    const reminder =
+      source && (await reminderOfRow(dependencies, { row, source, occurrence, now }));
+    const closing = reminder?.closed(by);
 
-    if (source !== undefined) {
-      await closeRow(closing, { row, source });
+    if (closing !== undefined) {
+      if (closing.edit !== undefined) {
+        await editMessage(dependencies, closing.edit);
+      }
+
+      await dependencies.dispatch.update(row.familyId, row.id, closing.patch);
     }
   }
 }
@@ -102,7 +53,7 @@ export async function occurrenceCompleted(
     rows: await rowsOfTask(dependencies, familyId, taskId),
     occurrence,
     by,
-    sourceOf: (row) => sources.find(({ sourceId }) => sourceId === row.sourceId),
+    sourceOf: (row) => sources.find(({ schedule }) => schedule.sourceId === row.sourceId),
   });
   await sourceChanged(dependencies, { familyId, kind: "task", id: taskId });
 }

@@ -137,15 +137,19 @@ The state of an Occurrence of a recurring Task that a Member has dropped from th
 _Avoid_: Cancelled, deleted, excluded
 
 **Reminder**:
-A prompt delivered to a Task's Recipients at a set offset from an Occurrence, through the bot in Telegram, as a Push, or both, as each Recipient chooses.
+A prompt delivered to its Recipients through the bot in Telegram, as a Push, or both, as each Recipient chooses: of a Task Occurrence at a set offset from it, of a Pet's birthday on its morning, or a Member's Digest.
 _Avoid_: Notification, alert
+
+**Digest**:
+A Member's daily Reminder of what is Overdue and what is due today, at the time they chose on their own clock; a day with nothing to say sends none.
+_Avoid_: Summary, daily report, brief
 
 **Push**:
 Delivery of a Reminder to a Recipient's Devices outside Telegram.
 _Avoid_: Notification, web push, alert
 
 **Recipient**:
-A Member a Reminder is delivered to; by default a Task's Assignees, or its owner when it has none; a Private Task reaches only its owner.
+A Member a Reminder is delivered to; of a Task, by default its Assignees, or its owner when it has none, and a Private Task reaches only its owner; of a Pet's birthday, every Member; of a Digest, its own Member.
 _Avoid_: Subscriber, target
 
 ### Recipes
