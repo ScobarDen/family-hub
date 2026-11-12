@@ -26,6 +26,22 @@ const repoRows: Pattern = {
   message: "A repo's row types stay inside their module; ask the module's public API instead.",
 };
 
+// #202: delivery, callbacks and closing act on what a RecipientReminder decides; a Recipient's zone
+// and a kind's closing are read behind reminderOfRow.
+const reminderDecision = "Ask reminderOfRow for a RecipientReminder instead.";
+const reminderDecisions: Pattern[] = [
+  {
+    regex: String.raw`/schedule\.service` + extension,
+    importNamePattern: "^zoneOf$",
+    message: reminderDecision,
+  },
+  {
+    regex: String.raw`/reminder\.types` + extension,
+    importNamePattern: "^Reminder(Kind|Closing)$",
+    message: reminderDecision,
+  },
+];
+
 const reactuse = {
   name: "@siberiacancode/reactuse",
   message: "reactuse holds ephemeral DOM state and lives only in *.view.tsx.",
@@ -378,6 +394,12 @@ export default defineConfig({
       {
         files: [apiSource("**/*.service.ts")],
         rules: restrict([role("route"), repoRows]),
+      },
+      {
+        files: ["delivery", "callback", "closing"].map((service) =>
+          apiSource(`modules/reminder/service/${service}.service.ts`),
+        ),
+        rules: restrict([role("route"), repoRows, ...reminderDecisions]),
       },
       {
         files: [apiSource("**/*.repo.ts")],
