@@ -250,6 +250,26 @@ describe("completing a Task", () => {
     expect(unchanged).toMatchObject({ completions: [], skippedDates: [] });
   });
 
+  test("refuses to complete a skipped Occurrence of a recurring Task", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Таблетка Бьюику",
+      when: on("2026-10-01"),
+      recurrence: { frequency: "weekly", until: null },
+    });
+
+    await send(worker, denis, { path: `/api/tasks/${task.id}/skip`, body: { date: "2026-10-08" } });
+
+    const response = await send(worker, denis, {
+      path: `/api/tasks/${task.id}/complete`,
+      body: { occurrence: "2026-10-08" },
+    });
+    const [unchanged] = await tasksOf(worker, denis);
+
+    expect(await response.json()).toMatchObject({ code: "OCCURRENCE_NOT_FOUND" });
+    expect(unchanged?.completions).toEqual([]);
+  });
+
   test("refuses to skip the one Occurrence of a single Task", async () => {
     const worker = await startWithFamily();
     const task = await createTask(worker, { title: "Отпуск", when: on("2026-10-10") });

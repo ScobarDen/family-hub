@@ -2,7 +2,7 @@ import { taskAlbumPreview, type Task, type TaskAlbum } from "@family-hub/contrac
 
 import type { Membership } from "@/modules/auth";
 
-import { toTask } from "../task.lib.ts";
+import { toTask } from "../lib/task.lib.ts";
 import type { TaskRow, TaskTree } from "../task.repo.ts";
 import type { TaskDependencies, TaskResult } from "../task.types.ts";
 

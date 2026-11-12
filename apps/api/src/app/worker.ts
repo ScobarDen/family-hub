@@ -88,6 +88,7 @@ import {
 } from "@/modules/reminder";
 import {
   createTaskFeed,
+  createTaskReminding,
   createTaskRepo,
   createTaskService,
   createTaskTile,
@@ -243,7 +244,7 @@ function todayServiceOf(db: Db, { links, clock }: { links: PhotoLinks; clock: Cl
 // A Task reads its Reminders' sources; the morning digest reads the Member's Feed.
 function reminderServiceOf(db: Db, { shared, feed }: { shared: Shared; feed: FeedService }) {
   return createReminderService({
-    tasks: { findTree: createTaskRepo(db).findTree },
+    tasks: createTaskReminding({ tasks: createTaskRepo(db) }),
     digests: {
       contentOf: async (memberId) => {
         const membership = await shared.memberships.findByMemberId(memberId);

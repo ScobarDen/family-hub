@@ -3,7 +3,7 @@ import { uuidv7, type ParsedTaskChange, type Task } from "@family-hub/contract";
 import type { Membership } from "@/modules/auth";
 import { isTurnedPrivate } from "@/modules/visibility";
 
-import { columnsOf } from "../task.lib.ts";
+import { columnsOf } from "../lib/task.lib.ts";
 import type { TaskTree } from "../task.repo.ts";
 import type { DeleteResult, TaskDependencies, TaskRefusal, TaskResult } from "../task.types.ts";
 import { currentTask, taskOf, visibleTree } from "./access.service.ts";

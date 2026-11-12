@@ -10,11 +10,10 @@ import type {
   TaskAlbum,
   TaskWhen,
 } from "@family-hub/contract";
-import { firstOccurrenceFrom } from "@family-hub/recurrence";
 
 import type { RecipientsMode } from "@/modules/db";
 
-import type { CompletionRow, PersonRow, TaskRecord, TaskRow, TaskTree } from "./task.repo.ts";
+import type { CompletionRow, PersonRow, TaskRecord, TaskRow, TaskTree } from "../task.repo.ts";
 
 // A Task without a Recurrence has one Occurrence, stored as "", so moving its date keeps it done.
 export function occurrenceKey(row: TaskRow, occurrence: string | null): string {
@@ -26,33 +25,14 @@ export function occurrenceDateOf(row: TaskRow, occurrence: string | null): strin
   return row.frequency === null ? row.date : occurrence;
 }
 
-// Any date stands for the one Occurrence of a Task without a Recurrence.
-export function isOccurrenceOf(row: TaskRow, date: string | null): boolean {
-  if (row.frequency === null) {
-    return true;
-  }
-
-  return (
-    row.date !== null &&
-    date !== null &&
-    firstOccurrenceFrom(row.date, recurrenceOf(row), date) === date
-  );
-}
-
-export function isCompleted(record: TaskRecord, occurrence: string | null): boolean {
-  const key = occurrenceKey(record.row, occurrence);
-
-  return record.completions.some((completion) => completion.occurrence === key);
-}
-
-// The one Overdue rule the Feed, Today and the digest share: a past Occurrence of a Task with
-// Assignees that is neither Completed nor skipped.
+// The one Overdue rule the Feed, Today and the digest share, asked of an open Occurrence: one of
+// a Task with Assignees whose day has passed.
 // `date` is the viewer's day the Occurrence falls on, which a timed one in another zone may shift.
 export function isOverdue(
   record: TaskRecord,
-  { occurrence, date, today }: { occurrence: string; date: string; today: string },
+  { date, today }: { date: string; today: string },
 ): boolean {
-  return date < today && record.assignees.length > 0 && !isCompleted(record, occurrence);
+  return date < today && record.assignees.length > 0;
 }
 
 export function whenOf(row: TaskRow): TaskWhen | null {

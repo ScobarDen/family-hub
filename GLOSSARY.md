@@ -132,6 +132,10 @@ _Avoid_: Repeat, schedule, series rule
 One concrete date of a Task; each Occurrence of a recurring Task is Completed or skipped on its own, while edits apply to all of them.
 _Avoid_: Instance, repetition
 
+**Skipped**:
+The state of an Occurrence of a recurring Task that a Member has dropped from the series; it is not reminded of, never becomes Overdue and cannot be Completed.
+_Avoid_: Cancelled, deleted, excluded
+
 **Reminder**:
 A prompt delivered to a Task's Recipients at a set offset from an Occurrence, through the bot in Telegram, as a Push, or both, as each Recipient chooses.
 _Avoid_: Notification, alert
@@ -141,7 +145,7 @@ Delivery of a Reminder to a Recipient's Devices outside Telegram.
 _Avoid_: Notification, web push, alert
 
 **Recipient**:
-A Member a Reminder is delivered to; by default a Task's Assignees, or its author when it has none.
+A Member a Reminder is delivered to; by default a Task's Assignees, or its owner when it has none; a Private Task reaches only its owner.
 _Avoid_: Subscriber, target
 
 ### Recipes

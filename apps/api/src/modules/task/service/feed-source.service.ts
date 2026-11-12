@@ -1,12 +1,13 @@
 import { overdueLookbackDays, type FeedActivity, type FeedUpcoming } from "@family-hub/contract";
-import { daysAfter, occurrenceMoment, occurrencesOnDays, timeInZone } from "@family-hub/recurrence";
+import { daysAfter, occurrenceMoment, timeInZone } from "@family-hub/recurrence";
 
 import type { KeysetPage } from "@/common/keyset.lib.ts";
 import type { Membership } from "@/modules/auth";
 import type { ActivitySource, FeedWindow, UpcomingSource } from "@/modules/feed";
 import type { PhotoLinks } from "@/modules/photo";
 
-import { isCompleted, isOverdue, recurrenceOf, titleOf } from "../task.lib.ts";
+import { taskSeries } from "../lib/series.lib.ts";
+import { isOverdue, recurrenceOf, titleOf } from "../lib/task.lib.ts";
 import type { TaskRecord, TaskRepo, TaskTree } from "../task.repo.ts";
 
 type TaskFeedDependencies = { tasks: TaskRepo; links: PhotoLinks };
@@ -54,55 +55,40 @@ function rootItems(tree: TaskTree, { window, line }: { window: FeedWindow; line:
   const { root } = tree;
   const { row } = root;
   const { today, last, timeZone } = window;
-  const { date, time, timeZone: zone } = row;
+  const { time, timeZone: zone } = row;
+  const days = {
+    from: recurrenceOf(row) === null ? farPast : daysAfter(today, -overdueLookbackDays),
+    to: last,
+    timeZone,
+  };
 
-  if (date === null) {
-    return [];
-  }
-
-  const recurrence = recurrenceOf(row);
-
-  return occurrencesOnDays(
-    { startDate: date, recurrence, skipped: row.skippedDates },
-    {
-      days: {
-        from: recurrence === null ? farPast : daysAfter(today, -overdueLookbackDays),
-        to: last,
-        timeZone,
-      },
-      momentOf: (occurrence) =>
-        time === null || zone === null
-          ? undefined
-          : occurrenceMoment(occurrence, { time, timeZone: zone }),
-    },
-  ).flatMap(({ occurrence, date: day, moment }) => {
-    const isAhead = day >= today && !isCompleted(root, occurrence);
-    const isLate = isOverdue(root, { occurrence, date: day, today });
-
-    return isAhead || isLate
-      ? [
-          itemOf(root, {
-            line,
-            title: row.title,
-            occurrence,
-            date: day,
-            time: moment === undefined ? null : timeInZone(moment, timeZone),
-          }),
-        ]
-      : [];
-  });
+  return taskSeries(root)
+    .openOn(days, (occurrence) =>
+      time === null || zone === null
+        ? undefined
+        : occurrenceMoment(occurrence, { time, timeZone: zone }),
+    )
+    .filter(({ date }) => date >= today || isOverdue(root, { date, today }))
+    .map(({ occurrence, date, moment }) =>
+      itemOf(root, {
+        line,
+        title: row.title,
+        occurrence,
+        date,
+        time: moment === undefined ? null : timeInZone(moment, timeZone),
+      }),
+    );
 }
 
 function subtaskItems(tree: TaskTree, { window, line }: { window: FeedWindow; line: Line }) {
   return tree.subtasks.flatMap((subtask) => {
     const { date } = subtask.row;
 
-    if (date === null || date > window.last || isCompleted(subtask, date)) {
+    if (date === null || date > window.last || subtask.completions.length > 0) {
       return [];
     }
 
-    return date >= window.today ||
-      isOverdue(subtask, { occurrence: date, date, today: window.today })
+    return date >= window.today || isOverdue(subtask, { date, today: window.today })
       ? [
           itemOf(subtask, {
             line: { ...line, subtaskId: subtask.row.id },

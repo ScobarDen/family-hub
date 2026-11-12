@@ -1,4 +1,4 @@
-import type { Task } from "@family-hub/contract";
+import type { ReminderOffset, Task, TaskWhen } from "@family-hub/contract";
 
 import type { Clock } from "@/common/clock.lib.ts";
 import type { MembershipRepo } from "@/modules/auth";
@@ -6,6 +6,7 @@ import type { LiveChanges } from "@/modules/live";
 import type { PhotoLinks } from "@/modules/photo";
 import type { MiniAppLinks, BotApi } from "@/modules/telegram";
 
+import type { TaskSeries } from "./lib/series.lib.ts";
 import type { TaskRepo } from "./task.repo.ts";
 
 export type CompletedOccurrence = {
@@ -53,3 +54,16 @@ export type SubtaskTarget = { taskId: string; subtaskId: string };
 export type TaskResult = { status: "ok"; task: Task } | { status: TaskRefusal };
 
 export type DeleteResult = { status: "deleted" } | { status: TaskRefusal };
+
+export type RemindingTask = {
+  task: {
+    id: string;
+    title: string;
+    when: TaskWhen;
+    petId: string | null;
+    reminderOffsets: ReminderOffset[];
+    pet: { name: string; archivedAt: number | null } | undefined;
+  };
+  series: TaskSeries;
+  recipientIds: string[];
+};

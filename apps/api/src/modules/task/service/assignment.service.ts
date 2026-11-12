@@ -2,7 +2,7 @@ import { httpStatus } from "@/common/errors.lib.ts";
 import type { Membership } from "@/modules/auth";
 import { BotApiError } from "@/modules/telegram";
 
-import { assignedText, openTaskButton } from "../task.lib.ts";
+import { assignedText, openTaskButton } from "../lib/task.lib.ts";
 import type { TaskDependencies } from "../task.types.ts";
 
 type AssignmentChange = {
