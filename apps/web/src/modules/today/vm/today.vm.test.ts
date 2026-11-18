@@ -410,6 +410,14 @@ describe("the section tiles", () => {
     ]);
   });
 
+  test("shorten a thousand photos and more to fit the tile, and read the full count aloud", async () => {
+    const { model } = startToday({ tiles: { ...quiet, albums: { photos: 1_250 } } });
+
+    await vi.waitFor(() => {
+      expect(model.tiles()[3]).toMatchObject({ value: "1,2к", valueLabel: "1250 фото" });
+    });
+  });
+
   test("show live numbers with the Overdue Tasks in red", async () => {
     const { model } = startToday({
       tiles: {
@@ -428,7 +436,14 @@ describe("the section tiles", () => {
       { module: "tasks", title: "Дела", value: "5", note: "2 просрочено", isAlert: true },
       { module: "pet", title: "Питомцы", value: "2", note: undefined, isAlert: false },
       { module: "goals", title: "Цели", value: "25%", note: "Диван", isAlert: false },
-      { module: "albums", title: "Альбомы", value: "4", note: "фото за неделю", isAlert: false },
+      {
+        module: "albums",
+        title: "Альбомы",
+        value: "4",
+        valueLabel: "4 фото",
+        note: undefined,
+        isAlert: false,
+      },
       { module: "recipes", title: "Рецепты", value: "12", note: undefined, isAlert: false },
     ]);
   });

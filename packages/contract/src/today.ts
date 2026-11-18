@@ -28,6 +28,7 @@ export const todayTiles = z.object({
       nearest: z.object({ goalId: z.string(), title: z.string(), percent: z.number() }).nullable(),
     })
     .nullable(),
+  // Every photo in the Albums, Recipes' own photos aside.
   albums: z.object({ photos: z.number() }).nullable(),
   recipes: z.object({ count: z.number() }).nullable(),
 });

@@ -1,6 +1,6 @@
 import { type FeedUpcoming, type SlotModule, type TodayTiles } from "@family-hub/contract";
 
-import { formatCount, type CountWords } from "@/common/format-count.lib.ts";
+import { formatCount, formatShortCount, type CountWords } from "@/common/format-count.lib.ts";
 import { formatFullAge, formatNearDate, formatShortAge } from "@/common/format-date.lib.ts";
 import { sectionTitles } from "@/modules/sections";
 
@@ -138,8 +138,8 @@ const tileOf: {
     }),
   albums: ({ photos }) =>
     tile("albums", {
-      value: counted(photos),
-      note: photos === 0 ? undefined : "фото за неделю",
+      value: photos === 0 ? undefined : formatShortCount(photos),
+      valueLabel: photos === 0 ? undefined : `${photos} фото`,
     }),
   recipes: ({ count }) => tile("recipes", { value: counted(count) }),
 };

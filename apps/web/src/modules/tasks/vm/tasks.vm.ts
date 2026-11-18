@@ -127,10 +127,10 @@ function reatomShown(
 }
 
 function emptyOf(
-  { overdue, today, upcoming, undated }: TaskGroups,
+  { overdue, passed, today, upcoming, undated }: TaskGroups,
   { hasFamilyTasks, scope }: { hasFamilyTasks: boolean; scope: "mine" | "all" },
 ): EmptyList | undefined {
-  if ([overdue, today, upcoming, undated].some((group) => group.length > 0)) {
+  if ([overdue, passed, today, upcoming, undated].some((group) => group.length > 0)) {
     return undefined;
   }
 
@@ -325,14 +325,14 @@ function reatomOpenForm({ editing }: Navigation, { taskForm }: Forms) {
 // The pet card shows a Pet's Overdue and upcoming Tasks; the tasks module stays their only source.
 function tasksOfPet(tasks: TasksModel, viewer: () => Viewer) {
   return (petId: string): TaskRow[] => {
-    const { overdue, today, upcoming, undated } = groupsOf(
+    const { overdue, passed, today, upcoming, undated } = groupsOf(
       (tasks.list.data() ?? [])
         .filter(({ pet }) => pet?.id === petId)
         .flatMap((task) => rowsOf(task, viewer())),
       viewer().today,
     );
 
-    return [...overdue, ...today, ...upcoming, ...undated];
+    return [...overdue, ...passed, ...today, ...upcoming, ...undated];
   };
 }
 

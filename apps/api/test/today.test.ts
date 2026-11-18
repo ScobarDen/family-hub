@@ -324,6 +324,18 @@ describe("the section tiles", () => {
     expect(await tileOf(worker, "tasks")).toEqual({ open: 1, overdue: 1, week: 1 });
   });
 
+  test("leave out a recurring Task whose series has ended", async () => {
+    const worker = await startWithFamily();
+
+    await addTask(worker, {
+      title: "Капли Бьюику",
+      when: on("2026-09-07"),
+      recurrence: { frequency: "weekly", until: "2026-09-25" },
+    });
+
+    expect(await tileOf(worker, "tasks")).toEqual({ open: 0, overdue: 0, week: 0 });
+  });
+
   test("count only the viewer's own Private Tasks", async () => {
     const worker = await startWithFamily();
 
@@ -388,7 +400,7 @@ describe("the section tiles", () => {
     expect(await tileOf(worker, "goals", asya)).toMatchObject({ nearest: { title: "Сюрприз" } });
   });
 
-  test("count the photos added in the last seven days", async () => {
+  test("count every photo in the Albums, however old", async () => {
     const worker = await startWithFamily();
 
     await worker.setPhotoChannel(worker.familyId, -100_500);
@@ -397,7 +409,7 @@ describe("the section tiles", () => {
     await upload(worker, "2026-10-01T12:00:00Z", 30);
     worker.clock.set("2026-10-02T05:00:00Z");
 
-    expect(await tileOf(worker, "albums")).toEqual({ photos: 2 });
+    expect(await tileOf(worker, "albums")).toEqual({ photos: 3 });
   });
 
   test("count the Family's Recipes", async () => {
