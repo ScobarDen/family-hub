@@ -26,18 +26,22 @@ export const Tiles = reatomComponent(
             }}
           >
             {picture === undefined ? icon : <RoundPicture src={picture} fallback={icon} />}
-            <span className="w-full text-footnote font-medium break-words hyphens-auto">
-              {title}
-            </span>
-            {valueLabel !== undefined && <span className="sr-only">{valueLabel}</span>}
-            <span
-              aria-hidden={value === undefined || valueLabel !== undefined}
-              className={cn(
-                "text-value leading-none font-semibold",
-                isAlert ? "text-destructive-text" : value === undefined && "text-muted-foreground",
-              )}
-            >
-              {value ?? "—"}
+            <span className="mt-auto flex w-full flex-col items-start gap-1">
+              <span className="w-full text-footnote font-medium break-words hyphens-auto">
+                {title}
+              </span>
+              {valueLabel !== undefined && <span className="sr-only">{valueLabel}</span>}
+              <span
+                aria-hidden={value === undefined || valueLabel !== undefined}
+                className={cn(
+                  "text-value leading-none font-semibold",
+                  isAlert
+                    ? "text-destructive-text"
+                    : value === undefined && "text-muted-foreground",
+                )}
+              >
+                {value ?? "—"}
+              </span>
             </span>
           </button>
         );
