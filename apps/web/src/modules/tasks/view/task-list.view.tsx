@@ -11,6 +11,7 @@ type ListProps = { model: TasksScreenModel; screen: Extract<TasksScreen, { kind:
 
 const groupTitles: Array<[keyof Omit<TaskGroups, "completed">, string]> = [
   ["overdue", "Просрочено"],
+  ["passed", "Прошло, не отмечено"],
   ["today", "Сегодня"],
   ["upcoming", "Скоро"],
   ["undated", "Без срока"],

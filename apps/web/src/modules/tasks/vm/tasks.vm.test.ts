@@ -71,6 +71,16 @@ describe("the list of Tasks", () => {
     expect(groups(model).overdue).toEqual([]);
   });
 
+  test("keeps a past Task without Assignees in the list until it is ticked off", async () => {
+    const { model } = startTasks(fakeBackend([{ ...vaccination, assignees: [] }]));
+
+    await loaded(model);
+
+    expect(groups(model).passed).toMatchObject([
+      { title: "Прививка Бьюику", status: "open", subtitle: "12 октября · Бьюик" },
+    ]);
+  });
+
   test("shows under «Мои» only the Tasks the Member does or is reminded of", async () => {
     const { model } = startTasks();
 

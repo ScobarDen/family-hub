@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, exists, gte, inArray, isNull, ne, not, notInArray } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, isNull, ne, not, notInArray } from "drizzle-orm";
 
 import { bindFirst } from "@/common/bind.lib.ts";
 import { keyOf, newestFirstBy, olderThan, type KeysetPage } from "@/common/keyset.lib.ts";
@@ -274,8 +274,8 @@ async function allPhotosOf(db: Db, familyId: string): Promise<PhotoRow[]> {
   return db.select().from(photos).where(isAlbumPhoto(db, familyId)).all();
 }
 
-async function countPhotosSince(db: Db, familyId: string, since: number): Promise<number> {
-  return db.$count(photos, and(isAlbumPhoto(db, familyId), gte(photos.createdAt, since)));
+async function countPhotos(db: Db, familyId: string): Promise<number> {
+  return db.$count(photos, isAlbumPhoto(db, familyId));
 }
 
 export function createAlbumRepo(db: Db) {
@@ -284,7 +284,7 @@ export function createAlbumRepo(db: Db) {
       albumPhotosOf,
       petPhotosOf,
       allPhotos: allPhotosOf,
-      countPhotosSince,
+      countPhotos,
       knownPhotoIds,
       delete: deleteAlbum,
       addPhotos,

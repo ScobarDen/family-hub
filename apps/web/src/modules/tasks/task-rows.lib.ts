@@ -36,8 +36,10 @@ export type BirthdayRow = {
 
 export type ListRow = TaskRow | BirthdayRow;
 
+// A past Occurrence without Assignees is not Overdue, yet stays listed until it is ticked off.
 export type TaskGroups<Row extends ListRow = ListRow> = {
   overdue: Row[];
+  passed: Row[];
   today: Row[];
   upcoming: Row[];
   undated: Row[];
@@ -169,6 +171,9 @@ export function groupsOf<Row extends ListRow>(rows: Row[], today: string): TaskG
 
   return {
     overdue: open.filter(({ status }) => status === "overdue"),
+    passed: open.filter(
+      ({ status, date }) => status === "open" && date !== undefined && date < today,
+    ),
     today: open.filter(({ date }) => date === today),
     upcoming: open.filter(({ date }) => date !== undefined && date > today),
     undated: open.filter(({ date }) => date === undefined),
