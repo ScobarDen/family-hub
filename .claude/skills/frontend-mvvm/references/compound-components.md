@@ -23,13 +23,13 @@ A prop that is data (`title`, `items`, `disabled`) or a visual token (`size`, `t
 
 A preset is a ready assembly of a compound, inserted into markup as one tag.
 
-- **Rule of three.** Three identical assemblies earn a preset. Two do not.
+- **Rule of three.** Three identical assemblies earn a preset. Two do not. A domain assembly written in one place, a list item rendered in a loop included, is an ordinary View of its module, named after its concept (`product-card.view.tsx`).
 - **A preset takes data and callbacks only.** Its structure is fixed. A frequent new variant gets a second preset; a rare one is assembled from the parts in place. A structural prop on a preset turns it back into the component the compound replaced.
-- **Placement** (`feod-preset` §2): the compound is a common entity under `common/`. A preset that names domain concepts (`UserCard`) lives in the module that uses it; a purely visual preset (`ConfirmDialog`) sits beside its compound in `common/`.
+- **Placement** (`feod-preset`, Module or common): the compound lives in the `ui-kit` module and leaves it through `ui-kit`'s `index.ts`. A preset that names domain concepts (`UserCard`) lives in the module that uses it; a purely visual preset (`ConfirmDialog`) sits beside its compound in `ui-kit`.
 
 ## React
 
-All parts in one file, `common/card/card.view.tsx`:
+All parts in one file, `modules/ui-kit/view/card.view.tsx`:
 
 ```tsx
 type CardContextValue = { expanded: boolean; toggle: () => void }
@@ -66,6 +66,8 @@ export function CardActions({ children }: { children: ReactNode }) {
 The preset in the module, `modules/team/user-card.view.tsx`:
 
 ```tsx
+import { Button, CardActions, CardBody, CardHeader, CardRoot } from '@/modules/ui-kit'
+
 export function UserCard({ user, onMessage }: UserCardProps) {
   return (
     <CardRoot>
@@ -83,9 +85,9 @@ export function UserCard({ user, onMessage }: UserCardProps) {
 
 ## Vue
 
-Each part is its own SFC: `common/card/card-root.view.vue`, `card-actions.view.vue`. In a module they would move into a `view/` folder (`role-files` §4); `common` stays one folder deep (FEOD `no-common-deep`), so the parts sit flat in `common/card/`. The context pair lives in `common/card/card.lib.ts`.
+Each part is its own SFC: `modules/ui-kit/view/card-root.view.vue`, `modules/ui-kit/view/card-actions.view.vue`, with the context pair in `modules/ui-kit/lib/card.lib.ts`. When `ui-kit/view/` gets hard to scan, a compound becomes a submodule, `ui-kit/modules/card/`, re-exported through `ui-kit`'s `index.ts`.
 
-A project-wide `createContext` in `common/`, modelled on Reka UI's, gives the typed key and the throw. If `@vueuse/core` is already installed, `createInjectionState` does the same job, but its injector returns `undefined` outside the provider, so wrap it with the throw.
+A project-wide `createContext` in `common/lib/create-context.lib.ts`, modelled on Reka UI's, gives the typed key and the throw. If `@vueuse/core` is already installed, `createInjectionState` does the same job, but its injector returns `undefined` outside the provider, so wrap it with the throw.
 
 ```ts
 import { inject as vueInject, provide as vueProvide, type InjectionKey } from 'vue'
@@ -131,9 +133,3 @@ const { expanded, toggle } = injectCardContext('CardActions')
 - **Default slot** for content.
 - **Scoped slot** when the caller needs a part's state (`v-slot="{ expanded }"`).
 - **`asChild`** (render the caller's element with the part's behaviour) comes from the headless library; do not reimplement it.
-
-## Sources
-
-- [Reka UI: composition and `asChild`](https://reka-ui.com/docs/guides/composition.md), [inject context](https://reka-ui.com/docs/guides/inject-context.md), [`createContext` source](https://github.com/unovue/reka-ui/blob/v2/packages/core/src/shared/createContext.ts)
-- [VueUse `createInjectionState`](https://vueuse.org/shared/createInjectionState/)
-- [Vuetify0 compound components and slot props](https://0.vuetifyjs.com/guide/fundamentals/components.md)

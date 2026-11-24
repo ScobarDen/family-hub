@@ -200,7 +200,7 @@ Good
 A nice helpers to manage typical data structures and values.
 
 ```ts
-import { reatomBoolean, reatomEnum } from '@reatom/core'
+import { clock, reatomBoolean, reatomEnum, reatomTimer } from '@reatom/core'
 
 // Atom with boolean state and handful actions
 const isModalOpen = reatomBoolean(false, 'isModalOpen')
@@ -218,12 +218,21 @@ priority.reset()
 priority.setLow()
 priority.setMedium()
 priority.setHigh()
+
+// Countdown — e.g. block OTP resend for 30s
+const otpTimer = reatomTimer('otpTimer')
+await otpTimer.start(30_000)
+
+// Wall clock — ticks every second while subscribed (sibling of rAF)
+clock.subscribe((now) => console.log(new Date(now).toISOString()))
 ```
 
 Notes
 
 - **reatomBoolean** adds **setTrue**, **setFalse**, and **toggle** to keep updates semantic.
 - **reatomEnum** is perfect for literal list union inference in TypeScript.
+- **reatomTimer** is for countdowns like an OTP resend or a session expiry. It ticks only while counting, and flows can `await` it to learn how it ended instead of polling.
+- **clock** is for "now"-dependent UI such as relative times or deadlines. One shared tick drives every reader and stops when nothing is shown. Use **reatomClock** for another interval, `hot` when logic must keep time with nothing subscribed, and `fresh` when a value one tick stale is visible, for example after reopening a panel.
 
 Good practice
 
@@ -237,6 +246,98 @@ Tricky parts
 
 - **computed** is lazy: it recalculates only when it is connected.
 - **effect** tracks dependencies and auto-clean on abort or unmount.
+
+### Linked-list derivations
+
+`reatomLinkedList` stores object or function nodes with intrusive links. Root
+actions own structural edits; `LinkedListSource<Node>` is the readonly surface
+accepted by mapped/filtered lists, `reatomView`, and `reatomVirtual`.
+
+For reactive uniform row heights, pass a numeric atom/computed directly as
+`itemSize: rowHeight` to `reatomVirtual`. Numeric atoms retain uniform arithmetic;
+ordinary functions are per-item estimators. Measurements still correct estimates
+while keeping the visible items in place.
+
+A supplied `stickToEnd` atom resumes following when native downward scrolling
+returns to the bottom. Lists with their own default paused atom stay paused;
+model navigation to the bottom does not resume them.
+
+```ts
+import { atom, computed, reatomLinkedList } from '@reatom/core'
+
+const records = reatomLinkedList((id: number) => ({ id }), 'records')
+const first = records.create(1)
+const [second, third] = records.insertMany([{ id: 2 }, { id: 3 }], first)
+records.moveMany([second!, third!], null) // one contiguous run, now at the head
+
+const minimum = atom(0, 'minimum')
+const predicate = computed(() => {
+  const min = minimum()
+  return (record: { id: number }) => record.id >= min
+}, 'records.predicate')
+const visible = records.reatomFilter(predicate, 'records.visible')
+const rows = visible.reatomMap(
+  (record) => ({
+    record,
+    expanded: atom(false, `record#${record.id}.expanded`),
+  }),
+  'records.rows',
+)
+const oddRows = rows.reatomFilter((row) => row.record.id % 2 === 1)
+```
+
+`insertMany(nodes, after)` accepts actual absent nodes, whereas `createMany`
+accepts factory argument tuples and appends. `after === null` means the head.
+`moveMany` requires present nodes in contiguous source order and an anchor outside
+that run. Both validate before relinking; empty runs and moves already at their
+destination emit no structural change. Root batching still advances a version
+for an empty commit. Run validation and writes cost O(k) for k nodes.
+
+Each source owns its order: `source.has(node)` checks current membership in O(1),
+and `source.compare(a, b)` returns -1/0/1 for present nodes, throwing for a missing
+member. Cached comparison costs O(1); maintaining gap labels costs O(k) for a
+single positional run while space remains, with O(n) reconciliation/relabeling
+fallbacks. Labels are private ordering data, never persistent identifiers.
+
+Filters own separate links on the original nodes. Plain predicates are static;
+a computed predicate tracks global configuration and returns a new function when
+membership needs retesting. Evaluating that function is untracked: changing a
+row atom alone does not retest membership. Include an explicit content revision
+in the prepared computed when row payload edits must invalidate filtering.
+Connected structural replay tests only inserted candidates. Finding a visible
+anchor walks hidden predecessors; predicate edits, reset, and missed versions
+scan the current source in O(n). Retained passing nodes are never removed merely
+to reconcile a predicate edit.
+
+Mapping caches source-object → model identity weakly per context. A model survives
+temporary filtering and skipped versions; a different object with the same ID is
+a different origin. `onCreate`/`onRemove` describe membership transitions, including
+cached reentry. `onMove`/`onSwap` describe order changes. `onClear` runs on a real
+clear/reset, which ends the allocation epoch; missing a commit alone does not
+invoke it. These hooks describe list membership, not DOM mount lifetimes. Allocate
+DOM inside `reatomVirtual(...).reatomMap(render)` when rows leave and reenter the
+mounted window; a fully removed JSX node has disposed bindings.
+
+`source.reatomReduce({ init, apply, rebuild }, name?)` returns a computed
+`{ state, version }`. `init()` allocates per context; initial evaluation calls
+`rebuild(init(), source)`. Consecutive commits fold `apply(previous, change,
+finalSource)` in commit order. Gaps and reset call `rebuild(previous, source)`.
+Callbacks run untracked and return semantic state without modifying a previously
+published accumulator, source links, row atoms, or subscriptions. A new wrapper
+does not make in-place mutation of a Map safe. `finalSource` already has the
+commit's final links, so old positions must come from payloads and reducer-owned
+state. Change fields and run arrays are readonly for consumers.
+
+Nodes belonging to one list factory cannot be shared across evaluation contexts.
+Use a factory/`initSnapshot` to allocate fresh nodes in each context; reusing an
+`initState` node array across contexts throws before relinking. A thrown root
+`batch` restores touched links and its last committed wrapper. Nested batches of
+that list join the outer transaction; a failed joined operation aborts it even if
+its exception was caught inside the callback. Side effects and other list commits are
+independent. An arbitrary enclosing `withRollback` after a successful list commit
+does not snapshot intrusive links. Old list states are not immutable order
+snapshots. Recomputing a derivation or window inside an in-progress batch throws;
+read `find` to inspect the batch's own pending state.
 
 ## Atomization
 
@@ -436,7 +537,7 @@ Awaits the next atom update or action call inside an async action/effect. Resolv
 
 - `await wrap(take(someAtom))` — next state change
 - `await wrap(take(someAction))` — next call payload
-- Second arg is a filter: resolves only when it returns truthy. `throwAbort()` inside the filter cancels the wait if the action is aborted.
+- Second arg is a selector, not a filter: whatever it returns resolves the wait — `false` and `null` included — and if the current value already maps without throwing, `take` returns the result synchronously instead of a promise. Throw `throwAbort()` inside it to skip a value and keep waiting; `(x) => x !== null` never waits. Cancelling the wait when the action is aborted is `wrap`'s job, not the selector's.
 
 ```ts
 if (!formIsValid()) {
