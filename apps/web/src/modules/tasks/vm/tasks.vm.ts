@@ -15,7 +15,7 @@ import type { Pet, Task } from "@family-hub/contract";
 import type { Viewer } from "@/common/format-date.lib.ts";
 import { detached, instantly, readOnly, type Slide } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
-import { reatomFormBack } from "@/modules/form";
+import { reatomNestedBack } from "@/modules/form";
 import type { LiveVersion } from "@/modules/live-updates";
 import type { ClosingConfirmation, Dialogs, Haptics } from "@/modules/telegram";
 
@@ -211,11 +211,15 @@ function reatomOpen({ editing, opened }: Navigation, viewer: () => Viewer, tasks
   }, "tasks.openTask").extend(withAbort());
 }
 
-function reatomBack({ editing, opened }: Navigation, telegram: TasksDependencies["telegram"]) {
-  return reatomFormBack({
+function reatomBack(
+  { editing, opened }: Navigation,
+  { telegram, openedTask }: Pick<TasksDependencies, "telegram"> & { openedTask: () => unknown },
+) {
+  const nestedBack = reatomNestedBack({
     name: "tasks.back",
     telegram,
-    isFormOpen: () => editing() !== undefined,
+    canGoBack: () => editing() !== undefined || openedTask() !== undefined,
+    closesInPlace: () => editing() !== undefined,
     back: () => {
       if (editing() === undefined) {
         opened.set(undefined);
@@ -224,6 +228,8 @@ function reatomBack({ editing, opened }: Navigation, telegram: TasksDependencies
       }
     },
   });
+
+  return { nestedBack, back: nestedBack.back };
 }
 
 function reatomBrowsing(
@@ -252,7 +258,6 @@ function reatomBrowsing(
       telegram.haptics.select();
       navigation.scope.set(scope);
     }, "tasks.showScope"),
-    back: reatomBack(navigation, telegram),
     openAlbum: action((albumId: string) => {
       onOpenAlbum(albumId);
     }, "tasks.openAlbum"),
@@ -369,10 +374,7 @@ export function reatomTasksScreen(input: TasksDependencies) {
     scope: navigation.scope,
     reload: tasks.reload,
     tasksOf: tasksOfPet(tasks, input.viewer),
-    canGoBack: computed(
-      () => navigation.editing() !== undefined || openedTask() !== undefined,
-      "tasks.canGoBack",
-    ),
+    ...reatomBack(navigation, { telegram: input.telegram, openedTask }),
     ...forms,
     ...actions,
     ...reatomCalendar(input, { ...navigation, shown }),

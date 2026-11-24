@@ -3,7 +3,7 @@ import { action, atom, computed, reatomBoolean } from "@reatom/core";
 import type { Pet } from "@family-hub/contract";
 
 import { readOnly } from "@/modules/changes";
-import { reatomFormBack } from "@/modules/form";
+import { reatomNestedBack } from "@/modules/form";
 
 import { reatomPetArchive } from "./pet-archive.vm.ts";
 import { reatomPetAvatar } from "./pet-avatar.vm.ts";
@@ -122,21 +122,27 @@ function reatomBrowsing(
         route.close();
       }
     }, "pets.showChoice"),
-    canGoBack: computed(() => editing() !== undefined || isListShown(), "pets.canGoBack"),
     isFormOpen: computed(() => editing() !== undefined, "pets.isFormOpen"),
-    back: reatomFormBack({
-      name: "pets.back",
-      telegram,
-      isFormOpen: () => editing() !== undefined,
-      back: () => {
-        if (editing() === undefined) {
-          isListShown.setFalse();
-        } else {
-          editing.set(undefined);
-        }
-      },
-    }),
+    ...reatomBack(telegram, { editing, isListShown }),
   };
+}
+
+function reatomBack(telegram: PetsDependencies["telegram"], { editing, isListShown }: Navigation) {
+  const nestedBack = reatomNestedBack({
+    name: "pets.back",
+    telegram,
+    canGoBack: () => editing() !== undefined || isListShown(),
+    closesInPlace: () => editing() !== undefined,
+    back: () => {
+      if (editing() === undefined) {
+        isListShown.setFalse();
+      } else {
+        editing.set(undefined);
+      }
+    },
+  });
+
+  return { nestedBack, back: nestedBack.back };
 }
 
 function reatomLinks(dependencies: PetsDependencies) {

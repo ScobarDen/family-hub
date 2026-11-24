@@ -1,4 +1,6 @@
-import { action, computed } from "@reatom/core";
+import { computed } from "@reatom/core";
+
+import { firstNestedBack } from "@/modules/form";
 
 import { reatomCare, type CareApi, type CareDependencies } from "../modules/care/index.ts";
 import type { PetsDependencies } from "./pets-screen.vm.ts";
@@ -45,18 +47,7 @@ export function reatomPetTab({ careApi, ...dependencies }: PetTabDependencies) {
 
       return screen.kind === "card" ? screen.card.nextVisit : undefined;
     }, "petTab.nextVisit"),
-    canGoBack: computed(() => care.canGoBack() || pets.canGoBack(), "petTab.canGoBack"),
-    isFormOpen: computed(
-      () => (care.canGoBack() ? care.isFormOpen() : pets.isFormOpen()),
-      "petTab.isFormOpen",
-    ),
-    back: action(() => {
-      if (care.canGoBack()) {
-        care.back();
-      } else {
-        pets.back();
-      }
-    }, "petTab.back"),
+    nestedBack: firstNestedBack(care.nestedBack, pets.nestedBack),
   };
 }
 

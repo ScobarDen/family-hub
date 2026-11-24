@@ -5,7 +5,8 @@ import type { Invite, InviteCreated } from "@family-hub/contract";
 import { formatDayTime, type Viewer } from "@/common/format-date.lib.ts";
 import { withoutId } from "@/common/records.lib.ts";
 import { detached, reatomFailure } from "@/modules/changes";
-import type { Haptics } from "@/modules/telegram";
+import { reatomNestedBack } from "@/modules/form";
+import type { ClosingConfirmation, Dialogs, Haptics } from "@/modules/telegram";
 
 import type { InvitesApi } from "../invites.api.ts";
 
@@ -18,7 +19,8 @@ type InvitesDependencies = {
     shareMessage: (preparedMessageId: string) => Promise<boolean>;
     openTelegramLink: (url: string) => void;
     haptics: Pick<Haptics, "error" | "warning">;
-  };
+  } & Pick<ClosingConfirmation, "isClosingConfirmationEnabled"> &
+    Pick<Dialogs, "showPopup">;
   viewer: () => Viewer;
 };
 
@@ -127,13 +129,19 @@ function reatomRevokeConfirmation(
   const cancelRevoke = action(() => {
     confirming.set(undefined);
   }, "invites.cancelRevoke");
+  // Telegram Back on the Profile closes the drawer first, so leaving it leaves no stale question.
+  const nestedBack = reatomNestedBack({
+    name: "invites.back",
+    telegram,
+    canGoBack: isConfirmingRevoke,
+    closesInPlace: isConfirmingRevoke,
+    back: cancelRevoke,
+  });
 
   return {
     isConfirmingRevoke,
-    // Telegram Back on the Profile closes the drawer first, so leaving it leaves no stale question.
-    canGoBack: isConfirmingRevoke,
-    isFormOpen: isConfirmingRevoke,
-    back: cancelRevoke,
+    nestedBack,
+    back: nestedBack.back,
     revoke: action((inviteId: string) => {
       telegram.haptics.warning();
       confirming.set(inviteId);

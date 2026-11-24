@@ -4,6 +4,7 @@ import { z } from "zod";
 import { appModule, type AppModule, type SlotModule } from "@family-hub/contract";
 
 import { instantly, type Slide } from "@/modules/changes";
+import type { NestedBack } from "@/modules/form";
 import type { TabId } from "@/modules/tab-bar";
 import type { Telegram } from "@/modules/telegram";
 
@@ -15,8 +16,6 @@ export type Screen =
   | { kind: "tab-bar-menu" }
   | { kind: "profile" }
   | { kind: "module"; module: AppModule; petId?: string };
-
-type NestedBack = { canGoBack: () => boolean; isFormOpen: () => boolean; back: () => void };
 
 // Every slot module and the Profile have screens to step back from; the Feed has none.
 type NestedBacks = Record<SlotModule | "profile", NestedBack>;
@@ -313,7 +312,7 @@ function reatomBack(
 
     if (nested === undefined) {
       stack.pop();
-    } else if (nested.isFormOpen()) {
+    } else if (nested.closesInPlace()) {
       // The form slides down over a screen that stays put, as a swipe or «Отмена» closes it.
       nested.back();
     } else {

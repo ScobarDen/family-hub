@@ -3,25 +3,39 @@ import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { SlotModule } from "@family-hub/contract";
 
+import { reatomNestedBack } from "@/modules/form";
+import { fakeHaptics, fakeWindow } from "@/modules/telegram";
+
 import { reatomNavigation } from "./app.route.ts";
 
-type NestedBack = { canGoBack: () => boolean; isFormOpen: () => boolean; back: () => void };
+type Steps = { canGoBack: () => boolean; closesInPlace: () => boolean; back: () => void };
 
-const nothingToStepBack: NestedBack = {
-  canGoBack: () => false,
-  isFormOpen: () => false,
-  back: noop,
-};
+const telegram = { ...fakeWindow(), haptics: fakeHaptics(), showPopup: async () => "cancel" };
 
-function nestedBacks(own: Partial<Record<SlotModule | "profile", NestedBack>>) {
-  return {
-    tasks: nothingToStepBack,
-    pet: nothingToStepBack,
-    goals: nothingToStepBack,
-    albums: nothingToStepBack,
-    recipes: nothingToStepBack,
-    profile: nothingToStepBack,
+function stepsBack(name: string, steps: Steps) {
+  return reatomNestedBack({ name: `test.${name}.back`, telegram, ...steps });
+}
+
+const nothing: Steps = { canGoBack: () => false, closesInPlace: () => false, back: noop };
+
+function nestedBacks(own: Partial<Record<SlotModule | "profile", Steps>>) {
+  const steps = {
+    tasks: nothing,
+    pet: nothing,
+    goals: nothing,
+    albums: nothing,
+    recipes: nothing,
+    profile: nothing,
     ...own,
+  };
+
+  return {
+    tasks: stepsBack("tasks", steps.tasks),
+    pet: stepsBack("pet", steps.pet),
+    goals: stepsBack("goals", steps.goals),
+    albums: stepsBack("albums", steps.albums),
+    recipes: stepsBack("recipes", steps.recipes),
+    profile: stepsBack("profile", steps.profile),
   };
 }
 
@@ -141,7 +155,7 @@ describe("the tab stacks", () => {
       nestedBack: nestedBacks({
         goals: {
           canGoBack: () => isFormOpen,
-          isFormOpen: () => isFormOpen,
+          closesInPlace: () => isFormOpen,
           back: () => {
             isFormOpen = false;
           },
@@ -170,7 +184,7 @@ describe("the tab stacks", () => {
       nestedBack: nestedBacks({
         profile: {
           canGoBack: () => isDrawerOpen,
-          isFormOpen: () => isDrawerOpen,
+          closesInPlace: () => isDrawerOpen,
           back: () => {
             isDrawerOpen = false;
           },
@@ -201,7 +215,7 @@ function startSliding() {
     nestedBack: nestedBacks({
       goals: {
         canGoBack: () => nested !== "none",
-        isFormOpen: () => nested === "form",
+        closesInPlace: () => nested === "form",
         back: () => {
           nested = "none";
         },

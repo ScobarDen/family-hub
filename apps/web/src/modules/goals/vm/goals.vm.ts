@@ -29,7 +29,7 @@ import {
   type Slide,
 } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
-import { reatomFormBack } from "@/modules/form";
+import { reatomNestedBack } from "@/modules/form";
 import type { LiveVersion } from "@/modules/live-updates";
 import {
   type ClosingConfirmation,
@@ -203,8 +203,32 @@ function reatomRemoval(
 
 function reatomBrowsing(
   { editing, openedGoalId, isCelebrating }: Navigation,
-  { slide, telegram }: { slide: Slide; telegram: GoalsDependencies["telegram"] },
+  {
+    slide,
+    telegram,
+    openedGoal,
+  }: {
+    slide: Slide;
+    telegram: GoalsDependencies["telegram"];
+    openedGoal: () => Goal | undefined;
+  },
 ) {
+  const nestedBack = reatomNestedBack({
+    name: "goals.back",
+    telegram,
+    canGoBack: () => editing() !== undefined || openedGoal() !== undefined,
+    closesInPlace: () => editing() !== undefined,
+    back: () => {
+      if (editing() === undefined) {
+        openedGoalId.set(undefined);
+      } else {
+        editing.set(undefined);
+      }
+
+      isCelebrating.setFalse();
+    },
+  });
+
   return {
     open: action((goalId: string) => {
       slide("forward", () => {
@@ -212,20 +236,8 @@ function reatomBrowsing(
         isCelebrating.setFalse();
       });
     }, "goals.open"),
-    back: reatomFormBack({
-      name: "goals.back",
-      telegram,
-      isFormOpen: () => editing() !== undefined,
-      back: () => {
-        if (editing() === undefined) {
-          openedGoalId.set(undefined);
-        } else {
-          editing.set(undefined);
-        }
-
-        isCelebrating.setFalse();
-      },
-    }),
+    nestedBack,
+    back: nestedBack.back,
   };
 }
 
@@ -329,10 +341,6 @@ export function reatomGoalsScreen(input: GoalsInput) {
     screenKey: reatomScreenKey(navigation),
     ...reatomOpenForm(navigation, forms),
     retry: dependencies.goals.reload,
-    canGoBack: computed(
-      () => navigation.editing() !== undefined || openedGoal() !== undefined,
-      "goals.canGoBack",
-    ),
     isChanging: computed(() => !complete.ready(), "goals.isChanging"),
     failure: failure.failure,
     dismissFailure: failure.dismiss,
@@ -343,6 +351,7 @@ export function reatomGoalsScreen(input: GoalsInput) {
     ...reatomBrowsing(navigation, {
       slide: dependencies.slide ?? instantly,
       telegram: dependencies.telegram,
+      openedGoal,
     }),
     ...reatomEditing(navigation, { ...forms, openedGoal }),
   };

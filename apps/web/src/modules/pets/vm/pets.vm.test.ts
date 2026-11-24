@@ -273,7 +273,7 @@ describe("the pet tab", () => {
       },
     });
     expect(model.title()).toBe("Бьюик");
-    expect(model.canGoBack()).toBe(false);
+    expect(model.nestedBack.canGoBack()).toBe(false);
   });
 
   test("lists several Pets and opens the chosen one at its own address", async () => {
@@ -375,7 +375,7 @@ describe("adding a Pet", () => {
         notes: null,
       },
     });
-    expect(model.canGoBack()).toBe(false);
+    expect(model.nestedBack.canGoBack()).toBe(false);
   });
 
   test("needs a name", async () => {
@@ -496,7 +496,7 @@ describe("the Pet Memo", () => {
     await loaded(model);
     model.editMemo();
 
-    expect(model.canGoBack()).toBe(true);
+    expect(model.nestedBack.canGoBack()).toBe(true);
 
     model.back();
 

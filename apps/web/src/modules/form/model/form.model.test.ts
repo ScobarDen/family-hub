@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { fakeHaptics, fakeWindow } from "@/modules/telegram";
 
-import { reatomEditableRecord, reatomFormBack } from "./form.model.ts";
+import { reatomEditableRecord } from "./form.model.ts";
 
 type Note = { id: string; title: string };
 
@@ -244,72 +244,5 @@ describe("closing confirmation", () => {
     leave();
 
     expect(closing).toEqual([off, on, off]);
-  });
-});
-
-function startClosing(answers: Array<string | undefined>) {
-  const notes = startNotes();
-  const asked: string[] = [];
-  let isFormOpen = true;
-  const back = reatomFormBack({
-    name: "test.notes.back",
-    telegram: {
-      ...notes.frame,
-      haptics: fakeHaptics(),
-      showPopup: async ({ title }) => {
-        asked.push(title ?? "");
-
-        return answers.shift();
-      },
-    },
-    isFormOpen: () => isFormOpen,
-    back: () => {
-      isFormOpen = false;
-    },
-  });
-
-  notes.notes.startCreating({ title: "" });
-  notes.notes.confirmClosingWhileDirty();
-
-  return { ...notes, asked, back, isFormOpen: () => isFormOpen };
-}
-
-describe("closing the form", () => {
-  test("closes a form with nothing typed at once", () => {
-    const { back, asked, isFormOpen } = startClosing([]);
-
-    back();
-
-    expect(isFormOpen()).toBe(false);
-    expect(asked).toEqual([]);
-  });
-
-  test("asks before dropping unsaved input and stays open when the Member keeps it", async () => {
-    const { notes, frame, back, asked, isFormOpen } = startClosing([undefined]);
-
-    notes.form.fields.title.change("Корм Бьюику");
-    await vi.waitFor(() => {
-      expect(frame.isClosingConfirmationEnabled()).toBe(true);
-    });
-    back();
-
-    await vi.waitFor(() => {
-      expect(asked).toEqual(["Отменить изменения?"]);
-    });
-    expect(isFormOpen()).toBe(true);
-  });
-
-  test("closes once the Member agrees to drop unsaved input", async () => {
-    const { notes, frame, back, isFormOpen } = startClosing(["confirm"]);
-
-    notes.form.fields.title.change("Корм Бьюику");
-    await vi.waitFor(() => {
-      expect(frame.isClosingConfirmationEnabled()).toBe(true);
-    });
-    back();
-
-    await vi.waitFor(() => {
-      expect(isFormOpen()).toBe(false);
-    });
   });
 });

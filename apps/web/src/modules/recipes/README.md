@@ -15,6 +15,6 @@ The Recipe form is a `reatomEditableRecord` from `modules/form`, which owns crea
 - `photoHint` — from `photo-storage`: why photos cannot be added now.
 - `today`, `timeZone` — the viewer's date and zone: an earlier day is marked at its midday.
 
-The photo picker is `modules/photo-attachments` and the viewer `modules/photo-viewer`, shared with the care and albums modules. `reatomRecipesScreen` goes to the navigation as the recipes module's `nestedBack`.
+The photo picker is `modules/photo-attachments` and the viewer `modules/photo-viewer`, shared with the care and albums modules. The screen's `nestedBack` goes to the navigation as the recipes module's.
 
 Out of scope: picking and viewing photos (`photo-attachments`, `photo-viewer`), the shared form machinery (`form`).

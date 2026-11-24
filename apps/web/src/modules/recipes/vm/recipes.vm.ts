@@ -23,7 +23,7 @@ import {
   type Slide,
 } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
-import { reatomFormBack } from "@/modules/form";
+import { reatomNestedBack } from "@/modules/form";
 import { reatomLiveResource } from "@/modules/live-resource";
 import type { LiveVersion } from "@/modules/live-updates";
 import type { PreparedPhoto } from "@/modules/photo";
@@ -317,10 +317,11 @@ function reatomMoves({
 }
 
 function reatomBack(navigation: Navigation, telegram: RecipesDependencies["telegram"]) {
-  return reatomFormBack({
+  const nestedBack = reatomNestedBack({
     name: "recipes.back",
     telegram,
-    isFormOpen: () => navigation.editing() === "recipe",
+    canGoBack: () => navigation.editing() !== undefined || navigation.openedId() !== undefined,
+    closesInPlace: () => navigation.editing() === "recipe",
     back: () => {
       if (navigation.editing() === undefined) {
         navigation.openedId.set(undefined);
@@ -329,6 +330,8 @@ function reatomBack(navigation: Navigation, telegram: RecipesDependencies["teleg
       }
     },
   });
+
+  return { nestedBack, back: nestedBack.back };
 }
 
 // Which screen is shown, apart from the data it shows, so a renamed Recipe keeps focus where it is.
@@ -346,10 +349,6 @@ function reatomFormState(
   form: { isCreating: () => boolean },
 ) {
   return {
-    canGoBack: computed(
-      () => navigation.editing() !== undefined || navigation.openedId() !== undefined,
-      "recipes.canGoBack",
-    ),
     isFormOpen: computed(() => navigation.editing() === "recipe", "recipes.isFormOpen"),
     formTitle: computed(() => (form.isCreating() ? "Новый рецепт" : "Рецепт"), "recipes.formTitle"),
     formTags: computed(() => data.tags.data() ?? [], "recipes.formTags"),
@@ -399,7 +398,7 @@ export function reatomRecipesScreen(dependencies: RecipesDependencies) {
     ...reatomRecipeActions(dependencies, { data, navigation, opened, failure }),
     ...reatomTagEditing(dependencies, { data, failure }),
     ...reatomMoves({ navigation, opened, form, slide: dependencies.slide ?? instantly }),
-    back: reatomBack(navigation, dependencies.telegram),
+    ...reatomBack(navigation, dependencies.telegram),
   };
 }
 

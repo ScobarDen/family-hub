@@ -21,7 +21,7 @@ import {
   reatomRollbackFailure,
   type RollbackFailure,
 } from "@/modules/changes";
-import { reatomFormBack } from "@/modules/form";
+import { reatomNestedBack } from "@/modules/form";
 import type { LiveVersion } from "@/modules/live-updates";
 import type { PreparedPhoto } from "@/modules/photo";
 import {
@@ -194,10 +194,11 @@ function reatomBack({
   isFormOpen,
   telegram,
 }: Pick<Sources, "screen" | "isFormOpen" | "telegram">) {
-  return reatomFormBack({
+  const nestedBack = reatomNestedBack({
     name: "care.back",
     telegram,
-    isFormOpen,
+    canGoBack: () => isFormOpen() || screen() !== "blocks",
+    closesInPlace: isFormOpen,
     back: () => {
       if (isFormOpen()) {
         isFormOpen.setFalse();
@@ -206,6 +207,8 @@ function reatomBack({
       }
     },
   });
+
+  return { nestedBack, back: nestedBack.back };
 }
 
 function reatomMoves(
@@ -237,7 +240,7 @@ function reatomMoves(
       telegram.haptics.select();
       weightRange.set(range);
     }, "care.chooseWeightRange"),
-    back: reatomBack({ screen, isFormOpen, telegram }),
+    ...reatomBack({ screen, isFormOpen, telegram }),
   };
 }
 
@@ -246,7 +249,6 @@ function reatomScreenState({ screen, form, isFormOpen }: Sources) {
   return {
     screen: computed((): CareScreen => ({ kind: screen() }), "care.screen"),
     isFormOpen: readOnly(isFormOpen),
-    canGoBack: computed(() => isFormOpen() || screen() !== "blocks", "care.canGoBack"),
     title: computed(
       (): string | undefined => (screen() === "expenses" ? "Траты" : undefined),
       "care.title",

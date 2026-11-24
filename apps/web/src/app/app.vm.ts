@@ -346,7 +346,14 @@ function reatomRouting(parts: Parts, screens: Screens) {
     isSignedIn: () => session.member() !== undefined,
     telegram,
     slide: dependencies.slide,
-    nestedBack: { pet, tasks, goals, albums, recipes, profile: invites },
+    nestedBack: {
+      pet: pet.nestedBack,
+      tasks: tasks.nestedBack,
+      goals: goals.nestedBack,
+      albums: albums.nestedBack,
+      recipes: recipes.nestedBack,
+      profile: invites.nestedBack,
+    },
   });
   const opener = reatomOpener({
     telegram,
