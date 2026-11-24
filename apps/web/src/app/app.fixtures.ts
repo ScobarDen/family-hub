@@ -7,7 +7,7 @@ import { FakePage, FakeSocket } from "@/modules/live-updates";
 import { memoryStorage } from "@/modules/session";
 import { fakeDeviceStorage, fakeWebApp, reatomTelegram } from "@/modules/telegram";
 
-import { reatomApp } from "./app.vm.ts";
+import { reatomApp } from "./vm/app.vm.ts";
 
 const token = "session-token";
 const otherClientId = "0f8f2a52-3c4e-4b8a-9d55-6a1f0e2b7c11";
@@ -94,11 +94,12 @@ const confirmButton = "confirm";
 
 type Popups = "unanswered" | "confirmed";
 
-function telegramAnswering(popups: Popups) {
-  const { webApp } = fakeWebApp({
+function telegramAnswering(popups: Popups, startParameter: string | undefined) {
+  const launched = fakeWebApp({
     initData: "query_id=AAH&hash=abc",
     deviceStorage: fakeDeviceStorage().deviceStorage,
   });
+  const webApp = { ...launched.webApp, initDataUnsafe: { start_param: startParameter } };
 
   if (popups === "unanswered") {
     return reatomTelegram(webApp);
@@ -113,11 +114,14 @@ function telegramAnswering(popups: Popups) {
 }
 
 // The whole app over a fake Worker and a fake socket, as a Member in Telegram sees it.
-export function startApp(routes: Routes, { popups = "unanswered" }: { popups?: Popups } = {}) {
+export function startApp(
+  routes: Routes,
+  { popups = "unanswered", startParameter }: { popups?: Popups; startParameter?: string } = {},
+) {
   const worker = fakeWorker(routes);
   const sockets = fakeSockets();
   const app = reatomApp({
-    telegram: telegramAnswering(popups),
+    telegram: telegramAnswering(popups, startParameter),
     platform: undefined,
     apiUrl: "https://api.family-hub.test",
     fetch: worker.fetch,

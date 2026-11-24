@@ -1,35 +1,27 @@
 ---
 name: test-craft
-description: Tests that assert the promise instead of the machinery — where a unit's contract ends, why a behaviour-preserving refactor must never turn a test red, mocking only at the boundary of code you don't own, one behaviour per test instead of a Cartesian product, and the antipatterns that make a suite fight every change. Load when writing a test, when a test goes red after a refactor that changed no behaviour, when reviewing tests in a diff, or when deciding how many tests a thing needs and at which level. Not about choosing a runner or a framework's assertion API — that belongs to the stack's own testing skill. Stack-agnostic, and the project's existing test culture outranks everything in it.
+description: Assertions, test doubles and case count, decided while writing a test. Load when writing or extending a test, a test goes red after a refactor that changed no behaviour, reviewing tests in a diff, deciding how many tests and at which level, reaching for a mock, spy, snapshot or sleep, or asked whether a test is worth keeping. Not for runner setup or a framework's assertion API — that is the stack's testing skill.
 ---
 
 # Test craft
 
-**A test asserts a promise, not a mechanism.** If a refactor that changed no behaviour turns a test red, the test was pointed at the wrong thing — and the cost is paid again every time anyone touches that code.
+**A test asserts a promise, not the machinery.** If a refactor that changed no behaviour turns a test red, the test was pointed at the wrong thing — and the cost is paid again every time anyone touches that code.
 
-Deliberately short. It loads at a decision point — which assert to write, which mock to reach for, how many cases are enough — not for the duration of a task.
+**Done when:** every assert, double and case in your change passes the two questions, the boundary rule and one of the four sources of a case, and every new or re-aimed test has been seen red once — written before the fix, or run against the implementation broken on purpose.
 
-## When this fires
-
-- Writing a test, or adding a case to an existing one.
-- A test went red after a refactor that changed no behaviour.
-- Reviewing tests in a diff: are these asserting anything, or restating the code?
-- Deciding how many tests a thing needs, and at which level.
-- Reaching for a mock, a spy, a snapshot, or a `sleep`.
-- Asked outright — is this test worth keeping, what should it assert.
+The rules hold in any language and test runner; code in the examples is pseudocode.
 
 ## When it doesn't
 
-- Runner setup, config, a framework's assertion API → the stack's own testing skill.
-- Chasing why production is broken → a debugging skill, not this one.
-- QA process artefacts — test plans, manual cases, exploratory charters.
-- Anything the project's own testing rules already answer.
+- Runner setup, config, a framework's assertion API → the stack's own testing skill. With neither a runner in the project nor a stack testing skill, take the language's standard runner and name it in your final message.
 
 ## The project wins
 
 Read the nearest existing test for the same kind of subject and continue it. Naming, grouping, fixtures, factories, setup style, how doubles are built — a convention you'd have chosen differently, applied consistently, beats a better idea applied in one file.
 
-If neighbouring tests deliberately assert infrastructure interactions, keep doing that; don't convert a suite to a different philosophy while adding coverage. Everything below is the default for where the project has no opinion.
+When neighbouring tests deliberately assert calls on a boundary they replace, keep asserting that way. A mock of the project's own code is never such a convention. Everything below is the default for where the project has no opinion.
+
+A project with no tests yet takes the file layout and naming its runner documents as the default.
 
 ## The contract is the promise
 
@@ -48,9 +40,8 @@ The machinery is everything else: private helpers, which internal function did t
 | a spy on your own internal helper | the value or state that helper produced |
 | a listener was registered | fire the event, then assert what happened |
 | an internal `isFetching` flag flipped | the loading state the caller actually observes |
-| a timer was scheduled | advance the clock, then assert the effect |
+| a timer was scheduled | advance the clock to one tick before the deadline and assert nothing happened, then to the deadline and assert the effect |
 | calling a private method directly | drive it through the public entry point |
-| a snapshot of the whole output | the specific text, role, or field the consumer relies on |
 | the cache's internal map | call twice, assert one request went out |
 | that the steps ran in order | the end state those steps were supposed to produce |
 
@@ -61,17 +52,17 @@ The exception that keeps this honest: when an interaction **is** the promise and
 1. **Would this assert survive rewriting the implementation with the behaviour unchanged?** No → it is pinned to machinery. Move it to the observable result.
 2. **Could the implementation break in a way a consumer notices while this test stays green?** Yes → the promise is not covered yet.
 
-The first question kills over-specified tests. The second kills tests that assert nothing. A test that only breaks when someone edits the test itself is dead weight — delete it, or point it at the promise.
+The first question kills over-specified tests. The second kills tests that assert nothing.
 
 ## Mocks live on the boundary
 
 Replace the world you don't own: network, clock, random, filesystem, environment, id generation, third-party SDKs.
 
-Do not replace your own modules. A mock of your own collaborator freezes today's call graph into the test: move that logic one layer up or down and the test fails while the behaviour is intact. That is the exact failure this file exists to prevent.
+Use your own code as it is. A mock of your own collaborator freezes today's call graph into the test: move that logic one layer up or down and the test fails while the behaviour is intact.
 
-- **Prefer a fake to a mock.** One in-memory repository or stub transport shared by many tests beats six call assertions that re-describe the implementation.
+- **Prefer a fake to a mock.** One in-memory repository or stub transport shared by many tests beats six call assertions that re-describe the implementation. A fake lives in a test-support file next to the tests, one per boundary, named for what it replaces.
 - **Prefer the real thing when it is fast and deterministic.** A pure function, a value object, a small mapper — replacing it buys nothing and costs a lie.
-- **A mock returning a mock returning a mock** means the unit reaches through a chain it should not know about. That is a design finding, not a testing problem.
+- **A mock returning a mock returning a mock** means the unit reaches through a chain it should not know about. Test through the outer boundary and name the chain in one line of your final message.
 - **Freeze time and randomness, then assert exact values.** A matcher that accepts any date is a real uncertainty painted green.
 
 ## How many tests, and where
@@ -82,29 +73,25 @@ Do not replace your own modules. A mock of your own collaborator freezes today's
 - **The lowest level that actually proves it, and only one level.** Business rules as units, wiring as integration, the one flow that must never break end-to-end. The same rule asserted at three levels is three tests to update per change and no extra confidence.
 - **Coverage informs the review; it does not define completeness.** A defensive branch no caller can reach does not need a test written to satisfy a percentage.
 - **Add a case only when it comes from** public behaviour, a real reachable branch, an explicit requirement, or a bug that actually happened. Not because it is possible.
-- **Every fixed bug gets one test, at the level where the bug was observed.** Those are the tests that justify the suite.
+- **Every fixed bug gets one test, at the level where the bug was observed** — or, when that is unknown, the lowest level that reproduces it. Write it before the fix and watch it go red. Those are the tests that justify the suite.
 
 ## Antipatterns
 
 | Smell | Why it hurts | Instead |
 | --- | --- | --- |
 | Snapshot as the only assertion | Passes through broken behaviour; reviewers accept the diff blindly | Assert the few things that must hold; keep snapshots for genuinely stable large output |
-| Test mirrors the implementation — `expect(sum(2, 2)).toBe(2 + 2)` | Restates the code, so it can never disagree with it | Hardcode the expected value a human worked out |
-| Testing a private method directly | Locks in an internal that has no consumers | Reach it through the public entry point, or admit it wants to be its own unit |
-| Asserting call order between internal parts | Order is machinery; reordering is a legal refactor | Assert the end state |
-| Selectors on CSS classes or DOM nesting | Restyling breaks the test; broken semantics does not | Role, label, accessible name, or an explicit test id treated as API |
+| Test mirrors the implementation — `assert sum(2, 2) == 2 + 2` | Restates the code, so it can never disagree with it | Hardcode the expected value a human worked out |
+| UI queried by styling or layout — CSS classes, DOM nesting, widget tree paths | Restyling breaks the test; broken semantics does not | Role, label, accessible name, or an explicit test id treated as API, in the attribute the UI framework's testing library queries by default |
 | `sleep` or a fixed timeout | Flaky on a slow machine, slow on a fast one | Wait for the condition, or control the clock |
 | Assertions hidden in shared setup | Failures point at the wrong test and cannot be read locally | Assert inside the case that owns the promise |
 | Shared mutable state across cases | Order-dependent green; one case poisons the next | Build fresh state per case through a factory |
 | Conditionals or loops deciding the expectation | The test now has branches, so it needs tests of its own | Table-driven cases with explicit expected values |
-| One case asserting a dozen unrelated things | The first failure hides the rest, and the name cannot describe it | Split by behaviour |
-| A test with no failing mode | Costs maintenance, proves nothing | Break the implementation on purpose; if it stays green, fix the test or drop it |
+| A test with no failing mode | Costs maintenance, proves nothing | Break the implementation on purpose; if it stays green, fix the test, or ask the user before dropping it |
 
-## What NOT to do
+## Scope
 
-- ❌ Don't rewrite existing tests to match this file. You were asked to cover a behaviour; cover it.
-- ❌ Don't delete a test you think is wrong without asking. It may be the only record of a regression.
-- ❌ Don't chase a coverage number, and don't add cases whose only justification is completeness.
-- ❌ Don't introduce a new testing style, helper layer, or factory convention into a suite that already has one.
-- ❌ Don't file findings about neighbouring tests. A note in one line, at most.
-- ❌ Don't disable, skip, or loosen an assertion to get to green. A red test is information.
+- Change existing tests only where your task broke them or asks for them. A test red after a refactor gets its assert re-aimed at the promise, keeping its name and intent.
+- Ask the user before deleting a test: it may be the only record of a regression.
+- Tests outside your task's diff that break these rules get one line in your final message, at most.
+- A bug in the code under test that your task does not cover gets one line in your final message, with the input that triggers it; fix it only when the user asks.
+- A red test is information: fix the code or re-aim the assert at the same strictness. Skipping, disabling or loosening it is the user's call.

@@ -1,167 +1,206 @@
 {
-  "version": 1,
+  "version": 2,
   "skills": {
     "cloudflare": {
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/cloudflare/SKILL.md",
-      "computedHash": "6f0a70840cad114f020e5950874f255b22e669f07036cf4f81d8f733ae0233a0"
+      "computedHash": "a40c5c77e4b96b0f6603a54e67bf2ff401a872366af48ff8f6ae0e872d4ad324",
+      "commit": "14472d57ac968d1a0322a568077277209b259183"
     },
     "code-craft": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/workflow/code-craft/SKILL.md",
-      "computedHash": "eeabf661421f12350c0de29962acb8fb62cccff43e572826ad3d8e8e0eda792f"
+      "computedHash": "d6c2dd4bf8db6851a4cd1a69ed65421d8b5e8b9fc626671f21114f53750bf114",
+      "commit": "5154e2037829bb1cd7b5e093e65b7344018ce3d7"
+    },
+    "documentation": {
+      "source": "siberiacancode/agent-skills",
+      "commit": "4f39dc6dc648ae6dd4219cd1f2f270041b36bb5f",
+      "sourceType": "github",
+      "skillPath": "skills/shared/documentation/SKILL.md",
+      "computedHash": "18d17281bb1887558bf00e915e42ba879f873de54d8b2f7c523f7122749077c4",
+      "installMode": "copy"
     },
     "feod": {
       "source": "Sdju/feod",
       "sourceType": "github",
       "skillPath": "skills/feod/SKILL.md",
-      "computedHash": "58a4a7aa2e1eee36d2ceecd3e57bb2170ad34f5a065927cfb20ab427849e3287"
+      "computedHash": "9a1fea45fcfa78ab039ad6237223f570c4e5661d665693dbf1d624008b136a2e",
+      "commit": "54a39cd4a44fbd01620ac58a0367cc45af77c895"
     },
     "feod-preset": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/architecture/feod-preset/SKILL.md",
-      "computedHash": "c8779b5cdd6655a1a02062eb3100306354810c1bfc8bcd7c9832553e3b7d9f24"
+      "computedHash": "08b6b163e1ae4d44bb7f4bdeafc568fd6488b09fc5b63adb050b6e2548a8f4b8",
+      "commit": "5154e2037829bb1cd7b5e093e65b7344018ce3d7"
     },
     "frontend-boundaries": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/frontend/frontend-boundaries/SKILL.md",
-      "computedHash": "ae366ad3c527332b33474e1e9126315303310cb47cde6cdcbdae10f223c926bd"
+      "computedHash": "27bda9344ee1adc3a6d7adfbefafde2d479d693d48daedf14086afe4432953c0",
+      "commit": "5154e2037829bb1cd7b5e093e65b7344018ce3d7"
     },
     "frontend-mvvm": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/frontend/frontend-mvvm/SKILL.md",
-      "computedHash": "4c58f26b7bf640e00e15e920f547cba7ec759e3f957d9bcd6ff9285ef4a1b056"
+      "computedHash": "91e2cdb5ec7b56494274d58d591f03e6f0480921bcb0a9a49cbf7a00d6ee9883",
+      "commit": "5154e2037829bb1cd7b5e093e65b7344018ce3d7"
     },
     "hono": {
       "source": "honojs/skills",
       "sourceType": "github",
       "skillPath": "skills/hono/SKILL.md",
-      "computedHash": "e3f141a41800df815000216a53510fe6f888629471c214706cc05adff27297fb"
+      "computedHash": "b9aa6ed86fce02216f2f43c4b5c651ba0055f0785a568d84fc446721fc832172",
+      "commit": "e54ce51f6effaeb574ebd2629e89e086e14a2db3"
     },
-    "integration-test-grill": {
+    "integration-test-analyze": {
       "source": "siberiacancode/agent-skills",
+      "commit": "4f39dc6dc648ae6dd4219cd1f2f270041b36bb5f",
       "sourceType": "github",
-      "skillPath": "skills/integration-test-grill/SKILL.md",
-      "computedHash": "b2541417263dfa885182a751b42efda612bc82304c955887c47902600536d0e6"
+      "skillPath": "skills/workflow/integration-test-analyze/SKILL.md",
+      "computedHash": "db0ebe233ba125060e95198550b965aee16ee4cc68e6595e24ed3ef77fac8bc5",
+      "installMode": "copy"
     },
     "mvvm": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/architecture/mvvm/SKILL.md",
-      "computedHash": "413087459320bd4152c1e73e47bf8d61b1583a2ea9aa868f627825b4fb684439"
+      "computedHash": "e3494a00151da46b3b183963c21e97332fd909abecbd9d6a337373ed2dc41621",
+      "commit": "5154e2037829bb1cd7b5e093e65b7344018ce3d7"
     },
     "pnpm": {
       "source": "antfu/skills",
       "sourceType": "github",
       "skillPath": "skills/pnpm/SKILL.md",
-      "computedHash": "d1bd6f4fd38ff1ba33b857223c58a832d1cd5b488163ba0d389db449be472603"
+      "computedHash": "fb4c2b0f98b1e651fb217f2070e3782f2fa58fd7d9fb2745e9fefaf945b8c60e",
+      "commit": "4a6bb39e7b45e26402eb215393c51ccf5df1ca4c"
     },
     "react-hooks-best-practices": {
       "source": "siberiacancode/agent-skills",
       "sourceType": "github",
-      "skillPath": "skills/react-hooks-best-practices/SKILL.md",
-      "computedHash": "ba38b519221f42e702dfcf4460750f7cc355b59f3cdab9705b8a7c514a7fcaea"
+      "skillPath": "skills/practices/react-hooks-best-practices/SKILL.md",
+      "computedHash": "7a0d6c213cb865976d25c8695915a81f1b28ed7092097ec170c5b14e879d6404",
+      "commit": "4f39dc6dc648ae6dd4219cd1f2f270041b36bb5f"
     },
     "reactuse": {
       "source": "siberiacancode/agent-skills",
       "sourceType": "github",
-      "skillPath": "skills/reactuse/SKILL.md",
-      "computedHash": "5bd80dbb03674c74fe8b3cc207b910d9bcc737cb382ad9fb8c92b2ea8247a789"
+      "skillPath": "skills/packages/reactuse/SKILL.md",
+      "computedHash": "7b59b1891a108d931bab8fcca8e749b2a893afe686537a93b91a7c08e7a27cc5",
+      "commit": "4f39dc6dc648ae6dd4219cd1f2f270041b36bb5f"
     },
     "reatom": {
       "source": "reatom/reatom",
       "sourceType": "github",
       "skillPath": "skills/reatom/SKILL.md",
-      "computedHash": "de9586017eddbb781a9fdf5233636c2305892776363fa5d4e12517bea6ba82b4"
+      "computedHash": "2ffec63543a034e4daf4b27fb21a0836141bfda3b3c4bfa4a21bda1e04c85814",
+      "commit": "2cabfa7a280bc86ef58def6efc1e31bbdeafd313"
     },
     "reatom-async": {
       "source": "reatom/reatom",
       "sourceType": "github",
       "skillPath": "skills/reatom-async/SKILL.md",
-      "computedHash": "f0dcf99d9d9338f5e6ab2a38a8d2e67823e0d8a15fce1d5a013b5c8ed01a5799"
+      "computedHash": "b4b30539fa8af90ae49fefeae70e13d810af65e0e69aca6fd847418e8756737c",
+      "commit": "2cabfa7a280bc86ef58def6efc1e31bbdeafd313"
     },
     "reatom-field-notes": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/reatom/reatom-field-notes/SKILL.md",
-      "computedHash": "33a67dfaed65f3ab867f3edba81539976d6f9ef8072ac69c3891b021998db7b3"
+      "computedHash": "897ccbbabfc2c535d15ef1c8d582ec032f46d5700f845e48ee98d94340b688ad",
+      "commit": "5154e2037829bb1cd7b5e093e65b7344018ce3d7"
     },
     "reatom-review": {
       "source": "reatom/reatom",
       "sourceType": "github",
       "skillPath": "skills/reatom-review/SKILL.md",
-      "computedHash": "0bcb4b58892d94667805bc4eb1a61391bfe8b0ff1f1a3b23329d24fa48d36cc7"
+      "computedHash": "afedbf2977a539040629288fe1e214f13f8c02a8951c170d12dc98d8939881aa",
+      "commit": "2cabfa7a280bc86ef58def6efc1e31bbdeafd313"
     },
     "reatom-testing": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/reatom/reatom-testing/SKILL.md",
-      "computedHash": "67d9b55af86a32e5d2a1c8e0ad0eaaedab335b7b54709fb28efde6e6ed9452d8"
+      "computedHash": "0f490b72a7c442ff6e2b1477bdf3c74d0292b48a1ed15a715b993f21c4760fb6",
+      "commit": "5154e2037829bb1cd7b5e093e65b7344018ce3d7"
     },
     "role-files": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/architecture/role-files/SKILL.md",
-      "computedHash": "900c9cf2027ac2ed7f368b496d444b905658e685ed5e327abca4e1276da5c885"
+      "computedHash": "02f9f34796c8d1db2635c91620b87d360040bc0bffcd4ace0023b7df98c26288",
+      "commit": "9073d7d05265ad218f26e6c129ec71fa5c6da6e4"
     },
     "shadcn": {
       "source": "shadcn-ui/ui",
       "sourceType": "github",
       "skillPath": "skills/shadcn/SKILL.md",
-      "computedHash": "f615de216e085a84e31593ad0fa9062232adc40cd87b7c7ab2b8e49abf6500be"
+      "computedHash": "388962d16c7a4f13aaeee0d8f128e50a87df8553d42ef7988c39c0e1c74a40e8",
+      "commit": "055aa6b7837b1808456a24beb4c97a677864aa82"
     },
     "test-craft": {
       "source": "ScobarDen/scobar-skills",
       "sourceType": "github",
       "skillPath": "skills/workflow/test-craft/SKILL.md",
-      "computedHash": "1dc788ed1142500fdf3d901ca0de22d5270ffbe08bffc3176bb2f8054630e943"
+      "computedHash": "7163126bcdae6da4328cedee0c6154e4a0df8f1f027fb853fbeb361ff3dfd35b",
+      "commit": "5154e2037829bb1cd7b5e093e65b7344018ce3d7"
     },
-    "testcase-grill": {
+    "testcase-analyze": {
       "source": "siberiacancode/agent-skills",
+      "commit": "4f39dc6dc648ae6dd4219cd1f2f270041b36bb5f",
       "sourceType": "github",
-      "skillPath": "skills/testcase-grill/SKILL.md",
-      "computedHash": "7145025aa7284432344ec549b1e9abce73499c6ec657dc0df6f47018cd45568c"
+      "skillPath": "skills/workflow/testcase-analyze/SKILL.md",
+      "computedHash": "fd4e3cbeb792c17f3a875a46764295732d7da501f51af7369417971a0c84dcaf",
+      "installMode": "copy"
     },
-    "testing-best-practices": {
+    "testing": {
       "source": "siberiacancode/agent-skills",
+      "commit": "4f39dc6dc648ae6dd4219cd1f2f270041b36bb5f",
       "sourceType": "github",
-      "skillPath": "skills/testing-best-practices/SKILL.md",
-      "computedHash": "01dbbbdd8f81e10ac6a6b21676132ebfc4e5d66f6ce00649e80e219dca7663c0"
+      "skillPath": "skills/shared/testing/SKILL.md",
+      "computedHash": "8c0dda19f57b184f72f2c5103a008d9a60a4f8edf8bea55b1c473f2c93fdfe86",
+      "installMode": "copy"
     },
-    "unit-test-grill": {
+    "unit-test-analyze": {
       "source": "siberiacancode/agent-skills",
+      "commit": "4f39dc6dc648ae6dd4219cd1f2f270041b36bb5f",
       "sourceType": "github",
-      "skillPath": "skills/unit-test-grill/SKILL.md",
-      "computedHash": "27eec93f9d7ffb0ccd779fbd1e887a1b55389b49b815c26837a568c233331d26"
+      "skillPath": "skills/workflow/unit-test-analyze/SKILL.md",
+      "computedHash": "cac5387008392b2ce3eac1f7617e7dc9dead53a211ba465da73c490f6972e8a9",
+      "installMode": "copy"
     },
     "vite": {
       "source": "antfu/skills",
       "sourceType": "github",
       "skillPath": "skills/vite/SKILL.md",
-      "computedHash": "88ee465fd10f711efecc76e91e96accae2b229dda371614dcf219099c264a486"
+      "computedHash": "db9eea82d8bf6ce0f60a4a1d94a626c718df7d97160b5f1d5b150647e0c401b3",
+      "commit": "4a6bb39e7b45e26402eb215393c51ccf5df1ca4c"
     },
     "vitest": {
       "source": "antfu/skills",
       "sourceType": "github",
       "skillPath": "skills/vitest/SKILL.md",
-      "computedHash": "21af2b13d47d31f3094b61c0f41abc8d6a7eed0df3c9a4029ea671f6978b7209"
+      "computedHash": "bd95e41d66d76da9008893c9bc48c30f0a68f352cd2b00017767f5e4c129501d",
+      "commit": "4a6bb39e7b45e26402eb215393c51ccf5df1ca4c"
     },
     "workers-best-practices": {
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/workers-best-practices/SKILL.md",
-      "computedHash": "e1c30e93854345114dfa6a0a077363119eb99c03e5c64a8f2109349802e1f2aa"
+      "computedHash": "7f941bbc549454872a4c7c261bf75a1ef7aaa69666bc85cec91e97cf40c11cc6",
+      "commit": "14472d57ac968d1a0322a568077277209b259183"
     },
     "wrangler": {
       "source": "cloudflare/skills",
       "sourceType": "github",
       "skillPath": "skills/wrangler/SKILL.md",
-      "computedHash": "6d2bade1438d89034a750b1ddf30d0e5b62823306eccf85a5b25ccc4352ff8a9"
+      "computedHash": "182e370d8c26e6bcb896a57a63e6cab006b253b9278cc3515f7b9db2c4d07661",
+      "commit": "14472d57ac968d1a0322a568077277209b259183"
     }
   }
 }

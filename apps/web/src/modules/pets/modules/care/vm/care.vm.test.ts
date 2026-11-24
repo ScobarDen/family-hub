@@ -310,7 +310,7 @@ describe("the entry form", () => {
     model.form.form.fields.weightKg.set("12,6");
     model.form.save();
     await vi.waitFor(() => {
-      expect(model.canGoBack()).toBe(false);
+      expect(model.nestedBack.canGoBack()).toBe(false);
     });
 
     expect(backend.requests.find(({ request }) => request.startsWith("POST"))?.body).toEqual({
@@ -334,7 +334,7 @@ describe("the entry form", () => {
 
     model.form.save();
     await vi.waitFor(() => {
-      expect(model.canGoBack()).toBe(false);
+      expect(model.nestedBack.canGoBack()).toBe(false);
     });
 
     expect(backend.requests.find(({ request }) => request.startsWith("POST"))?.body).toMatchObject({
@@ -378,7 +378,7 @@ describe("the entry form", () => {
 
     model.form.save();
     await vi.waitFor(() => {
-      expect(model.canGoBack()).toBe(false);
+      expect(model.nestedBack.canGoBack()).toBe(false);
     });
 
     expect(backend.requests.find(({ request }) => request.startsWith("POST"))?.body).toMatchObject({
@@ -437,7 +437,7 @@ describe("the entry form", () => {
     model.remove();
 
     await vi.waitFor(() => {
-      expect(model.canGoBack()).toBe(false);
+      expect(model.nestedBack.canGoBack()).toBe(false);
     });
     expect(backend.requests.map(({ request }) => request)).toContain(
       "DELETE /api/care-entries/entry-2",
@@ -457,7 +457,7 @@ describe("deleting a Care Entry", () => {
     model.edit("entry-2");
     model.remove();
     await vi.waitFor(() => {
-      expect(model.canGoBack()).toBe(false);
+      expect(model.nestedBack.canGoBack()).toBe(false);
     });
 
     expect(journalIds(model)).not.toContain("entry-2");
@@ -508,7 +508,7 @@ describe("a Care Entry's photos", () => {
     model.form.form.fields.note.set("Гуляли в парке");
     model.form.save();
     await vi.waitFor(() => {
-      expect(model.canGoBack()).toBe(false);
+      expect(model.nestedBack.canGoBack()).toBe(false);
     });
 
     expect(
@@ -578,7 +578,7 @@ describe("a Care Entry opened from outside the card", () => {
 
     model.form.save();
     await vi.waitFor(() => {
-      expect(model.canGoBack()).toBe(false);
+      expect(model.nestedBack.canGoBack()).toBe(false);
     });
     expect(backend.requests.map(({ request }) => request)).toContain(
       "PUT /api/care-entries/entry-7",

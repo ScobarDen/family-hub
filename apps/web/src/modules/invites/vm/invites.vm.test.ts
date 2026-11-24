@@ -61,6 +61,8 @@ function fakeTelegram({ canShareMessage = true } = {}) {
       calls.push(`openTelegramLink ${url}`);
     },
     haptics: fakeHaptics(),
+    isClosingConfirmationEnabled: () => false,
+    showPopup: async () => "cancel",
     calls,
   };
 }
@@ -212,11 +214,11 @@ describe("revoking", () => {
     await loaded(model);
     model.revoke("invite-1");
 
-    expect(model.canGoBack()).toBe(true);
+    expect(model.nestedBack.canGoBack()).toBe(true);
 
     model.back();
 
-    expect([model.isConfirmingRevoke(), model.canGoBack()]).toEqual([false, false]);
+    expect([model.isConfirmingRevoke(), model.nestedBack.canGoBack()]).toEqual([false, false]);
     expect(backend.requests).not.toContain("DELETE /api/invites/invite-1");
   });
 

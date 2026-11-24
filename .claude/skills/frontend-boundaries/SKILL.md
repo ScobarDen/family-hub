@@ -1,13 +1,15 @@
 ---
 name: frontend-boundaries
-description: Make the linter enforce FEOD levels and role boundaries on a web frontend — the official `@o-feod` structure plugin for levels, deep and zigzag imports, submodules and `common`, plus `no-restricted-imports` regex patterns for `.dto` and the role matrix, the `export *` ban, `max-lines` as a size prompt, copyable ESLint flat and oxlint configs. Load when setting up or reviewing a frontend lint config, adding a role or a host suffix, or when a review finds an import crossing a level or role boundary. What the boundaries mean is feod, feod-preset and role-files; this file only turns them into rules.
+description: Lint rules for FEOD levels and role boundaries on a web frontend, as ESLint flat and oxlint configs. Load when setting up or reviewing a frontend lint config, adding a role or a host suffix, or when a review finds an import crossing a level or role boundary.
 ---
 
 # Frontend boundaries
 
-A boundary the linter does not check lasts until the first deadline. Two parts do the checking: the official FEOD plugin (`@o-feod/eslint-structure-plugin` or `@o-feod/oxlint-structure-plugin`, rules `feod-structure/*`) owns levels and module boundaries; `no-restricted-imports` with `regex` patterns owns the role matrix of `role-files` §7, whose suffixes come from `frontend-mvvm` §4. `max-lines` and the `export *` ban ride along. Both configs below were run on fixtures for every row with `@o-feod/*` 0.1.7, ESLint 10.13 with typescript-eslint and oxlint 1.90 (2026-10-27).
+Two parts do the checking: the official FEOD plugin (`@o-feod/eslint-structure-plugin` or `@o-feod/oxlint-structure-plugin`, rules `feod-structure/*`) owns levels and module boundaries; `no-restricted-imports` with `regex` patterns owns the role matrix of `role-files` §7, whose suffixes come from `frontend-mvvm` §4. `max-lines` and the `export *` ban ride along. Both configs below were run on fixtures for every row with `@o-feod/*` 0.1.7, ESLint 10.13 with typescript-eslint and oxlint 1.90 (2026-10-27); the `config`/`types`/`lib` row and the page-test override were added after that run and checked with ESLint 10.15 only.
 
-**Project conventions win.** An existing lint config, alias or boundary plugin keeps its shape; add the missing rows to it instead of replacing it. The official `feod` skill's lint reference covers installing the plugin, its options and diagnosing its errors.
+**Project conventions win.** An existing lint config, alias or boundary plugin keeps its shape; add the missing rows to it instead of replacing it.
+
+Prerequisites: the official `feod` skill (`npx skills add Sdju/feod`), whose lint reference covers installing the plugin, its options and diagnosing its errors; `feod-preset`, `role-files` and `frontend-mvvm` (`npx skills add ScobarDen/scobar-skills --skill <name>`) for what the rules mean.
 
 ## The matrix
 
@@ -21,16 +23,17 @@ This table is the lint translation of FEOD (`feod`, `feod-preset`) and `role-fil
 | `common/**` | have or import an `index.*`; sit more than one folder deep | `no-common-index`, `no-common-deep` |
 | every file | live outside the five levels (`src/helpers/`) | `no-unknown-files` |
 | every file except `.api`, `.dto` and tests | import `.dto` | `no-restricted-imports`: raw backend shapes stop at `.api`, re-exports from `index.ts` included |
-| `*.view.{ts,tsx,vue}` | import `.api`, types included | the View binds VM output and never sees transport |
-| `*.vm.ts` | import `.view`; `.api` values (types pass) | the VM does not know how it is drawn, and reaches transport through `.model` or an injected function (mediator in `mvvm` §4) |
-| `*.model.ts` | import `.vm`, `.view` | the Model is below the VM |
-| `*.api.ts` | import `.vm`, `.view` | transport is below the VM |
+| `*.view.{ts,tsx,vue}` | import `.api`, types included | `no-restricted-imports`: the View binds VM output and never sees transport |
+| `*.vm.ts` | import `.view`; `.api` values (types pass) | `no-restricted-imports`: the VM does not know how it is drawn, and reaches transport through `.model` or an injected function (mediator in `mvvm` §4) |
+| `*.model.ts` | import `.vm`, `.view` | `no-restricted-imports`: the Model is below the VM |
+| `*.api.ts` | import `.vm`, `.view` | `no-restricted-imports`: transport is below the VM |
+| `*.{config,types,lib}.ts` | import `.vm`, `.view`, `.api` | `no-restricted-imports`: supporting roles sit below every MVVM role |
 | `index.ts` | `export *` | `no-restricted-syntax`, ESLint only |
 | every file | grow past 200 lines (tests 500) | `max-lines` as `warn`: a prompt to name the file's responsibilities |
 
 ## Project config
 
-The plugin reads one source: a `feod` key in `package.json` or `feod.config.json`. The alias keys follow the project; `submodules` is this family's:
+The plugin reads one source: a `feod` key in `package.json` or `feod.config.json`. The alias keys follow the project; `modulePages` and `submodules` are this family's. Merge the block below with the one `feod-preset`'s New project writes, which adds `modules.forbiddenNames` and owns that list:
 
 ```json
 {
@@ -38,15 +41,19 @@ The plugin reads one source: a `feod` key in `package.json` or `feod.config.json
     "srcRoot": "src",
     "aliasPrefix": "@",
     "aliasRoot": "src",
+    "modulePages": false,
     "submodules": { "visibility": "parent-only" }
   }
 }
 ```
 
 - `aliasPrefix`/`aliasRoot` teach the plugin the `@/` alias; without them it knows only `@modules`, `@common` and the other per-level aliases. Adjust to the project's.
+- `modulePages: false` matches the profile `feod-preset` writes: routes live in `pages` (`role-files` §6), never in a module's `pages/` folder.
 - `submodules.visibility: "parent-only"` is `feod-preset`'s rule that a submodule is invisible outside its parent. The plugin's default, `"public"`, lets any module import a submodule's `index.ts`.
 
-`global` is never imported, the entry included: `app/main.tsx` importing `@/global/polyfills` is a `layer-imports` error. Connect `global` outside the import graph: `.d.ts` files through `tsconfig.json` `include`, polyfills and global styles through `index.html` (`<script type="module" src="/src/global/polyfills.ts">` before the entry) or the bundler config.
+`global` is never imported, the entry included: `app/main.tsx` importing `@/global/array.polyfill` is a `layer-imports` error. `frontend-mvvm` §4 says how `global` is connected instead.
+
+`layer-imports` in 0.1.7 treats every file under `pages/` as a page of its own and lets it import only its own styles, so `catalog.route.ts` importing `./catalog.view` is a page → page error. Keep the files of a page apart: the route file is data, and `app/app.route.ts` joins it with the page View (`frontend-mvvm` §5). The one file that must import its neighbour is the page's wiring test (`mvvm` §9); both configs below switch `layer-imports` off for `src/pages/**/*.test.{ts,tsx}` only, as a `feod-preset` exception. Remove that override once the plugin allows imports within one page. A `feod.ignore` entry or a `pages/**` override is the wrong fix: both also drop the deep-import check from the page View.
 
 ## How overrides combine
 
@@ -67,7 +74,9 @@ A pure-domain rule (`*.model.ts` imports no packages) is the same shape with its
 
 ## ESLint (flat config)
 
-Merge into the project's flat config: `.ts` files need its TypeScript parser (typescript-eslint), `.vue` files `vue-eslint-parser`, and `allowTypeImports` reads the type-import marks the TS parser sets. `configFromProject` registers the plugin and reads the `feod` config.
+A project with no linter yet gets ESLint: only it checks `export *`. oxlint is for a project already on oxlint or vite-plus.
+
+Merge into the project's flat config: `.ts` files need its TypeScript parser (typescript-eslint), `.vue` files `vue-eslint-parser`, and `allowTypeImports` reads the type-import marks the TS parser sets. `configFromProject` registers the plugin and reads the `feod` config. A project with no flat config starts the array with `{ ignores: ['dist'] }`, `@eslint/js`'s `configs.recommended` and `...tseslint.configs.recommended`, then the entries below.
 
 ```js
 import { fileURLToPath } from 'node:url'
@@ -99,12 +108,15 @@ export default [
   { files: ['src/**/*.model.ts'], rules: restrict(role('vm', 'view', 'dto')) },
   { files: ['src/**/*.vm.ts'], rules: restrict(role('view', 'dto'), { ...role('api'), allowTypeImports: true }) },
   { files: ['src/**/*.view.{ts,tsx,vue}'], rules: restrict(role('api', 'dto')) },
+  { files: ['src/**/*.{config,types,lib}.ts'], rules: restrict(role('vm', 'view', 'api', 'dto')) },
+  // shortcut: @o-feod 0.1.7 reads a page's wiring test importing its View as page → page; drop when the plugin allows imports within one page
+  { files: ['src/pages/**/*.test.{ts,tsx}'], rules: { 'feod-structure/layer-imports': 'off' } },
 ]
 ```
 
 ## oxlint
 
-`oxlint.config.ts` (oxlint ≥ 1.86, the plugin's peer range), or the `lint` block of `vite.config.ts` under vite-plus. oxlint parses TypeScript and the script of `.vue` files on its own. It has no selector-based `no-restricted-syntax`, so `export *` stays a review item there (`feod-preset` §9).
+`oxlint.config.ts` (oxlint ≥ 1.86, the plugin's peer range), or the `lint` block of `vite.config.ts` under vite-plus. oxlint parses TypeScript and the script of `.vue` files on its own. It has no selector-based `no-restricted-syntax`, so `export *` stays a review item there (`feod-preset`, Module public API).
 
 ```ts
 import { fileURLToPath } from 'node:url'
@@ -132,6 +144,9 @@ export default defineConfig({
     { files: ['src/**/*.model.ts'], rules: restrict(role('vm', 'view', 'dto')) },
     { files: ['src/**/*.vm.ts'], rules: restrict(role('view', 'dto'), { ...role('api'), allowTypeImports: true }) },
     { files: ['src/**/*.view.{ts,tsx,vue}'], rules: restrict(role('api', 'dto')) },
+    { files: ['src/**/*.{config,types,lib}.ts'], rules: restrict(role('vm', 'view', 'api', 'dto')) },
+    // shortcut: @o-feod 0.1.7 reads a page's wiring test importing its View as page → page; drop when the plugin allows imports within one page
+    { files: ['src/pages/**/*.test.{ts,tsx}'], rules: { 'feod-structure/layer-imports': 'off' } },
   ],
 })
 ```
@@ -142,8 +157,7 @@ A project already on `.oxlintrc.json` keeps it: add `"jsPlugins": [{ "name": "fe
 
 | Need | Load |
 | --- | --- |
-| What a level may import, the plugin's rules and options | `feod` (official) |
-| This family's stricter rules: submodule visibility, public API | `feod-preset` |
-| The role list and role matrix | `role-files` |
-| Suffixes and `index.ts` in TypeScript | `frontend-mvvm` |
-| The same boundaries enforced by a C++ compiler | `qt-cmake-boundaries` |
+| What a level may import, the plugin's rules and options | `feod` (`npx skills add Sdju/feod`) |
+| This family's stricter rules: submodule visibility, public API | `feod-preset` (`npx skills add ScobarDen/scobar-skills --skill feod-preset`) |
+| The role list and role matrix | `role-files` (`npx skills add ScobarDen/scobar-skills --skill role-files`) |
+| Suffixes and `index.ts` in TypeScript | `frontend-mvvm` (`npx skills add ScobarDen/scobar-skills --skill frontend-mvvm`) |

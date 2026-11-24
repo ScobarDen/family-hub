@@ -1,7 +1,43 @@
 import { context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
+import type { SlotModule } from "@family-hub/contract";
+
+import { reatomNestedBack } from "@/modules/form";
+import { fakeHaptics, fakeWindow } from "@/modules/telegram";
+
 import { reatomNavigation } from "./app.route.ts";
+
+type Steps = { canGoBack: () => boolean; closesInPlace: () => boolean; back: () => void };
+
+const telegram = { ...fakeWindow(), haptics: fakeHaptics(), showPopup: async () => "cancel" };
+
+function stepsBack(name: string, steps: Steps) {
+  return reatomNestedBack({ name: `test.${name}.back`, telegram, ...steps });
+}
+
+const nothing: Steps = { canGoBack: () => false, closesInPlace: () => false, back: noop };
+
+function nestedBacks(own: Partial<Record<SlotModule | "profile", Steps>>) {
+  const steps = {
+    tasks: nothing,
+    pet: nothing,
+    goals: nothing,
+    albums: nothing,
+    recipes: nothing,
+    profile: nothing,
+    ...own,
+  };
+
+  return {
+    tasks: stepsBack("tasks", steps.tasks),
+    pet: stepsBack("pet", steps.pet),
+    goals: stepsBack("goals", steps.goals),
+    albums: stepsBack("albums", steps.albums),
+    recipes: stepsBack("recipes", steps.recipes),
+    profile: stepsBack("profile", steps.profile),
+  };
+}
 
 function startNavigation() {
   const button = { isAvailable: true, follow: () => noop };
@@ -116,15 +152,15 @@ describe("the tab stacks", () => {
       slots: () => ["tasks", "recipes"],
       isSignedIn: () => true,
       telegram: { backButton: button, settingsButton: button },
-      nestedBack: {
+      nestedBack: nestedBacks({
         goals: {
           canGoBack: () => isFormOpen,
-          isFormOpen: () => isFormOpen,
+          closesInPlace: () => isFormOpen,
           back: () => {
             isFormOpen = false;
           },
         },
-      },
+      }),
     });
 
     navigation.openModule("goals");
@@ -145,15 +181,15 @@ describe("the tab stacks", () => {
       slots: () => ["tasks", "recipes"],
       isSignedIn: () => true,
       telegram: { backButton: button, settingsButton: button },
-      nestedBack: {
+      nestedBack: nestedBacks({
         profile: {
           canGoBack: () => isDrawerOpen,
-          isFormOpen: () => isDrawerOpen,
+          closesInPlace: () => isDrawerOpen,
           back: () => {
             isDrawerOpen = false;
           },
         },
-      },
+      }),
     });
 
     navigation.openProfile();
@@ -176,15 +212,15 @@ function startSliding() {
     slots: () => ["tasks", "recipes"],
     isSignedIn: () => true,
     telegram: { backButton: button, settingsButton: button },
-    nestedBack: {
+    nestedBack: nestedBacks({
       goals: {
         canGoBack: () => nested !== "none",
-        isFormOpen: () => nested === "form",
+        closesInPlace: () => nested === "form",
         back: () => {
           nested = "none";
         },
       },
-    },
+    }),
     slide: (direction, update) => {
       slides.push(direction);
       update();

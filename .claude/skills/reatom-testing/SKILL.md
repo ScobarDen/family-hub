@@ -5,15 +5,13 @@ description: How to test Reatom code — context isolation instead of store mock
 
 # Reatom Testing
 
-The official reference devotes three lines to testing (`reatom/REFERENCE.md`, "SSR and testing"), so this is the fullest picture available.
+**Prerequisite:** the official `reatom`, `reatom-async` and `reatom-review` skills (`npx skills add https://github.com/reatom/reatom/tree/v1001/skills`). `reatom-field-notes` explains the runtime traps (deliberate `Stuck in recursion`, abort leakage) behind a chunk of confusing test failures.
 
-**Provenance.** API facts here were read off the installed `@reatom/core@1001.3.0` typings (`dist/index.d.ts` JSDoc). Behavioral and tooling facts come from posts by Reatom's author in `t.me/artalog` (cited by post id — read at `https://t.me/artalog/<id>`) and from the `reatom-review` / `reatom-async` skills. Re-verify a signature against the installed version before trusting it; the code wins over these notes.
-
-**Related skills.** `reatom` for the API itself, `reatom-async` for the async primitives under test, `reatom-field-notes` for non-obvious runtime behavior (deliberate `Stuck in recursion`, abort leakage) that explains a chunk of confusing test failures, `reatom-review` for reviewing the result.
+API facts here are checked against `@reatom/core@1001.3.0`; the installed typings (`dist/index.d.ts` JSDoc) win when they disagree.
 
 ## The context is the seam — not mocks
 
-Reatom runs atoms in isolated contexts itself, so the usual "reset all the stores" scaffolding is redundant (1851).
+Reatom runs atoms in isolated contexts itself, so the usual "reset all the stores" scaffolding is redundant.
 
 - **`context.start(cb)`** runs a callback inside a fresh isolated context and returns its result; **`context.start()`** returns the new root frame. This is the strict option — nothing leaks between cases.
 - **`context.reset()`** throws away all accumulated state and related meta, and — per its JSDoc — **aborts `wrap`ed effects too**. Intended for tests, storybook and logout. The typings' own example is literally a vitest `beforeEach`:
@@ -46,37 +44,64 @@ describe('My feature', () => {
 | `mock(target, cb): Unsubscribe` | Replaces an atom's/action's implementation with `cb` for the duration; the returned function restores the original. JSDoc calls it out as the testing tool. |
 | `mockRandom(fn): () => void` | Deterministic `random()`; returns a restore function. |
 | `variable(...).run(impl, cb)` | The documented dependency-injection seam — the JSDoc example injects `{ log: vi.fn() }` in place of the real logger. Fake collaborators with a variable, not with a module mock. |
-| `createMemStorage` | In-memory persist adapter for tests (and SSR snapshots). |
+| `createMemStorage` | In-memory persist adapter for tests (and SSR snapshots): `withLocalStorage.storageAtom.set(createMemStorage({ name: 'test' }))`. |
 | `isConnected(atom)` | Assert whether an atom currently has subscribers. |
-| `sleep(ms)`, `framePromise()` | Exported from core — use these to await the queue instead of hand-rolled timers. |
+| `sleep(ms)` | Exported from core — `await sleep(0)` lets queued subscriber notifications flush. |
+
+`framePromise()` is not a flush helper: it returns the result of the *current* atom or action frame, for use inside an action.
 
 Three traps in this area:
 
-- **`reset(target)` is not `context.reset()`.** The top-level `reset` drops a computed's dependencies (resource invalidation) without recomputing it; `retryComputed(target)` resets and re-evaluates. Do not reach for it expecting a clean test context.
+- **`reset(target)` is not `context.reset()`.** The top-level `reset` drops a computed's dependencies (resource invalidation) without recomputing it; `retryComputed(target)` resets and re-evaluates. For a clean test context, call `context.reset()`.
 - **`anonymizeNames()` is not a testing tool.** It is a security/obfuscation switch that must be called before any atom is created, and it destroys the names that logs and devtools depend on. Never put it in test setup.
-- There is **no `@reatom/testing` package and no `testing.*` export** in core 1001.3.0. The `testing.subscribe` returning a vitest `Mock`, mentioned in post 1598, was the author's own private harness on top of `MIDDLEWARES` — treat it as an idea to copy, not an API to import.
+- There is **no `@reatom/testing` package and no `testing.*` export** in core 1001.3.0. A subscriber spy is a `vi.fn()` passed to `atom.subscribe`.
+
+## Testing an async action
+
+Put the transport behind a `variable`, give it a production default, and swap it per test with `.run`:
+
+```ts
+// todos.ts
+export type Transport = { get: (url: string, signal: AbortSignal) => Promise<unknown> }
+export const transportVar = variable<Transport>('todos.transport')
+
+export const loadTodos = action(async () => {
+  const transport = transportVar.get() ?? fetchTransport
+  const payload = await wrap(transport.get('/api/todos', abortVar.require().signal))
+  todos.set(parseTodos(payload))
+}, 'todos.load').extend(withAsync(), withAbort())
+
+// todos.test.ts
+test('loadTodos fills the list', async () => {
+  const get = vi.fn(async () => [{ id: '1', title: 'a' }])
+  await transportVar.run({ get }, () => loadTodos())
+  expect(get).toHaveBeenCalledWith('/api/todos', expect.any(AbortSignal))
+  expect(loadTodos.ready()).toBe(true)
+  expect(loadTodos.error()).toBeUndefined()
+  expect(todos()).toHaveLength(1)
+})
+```
+
+Assert on the outcome (`ready()`, `error()`, the state the action wrote). Which `withAsync` / `withAbort` options a command needs is `reatom-async`'s call.
 
 ## Async assertion rules that break naive tests
 
-- **Never assert synchronously after `.set()`.** Subscriber callbacks and queue effects flush on a microtask. Await one (`await sleep(0)` / `framePromise()`) or read the atom directly instead of asserting on the subscriber spy.
+- **`atom.subscribe(cb)` calls `cb` immediately with the current state; later updates arrive on a microtask.** After `.set()`, `await sleep(0)` before asserting on a subscriber spy, and count calls after `spy.mockClear()` following the subscribe — or read the atom directly.
 - **Reading `.pending()` in timing-sensitive tests can itself affect scheduling** (`reatom-async` reference) — assert on the outcome, not on transient async status, in hot tests.
 - **A downleveled build breaks context propagation.** If `async/await` is transpiled to `.then()` chains, the async context is lost and you get "missing async stack"-shaped failures that look like library bugs. Check the *test* transform's target (not just the app's) before blaming Reatom.
-- **An instant, unexplained abort is usually the known structural trap**, not your test: work kicked off from inside a process that just got aborted gets aborted with it, and only routes / `reatomComponent` act as a watershed. See `reatom-field-notes`.
-- The repo's own test files are the de-facto documentation for these edge cases: `withAsync.test.ts`, `withAsyncData.test.ts`, `withAbort.test.ts`, `wrap.test.ts`, `take.test.ts`, `framePromise.test.ts`, `withSuspense.test.ts`, and `atom.recursion.test.ts` for the recursion behavior (1848, 1924).
+- **An instant, unexplained abort** is usually the abort-leakage trap — see `reatom-field-notes`.
+- The Reatom repo's own tests are the de-facto documentation for these edge cases, under `github.com/reatom/reatom/tree/v1001/packages/core/src`: `async/withAsync.test.ts`, `async/withAsyncData.test.ts`, `extensions/withAbort.test.ts`, `methods/wrap.test.ts`, `methods/take.test.ts`, `methods/framePromise.test.ts`, `extensions/withSuspense.test.ts`, and `core/atom.recursion.test.ts` for the recursion behavior.
 
-## Runner setup, as done in the Reatom repo
+## Runner setup
 
-- **Turn vitest isolation off**: `isolate: false` + `fileParallelism: false` cut the core suite (290 tests / 44 files, heavily async) to **1/6 of the wall clock** — creating 44 isolates cost more than running the tests, and Reatom isolates internally anyway (1851).
-- The core suite is split deliberately: real-browser cases through **`@vitest/browser-playwright`** ("очень рекомендую"), plain units for the rest (1851, 1542).
-- Headless browsers are not the slow option — 34 tests in 0.6s (1528). Browser mode is not an excuse to skip component tests.
-- History note: the project migrated **uvu → vitest** because uvu reported the wrong error in the wrong test (1445). Any uvu-based snippet from the archive is dead.
+- **Turn vitest isolation off when all shared state lives in Reatom atoms**: `isolate: false` + `fileParallelism: false` cut the Reatom core suite to 1/6 of the wall clock, since Reatom isolates internally anyway. Keep the default isolation while module-level non-Reatom state (singletons, caches, patched globals) is shared between test files.
+- Run real-browser cases through **`@vitest/browser-playwright`** and keep plain units for the rest. Headless browsers are not the slow option — 34 tests in 0.6s; browser mode is no excuse to skip component tests.
+- **Type tests** run in the same command: `expectTypeOf` from vitest, with `test.typecheck.enabled: true` and `typecheck.include` covering the test files.
 
-## What the author counts as a good test (1575, 548, 1761, 1933)
+## What counts as a good test
 
-- Prefer **e2e, or component tests in a real browser, with as few mocks as possible** — he has deliberately had passing unit tests rewritten into integration ones. Every mock is a liability to keep watching.
-- **Type tests are first-class**: a refactor silently killed optional-argument inference, and only a type test caught it (1761).
-- "Story tests" — tests written with readable naming and comments, then copied into the docs automatically (548). An idea he floated, not shipped tooling.
-- For reactive libraries, **correctness suites beat benchmarks** (1933); apply the same instinct to your own reactive code.
+- Prefer **e2e, or component tests in a real browser, with as few mocks as possible**; rewrite a passing unit test into an integration one when it only exercises mocks. Every mock is a liability to keep watching.
+- **Type tests are first-class**: a refactor silently killed optional-argument inference in Reatom itself, and only a type test caught it. Cover inferred unions, factory return types and optional arguments.
 
 ## Review smells
 

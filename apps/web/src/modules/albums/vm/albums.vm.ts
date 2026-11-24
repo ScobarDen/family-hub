@@ -25,7 +25,7 @@ import {
   type Slide,
 } from "@/modules/changes";
 import type { DeviceCache } from "@/modules/device-cache";
-import { reatomFormBack } from "@/modules/form";
+import { reatomNestedBack } from "@/modules/form";
 import type { LiveVersion } from "@/modules/live-updates";
 import type { PreparedPhoto } from "@/modules/photo";
 import { reatomPhotoViewer } from "@/modules/photo-viewer";
@@ -125,10 +125,6 @@ function reatomPlace({ data, navigation }: { data: AlbumsData; navigation: Navig
     screenKey: computed(
       () => (data.isAllShown() ? "all" : (navigation.openedId() ?? "list")),
       "albums.screenKey",
-    ),
-    canGoBack: computed(
-      () => navigation.isEditing() || data.isAllShown() || navigation.openedId() !== undefined,
-      "albums.canGoBack",
     ),
   };
 }
@@ -306,7 +302,7 @@ export function reatomAlbumsScreen(dependencies: AlbumsDependencies) {
       data.isAllShown.setTrue();
     }, "albums.openAll"),
     ...reatomMoves({ data, navigation, form: parts.form, batch: parts.batch }),
-    back: reatomBack({ data, navigation, batch: parts.batch }, dependencies.telegram),
+    ...reatomBack({ data, navigation, batch: parts.batch }, dependencies.telegram),
     failure: failure.failure,
     dismissFailure: failure.dismiss,
     remove: detached(remove, "albums.removeAlbum"),
@@ -351,10 +347,12 @@ function reatomBack(
   }: { data: AlbumsData; navigation: Navigation; batch: { dismiss: () => void } },
   telegram: AlbumsDependencies["telegram"],
 ) {
-  return reatomFormBack({
+  const nestedBack = reatomNestedBack({
     name: "albums.back",
     telegram,
-    isFormOpen: navigation.isEditing,
+    canGoBack: () =>
+      navigation.isEditing() || data.isAllShown() || navigation.openedId() !== undefined,
+    closesInPlace: navigation.isEditing,
     back: () => {
       if (navigation.isEditing()) {
         navigation.isEditing.setFalse();
@@ -366,6 +364,8 @@ function reatomBack(
       }
     },
   });
+
+  return { nestedBack, back: nestedBack.back };
 }
 
 function titleOf(screen: AlbumsScreen): string {

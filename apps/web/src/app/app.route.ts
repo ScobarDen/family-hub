@@ -4,6 +4,7 @@ import { z } from "zod";
 import { appModule, type AppModule, type SlotModule } from "@family-hub/contract";
 
 import { instantly, type Slide } from "@/modules/changes";
+import type { NestedBack } from "@/modules/form";
 import type { TabId } from "@/modules/tab-bar";
 import type { Telegram } from "@/modules/telegram";
 
@@ -16,7 +17,8 @@ export type Screen =
   | { kind: "profile" }
   | { kind: "module"; module: AppModule; petId?: string };
 
-type NestedBack = { canGoBack: () => boolean; isFormOpen: () => boolean; back: () => void };
+// Every slot module and the Profile have screens to step back from; the Feed has none.
+type NestedBacks = Record<SlotModule | "profile", NestedBack>;
 
 type NavigationDependencies = {
   base: string;
@@ -24,7 +26,7 @@ type NavigationDependencies = {
   isSignedIn: () => boolean;
   telegram: Pick<Telegram, "backButton" | "settingsButton">;
   // Screens inside a module or the Profile (a form, a Task's card) step back before the app does.
-  nestedBack?: Partial<Record<AppModule | "profile", NestedBack>>;
+  nestedBack?: NestedBacks;
   onTodayShown?: () => void;
   // A pushed screen, a tab switch and Back slide; a launch swaps at once.
   slide?: Slide;
@@ -278,7 +280,7 @@ function nestedOf(
   nestedBack: NavigationDependencies["nestedBack"],
 ): NestedBack | undefined {
   if (screen.kind === "module") {
-    return nestedBack?.[screen.module];
+    return screen.module === "feed" ? undefined : nestedBack?.[screen.module];
   }
 
   return screen.kind === "profile" ? nestedBack?.profile : undefined;
@@ -310,7 +312,7 @@ function reatomBack(
 
     if (nested === undefined) {
       stack.pop();
-    } else if (nested.isFormOpen()) {
+    } else if (nested.closesInPlace()) {
       // The form slides down over a screen that stays put, as a swipe or «Отмена» closes it.
       nested.back();
     } else {
