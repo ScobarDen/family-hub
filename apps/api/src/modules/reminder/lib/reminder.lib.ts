@@ -8,8 +8,8 @@ export const daySnoozeMs = 86_400_000;
 // A Reminder more than 12 hours late moves on to its next Occurrence without a stale message.
 export const latenessLimitMs = 43_200_000;
 
-// A button names its Occurrence after the row, `rd:done:<uuid>:<YYYY-MM-DD>`, within Telegram's
-// 64 bytes; a message sent before it names the row alone.
+// The Occurrence fits Telegram's 64 bytes beside the row id; messages sent before it name the row
+// alone.
 const callbackPattern = new RegExp(
   `^${callbackPrefix}:(done|snooze):([^:]+)(?::([0-9]{4}-[0-9]{2}-[0-9]{2}))?$`,
 );

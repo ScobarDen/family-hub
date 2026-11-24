@@ -37,7 +37,6 @@ function isRecipient(presser: Membership | undefined, row: DispatchRow): presser
   return presser?.member.id === row.memberId && presser.family.id === row.familyId;
 }
 
-// A message from before the bot's buttons named their Occurrence acts on the one its row last sent.
 async function botPressOf(
   dependencies: ReminderDependencies,
   {
@@ -54,12 +53,12 @@ async function botPressOf(
   }
 
   const source = await sourceOfRow(dependencies, row);
-  const named =
+  const pressedOccurrence =
     occurrence === undefined
       ? { occurrence: row.sentOccurrence ?? row.occurrence, occurrenceFrom: "row" as const }
       : { occurrence, occurrenceFrom: "message" as const };
 
-  return source && { row, source, presser, ...named };
+  return source && { row, source, presser, ...pressedOccurrence };
 }
 
 // A signed press whose row or source is gone was answered already: a completed single Task drops
