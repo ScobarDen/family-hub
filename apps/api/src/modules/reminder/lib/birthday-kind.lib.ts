@@ -26,7 +26,7 @@ export function birthdaySource({
       emoji: "🎂",
       title: () => `Сегодня день рождения у ${pet.name}!`,
       pushText: () => ({ title: `День рождения: ${pet.name}`, body: "Сегодня" }),
-      buttons: (dispatchId) => reminderButtons(dispatchId),
+      buttons: (dispatchId, occurrence) => reminderButtons({ dispatchId, occurrence }),
       deepLink: { kind: "pet", id: pet.id },
       closing: { by: "row" },
       snoozeMs,

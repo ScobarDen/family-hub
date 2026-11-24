@@ -99,7 +99,7 @@ function taskKind(
       body: `${dayAndTimeOf(task, { occurrence, timeZone, now })} · ${section}`,
     }),
     buttons: (dispatchId, occurrence) =>
-      reminderButtons(dispatchId, { recordUrl: recordUrlOf(occurrence), openUrl }),
+      reminderButtons({ dispatchId, occurrence }, { recordUrl: recordUrlOf(occurrence), openUrl }),
     deepLink: { kind: "task", id: task.id },
     closing: {
       by: "task",

@@ -8,7 +8,11 @@ export const daySnoozeMs = 86_400_000;
 // A Reminder more than 12 hours late moves on to its next Occurrence without a stale message.
 export const latenessLimitMs = 43_200_000;
 
-const callbackPattern = new RegExp(`^${callbackPrefix}:(done|snooze):(.+)$`);
+// A button names its Occurrence after the row, `rd:done:<uuid>:<YYYY-MM-DD>`, within Telegram's
+// 64 bytes; a message sent before it names the row alone.
+const callbackPattern = new RegExp(
+  `^${callbackPrefix}:(done|snooze):([^:]+)(?::([0-9]{4}-[0-9]{2}-[0-9]{2}))?$`,
+);
 
 const sourceIdSeparator = ":";
 
@@ -29,13 +33,14 @@ export function parseCallback(data: string | undefined) {
     : {
         action: match[1] === "done" ? ("done" as const) : ("snooze" as const),
         dispatchId: match[2],
+        occurrence: match[3],
       };
 }
 
 // One set for every Reminder; a Task adds «Открыть», a Pet-linked one also «Записать», both as
 // url buttons because web_app buttons work only in private chats.
 export function reminderButtons(
-  dispatchId: string,
+  { dispatchId, occurrence }: { dispatchId: string; occurrence: string },
   { recordUrl, openUrl }: { recordUrl?: string; openUrl?: string } = {},
 ): InlineKeyboardMarkup {
   const links = [
@@ -48,10 +53,13 @@ export function reminderButtons(
       [
         {
           text: "✅ Готово",
-          callback_data: `${callbackPrefix}:done:${dispatchId}`,
+          callback_data: `${callbackPrefix}:done:${dispatchId}:${occurrence}`,
           style: "success",
         },
-        { text: "⏰ Отложить", callback_data: `${callbackPrefix}:snooze:${dispatchId}` },
+        {
+          text: "⏰ Отложить",
+          callback_data: `${callbackPrefix}:snooze:${dispatchId}:${occurrence}`,
+        },
       ],
       ...(links.length === 0 ? [] : [links]),
     ],

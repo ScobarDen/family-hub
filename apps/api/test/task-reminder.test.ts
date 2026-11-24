@@ -75,14 +75,24 @@ function textsTo(worker: Worker, user: TelegramUserFixture) {
   return messagesTo(worker, user).map(({ text }) => text);
 }
 
-function keyboardOf(worker: Worker, user: TelegramUserFixture) {
-  const markup = messagesTo(worker, user).at(-1)?.reply_markup as InlineKeyboardMarkup | undefined;
+function keyboardOf(worker: Worker, user: TelegramUserFixture, message = -1) {
+  const markup = messagesTo(worker, user).at(message)?.reply_markup as
+    | InlineKeyboardMarkup
+    | undefined;
 
   return markup?.inline_keyboard ?? [];
 }
 
-function buttonsOf(worker: Worker, user: TelegramUserFixture) {
-  return keyboardOf(worker, user).flat();
+function callbackDataOf(
+  worker: Worker,
+  user: TelegramUserFixture,
+  { label, message = -1 }: { label: string; message?: number },
+) {
+  const button = keyboardOf(worker, user, message)
+    .flat()
+    .find(({ text }) => text === label);
+
+  return button !== undefined && "callback_data" in button ? button.callback_data : "";
 }
 
 async function tickAt(worker: Worker, moment: string) {
@@ -90,19 +100,22 @@ async function tickAt(worker: Worker, moment: string) {
   await worker.tick();
 }
 
-async function press(worker: Worker, user: TelegramUserFixture, label: string) {
-  const button = buttonsOf(worker, user).find(({ text }) => text === label);
+async function pressData(worker: Worker, user: TelegramUserFixture, data: string) {
   const update: Update = {
     update_id: 1,
     callback_query: {
       id: "callback-1",
       from: { ...user, is_bot: false },
       chat_instance: "instance",
-      data: button !== undefined && "callback_data" in button ? button.callback_data : "",
+      data,
     },
   };
 
   return worker.webhook(update);
+}
+
+async function press(worker: Worker, user: TelegramUserFixture, label: string) {
+  return pressData(worker, user, callbackDataOf(worker, user, { label }));
 }
 
 describe("a Task Reminder", () => {
@@ -420,6 +433,51 @@ describe("«Готово»", () => {
     expect(worker.bot.answeredCallbacks().at(-1)).toMatchObject({ text: "Уже сделано" });
   });
 
+  test("on a past Occurrence's message completes that Occurrence, not the one sent after it", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Покормить Бьюика",
+      when: { date: "2026-10-05", ...dateOnly },
+      recurrence: { frequency: "weekly", until: null },
+      recipients: [worker.asyaId],
+      reminderOffsets: ["at-start"],
+    });
+
+    await tickAt(worker, "2026-10-04T23:00:00Z");
+    await tickAt(worker, "2026-10-11T23:00:00Z");
+    await pressData(worker, asya, callbackDataOf(worker, asya, { label: "✅ Готово", message: 0 }));
+
+    const tasks = await bodyOf<TaskList>(request(worker, denis, { path: "/api/tasks" }));
+
+    expect(tasks.find(({ id }) => id === task.id)?.completions).toMatchObject([
+      { occurrence: "2026-10-05", by: "Ася" },
+    ]);
+  });
+
+  test("on a message sent before buttons named their Occurrence completes the one sent last", async () => {
+    const worker = await startWithFamily();
+    const task = await createTask(worker, {
+      title: "Покормить Бьюика",
+      when: { date: "2026-10-05", ...dateOnly },
+      recurrence: { frequency: "weekly", until: null },
+      recipients: [worker.asyaId],
+      reminderOffsets: ["at-start"],
+    });
+
+    await tickAt(worker, "2026-10-04T23:00:00Z");
+    await tickAt(worker, "2026-10-11T23:00:00Z");
+
+    const named = callbackDataOf(worker, asya, { label: "✅ Готово", message: 0 });
+
+    await pressData(worker, asya, named.replace(/:\d{4}-\d{2}-\d{2}$/u, ""));
+
+    const tasks = await bodyOf<TaskList>(request(worker, denis, { path: "/api/tasks" }));
+
+    expect(tasks.find(({ id }) => id === task.id)?.completions).toMatchObject([
+      { occurrence: "2026-10-12", by: "Ася" },
+    ]);
+  });
+
   test.each([
     ["the Task is deleted", "DELETE"],
     ["the presser has left the Family", "LEAVE"],
@@ -504,5 +562,33 @@ describe("«Отложить»", () => {
       "📌 Таблетка Бьюику · 12 октября",
     ]);
     expect(worker.bot.answeredCallbacks().at(-1)).toMatchObject({ text: "Уже сделано" });
+  });
+
+  test("on a past Occurrence's message says it has passed and keeps the one sent after it", async () => {
+    const worker = await startWithFamily();
+
+    await createTask(worker, {
+      title: "Покормить Бьюика",
+      when: { date: "2026-10-05", ...dateOnly },
+      recurrence: { frequency: "weekly", until: null },
+      recipients: [worker.asyaId],
+      reminderOffsets: ["at-start"],
+    });
+    await tickAt(worker, "2026-10-04T23:00:00Z");
+    await tickAt(worker, "2026-10-11T23:00:00Z");
+    await pressData(
+      worker,
+      asya,
+      callbackDataOf(worker, asya, { label: "⏰ Отложить", message: 0 }),
+    );
+    await tickAt(worker, "2026-10-12T23:00:00Z");
+
+    expect(worker.bot.answeredCallbacks().at(-1)).toMatchObject({
+      text: "Это напоминание уже прошло",
+    });
+    expect(textsTo(worker, asya)).toEqual([
+      "📌 Покормить Бьюика · 5 октября",
+      "📌 Покормить Бьюика · 12 октября",
+    ]);
   });
 });

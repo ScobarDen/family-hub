@@ -49,7 +49,9 @@ export type PressOutcome =
 
 export type Closing = { patch: RowPatch; edit?: MessageEdit };
 
-type Press = { action: "done" | "snooze"; via: "bot" | "push" };
+// A Push and a bot button name the Occurrence they were sent for; a bot message from before buttons
+// named it has only its row, which stands for the Occurrence the row last sent.
+type Press = { action: "done" | "snooze"; occurrenceFrom: "message" | "row" };
 
 type Reading = {
   row: DispatchRow;
@@ -166,11 +168,11 @@ function isClosed({ row, source, occurrence }: Reading): boolean {
     : row.sentOccurrence === occurrence && row.doneAt !== null;
 }
 
-// A Push left on screen after a later Occurrence was delivered may still be done, but snoozing
-// it would push that later one aside; so would snoozing an Occurrence someone already did.
+// A message left behind once a later Occurrence was delivered may still be done, but snoozing it
+// would push that later one aside; so would snoozing an Occurrence someone already did.
 function refusalOf(reading: Reading, press: Press): string | undefined {
   const isPassed =
-    press.via === "push" &&
+    press.occurrenceFrom === "message" &&
     press.action === "snooze" &&
     reading.row.sentOccurrence !== reading.occurrence;
 
@@ -238,7 +240,7 @@ export function recipientReminder(reading: Reading) {
   return {
     due: async () => dueOf(reading),
     advanced: (delivered: Delivered) => advancedOf(reading, delivered),
-    press: (action: Press["action"], via: Press["via"]) => pressOutcomeOf(reading, { action, via }),
+    press: (press: Press) => pressOutcomeOf(reading, press),
     closed: (by: { id: string; name: string }) => closingOf(reading, by),
   };
 }

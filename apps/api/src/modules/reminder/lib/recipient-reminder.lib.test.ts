@@ -89,8 +89,12 @@ describe("a due Task Reminder", () => {
         buttons: {
           inline_keyboard: [
             [
-              { text: "✅ Готово", callback_data: "rd:done:dispatch-1", style: "success" },
-              { text: "⏰ Отложить", callback_data: "rd:snooze:dispatch-1" },
+              {
+                text: "✅ Готово",
+                callback_data: "rd:done:dispatch-1:2026-11-12",
+                style: "success",
+              },
+              { text: "⏰ Отложить", callback_data: "rd:snooze:dispatch-1:2026-11-12" },
             ],
             [{ text: "Открыть", url: openUrl }],
           ],
@@ -142,7 +146,7 @@ describe("a press on a Task Reminder", () => {
   }
 
   test("«Готово» completes the Occurrence in the task module", () => {
-    expect(pressedReminder().press("done", "bot")).toEqual({
+    expect(pressedReminder().press({ action: "done", occurrenceFrom: "row" })).toEqual({
       status: "complete-task",
       taskId: "task-1",
       occurrence: "2026-11-12",
@@ -150,14 +154,16 @@ describe("a press on a Task Reminder", () => {
   });
 
   test("an Occurrence the series no longer has open was done already", () => {
-    expect(pressedReminder({}, "2026-11-05").press("done", "bot")).toEqual({
+    expect(
+      pressedReminder({}, "2026-11-05").press({ action: "done", occurrenceFrom: "row" }),
+    ).toEqual({
       status: "refused",
       text: "Уже сделано",
     });
   });
 
   test("«Отложить» brings the row back in an hour and says so on the Recipient's clock", () => {
-    expect(pressedReminder().press("snooze", "bot")).toEqual({
+    expect(pressedReminder().press({ action: "snooze", occurrenceFrom: "row" })).toEqual({
       status: "snoozed",
       patch: {
         occurrence: "2026-11-12",
@@ -174,12 +180,20 @@ describe("a press on a Task Reminder", () => {
 
   test("«Отложить» on a Push alone has no bot message to rewrite", () => {
     expect(
-      pressedReminder({ chatId: null, messageId: null }).press("snooze", "push"),
+      pressedReminder({ chatId: null, messageId: null }).press({
+        action: "snooze",
+        occurrenceFrom: "message",
+      }),
     ).not.toHaveProperty("edit");
   });
 
   test("«Отложить» on a Push left behind by a later Occurrence is refused", () => {
-    expect(pressedReminder({ sentOccurrence: "2026-11-19" }).press("snooze", "push")).toEqual({
+    expect(
+      pressedReminder({ sentOccurrence: "2026-11-19" }).press({
+        action: "snooze",
+        occurrenceFrom: "message",
+      }),
+    ).toEqual({
       status: "refused",
       text: "Это напоминание уже прошло",
     });
@@ -194,7 +208,7 @@ describe("a press on a Task Reminder", () => {
       now: firedAt,
     });
 
-    expect(reminder.press("snooze", "bot")).toMatchObject({
+    expect(reminder.press({ action: "snooze", occurrenceFrom: "row" })).toMatchObject({
       patch: { nextFireAt: firedAt + 86_400_000 },
     });
   });
@@ -222,12 +236,17 @@ describe("a press on a birthday Reminder", () => {
   }
 
   test("«Готово» closes the birthday for every Member", () => {
-    expect(birthdayReminder().press("done", "bot")).toEqual({ status: "close-for-everyone" });
+    expect(birthdayReminder().press({ action: "done", occurrenceFrom: "row" })).toEqual({
+      status: "close-for-everyone",
+    });
   });
 
   test("a birthday someone marked done refuses another press", () => {
     expect(
-      birthdayReminder({ doneAt: morning, doneBy: "member-denis" }).press("snooze", "bot"),
+      birthdayReminder({ doneAt: morning, doneBy: "member-denis" }).press({
+        action: "snooze",
+        occurrenceFrom: "row",
+      }),
     ).toEqual({ status: "refused", text: "Уже сделано" });
   });
 });
