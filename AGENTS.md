@@ -1,6 +1,6 @@
 ## Code style
 
-The linter and formatter (`vite.config.ts`) set the style: run `vp run fix` before committing; the pre-commit hook does the same on staged files. Call `vp` directly, not through `npx`; `vp check` over the whole repo takes about two minutes, `vp lint --type-aware --type-check apps/<app>` checks one app.
+The linter and formatter (`vite.config.ts`) set the style: run `vp run fix` before committing; the pre-commit hook does the same on staged files. Call `vp` directly, not through `npx`; `vp lint --type-aware --type-check apps/<app>` checks one app.
 
 ## Language
 
@@ -19,11 +19,11 @@ Dependencies come from the pnpm catalog in `pnpm-workspace.yaml`, added with `vp
 
 ## Skills by area
 
-Load these before writing code in the area; project rules above and in each app's `AGENTS.md` win over any skill.
+Load these before writing code in the area; project rules above and in each app's `AGENTS.md` win over any skill. Update them with `vp run skills:update`.
 
 - **Anywhere**: `code-craft` (names, signatures, placement), `feod` and `role-files` (where a file goes), `vite` and `pnpm` (toolchain).
 - **Tests**: `test-craft`, `testing` and `vitest`; plan coverage with `/unit-test-analyze` / `/integration-test-analyze`, manual QA cases with `/testcase-analyze` (with `documentation`). Automated tests go through the project's seams only — the Worker harness and pure `lib` files in `apps/api`, ViewModels and models in `apps/web` — while Playwright and component tests wait until the project adopts them.
-- **`apps/web`**: `frontend-mvvm`, `mvvm`, `frontend-boundaries`, `reatom` (+ `reatom-async`, `reatom-field-notes`, `reatom-testing`, `reatom-review` by task), `react-hooks-best-practices`, `reactuse`, `shadcn`.
+- **`apps/web`**: `frontend-mvvm`, `mvvm`, `frontend-boundaries`, `reatom` (+ `reatom-async`, `reatom-testing`, `reatom-review` by task), `react-hooks-best-practices`, `reactuse`, `shadcn`. `reatom-field-notes` before an action starts another from inside it, and on any `AbortError` or `Stuck in recursion` you did not cause.
 - **`apps/api`**: `hono`, `workers-best-practices`, `wrangler`, `cloudflare`.
 - **Telegram** (Mini App wrapper, initData, `start_param`, bot, photos): `telegram-mini-app`.
 - **Dates, times, Recurrence**: `temporal-dates`.

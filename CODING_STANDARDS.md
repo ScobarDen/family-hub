@@ -13,3 +13,7 @@ When a diff moves logic between functions, compare each input on `main` and in t
 ## A comment says why
 
 A comment carries what the code cannot say: a business rule, a workaround with its link, a gotcha, an ADR. What a line does is said by its names; a comment that restates it, labels a section or narrates the edit goes, and so does one whose code moved away from it.
+
+## A process started from inside another one is spawned
+
+When a diff makes one Reatom action with `withAbort` start another from inside it (an opener that opens a second record, a quick-add that hands off to a module), the inner start goes through `abortVar.spawn`, or the outer process aborts it when it ends or is replaced. The symptom is an `AbortError` nobody asked for and a screen that never opens; `reatom-field-notes` covers the trap.
