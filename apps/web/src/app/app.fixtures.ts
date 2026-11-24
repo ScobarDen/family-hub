@@ -7,7 +7,7 @@ import { FakePage, FakeSocket } from "@/modules/live-updates";
 import { memoryStorage } from "@/modules/session";
 import { fakeDeviceStorage, fakeWebApp, reatomTelegram } from "@/modules/telegram";
 
-import { reatomApp } from "./app.vm.ts";
+import { reatomApp } from "./vm/app.vm.ts";
 
 const token = "session-token";
 const otherClientId = "0f8f2a52-3c4e-4b8a-9d55-6a1f0e2b7c11";

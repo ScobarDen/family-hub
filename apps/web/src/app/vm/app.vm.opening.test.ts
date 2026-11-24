@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vite-plus/tes
 
 import type { CareEntry, Goal, Pet, Recipe, Task } from "@family-hub/contract";
 
-import { startApp } from "./app.fixtures.ts";
+import { startApp } from "../app.fixtures.ts";
 
 const buick: Pet = {
   id: "pet-1",

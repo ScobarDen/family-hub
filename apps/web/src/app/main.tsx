@@ -8,8 +8,8 @@ import { openLiveSocket } from "@/modules/live-updates";
 import { followInstalledApp, reatomBrowserWebApp, reatomTelegram } from "@/modules/telegram";
 import { slideScreens } from "@/modules/ui";
 
-import { reatomApp } from "./app.vm.ts";
 import { App } from "./view/app.view.tsx";
+import { reatomApp } from "./vm/app.vm.ts";
 
 const root = document.getElementById("root");
 

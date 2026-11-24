@@ -12,7 +12,7 @@ import {
   type Today,
 } from "@family-hub/contract";
 
-import { startApp, workerFailure } from "./app.fixtures.ts";
+import { startApp, workerFailure } from "../app.fixtures.ts";
 
 const lasagna: Recipe = {
   id: "recipe-1",
