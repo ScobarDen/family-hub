@@ -1,6 +1,23 @@
 import { noop } from "@reatom/core";
+import { onTestFinished } from "vite-plus/test";
+import type { z } from "zod";
 
-import type { LiveMessage, SessionResponse } from "@family-hub/contract";
+import {
+  careEntry,
+  careEntryList,
+  deleted,
+  goal,
+  goalList,
+  petList,
+  recipe,
+  recipeList,
+  recipeTagList,
+  task,
+  taskList,
+  today,
+  type LiveMessage,
+  type SessionResponse,
+} from "@family-hub/contract";
 
 import { instantly } from "@/modules/changes";
 import { FakePage, FakeSocket } from "@/modules/live-updates";
@@ -36,12 +53,48 @@ export const workerFailure = Response.json(
   { status: 500 },
 );
 
+// The app reads an answer it cannot parse as a failed load, so a fake answer of the wrong shape
+// would only leave a test waiting; each answer is checked against what the app parses it with.
+const answerSchemas: Array<[RegExp, z.ZodType]> = [
+  [/^GET \/api\/today$/, today],
+  [/^GET \/api\/tasks$/, taskList],
+  [/^(GET|PUT) \/api\/tasks\/[^/]+$|^POST \/api\/tasks\/[^/]+\/(complete|reopen)$/, task],
+  [/^GET \/api\/goals$/, goalList],
+  [/^POST \/api\/goals\/[^/]+\/movements$/, goal],
+  [/^GET \/api\/pets$/, petList],
+  [/^GET \/api\/pets\/[^/]+\/care-entries$/, careEntryList],
+  [/^GET \/api\/care-entries\/[^/]+$/, careEntry],
+  [/^GET \/api\/recipes$/, recipeList],
+  [/^(GET|PUT) \/api\/recipes\/[^/]+$/, recipe],
+  [/^GET \/api\/recipe-tags$/, recipeTagList],
+  [/^DELETE \/api\/photos\/[^/]+$/, deleted],
+];
+
+function problemWith(request: string, answer: unknown): string | undefined {
+  const schema = answerSchemas.find(([route]) => route.test(request))?.[1];
+
+  if (schema === undefined) {
+    return `${request}: no schema to check its answer against, add one to answerSchemas`;
+  }
+
+  const parsed = schema.safeParse(answer);
+
+  return parsed.success ? undefined : `${request}: ${parsed.error.message}`;
+}
+
 function bodyOf(init: RequestInit | undefined): unknown {
   return typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
 }
 
 function fakeWorker(routes: Routes) {
   const requests: string[] = [];
+  const problems: string[] = [];
+
+  onTestFinished(() => {
+    if (problems.length > 0) {
+      throw new Error(`The fake Worker answered what the app cannot read:\n${problems.join("\n")}`);
+    }
+  });
 
   async function fetch(input: URL | string, init?: RequestInit): Promise<Response> {
     const request = `${init?.method ?? "GET"} ${new URL(String(input)).pathname}`;
@@ -60,7 +113,17 @@ function fakeWorker(routes: Routes) {
 
     const answer = await route(bodyOf(init));
 
-    return answer instanceof Response ? answer.clone() : Response.json(answer);
+    if (answer instanceof Response) {
+      return answer.clone();
+    }
+
+    const problem = problemWith(request, answer);
+
+    if (problem !== undefined) {
+      problems.push(problem);
+    }
+
+    return Response.json(answer);
   }
 
   return { fetch, requests };
@@ -113,6 +176,26 @@ function telegramAnswering(popups: Popups, startParameter: string | undefined) {
   });
 }
 
+type Home = ReturnType<typeof reatomApp>["home"];
+
+// A module's screen loads only while something reads it; in the app that is the shown module's view.
+function readShownScreen(home: Home): void {
+  const screens = {
+    tasks: home.tasks.screen,
+    pet: home.pet.pets.screen,
+    goals: home.goals.screen,
+    albums: home.albums.screen,
+    recipes: home.recipes.screen,
+  };
+  let stopReading = noop;
+
+  home.navigation.shownModule.subscribe((module) => {
+    stopReading();
+    stopReading =
+      module === undefined || module === "feed" ? noop : screens[module].subscribe(noop);
+  });
+}
+
 // The whole app over a fake Worker and a fake socket, as a Member in Telegram sees it.
 export function startApp(
   routes: Routes,
@@ -140,6 +223,7 @@ export function startApp(
 
   app.launch();
   app.home.session.screen.subscribe(noop);
+  readShownScreen(app.home);
 
   return {
     app,
