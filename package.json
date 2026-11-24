@@ -6,7 +6,8 @@
   "scripts": {
     "prepare": "vp config --no-agent",
     "fix": "vp check --fix && vp check --fix",
-    "ready": "vp check && vp run -r test && vp run -r build"
+    "ready": "vp check && vp run -r test && vp run -r build",
+    "skills:update": "pnpm dlx skills update --project --yes && node scripts/copy-skills.ts"
   },
   "devDependencies": {
     "@o-feod/oxlint-structure-plugin": "catalog:",
