@@ -23,12 +23,12 @@ type Press = {
   source: ReminderSource;
   presser: Membership;
   occurrence: string | null;
+  occurrenceFrom: "message" | "row";
 };
 
 type Pressing = {
   press: Press;
   action: "done" | "snooze";
-  via: "bot" | "push";
   tasks: TaskCompletion;
 };
 
@@ -37,10 +37,13 @@ function isRecipient(presser: Membership | undefined, row: DispatchRow): presser
   return presser?.member.id === row.memberId && presser.family.id === row.familyId;
 }
 
-// The bot's button names its row alone, so it acts on the Occurrence the row last sent.
 async function botPressOf(
   dependencies: ReminderDependencies,
-  { dispatchId, telegramId }: { dispatchId: string; telegramId: number },
+  {
+    dispatchId,
+    occurrence,
+    telegramId,
+  }: { dispatchId: string; occurrence: string | undefined; telegramId: number },
 ): Promise<Press | undefined> {
   const presser = await dependencies.memberships.findByTelegramId(telegramId);
   const row = await dependencies.dispatch.find(dispatchId);
@@ -50,8 +53,12 @@ async function botPressOf(
   }
 
   const source = await sourceOfRow(dependencies, row);
+  const pressedOccurrence =
+    occurrence === undefined
+      ? { occurrence: row.sentOccurrence ?? row.occurrence, occurrenceFrom: "row" as const }
+      : { occurrence, occurrenceFrom: "message" as const };
 
-  return source && { row, source, presser, occurrence: row.sentOccurrence ?? row.occurrence };
+  return source && { row, source, presser, ...pressedOccurrence };
 }
 
 // A signed press whose row or source is gone was answered already: a completed single Task drops
@@ -69,7 +76,9 @@ async function pushPressOf(
 
   const presser = await dependencies.memberships.findByMemberId(memberId);
 
-  return isRecipient(presser, row) ? { row, source, presser, occurrence } : notYoursText;
+  return isRecipient(presser, row)
+    ? { row, source, presser, occurrence, occurrenceFrom: "message" }
+    : notYoursText;
 }
 
 // A Birthday has no module of its own, so «Готово» closes its rows here for every Member.
@@ -99,12 +108,12 @@ async function snooze(
 // The text the pressed button answers with, or nothing when it did what it says.
 async function pressed(
   dependencies: ReminderDependencies,
-  { press, action, via, tasks }: Pressing,
+  { press, action, tasks }: Pressing,
 ): Promise<string | undefined> {
-  const { row, source, occurrence } = press;
+  const { row, source, occurrence, occurrenceFrom } = press;
   const now = dependencies.clock.now();
   const reminder = await reminderOfRow(dependencies, { row, source, occurrence, now });
-  const outcome = reminder.press(action, via);
+  const outcome = reminder.press({ action, occurrenceFrom });
 
   if (outcome.status === "refused") {
     return outcome.text;
@@ -131,12 +140,11 @@ export async function handleReminderCallback(
 ): Promise<void> {
   const parsed = parseCallback(query.data);
   const press =
-    parsed &&
-    (await botPressOf(dependencies, { dispatchId: parsed.dispatchId, telegramId: query.from.id }));
+    parsed && (await botPressOf(dependencies, { ...parsed, telegramId: query.from.id }));
   const text =
     parsed === undefined || press === undefined
       ? notYoursText
-      : await pressed(dependencies, { press, action: parsed.action, via: "bot", tasks });
+      : await pressed(dependencies, { press, action: parsed.action, tasks });
 
   await ignoringBotErrors(
     dependencies.bot.call(
@@ -160,7 +168,5 @@ export async function handlePushPress(
     return notYoursText;
   }
 
-  return typeof press === "string"
-    ? press
-    : pressed(dependencies, { press, action, via: "push", tasks });
+  return typeof press === "string" ? press : pressed(dependencies, { press, action, tasks });
 }
