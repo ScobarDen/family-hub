@@ -1,4 +1,4 @@
-import { action, noop, take, throwAbort, withAbort, wrap } from "@reatom/core";
+import { abortVar, action, noop, take, throwAbort, withAbort, wrap } from "@reatom/core";
 
 import {
   parseDeepLink,
@@ -117,7 +117,7 @@ function recordTargetOf(id: string): OpenTarget | undefined {
   return link === undefined ? undefined : { kind: "record", ...link };
 }
 
-function targetOfLink(startParameter: string | undefined): OpenTarget | undefined {
+export function targetOfLink(startParameter: string | undefined): OpenTarget | undefined {
   const link = parseDeepLink(startParameter);
 
   return link === undefined ? undefined : linkTargets[link.kind](link.id);
@@ -239,8 +239,10 @@ export function reatomOpener(dependencies: OpenerDependencies) {
   }, "opener.follow").extend(withAbort());
 
   return {
+    // An opening started from inside another one (a deep link's «Записать» opening a Care Entry)
+    // would otherwise be aborted together with the opening it replaces.
     open: action((target: OpenTarget) => {
-      follow(target, dependencies.navigation.open).catch(noop);
+      abortVar.spawn(async () => follow(target, dependencies.navigation.open)).catch(noop);
     }, "opener.open"),
     // «+ Фото» uploads to the Family's photos, shown as the upload goes.
     uploadPhotos: action((files: Blob[]) => {
