@@ -18,13 +18,16 @@ export type Screen =
 
 type NestedBack = { canGoBack: () => boolean; isFormOpen: () => boolean; back: () => void };
 
+// Every slot module and the Profile have screens to step back from; the Feed has none.
+type NestedBacks = Record<SlotModule | "profile", NestedBack>;
+
 type NavigationDependencies = {
   base: string;
   slots: () => SlotModule[];
   isSignedIn: () => boolean;
   telegram: Pick<Telegram, "backButton" | "settingsButton">;
   // Screens inside a module or the Profile (a form, a Task's card) step back before the app does.
-  nestedBack?: Partial<Record<AppModule | "profile", NestedBack>>;
+  nestedBack?: NestedBacks;
   onTodayShown?: () => void;
   // A pushed screen, a tab switch and Back slide; a launch swaps at once.
   slide?: Slide;
@@ -278,7 +281,7 @@ function nestedOf(
   nestedBack: NavigationDependencies["nestedBack"],
 ): NestedBack | undefined {
   if (screen.kind === "module") {
-    return nestedBack?.[screen.module];
+    return screen.module === "feed" ? undefined : nestedBack?.[screen.module];
   }
 
   return screen.kind === "profile" ? nestedBack?.profile : undefined;

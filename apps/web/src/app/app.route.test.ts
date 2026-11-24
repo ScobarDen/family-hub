@@ -1,7 +1,29 @@
 import { context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
+import type { SlotModule } from "@family-hub/contract";
+
 import { reatomNavigation } from "./app.route.ts";
+
+type NestedBack = { canGoBack: () => boolean; isFormOpen: () => boolean; back: () => void };
+
+const nothingToStepBack: NestedBack = {
+  canGoBack: () => false,
+  isFormOpen: () => false,
+  back: noop,
+};
+
+function nestedBacks(own: Partial<Record<SlotModule | "profile", NestedBack>>) {
+  return {
+    tasks: nothingToStepBack,
+    pet: nothingToStepBack,
+    goals: nothingToStepBack,
+    albums: nothingToStepBack,
+    recipes: nothingToStepBack,
+    profile: nothingToStepBack,
+    ...own,
+  };
+}
 
 function startNavigation() {
   const button = { isAvailable: true, follow: () => noop };
@@ -116,7 +138,7 @@ describe("the tab stacks", () => {
       slots: () => ["tasks", "recipes"],
       isSignedIn: () => true,
       telegram: { backButton: button, settingsButton: button },
-      nestedBack: {
+      nestedBack: nestedBacks({
         goals: {
           canGoBack: () => isFormOpen,
           isFormOpen: () => isFormOpen,
@@ -124,7 +146,7 @@ describe("the tab stacks", () => {
             isFormOpen = false;
           },
         },
-      },
+      }),
     });
 
     navigation.openModule("goals");
@@ -145,7 +167,7 @@ describe("the tab stacks", () => {
       slots: () => ["tasks", "recipes"],
       isSignedIn: () => true,
       telegram: { backButton: button, settingsButton: button },
-      nestedBack: {
+      nestedBack: nestedBacks({
         profile: {
           canGoBack: () => isDrawerOpen,
           isFormOpen: () => isDrawerOpen,
@@ -153,7 +175,7 @@ describe("the tab stacks", () => {
             isDrawerOpen = false;
           },
         },
-      },
+      }),
     });
 
     navigation.openProfile();
@@ -176,7 +198,7 @@ function startSliding() {
     slots: () => ["tasks", "recipes"],
     isSignedIn: () => true,
     telegram: { backButton: button, settingsButton: button },
-    nestedBack: {
+    nestedBack: nestedBacks({
       goals: {
         canGoBack: () => nested !== "none",
         isFormOpen: () => nested === "form",
@@ -184,7 +206,7 @@ function startSliding() {
           nested = "none";
         },
       },
-    },
+    }),
     slide: (direction, update) => {
       slides.push(direction);
       update();
