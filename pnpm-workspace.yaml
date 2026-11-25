@@ -11,7 +11,7 @@ catalog:
   "@hono/standard-validator": ^0.4.0
   "@reatom/core": ^1001.3.0
   "@reatom/react": ^1001.0.1
-  "@stylistic/eslint-plugin": ^5.10.0
+  "@stylistic/eslint-plugin": ^6.0.1
   "@tailwindcss/vite": ^4.3.3
   "@types/node": ^26.6.6
   "@types/react": ^19.3.0
