@@ -1,6 +1,16 @@
+import type { BotFullInfo } from "@grammyjs/types";
+
 import { encodeDeepLink, type DeepLink } from "@family-hub/contract";
 
 import type { BotApi } from "./bot.api.ts";
+
+function usernameOf(me: BotFullInfo): string {
+  if (me.username === undefined) {
+    throw new Error("The bot has no username, so no t.me link can reach it");
+  }
+
+  return me.username;
+}
 
 // Built per request or cron tick, so the bot's name is asked of Telegram at most once in either.
 export function createMiniAppLinks(bot: BotApi) {
@@ -8,7 +18,7 @@ export function createMiniAppLinks(bot: BotApi) {
 
   async function botUsername(): Promise<string> {
     // oxlint-disable-next-line unicorn/no-useless-undefined -- BotApi.call always takes params; getMe has none
-    username ??= bot.call("getMe", undefined).then((me) => me.username);
+    username ??= bot.call("getMe", undefined).then(usernameOf);
 
     try {
       return await username;
