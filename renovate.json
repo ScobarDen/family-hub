@@ -4,8 +4,10 @@
   "timezone": "UTC",
   "packageRules": [
     {
+      "description": "vite-plus pins its own core, numbered after Vite, so a core major arrives inside a vite-plus minor",
       "groupName": "vite-plus",
-      "matchPackageNames": ["vite", "vitest", "vite-plus", "@voidzero-dev/**"]
+      "matchPackageNames": ["vite", "vitest", "vite-plus", "@voidzero-dev/**"],
+      "separateMajorMinor": false
     },
     {
       "groupName": "reatom",

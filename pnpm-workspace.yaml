@@ -50,6 +50,3 @@ peerDependencyRules:
 allowBuilds:
   esbuild: true
   workerd: true
-
-minimumReleaseAgeExclude:
-  - lucide-react@1.56.0
