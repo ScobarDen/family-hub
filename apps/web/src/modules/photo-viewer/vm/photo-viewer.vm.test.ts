@@ -48,6 +48,29 @@ beforeEach(() => {
   context.reset();
 });
 
+test("steps through the photos and stays put past the first and the last", () => {
+  const { model } = startViewer();
+
+  model.open(photos, "photo-1");
+  model.previous();
+  expect(positionOf(model)).toBe("1 / 2");
+  model.next();
+  expect(positionOf(model)).toBe("2 / 2");
+  model.next();
+  expect(positionOf(model)).toBe("2 / 2");
+});
+
+test("offers a step only towards a photo that is there", () => {
+  const { model } = startViewer();
+
+  model.open([...photos, photoOf("photo-3")], "photo-1");
+  expect(model.current()).toMatchObject({ hasPrevious: false, hasNext: true });
+  model.next();
+  expect(model.current()).toMatchObject({ hasPrevious: true, hasNext: true });
+  model.next();
+  expect(model.current()).toMatchObject({ hasPrevious: true, hasNext: false });
+});
+
 test("goes full screen while open and back once closed", async () => {
   const { model, frame } = startViewer();
 

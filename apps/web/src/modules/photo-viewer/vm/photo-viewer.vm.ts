@@ -48,6 +48,8 @@ function currentOf(opened: Opened | undefined) {
     opened && {
       photo: opened.photos[opened.index],
       position: `${opened.index + 1} / ${opened.photos.length}`,
+      hasPrevious: opened.index > 0,
+      hasNext: opened.index < opened.photos.length - 1,
     }
   );
 }
@@ -61,9 +63,9 @@ function stepped(current: Opened | undefined, by: number): Opened | undefined {
     return undefined;
   }
 
-  const count = current.photos.length;
+  const index = current.index + by;
 
-  return { ...current, index: (current.index + by + count) % count };
+  return index < 0 || index >= current.photos.length ? current : { ...current, index };
 }
 
 function reatomPhotoRemoval(
