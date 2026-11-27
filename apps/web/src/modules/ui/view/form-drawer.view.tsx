@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-import { DrawerContent } from "./drawer-content.view.tsx";
-import { DrawerTitle } from "./drawer-title.view.tsx";
-import { Drawer } from "./drawer.view.tsx";
+import { SheetContent } from "./sheet-content.view.tsx";
+import { SheetTitle } from "./sheet-title.view.tsx";
+import { Sheet } from "./sheet.view.tsx";
 
 type FormDrawerProps = {
   open: boolean;
@@ -13,11 +13,11 @@ type FormDrawerProps = {
 
 export function FormDrawer({ open, title, onClose, children }: FormDrawerProps) {
   return (
-    <Drawer open={open} onClose={onClose}>
-      <DrawerContent>
-        <DrawerTitle>{title}</DrawerTitle>
+    <Sheet open={open} onClose={onClose}>
+      <SheetContent>
+        <SheetTitle>{title}</SheetTitle>
         {children}
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   );
 }

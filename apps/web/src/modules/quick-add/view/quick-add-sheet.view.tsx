@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import type { AppModule } from "@family-hub/contract";
 
 import { sectionColors, sectionIcons } from "@/modules/sections";
-import { cn, Drawer, DrawerContent, DrawerTitle, FilePick } from "@/modules/ui";
+import { cn, FilePick, Sheet, SheetContent, SheetTitle } from "@/modules/ui";
 
 import type { QuickAddModel } from "../quick-add.vm.ts";
 
@@ -24,9 +24,9 @@ function tileOf(module: AppModule, title: string): ReactNode {
 
 export const QuickAddSheet = reatomComponent(
   ({ model }: { model: QuickAddModel }) => (
-    <Drawer open={model.isOpen()} onClose={model.close}>
-      <DrawerContent>
-        <DrawerTitle className="sr-only">Добавить</DrawerTitle>
+    <Sheet open={model.isOpen()} onClose={model.close}>
+      <SheetContent>
+        <SheetTitle className="sr-only">Добавить</SheetTitle>
         <div className="grid grid-cols-2 gap-3 px-4 pt-2 pb-4">
           {model.tiles().map(({ title, module, target }) => (
             <button
@@ -46,8 +46,8 @@ export const QuickAddSheet = reatomComponent(
             </FilePick>
           )}
         </div>
-      </DrawerContent>
-    </Drawer>
+      </SheetContent>
+    </Sheet>
   ),
   "QuickAddSheet",
 );
