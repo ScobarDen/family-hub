@@ -1,6 +1,6 @@
-import { atom, noop } from "@reatom/core";
+import { noop, atom } from "@reatom/core";
 
-import type { LiveMessage, SessionResponse } from "@family-hub/contract";
+import type { LiveMessage } from "@family-hub/contract";
 
 import { instantly } from "@/modules/changes";
 import { FakePage, FakeSocket } from "@/modules/live-updates";
@@ -8,64 +8,10 @@ import { memoryStorage } from "@/modules/session";
 import { fakeDeviceStorage, fakeWebApp, reatomTelegram } from "@/modules/telegram";
 
 import type { AppDependencies } from "./app.model.ts";
+import { fakeWorker, type Routes } from "./fake-worker.fixtures.ts";
 import { reatomApp } from "./vm/app.vm.ts";
 
-const token = "session-token";
 const otherClientId = "0f8f2a52-3c4e-4b8a-9d55-6a1f0e2b7c11";
-
-const signedIn: SessionResponse = {
-  status: "member",
-  token,
-  member: { id: "member-1", name: "Денис" },
-  family: { id: "family-1", name: "Гущины" },
-  isFamilyOwner: true,
-  settings: {
-    tabBar: ["tasks", "goals"],
-    timeZone: { timeZone: "Europe/Moscow", isAuto: true },
-    canMessage: true,
-    digest: { isEnabled: true, time: "09:00" },
-    reminderChannel: "both",
-  },
-};
-
-// What the Worker answers, by `METHOD /path`: a body to send as JSON, or a whole Response; the
-// request body comes along for writes.
-export type Routes = Record<string, (body: unknown) => unknown>;
-
-export const workerFailure = Response.json(
-  { code: "INTERNAL", message: "D1 is down" },
-  { status: 500 },
-);
-
-function bodyOf(init: RequestInit | undefined): unknown {
-  return typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
-}
-
-function fakeWorker(routes: Routes) {
-  const requests: string[] = [];
-
-  async function fetch(input: URL | string, init?: RequestInit): Promise<Response> {
-    const request = `${init?.method ?? "GET"} ${new URL(String(input)).pathname}`;
-
-    requests.push(request);
-
-    if (request === "POST /api/session") {
-      return Response.json(signedIn);
-    }
-
-    const route = routes[request];
-
-    if (route === undefined) {
-      return Response.json({ code: "NOT_FOUND", message: request }, { status: 404 });
-    }
-
-    const answer = await route(bodyOf(init));
-
-    return answer instanceof Response ? answer.clone() : Response.json(answer);
-  }
-
-  return { fetch, requests };
-}
 
 function fakeSockets() {
   const sockets: FakeSocket[] = [];
@@ -126,6 +72,26 @@ const fixedDependencies = {
   zones: ["Europe/Moscow"],
 } satisfies Partial<AppDependencies>;
 
+type Home = ReturnType<typeof reatomApp>["home"];
+
+// A module's screen loads only while something reads it; in the app that is the shown module's view.
+function readShownScreen(home: Home): void {
+  const screens = {
+    tasks: home.tasks.screen,
+    pet: home.pet.pets.screen,
+    goals: home.goals.screen,
+    albums: home.albums.screen,
+    recipes: home.recipes.screen,
+  };
+  let stopReading = noop;
+
+  home.navigation.shownModule.subscribe((module) => {
+    stopReading();
+    stopReading =
+      module === undefined || module === "feed" ? noop : screens[module].subscribe(noop);
+  });
+}
+
 // The whole app over a fake Worker and a fake socket, as a Member in Telegram sees it.
 export function startApp(
   routes: Routes,
@@ -151,6 +117,7 @@ export function startApp(
 
   app.launch();
   app.home.session.screen.subscribe(noop);
+  readShownScreen(app.home);
 
   return {
     app,

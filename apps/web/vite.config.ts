@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, type Plugin } from "vite-plus";
+import { defaultExclude, defineConfig, type Plugin } from "vite-plus";
 
 // GitHub Pages serves 404.html for unknown paths, so a reload on a deep route still boots the SPA.
 function pagesSpaFallback(): Plugin {
@@ -21,7 +21,7 @@ function pagesSpaFallback(): Plugin {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: "/family-hub/",
   plugins: [react(), tailwindcss(), pagesSpaFallback()],
   // The install page boots none of the app: it only offers to install it.
@@ -42,4 +42,8 @@ export default defineConfig({
       "/bot": "http://localhost:8787",
     },
   },
-});
+  test: {
+    // *.debug.test.ts are local, gitignored investigations: they run only through `test:debug`.
+    exclude: mode === "debug" ? defaultExclude : [...defaultExclude, "**/*.debug.test.ts"],
+  },
+}));

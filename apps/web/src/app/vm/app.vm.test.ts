@@ -12,7 +12,8 @@ import {
   type Today,
 } from "@family-hub/contract";
 
-import { startApp, workerFailure } from "../app.fixtures.ts";
+import { startApp } from "../app.fixtures.ts";
+import { workerFailure } from "../fake-worker.fixtures.ts";
 
 const lasagna: Recipe = {
   id: "recipe-1",
@@ -153,9 +154,9 @@ const parkWalk: CareEntry = {
 type App = ReturnType<typeof startApp>["app"];
 
 async function openLasagna(app: App) {
-  const { recipes } = app.home;
+  const { navigation, recipes } = app.home;
 
-  recipes.screen.subscribe(noop);
+  navigation.openModule("recipes");
   recipes.open("recipe-1");
   await vi.waitFor(() => {
     expect(recipes.screen()).toMatchObject({ kind: "recipe", recipe: { title: "Лазанья" } });
@@ -267,7 +268,6 @@ describe("a list whose refresh fails", () => {
     });
     const { recipes } = app.home;
 
-    recipes.screen.subscribe(noop);
     await vi.waitFor(() => {
       expect(recipes.screen()).toMatchObject({ kind: "list" });
     });
@@ -285,8 +285,6 @@ describe("a list whose refresh fails", () => {
   test("says it failed when there was nothing to show", async () => {
     const { app } = startApp({ ...recipeBook().routes, "GET /api/recipes": () => workerFailure });
     const { recipes } = app.home;
-
-    recipes.screen.subscribe(noop);
 
     await vi.waitFor(() => {
       expect(recipes.screen()).toEqual({ kind: "failed" });
@@ -320,7 +318,6 @@ describe("a Savings Goal saved while the list is loading", () => {
     });
     const { goals } = app.home;
 
-    goals.screen.subscribe(noop);
     await vi.waitFor(() => {
       expect(goals.screen()).toMatchObject({ kind: "list" });
     });

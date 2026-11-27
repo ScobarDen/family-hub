@@ -121,8 +121,6 @@ describe("a deep link the app was launched with", () => {
     const { app } = startApp(recipeBook, { startParameter: "recipe_recipe-1" });
     const { recipes } = app.home;
 
-    recipes.screen.subscribe(noop);
-
     await vi.waitFor(() => {
       expect(recipes.screen()).toMatchObject({ kind: "recipe", recipe: { title: "Лазанья" } });
     });
@@ -155,10 +153,7 @@ describe("a deep link the app was launched with", () => {
       },
       { startParameter: `rec_${vetVisit.id}_2026-01-05` },
     );
-    const { navigation, pet, tasks } = app.home;
-
-    tasks.screen.subscribe(noop);
-    pet.pets.screen.subscribe(noop);
+    const { navigation, pet } = app.home;
 
     await vi.waitFor(() => {
       expect(pet.care.isFormOpen()).toBe(true);
@@ -185,7 +180,6 @@ describe("a quick-add", () => {
     const { app } = startApp({ "GET /api/goals": goalBook });
     const { navigation, quickAdd, goals } = app.home;
 
-    goals.screen.subscribe(noop);
     quickAdd.add({ kind: "new-contribution", goalId: "goal-1" });
 
     await vi.waitFor(() => {
@@ -198,7 +192,6 @@ describe("a quick-add", () => {
     const { app } = startApp({ "GET /api/goals": goalBook });
     const { quickAdd, goals } = app.home;
 
-    goals.screen.subscribe(noop);
     quickAdd.add({ kind: "new-contribution", goalId: "goal-gone" });
     await vi.waitFor(() => {
       expect(goals.openedGoalState()).toBe("missing");
@@ -255,7 +248,6 @@ describe("a quick-add", () => {
     });
     const { navigation, quickAdd, pet, goals } = app.home;
 
-    goals.screen.subscribe(noop);
     quickAdd.add({ kind: "new-care-entry" });
     quickAdd.add({ kind: "new-contribution", goalId: "goal-1" });
     await vi.waitFor(() => {

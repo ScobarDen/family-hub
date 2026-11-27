@@ -7,7 +7,7 @@ The phone answers a Member's tap the way a native app does: a tick for a selecti
 - `modules/telegram` is the only place that touches `Telegram.WebApp.HapticFeedback`. Its `haptics` has five semantic methods: `select`, `success`, `warning`, `error` and `impact(style)`.
 - Each method checks the client version (6.1+) and stays silent on older clients and on desktop.
 - The same feedback fires at most once per ~80 ms, so quick taps on several checkboxes do not merge into one buzz. Different feedbacks are not throttled against each other.
-- ViewModels get `telegram.haptics` (or a `haptics` dependency) from `app/main.tsx` and call it; Views never do. Tests pass `fakeHaptics()` from `modules/telegram` and assert its `felt` list.
+- ViewModels get `telegram.haptics` (or a `haptics` dependency) from the composition in `apps/web/src/app/vm/` and call it; Views never do. Tests pass `fakeHaptics()` from `modules/telegram` and assert its `felt` list.
 
 ## Rules
 

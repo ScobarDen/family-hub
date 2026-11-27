@@ -21,3 +21,6 @@ dist
 
 # Local scratch tests, never committed
 *.debug.test.ts
+
+# `skills update` leaves its own copies here; scripts/copy-skills.ts moves them into .claude/skills.
+.agents/
