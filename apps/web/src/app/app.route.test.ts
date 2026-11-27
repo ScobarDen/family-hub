@@ -44,18 +44,24 @@ function startNavigation({
   nestedBack,
 }: { isWide?: boolean; nestedBack?: ReturnType<typeof nestedBacks> } = {}) {
   const button = { isAvailable: true, follow: () => noop };
+  const wide = atom(isWide, "test.isWide");
   const navigation = reatomNavigation({
     base: "/family-hub/",
     slots: () => ["tasks", "recipes"],
     isSignedIn: () => true,
-    isWide: () => isWide,
+    isWide: wide,
     telegram: { backButton: button, settingsButton: button },
     ...(nestedBack === undefined ? {} : { nestedBack }),
   });
 
   navigation.screen.subscribe(noop);
 
-  return navigation;
+  return {
+    ...navigation,
+    setWide: (isWideNow: boolean) => {
+      wide.set(isWideNow);
+    },
+  };
 }
 
 // The router mirrors the URL into the browser's history, which Node has none of.
@@ -298,6 +304,67 @@ describe("the sidebar on a wide window", () => {
 
     expect(navigation.screen()).toEqual({ kind: "module", module: "pet" });
     expect(navigation.canGoBack()).toBe(false);
+  });
+});
+
+describe("crossing the wide breakpoint", () => {
+  test("keeps a module outside the slots on screen over Today, and Back leads to the hub", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("goals");
+    navigation.setWide(false);
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(true);
+
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "today" });
+  });
+
+  test("highlights a slot module's own tab once the window narrows", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("recipes");
+    navigation.setWide(false);
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "recipes" });
+    expect(navigation.activeTab()).toBe("recipes");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("highlights the module on screen once the window widens, with nothing to step back to", () => {
+    const navigation = startNavigation();
+
+    navigation.openModule("goals");
+    navigation.setWide(true);
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+    expect(navigation.activeTab()).toBe("goals");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("keeps a module's open form to step back from", () => {
+    const isFormOpen = atom(true, "test.isFormOpen");
+    const navigation = startNavigation({
+      nestedBack: nestedBacks({
+        goals: {
+          canGoBack: () => isFormOpen(),
+          closesInPlace: () => true,
+          back: () => {
+            isFormOpen.set(false);
+          },
+        },
+      }),
+    });
+
+    navigation.openModule("goals");
+    navigation.setWide(true);
+    navigation.back();
+
+    expect(isFormOpen()).toBe(false);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
   });
 });
 

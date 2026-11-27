@@ -1,4 +1,13 @@
-import { action, atom, computed, noop, reatomRoute, type Atom } from "@reatom/core";
+import {
+  action,
+  atom,
+  computed,
+  isInit,
+  noop,
+  reatomRoute,
+  withComputed,
+  type Atom,
+} from "@reatom/core";
 import { z } from "zod";
 
 import { appModule, type AppModule, type SlotModule } from "@family-hub/contract";
@@ -173,8 +182,21 @@ function reatomTabs(
   go: (screen: Screen) => void,
   { screen, slots, isWide, slide }: StackDependencies,
 ) {
-  const tab = atom<NavigationTab | undefined>(undefined, "navigation.tab");
-  const trail = atom<Screen[]>([], "navigation.trail");
+  // Crossing the breakpoint recomputes the tab as a reload would and forgets the trail.
+  const tab = atom<NavigationTab | null>(null, "navigation.tab").extend(
+    withComputed((state) => {
+      isWide();
+
+      return isInit() ? state : null;
+    }),
+  );
+  const trail = atom<Screen[]>([], "navigation.trail").extend(
+    withComputed((state) => {
+      isWide();
+
+      return isInit() ? state : [];
+    }),
+  );
   const activeTab = computed(
     (): NavigationTab => tab() ?? (isWide() ? wideTabOf(screen()) : narrowTabOf(screen(), slots())),
     "navigation.activeTab",
