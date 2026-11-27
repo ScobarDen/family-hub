@@ -20,6 +20,7 @@ export type AppDependencies = {
   openSocket: (client: HttpClient) => LiveSocket | undefined;
   wait: (ms: number) => Promise<void>;
   slide: Slide;
+  isWide: () => boolean;
   base: string;
   botUsername: string | undefined;
   installUrl: string;

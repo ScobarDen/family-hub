@@ -160,16 +160,46 @@ const configs = ["**/vite.config.ts", "**/drizzle.config.ts"];
 
 type SizeLimits = Record<string, ["error" | "warn", object]>;
 
+function maxLines(max: number): ["error", object] {
+  return ["error", { max, skipBlankLines: true, skipComments: true }];
+}
+
+// A ratchet: each file over its limit is held at its current length until it is split.
+const oversizedFiles: Record<string, number> = {
+  "apps/api/src/app/worker.ts": 406,
+  "apps/api/src/modules/album/album.repo.ts": 273,
+  "apps/api/src/modules/db/schema.ts": 602,
+  "apps/api/src/modules/task/task.repo.ts": 348,
+  "apps/api/test/push-reminder.test.ts": 586,
+  "apps/web/src/app/vm/opener.vm.ts": 210,
+  "apps/web/src/common/http-client.api.ts": 232,
+  "apps/web/src/modules/albums/vm/albums.vm.ts": 331,
+  "apps/web/src/modules/feed/vm/feed.vm.ts": 213,
+  "apps/web/src/modules/goals/vm/goals.vm.ts": 320,
+  "apps/web/src/modules/pets/modules/care/vm/care.vm.ts": 282,
+  "apps/web/src/modules/pets/vm/pets.vm.test.ts": 572,
+  "apps/web/src/modules/recipes/vm/recipes.vm.ts": 362,
+  "apps/web/src/modules/tasks/vm/task-actions.vm.ts": 232,
+  "apps/web/src/modules/tasks/vm/task-form.vm.ts": 275,
+  "apps/web/src/modules/tasks/vm/tasks.fixtures.ts": 319,
+  "apps/web/src/modules/tasks/vm/tasks.vm.ts": 337,
+  "apps/web/src/modules/telegram/model/browser.model.ts": 272,
+  "apps/web/src/modules/telegram/model/telegram.model.ts": 277,
+  "apps/web/src/modules/today/vm/today.vm.test.ts": 513,
+  "apps/web/src/modules/today/vm/today.vm.ts": 289,
+  "packages/contract/src/index.ts": 277,
+};
+
 const sourceSizeLimits: SizeLimits = {
   "max-lines-per-function": ["error", { max: 40, skipBlankLines: true }],
   "max-statements": ["error", { max: 15 }],
-  "max-lines": ["warn", { max: 200, skipBlankLines: true, skipComments: true }],
+  "max-lines": maxLines(200),
 };
 
 const testSizeLimits: SizeLimits = {
   "max-lines-per-function": ["error", { max: 300, skipBlankLines: true }],
   "max-statements": ["error", { max: 40 }],
-  "max-lines": ["warn", { max: 500, skipBlankLines: true, skipComments: true }],
+  "max-lines": maxLines(500),
 };
 
 export default defineConfig({
@@ -405,6 +435,10 @@ export default defineConfig({
         files: [apiSource("**/*.repo.ts")],
         rules: restrict([role("route", "service"), repoRows]),
       },
+      ...Object.entries(oversizedFiles).map(([file, max]) => ({
+        files: [file],
+        rules: { "max-lines": maxLines(max) },
+      })),
     ],
   },
   run: {

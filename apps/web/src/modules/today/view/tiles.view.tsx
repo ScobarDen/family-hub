@@ -1,7 +1,7 @@
 import { reatomComponent } from "@reatom/react";
 
 import { sectionColors, sectionIcons } from "@/modules/sections";
-import { cn, RoundPicture } from "@/modules/ui";
+import { cn, RoundPicture, tileGridClass } from "@/modules/ui";
 
 import type { TodayModel } from "../vm/today.vm.ts";
 
@@ -9,7 +9,7 @@ import type { TodayModel } from "../vm/today.vm.ts";
 // square and holds no note (that goes to «Разделы»); an Overdue Task turns its number red.
 export const Tiles = reatomComponent(
   ({ model }: { model: TodayModel }) => (
-    <section aria-label="Разделы" className="grid grid-cols-3 gap-2 px-4 pb-7">
+    <section aria-label="Разделы" className={tileGridClass}>
       {model.tiles().map(({ module, title, value, valueLabel, isAlert, picture }) => {
         const Icon = sectionIcons[module];
         const icon = (

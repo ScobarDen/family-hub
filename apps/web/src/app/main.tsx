@@ -1,4 +1,4 @@
-import { noop } from "@reatom/core";
+import { noop, reatomMediaQuery } from "@reatom/core";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -37,6 +37,7 @@ const app = reatomApp({
       setTimeout(resolve, ms);
     }),
   slide: slideScreens,
+  isWide: reatomMediaQuery("(min-width: 1024px)"),
   base: import.meta.env.BASE_URL,
   botUsername: import.meta.env.VITE_BOT_USERNAME,
   installUrl: new URL(`${import.meta.env.BASE_URL}install.html`, window.location.origin).href,

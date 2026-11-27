@@ -1,4 +1,4 @@
-import { reatomNavigation } from "../app.route.ts";
+import { reatomNavigation } from "../route/app.route.ts";
 import type { Parts } from "./app.vm.ts";
 import { reatomOpener } from "./opener.vm.ts";
 import { reatomPrefetch } from "./prefetch.vm.ts";
@@ -29,6 +29,7 @@ export function reatomRouting(parts: Parts, screens: Screens) {
     slots: shared.tabBarModules.modules,
     onTodayShown: today.shown,
     isSignedIn: () => session.member() !== undefined,
+    isWide: dependencies.isWide,
     telegram,
     slide: dependencies.slide,
     nestedBack: {

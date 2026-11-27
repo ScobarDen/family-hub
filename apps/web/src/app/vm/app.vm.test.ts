@@ -460,3 +460,44 @@ describe("a Photo deleted in the viewer", () => {
     });
   });
 });
+
+describe("a wide window", () => {
+  test("reaches the shell and follows the window across 1024px", () => {
+    const { app, setWide } = startApp({}, { isWide: true });
+
+    expect(app.home.isWide()).toBe(true);
+
+    setWide(false);
+
+    expect(app.home.isWide()).toBe(false);
+  });
+
+  test("moves the active tab when the window crosses 1024px", () => {
+    const { app, setWide } = startApp({}, { isWide: true });
+    const { navigation } = app.home;
+
+    navigation.openModule("recipes");
+    setWide(false);
+
+    expect(navigation.activeTab()).toBe("today");
+
+    setWide(true);
+
+    expect(navigation.activeTab()).toBe("recipes");
+  });
+
+  test("keeps an open form with its edits when the window narrows", async () => {
+    const { app, setWide } = startApp(recipeBook().routes, { isWide: true });
+    const { recipes, navigation } = app.home;
+
+    navigation.openModule("recipes");
+    await openLasagna(app);
+    recipes.edit();
+    recipes.form.form.fields.title.set("Лазанья с грибами");
+    setWide(false);
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "recipes" });
+    expect(recipes.isFormOpen()).toBe(true);
+    expect(recipes.form.form.fields.title()).toBe("Лазанья с грибами");
+  });
+});

@@ -72,6 +72,24 @@ On iOS and Android at 320px wide, with a Pet, an Album and a Recipe tag each nam
 - [ ] On Tasks, «Список · Календарь» and «Все · Мои» stay whole on screen; «Все · Мои» moves to a second row on the right when they do not fit on one.
 - [ ] A Pet's card with month spending of «12 345 ₽» shows the figures in two columns, never splitting a number across lines; at 375px wide they are three columns again.
 
+### Wide window
+
+In Telegram Desktop and in the Installed App in Chrome, resizing the window to 1440px, 1024px, 1023px, 390px and 320px wide, in the light and the dark theme.
+
+- [ ] At 1440px Today shows two columns: «Сделать сегодня» and «Впереди» on the left, the module tiles three to a row on the right; with nothing due today the tiles still keep the right column. The loading skeleton takes the same two columns.
+- [ ] At 1024px Today is one column with the tiles two to a row; at 1023px and below it is one column with three tiles to a row, as before.
+- [ ] From 1024px every module screen and the Profile sit in a centred column beside the sidebar, wider than the tab bar and never stretched across the window; below it the column is as wide as the tab bar.
+- [ ] A rolled-back change (switch the network off, then complete a Task) shows the failure bar at the bottom centre of the content, clear of the sidebar and with no gap left for a tab bar; the last row of the screen scrolls clear of it. The undo bar of a completed Task sits in the same place. Opened over the photo viewer, the bar centres on the whole window.
+- [ ] At 1023px, 390px and 320px the failure bar and the undo bar sit above the tab bar as before, and nothing scrolls sideways.
+- [ ] From 1024px the sidebar replaces the tab bar: «+ Добавить» at the top, then «Сегодня», the Member's two tab-bar modules in their slot order, the other modules in the «Разделы» order, and «Профиль» at the bottom; there is no «Разделы» item and no slot setup. Changing the slots in a narrow window and widening again reorders the items the same way.
+- [ ] Exactly one item is highlighted: the one whose screen is open, a Pet's card under «Питомцы» and a record opened from Today or the Feed under its own module. A click on the highlighted item from a record inside it returns to that module's list.
+- [ ] «Профиль» opens as a root: no Back in Telegram, no back gesture in the Installed App; Telegram's settings button opens the same screen with «Профиль» highlighted.
+- [ ] Open «Разделы», then «Настроить таб-бар», at 390px and widen past 1024px: Today shows with «Сегодня» highlighted. Reloading `/family-hub/sections` and `/family-hub/sections/tab-bar` at 1440px also opens Today. At 390px both screens stay as before.
+- [ ] From 1024px «+ Добавить», a create or edit form and a deletion confirmation open as a centred dialog over a dimmed page instead of a bottom sheet. Escape, a click on the overlay and «Отмена» close it; with unsaved input each of them asks «Отменить изменения?» first. Tab stays inside the dialog, and on close focus returns to the button that opened it. The screen reader names the dialog by its title.
+- [ ] In the photo viewer at 1440px ArrowLeft and ArrowRight step through the photos and stop at the first and the last; the step buttons show on hover and on keyboard focus, and none shows at an end. Escape closes the viewer. On a touch screen a swipe still steps, and the buttons stay shown.
+- [ ] A click on a sidebar item fades the screen (about 150 ms) instead of sliding it; a record opened inside the item and Back still slide. A record opened from Today fades into its module. With reduced motion on, neither the fade nor the slide plays.
+- [ ] With a Task's card open, then a Savings Goal's form with unsaved input, resize across 1024px both ways: the card and the form stay open with their input, a form switches between the bottom sheet and the dialog, the highlighted tab or item matches the screen, and Back closes the form before leaving the screen.
+
 ### Type scale
 
 On iOS and Android at 320px and 375px wide, in the light and the dark theme.

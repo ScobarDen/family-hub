@@ -278,3 +278,30 @@ test("«+ Фото» uploads to the Family's photos in the albums module", () =>
   expect(navigation.shownModule()).toBe("albums");
   expect(albums.batch.isActive()).toBe(true);
 });
+
+describe("on a wide window", () => {
+  test("a deep link to a Recipe opens it with the Recipes active", async () => {
+    const { app } = startApp(recipeBook, { startParameter: "recipe_recipe-1", isWide: true });
+    const { navigation, recipes } = app.home;
+
+    recipes.screen.subscribe(noop);
+
+    await vi.waitFor(() => {
+      expect(recipes.screen()).toMatchObject({ kind: "recipe", recipe: { title: "Лазанья" } });
+    });
+    expect(navigation.activeTab()).toBe("recipes");
+  });
+
+  test("a quick-add of a contribution opens its Goal's form with the Goals active", async () => {
+    const { app } = startApp({ "GET /api/goals": goalBook }, { isWide: true });
+    const { navigation, quickAdd, goals } = app.home;
+
+    goals.screen.subscribe(noop);
+    quickAdd.add({ kind: "new-contribution", goalId: "goal-1" });
+
+    await vi.waitFor(() => {
+      expect(goals.openForm()).toBe("movement");
+    });
+    expect(navigation.activeTab()).toBe("goals");
+  });
+});

@@ -1,8 +1,8 @@
 import { action, computed } from "@reatom/core";
 
-import { appModule, type AppModule } from "@family-hub/contract";
+import type { AppModule } from "@family-hub/contract";
 
-import { sectionTitles } from "@/modules/sections";
+import { sectionOrderOf, sectionTitles } from "@/modules/sections";
 
 import type { TabBarModules } from "../tab-bar.model.ts";
 
@@ -23,12 +23,8 @@ export function reatomSections(dependencies: SectionsDependencies) {
   const { modules } = dependencies;
 
   return {
-    slotted: computed(() => rowsOf(modules.modules()), "sections.slotted"),
-    rest: computed(() => {
-      const slots: AppModule[] = modules.modules();
-
-      return rowsOf(appModule.options.filter((module) => !slots.includes(module)));
-    }, "sections.rest"),
+    slotted: computed(() => rowsOf(sectionOrderOf(modules.modules()).slotted), "sections.slotted"),
+    rest: computed(() => rowsOf(sectionOrderOf(modules.modules()).rest), "sections.rest"),
 
     open: action((module: AppModule) => {
       dependencies.onOpen(module);

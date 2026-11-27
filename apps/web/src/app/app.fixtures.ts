@@ -1,4 +1,4 @@
-import { noop } from "@reatom/core";
+import { atom, noop } from "@reatom/core";
 
 import type { LiveMessage, SessionResponse } from "@family-hub/contract";
 
@@ -7,6 +7,7 @@ import { FakePage, FakeSocket } from "@/modules/live-updates";
 import { memoryStorage } from "@/modules/session";
 import { fakeDeviceStorage, fakeWebApp, reatomTelegram } from "@/modules/telegram";
 
+import type { AppDependencies } from "./app.model.ts";
 import { reatomApp } from "./vm/app.vm.ts";
 
 const token = "session-token";
@@ -113,29 +114,39 @@ function telegramAnswering(popups: Popups, startParameter: string | undefined) {
   });
 }
 
+const fixedDependencies = {
+  platform: undefined,
+  apiUrl: "https://api.family-hub.test",
+  wait,
+  slide: instantly,
+  base: "/family-hub/",
+  botUsername: undefined,
+  installUrl: "https://scobarden.github.io/family-hub/install.html",
+  deviceZone: () => "Europe/Moscow",
+  zones: ["Europe/Moscow"],
+} satisfies Partial<AppDependencies>;
+
 // The whole app over a fake Worker and a fake socket, as a Member in Telegram sees it.
 export function startApp(
   routes: Routes,
-  { popups = "unanswered", startParameter }: { popups?: Popups; startParameter?: string } = {},
+  {
+    popups = "unanswered",
+    startParameter,
+    isWide = false,
+  }: { popups?: Popups; startParameter?: string; isWide?: boolean } = {},
 ) {
+  const wide = atom(isWide, "fakeIsWide");
   const worker = fakeWorker(routes);
   const sockets = fakeSockets();
   const app = reatomApp({
+    ...fixedDependencies,
     telegram: telegramAnswering(popups, startParameter),
-    platform: undefined,
-    apiUrl: "https://api.family-hub.test",
     fetch: worker.fetch,
     page: new FakePage(),
     storage: memoryStorage(),
     liveClientId: crypto.randomUUID(),
     openSocket: sockets.open,
-    wait,
-    slide: instantly,
-    base: "/family-hub/",
-    botUsername: undefined,
-    installUrl: "https://scobarden.github.io/family-hub/install.html",
-    deviceZone: () => "Europe/Moscow",
-    zones: ["Europe/Moscow"],
+    isWide: wide,
   });
 
   app.launch();
@@ -149,6 +160,9 @@ export function startApp(
     },
     connect: (versions: LiveMessage["versions"] = {}) => {
       sockets.latest()?.connect(versions);
+    },
+    setWide: (isWideNow: boolean) => {
+      wide.set(isWideNow);
     },
     countOf: (request: string) => worker.requests.filter((sent) => sent === request).length,
   };
