@@ -63,7 +63,7 @@ const ViewerBar = reatomComponent(
 
 type StepProps = { model: PhotoViewerModel; hasPrevious: boolean; hasNext: boolean };
 
-// A mouse sees the steps on hover, a touch screen keeps them shown as before.
+// A mouse sees the steps on hover, a touch screen keeps them shown.
 const stepButton =
   "absolute inset-y-0 flex w-1/4 items-center outline-none transition-opacity pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100";
 

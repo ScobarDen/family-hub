@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, test } from "vite-plus/test";
 
 import type { AppModule, SlotModule } from "@family-hub/contract";
 
+import type { NavigationTab } from "@/modules/sections";
 import { fakeHaptics } from "@/modules/telegram";
 
 import { reatomSidebar, type SidebarItemId } from "./sidebar.vm.ts";
 
 function startSidebar(slots: SlotModule[], renamed?: () => Partial<Record<AppModule, string>>) {
-  const activeTab = atom<string>("today", "test.activeTab");
+  const activeTab = atom<NavigationTab>("today", "test.activeTab");
   const opened: SidebarItemId[] = [];
   const haptics = fakeHaptics();
   let adds = 0;

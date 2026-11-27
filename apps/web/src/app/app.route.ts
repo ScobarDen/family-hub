@@ -2,6 +2,7 @@ import {
   action,
   atom,
   computed,
+  effect,
   isInit,
   noop,
   reatomRoute,
@@ -14,13 +15,11 @@ import { appModule, type AppModule, type SlotModule } from "@family-hub/contract
 
 import { instantly, type Slide } from "@/modules/changes";
 import type { NestedBack } from "@/modules/form";
+import type { NavigationTab } from "@/modules/sections";
 import type { TabId } from "@/modules/tab-bar";
 import type { Telegram } from "@/modules/telegram";
 
 export type Place = { module: AppModule; petId?: string };
-
-// On a wide window every module and the Profile are tabs of the sidebar.
-export type NavigationTab = TabId | AppModule | "profile";
 
 export type Screen =
   | { kind: "today" }
@@ -150,9 +149,14 @@ function trailTo(tab: NavigationTab, screen: Screen): Screen[] {
   return isSameScreen(root, screen) ? [] : [root];
 }
 
+// «Разделы» and the tab bar setup exist only beside a tab bar; a wide window shows Today instead.
+function isTabBarScreen(screen: Screen): screen is { kind: "sections" | "tab-bar-menu" } {
+  return screen.kind === "sections" || screen.kind === "tab-bar-menu";
+}
+
 function wideTabOf(screen: Screen): NavigationTab {
-  if (screen.kind === "tab-bar-menu") {
-    return "sections";
+  if (isTabBarScreen(screen)) {
+    return "today";
   }
 
   return screen.kind === "module" ? screen.module : screen.kind;
@@ -160,7 +164,7 @@ function wideTabOf(screen: Screen): NavigationTab {
 
 // A reload lands on the tab whose root it is, or on top of the hub.
 function narrowTabOf(screen: Screen, slots: SlotModule[]): TabId {
-  if (screen.kind === "sections" || screen.kind === "tab-bar-menu") {
+  if (isTabBarScreen(screen)) {
     return "sections";
   }
 
@@ -178,25 +182,29 @@ type StackDependencies = {
   slide: Slide;
 };
 
+function atomResetOnWidthChange<State>(
+  initial: State,
+  { name, isWide }: { name: string; isWide: () => boolean },
+): Atom<State> {
+  return atom(initial, name).extend(
+    withComputed((state) => {
+      isWide();
+
+      return isInit() ? state : initial;
+    }),
+  );
+}
+
 function reatomTabs(
   go: (screen: Screen) => void,
   { screen, slots, isWide, slide }: StackDependencies,
 ) {
   // Crossing the breakpoint recomputes the tab as a reload would and forgets the trail.
-  const tab = atom<NavigationTab | null>(null, "navigation.tab").extend(
-    withComputed((state) => {
-      isWide();
-
-      return isInit() ? state : null;
-    }),
-  );
-  const trail = atom<Screen[]>([], "navigation.trail").extend(
-    withComputed((state) => {
-      isWide();
-
-      return isInit() ? state : [];
-    }),
-  );
+  const tab = atomResetOnWidthChange<NavigationTab | null>(null, {
+    name: "navigation.tab",
+    isWide,
+  });
+  const trail = atomResetOnWidthChange<Screen[]>([], { name: "navigation.trail", isWide });
   const activeTab = computed(
     (): NavigationTab => tab() ?? (isWide() ? wideTabOf(screen()) : narrowTabOf(screen(), slots())),
     "navigation.activeTab",
@@ -270,6 +278,9 @@ function reatomStack(go: (screen: Screen) => void, dependencies: StackDependenci
       switchTo(next, nextScreen);
     }, "navigation.openIn"),
     launch: reatomLaunch(dependencies.isWide, tabs),
+    landOnToday: action(() => {
+      tabs.settle("today", { kind: "today" });
+    }, "navigation.landOnToday"),
     pop: reatomPop(go, { trail, activeTab, slide: dependencies.slide }),
   };
 }
@@ -430,6 +441,38 @@ function reatomBack(
   }));
 }
 
+type Following = {
+  telegram: NavigationDependencies["telegram"];
+  isSignedIn: () => boolean;
+  isWide: () => boolean;
+  screen: () => Screen;
+};
+
+type FollowedActions = {
+  back: (() => void) & { isVisible: () => boolean };
+  openProfile: () => void;
+  landOnToday: () => void;
+};
+
+function startFollowing(
+  { telegram, isSignedIn, isWide, screen }: Following,
+  { back, openProfile, landOnToday }: FollowedActions,
+): () => void {
+  const stopBack = telegram.backButton.follow(() => isSignedIn() && back.isVisible(), back);
+  const stopSettings = telegram.settingsButton.follow(isSignedIn, openProfile);
+  const leavingTabBarScreens = effect(() => {
+    if (isWide() && isTabBarScreen(screen())) {
+      landOnToday();
+    }
+  }, "navigation.leavingTabBarScreens");
+
+  return () => {
+    stopBack();
+    stopSettings();
+    leavingTabBarScreens.unsubscribe();
+  };
+}
+
 export function reatomNavigation({
   base,
   slots,
@@ -462,15 +505,11 @@ export function reatomNavigation({
     launch: stack.launch,
     ...opening,
 
-    start(): () => void {
-      const stopBack = telegram.backButton.follow(() => isSignedIn() && back.isVisible(), back);
-      const stopSettings = telegram.settingsButton.follow(isSignedIn, opening.openProfile);
-
-      return () => {
-        stopBack();
-        stopSettings();
-      };
-    },
+    start: () =>
+      startFollowing(
+        { telegram, isSignedIn, isWide, screen },
+        { back, openProfile: opening.openProfile, landOnToday: stack.landOnToday },
+      ),
   };
 }
 

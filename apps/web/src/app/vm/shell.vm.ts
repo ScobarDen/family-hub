@@ -16,11 +16,7 @@ function titlesOf({ shared }: Parts) {
   };
 }
 
-function reatomNavigationBars(
-  parts: Parts,
-  { navigation }: AppRouting,
-  quickAdd: ReturnType<typeof reatomQuickAdd>,
-) {
+function reatomNavigationBars(parts: Parts, { navigation }: AppRouting, onAdd: () => void) {
   const { telegram } = parts.dependencies;
   const modules = parts.shared.tabBarModules;
   const titles = titlesOf(parts);
@@ -37,7 +33,7 @@ function reatomNavigationBars(
       slots: modules.modules,
       activeTab: navigation.activeTab,
       onOpen: navigation.openTab,
-      onAdd: quickAdd.open,
+      onAdd,
       telegram,
       titles,
     }),
@@ -60,7 +56,7 @@ export function reatomShell(parts: Parts, routing: AppRouting, today: Screens["t
   return {
     isWide: readOnly(dependencies.isWide),
     navigation,
-    ...reatomNavigationBars(parts, routing, quickAdd),
+    ...reatomNavigationBars(parts, routing, quickAdd.open),
     tabBarMenu: reatomTabBarMenu({ modules, telegram }),
     quickAdd,
     sections: reatomSections({

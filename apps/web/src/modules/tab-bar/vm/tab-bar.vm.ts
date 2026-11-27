@@ -2,7 +2,7 @@ import { action, computed } from "@reatom/core";
 
 import type { SlotModule } from "@family-hub/contract";
 
-import { sectionTitles } from "@/modules/sections";
+import { sectionTitles, type NavigationTab } from "@/modules/sections";
 import type { Haptics } from "@/modules/telegram";
 
 import type { TabBarModules } from "../tab-bar.model.ts";
@@ -14,7 +14,7 @@ export type TabItem = { id: TabId; title: string; isActive: boolean };
 
 type TabBarDependencies = {
   modules: Pick<TabBarModules, "modules">;
-  activeTab: () => string;
+  activeTab: () => NavigationTab;
   onOpen: (tab: TabId) => void;
   telegram: { haptics: Pick<Haptics, "select"> };
   // A slot may be renamed by its content, like the pet tab after the Family's only Pet.

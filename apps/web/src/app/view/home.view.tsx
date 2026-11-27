@@ -134,8 +134,7 @@ function contentOf(props: HomeProps): ReactNode {
     : pageOf(props, contents[screen.module](props));
 }
 
-// Every screen keeps the tab bar and its «+», or the sidebar on a wide window: there are no
-// hidden modules any more.
+// Every screen keeps the tab bar and its «+», or the sidebar on a wide window.
 function screenOf(props: HomeProps): ReactNode {
   return (
     <>

@@ -30,7 +30,7 @@ export { Section } from "./view/section.view.tsx";
 export { SkeletonPhotoGrid } from "./view/skeleton-photo-grid.view.tsx";
 export { SkeletonSectionLayout } from "./view/skeleton-section-layout.view.tsx";
 export { SkeletonSection } from "./view/skeleton-section.view.tsx";
-export { SkeletonTiles } from "./view/skeleton-tiles.view.tsx";
+export { SkeletonTiles, tileGridClass } from "./view/skeleton-tiles.view.tsx";
 export { Skeleton } from "./view/skeleton.view.tsx";
 export { SheetContent } from "./view/sheet-content.view.tsx";
 export { SheetTitle } from "./view/sheet-title.view.tsx";

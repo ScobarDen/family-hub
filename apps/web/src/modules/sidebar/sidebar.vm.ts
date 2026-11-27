@@ -1,17 +1,17 @@
 import { action, computed } from "@reatom/core";
 
-import { appModule, type AppModule, type SlotModule } from "@family-hub/contract";
+import type { AppModule, SlotModule } from "@family-hub/contract";
 
-import { sectionTitles } from "@/modules/sections";
+import { sectionOrderOf, sectionTitles, type NavigationTab } from "@/modules/sections";
 import type { Haptics } from "@/modules/telegram";
 
-export type SidebarItemId = "today" | AppModule | "profile";
+export type SidebarItemId = Exclude<NavigationTab, "sections">;
 
 export type SidebarItem = { id: SidebarItemId; title: string; isActive: boolean };
 
 type SidebarDependencies = {
   slots: () => SlotModule[];
-  activeTab: () => string;
+  activeTab: () => NavigationTab;
   onOpen: (item: SidebarItemId) => void;
   onAdd: () => void;
   telegram: { haptics: Pick<Haptics, "select"> };
@@ -21,11 +21,10 @@ type SidebarDependencies = {
 
 const fixedTitles = { today: "Сегодня", profile: "Профиль" } as const;
 
-// The «Разделы» order: the Member's slots first, then the rest as the app lists them.
 function modulesInOrder(slots: SlotModule[]): AppModule[] {
-  const rest = appModule.options.filter((module) => !(slots as AppModule[]).includes(module));
+  const { slotted, rest } = sectionOrderOf(slots);
 
-  return [...slots, ...rest];
+  return [...slotted, ...rest];
 }
 
 export function reatomSidebar({
@@ -58,9 +57,7 @@ export function reatomSidebar({
 
       onOpen(item);
     }, "sidebar.open"),
-    add: action(() => {
-      onAdd();
-    }, "sidebar.add"),
+    add: onAdd,
   };
 }
 

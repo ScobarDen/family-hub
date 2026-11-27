@@ -292,6 +292,28 @@ describe("the sidebar on a wide window", () => {
     expect(navigation.canGoBack()).toBe(false);
   });
 
+  test("starts on Today when reloaded at «Разделы»", () => {
+    startNavigation().openTab("sections");
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.start();
+
+    expect(navigation.screen()).toEqual({ kind: "today" });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("starts on Today when reloaded at the tab bar setup", () => {
+    startNavigation().openTabBarMenu();
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.start();
+
+    expect(navigation.screen()).toEqual({ kind: "today" });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
   test("lands a launch link under its module", () => {
     const navigation = startNavigation({ isWide: true });
 
@@ -343,6 +365,46 @@ describe("crossing the wide breakpoint", () => {
     expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
     expect(navigation.activeTab()).toBe("goals");
     expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("leaves «Разделы» for Today once the window widens", async () => {
+    const navigation = startNavigation();
+
+    navigation.start();
+    navigation.openTab("sections");
+    navigation.setWide(true);
+
+    await vi.waitFor(() => {
+      expect(navigation.screen()).toEqual({ kind: "today" });
+    });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("leaves the tab bar setup for Today once the window widens", async () => {
+    const navigation = startNavigation();
+
+    navigation.start();
+    navigation.openTab("sections");
+    navigation.openTabBarMenu();
+    navigation.setWide(true);
+
+    await vi.waitFor(() => {
+      expect(navigation.screen()).toEqual({ kind: "today" });
+    });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("keeps the tab bar setup on a narrow window", () => {
+    const navigation = startNavigation();
+
+    navigation.start();
+    navigation.openTab("sections");
+    navigation.openTabBarMenu();
+
+    expect(navigation.screen()).toEqual({ kind: "tab-bar-menu" });
+    expect(navigation.activeTab()).toBe("sections");
   });
 
   test("keeps a module's open form to step back from", () => {
