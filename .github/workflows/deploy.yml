@@ -114,16 +114,13 @@ jobs:
           curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "$API_URL/api/health" \
             | jq -e '.status == "ok"'
 
-  deploy-web:
+  # Pages reads an artifact a moment after it is uploaded, so deploying in the same job raced it and
+  # found none; a re-run then found two of one name. Each attempt uploads its own name.
+  build-web:
     needs: deploy-api
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.pages.outputs.page_url }}
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
+    outputs:
+      artifact: github-pages-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v7
 
@@ -134,8 +131,6 @@ jobs:
           run-install: false
 
       - run: vp install --frozen-lockfile
-
-      - uses: actions/configure-pages@v6
 
       - name: Build Mini App
         env:
@@ -150,14 +145,30 @@ jobs:
 
       - uses: actions/upload-pages-artifact@v5
         with:
+          name: github-pages-${{ github.run_attempt }}
           path: apps/web/dist
+
+  deploy-web:
+    needs: build-web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/configure-pages@v6
 
       - id: pages
         uses: actions/deploy-pages@v5
+        with:
+          artifact_name: ${{ needs.build-web.outputs.artifact }}
 
   # GitHub mails a failed run only to whoever triggered it; a Renovate automerge is not a person.
   report-failure:
-    needs: [deploy-api, deploy-web]
+    needs: [deploy-api, build-web, deploy-web]
     if: failure() && github.triggering_actor != github.repository_owner
     runs-on: ubuntu-latest
     permissions:
