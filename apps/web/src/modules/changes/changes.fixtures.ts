@@ -5,8 +5,8 @@ export function fakeSlide(): { slides: string[]; slide: Slide } {
 
   return {
     slides,
-    slide: (direction, update) => {
-      slides.push(direction);
+    slide: (transition, update) => {
+      slides.push(transition);
       update();
     },
   };

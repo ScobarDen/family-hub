@@ -41,7 +41,7 @@ type NavigationDependencies = {
   // Screens inside a module or the Profile (a form, a Task's card) step back before the app does.
   nestedBack?: NestedBacks;
   onTodayShown?: () => void;
-  // A pushed screen, a tab switch and Back slide; a launch swaps at once.
+  // A pushed screen, a tab switch and Back slide, a sidebar switch fades; a launch swaps at once.
   slide?: Slide;
 };
 
@@ -212,7 +212,7 @@ function reatomTabs(
     if (isSameScreen(screen(), nextScreen)) {
       settle(next, nextScreen);
     } else {
-      slide("forward", () => {
+      slide(isWide() ? "fade" : "forward", () => {
         settle(next, nextScreen);
       });
     }

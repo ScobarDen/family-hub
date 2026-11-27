@@ -368,7 +368,7 @@ describe("crossing the wide breakpoint", () => {
   });
 });
 
-function startSliding() {
+function startSliding({ isWide = false }: { isWide?: boolean } = {}) {
   const button = { isAvailable: true, follow: () => noop };
   const slides: string[] = [];
   let nested: "none" | "form" | "record" = "none";
@@ -376,6 +376,7 @@ function startSliding() {
     base: "/family-hub/",
     slots: () => ["tasks", "recipes"],
     isSignedIn: () => true,
+    isWide: () => isWide,
     telegram: { backButton: button, settingsButton: button },
     nestedBack: nestedBacks({
       goals: {
@@ -466,5 +467,27 @@ describe("screen transitions", () => {
 
     expect(slides).toEqual([]);
     expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+  });
+
+  test("fade between sidebar items on a wide window", () => {
+    const { navigation, slides } = startSliding({ isWide: true });
+
+    navigation.openTab("goals");
+    navigation.openModule("recipes");
+    navigation.openProfile();
+
+    expect(slides).toEqual(["fade", "fade", "fade"]);
+    expect(navigation.screen()).toEqual({ kind: "profile" });
+  });
+
+  test("slide a record open inside a sidebar item and Back to its list on a wide window", () => {
+    const { navigation, slides } = startSliding({ isWide: true });
+
+    navigation.openTab("pet");
+    navigation.openPet("pet-1");
+    navigation.back();
+
+    expect(slides).toEqual(["fade", "forward", "back"]);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet" });
   });
 });
