@@ -5,11 +5,13 @@ import { cn, RoundPicture } from "@/modules/ui";
 
 import type { TodayModel } from "../vm/today.vm.ts";
 
+const grid = "grid grid-cols-3 gap-2 px-4 pb-7 lg:grid-cols-2 xl:grid-cols-3";
+
 // The section's colour sits on its icon only, over the neutral card of either theme. The tile is
 // square and holds no note (that goes to «Разделы»); an Overdue Task turns its number red.
 export const Tiles = reatomComponent(
   ({ model }: { model: TodayModel }) => (
-    <section aria-label="Разделы" className="grid grid-cols-3 gap-2 px-4 pb-7">
+    <section aria-label="Разделы" className={grid}>
       {model.tiles().map(({ module, title, value, valueLabel, isAlert, picture }) => {
         const Icon = sectionIcons[module];
         const icon = (

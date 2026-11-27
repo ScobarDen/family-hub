@@ -72,6 +72,16 @@ On iOS and Android at 320px wide, with a Pet, an Album and a Recipe tag each nam
 - [ ] On Tasks, «Список · Календарь» and «Все · Мои» stay whole on screen; «Все · Мои» moves to a second row on the right when they do not fit on one.
 - [ ] A Pet's card with month spending of «12 345 ₽» shows the figures in two columns, never splitting a number across lines; at 375px wide they are three columns again.
 
+### Wide window
+
+In Telegram Desktop and in the Installed App in Chrome, resizing the window to 1440px, 1024px, 1023px, 390px and 320px wide, in the light and the dark theme.
+
+- [ ] At 1440px Today shows two columns: «Сделать сегодня» and «Впереди» on the left, the module tiles three to a row on the right; with nothing due today the tiles still keep the right column. The loading skeleton takes the same two columns.
+- [ ] At 1024px Today is one column with the tiles two to a row; at 1023px and below it is one column with three tiles to a row, as before.
+- [ ] From 1024px every module screen and the Profile sit in a centred column beside the sidebar, wider than the tab bar and never stretched across the window; below it the column is as wide as the tab bar.
+- [ ] A rolled-back change (switch the network off, then complete a Task) shows the failure bar at the bottom centre of the content, clear of the sidebar and with no gap left for a tab bar; the last row of the screen scrolls clear of it. The undo bar of a completed Task sits in the same place. Opened over the photo viewer, the bar centres on the whole window.
+- [ ] At 1023px, 390px and 320px the failure bar and the undo bar sit above the tab bar as before, and nothing scrolls sideways.
+
 ### Type scale
 
 On iOS and Android at 320px and 375px wide, in the light and the dark theme.

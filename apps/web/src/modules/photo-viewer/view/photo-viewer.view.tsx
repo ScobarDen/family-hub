@@ -176,7 +176,7 @@ export const PhotoViewer = reatomComponent(({ model, pickAction }: ViewerProps) 
       isOpen={photo !== undefined}
       onClose={model.close}
       aria-label="Фото"
-      className="flex-col bg-black pt-safe-top pr-[var(--tg-safe-area-inset-right,0px)] pb-safe-bottom pl-[var(--tg-safe-area-inset-left,0px)] text-white open:flex"
+      className="flex-col bg-black [--content-start:0px] pt-safe-top pr-[var(--tg-safe-area-inset-right,0px)] pb-safe-bottom pl-[var(--tg-safe-area-inset-left,0px)] text-white open:flex"
     >
       {current !== undefined && photo !== undefined && (
         <>
