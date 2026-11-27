@@ -1,6 +1,6 @@
 # photo-viewer
 
-The full-screen viewer over a record's photos: Telegram goes full screen while it is open, `PhotoThumbs` opens it from a row of thumbnails. Delete asks «Удалить фото?», applies at once and rolls back into the module's failure bar, shown inside the viewer while it is open. Pick and share appear where a module offers them.
+The full-screen viewer over a record's photos: Telegram goes full screen while it is open, `PhotoThumbs` opens it from a row of thumbnails. A swipe, ← and → and the «назад» / «вперёд» buttons over the photo (shown on hover or keyboard focus with a mouse, always on a touch screen) step through the photos and stop at the first and the last; Escape closes it. Delete asks «Удалить фото?», applies at once and rolls back into the module's failure bar, shown inside the viewer while it is open. Pick and share appear where a module offers them.
 
 ## Injected
 

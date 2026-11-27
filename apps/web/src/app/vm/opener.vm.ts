@@ -11,7 +11,7 @@ import {
 
 import type { Telegram } from "@/modules/telegram";
 
-import type { Place } from "../app.route.ts";
+import type { Place } from "../route/screen.route.ts";
 
 type TargetFields = {
   task: { taskId: string };

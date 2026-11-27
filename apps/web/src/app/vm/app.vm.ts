@@ -12,7 +12,7 @@ import { reatomSession } from "@/modules/session";
 import { createTabBarApi, reatomTabBarModules } from "@/modules/tab-bar";
 
 import { reatomTransport, type AppDependencies, type AppTransport } from "../app.model.ts";
-import type { NavigationModel } from "../app.route.ts";
+import type { NavigationModel } from "../route/app.route.ts";
 import type { OpenTarget } from "./opener.vm.ts";
 import { reatomRouting, type AppRouting } from "./routing.vm.ts";
 import { reatomScreens, type Screens } from "./screens.vm.ts";

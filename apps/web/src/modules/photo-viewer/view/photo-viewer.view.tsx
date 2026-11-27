@@ -8,7 +8,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useRef, type PointerEvent } from "react";
+import { useEffect, useRef, type PointerEvent } from "react";
 
 import { FallbackImage, Button, FailureBar, ModalDialog } from "@/modules/ui";
 
@@ -61,25 +61,38 @@ const ViewerBar = reatomComponent(
   "ViewerBar",
 );
 
+type StepProps = { model: PhotoViewerModel; hasPrevious: boolean; hasNext: boolean };
+
+// A mouse sees the steps on hover, a touch screen keeps them shown.
+const stepButton =
+  "absolute inset-y-0 flex w-1/4 items-center outline-none transition-opacity pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100";
+
+const stepIcon =
+  "size-10 rounded-full bg-black/40 p-2 in-focus-visible:ring-2 in-focus-visible:ring-white";
+
 const StepButtons = reatomComponent(
-  ({ model }: { model: PhotoViewerModel }) => (
+  ({ model, hasPrevious, hasNext }: StepProps) => (
     <>
-      <button
-        type="button"
-        className="absolute inset-y-0 left-0 w-1/4"
-        aria-label="Предыдущее фото"
-        onClick={model.previous}
-      >
-        <ChevronLeft className="ml-2" />
-      </button>
-      <button
-        type="button"
-        className="absolute inset-y-0 right-0 flex w-1/4 justify-end"
-        aria-label="Следующее фото"
-        onClick={model.next}
-      >
-        <ChevronRight className="mr-2 self-center" />
-      </button>
+      {hasPrevious && (
+        <button
+          type="button"
+          className={`${stepButton} left-0 justify-start pl-2`}
+          aria-label="Предыдущее фото"
+          onClick={model.previous}
+        >
+          <ChevronLeft aria-hidden className={stepIcon} />
+        </button>
+      )}
+      {hasNext && (
+        <button
+          type="button"
+          className={`${stepButton} right-0 justify-end pr-2`}
+          aria-label="Следующее фото"
+          onClick={model.next}
+        >
+          <ChevronRight aria-hidden className={stepIcon} />
+        </button>
+      )}
     </>
   ),
   "StepButtons",
@@ -107,12 +120,14 @@ function useSwipe(model: PhotoViewerModel) {
   };
 }
 
-const SwipedPhoto = reatomComponent(({ model, src }: { model: PhotoViewerModel; src: string }) => {
+type PhotoProps = StepProps & { src: string };
+
+const SwipedPhoto = reatomComponent(({ model, src, hasPrevious, hasNext }: PhotoProps) => {
   const swipe = useSwipe(model);
 
   return (
     <div
-      className="relative flex flex-1 touch-pan-y items-center justify-center overflow-hidden"
+      className="group relative flex flex-1 touch-pan-y items-center justify-center overflow-hidden"
       onPointerDown={swipe.onPointerDown}
       onPointerUp={swipe.onPointerUp}
     >
@@ -121,29 +136,47 @@ const SwipedPhoto = reatomComponent(({ model, src }: { model: PhotoViewerModel; 
         className="max-h-full max-w-full object-contain"
         fallback={<ImageOff aria-hidden className="size-12 text-white/50" />}
       />
-      <StepButtons model={model} />
+      <StepButtons model={model} hasPrevious={hasPrevious} hasNext={hasNext} />
     </div>
   );
 }, "SwipedPhoto");
+
+// On the document, not the dialog: a step button removed at the first or last photo drops focus out of the dialog.
+function useArrowSteps(model: PhotoViewerModel, isOpen: boolean) {
+  useEffect(() => {
+    const listening = new AbortController();
+
+    function step(event: KeyboardEvent) {
+      if (event.key === "ArrowLeft") {
+        model.previous();
+      } else if (event.key === "ArrowRight") {
+        model.next();
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener("keydown", step, { signal: listening.signal });
+    }
+
+    return () => {
+      listening.abort();
+    };
+  }, [model, isOpen]);
+}
 
 // Full screen over everything, as Telegram's own photo viewer is.
 export const PhotoViewer = reatomComponent(({ model, pickAction }: ViewerProps) => {
   const current = model.current();
   const photo = current?.photo;
 
+  useArrowSteps(model, photo !== undefined);
+
   return (
     <ModalDialog
       isOpen={photo !== undefined}
       onClose={model.close}
       aria-label="Фото"
-      className="flex-col bg-black pt-safe-top pr-[var(--tg-safe-area-inset-right,0px)] pb-safe-bottom pl-[var(--tg-safe-area-inset-left,0px)] text-white open:flex"
-      onKeyDown={(event) => {
-        if (event.key === "ArrowLeft") {
-          model.previous();
-        } else if (event.key === "ArrowRight") {
-          model.next();
-        }
-      }}
+      className="flex-col bg-black [--content-start:0px] pt-safe-top pr-[var(--tg-safe-area-inset-right,0px)] pb-safe-bottom pl-[var(--tg-safe-area-inset-left,0px)] text-white open:flex"
     >
       {current !== undefined && photo !== undefined && (
         <>
@@ -153,7 +186,12 @@ export const PhotoViewer = reatomComponent(({ model, pickAction }: ViewerProps) 
             position={current.position}
             canDelete={photo.canDelete}
           />
-          <SwipedPhoto model={model} src={photo.urls.full} />
+          <SwipedPhoto
+            model={model}
+            src={photo.urls.full}
+            hasPrevious={current.hasPrevious}
+            hasNext={current.hasNext}
+          />
         </>
       )}
       <FailureBar failure={model.failure()} onDismiss={model.dismissFailure} />

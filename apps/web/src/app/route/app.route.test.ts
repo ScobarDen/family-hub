@@ -1,4 +1,4 @@
-import { context, noop } from "@reatom/core";
+import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { SlotModule } from "@family-hub/contract";
@@ -39,18 +39,29 @@ function nestedBacks(own: Partial<Record<SlotModule | "profile", Steps>>) {
   };
 }
 
-function startNavigation() {
+function startNavigation({
+  isWide = false,
+  nestedBack,
+}: { isWide?: boolean; nestedBack?: ReturnType<typeof nestedBacks> } = {}) {
   const button = { isAvailable: true, follow: () => noop };
+  const wide = atom(isWide, "test.isWide");
   const navigation = reatomNavigation({
     base: "/family-hub/",
     slots: () => ["tasks", "recipes"],
     isSignedIn: () => true,
+    isWide: wide,
     telegram: { backButton: button, settingsButton: button },
+    ...(nestedBack === undefined ? {} : { nestedBack }),
   });
 
   navigation.screen.subscribe(noop);
 
-  return navigation;
+  return {
+    ...navigation,
+    setWide: (isWideNow: boolean) => {
+      wide.set(isWideNow);
+    },
+  };
 }
 
 // The router mirrors the URL into the browser's history, which Node has none of.
@@ -203,7 +214,223 @@ describe("the tab stacks", () => {
   });
 });
 
-function startSliding() {
+describe("the sidebar on a wide window", () => {
+  test("switches to a module outside the slots opened from Today, and Back leads to its root", () => {
+    const isRecordOpen = atom(false, "test.isRecordOpen");
+    const navigation = startNavigation({
+      isWide: true,
+      nestedBack: nestedBacks({
+        goals: {
+          canGoBack: () => isRecordOpen(),
+          closesInPlace: () => false,
+          back: () => {
+            isRecordOpen.set(false);
+          },
+        },
+      }),
+    });
+
+    navigation.open({ module: "goals" });
+    isRecordOpen.set(true);
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+    expect(navigation.activeTab()).toBe("goals");
+    expect(navigation.canGoBack()).toBe(true);
+
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("switches to a record's module when it is opened from another module", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("feed");
+    navigation.open({ module: "albums" });
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "albums" });
+    expect(navigation.activeTab()).toBe("albums");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("lays a Pet's card over the Pets, and Back returns to the list", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openPet("pet-1");
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet", petId: "pet-1" });
+    expect(navigation.activeTab()).toBe("pet");
+    expect(navigation.canGoBack()).toBe(true);
+
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet" });
+    expect(navigation.activeTab()).toBe("pet");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("returns to the root on a click on the active item", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("pet");
+    navigation.openPet("pet-1");
+    navigation.openTab("pet");
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet" });
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("opens the Profile as a root with no Back on it", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("goals");
+    navigation.openProfile();
+
+    expect(navigation.screen()).toEqual({ kind: "profile" });
+    expect(navigation.activeTab()).toBe("profile");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("starts on Today when reloaded at «Разделы»", () => {
+    startNavigation().openTab("sections");
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.start();
+
+    expect(navigation.screen()).toEqual({ kind: "today" });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("starts on Today when reloaded at the tab bar setup", () => {
+    startNavigation().openTabBarMenu();
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.start();
+
+    expect(navigation.screen()).toEqual({ kind: "today" });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("lands a launch link under its module", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.launch({ module: "pet", petId: "pet-1" });
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet", petId: "pet-1" });
+    expect(navigation.activeTab()).toBe("pet");
+
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet" });
+    expect(navigation.canGoBack()).toBe(false);
+  });
+});
+
+describe("crossing the wide breakpoint", () => {
+  test("keeps a module outside the slots on screen over Today, and Back leads to the hub", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("goals");
+    navigation.setWide(false);
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(true);
+
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "today" });
+  });
+
+  test("highlights a slot module's own tab once the window narrows", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("recipes");
+    navigation.setWide(false);
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "recipes" });
+    expect(navigation.activeTab()).toBe("recipes");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("highlights the module on screen once the window widens, with nothing to step back to", () => {
+    const navigation = startNavigation();
+
+    navigation.openModule("goals");
+    navigation.setWide(true);
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+    expect(navigation.activeTab()).toBe("goals");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("leaves «Разделы» for Today once the window widens", async () => {
+    const navigation = startNavigation();
+
+    navigation.start();
+    navigation.openTab("sections");
+    navigation.setWide(true);
+
+    await vi.waitFor(() => {
+      expect(navigation.screen()).toEqual({ kind: "today" });
+    });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("leaves the tab bar setup for Today once the window widens", async () => {
+    const navigation = startNavigation();
+
+    navigation.start();
+    navigation.openTab("sections");
+    navigation.openTabBarMenu();
+    navigation.setWide(true);
+
+    await vi.waitFor(() => {
+      expect(navigation.screen()).toEqual({ kind: "today" });
+    });
+    expect(navigation.activeTab()).toBe("today");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("keeps the tab bar setup on a narrow window", () => {
+    const navigation = startNavigation();
+
+    navigation.start();
+    navigation.openTab("sections");
+    navigation.openTabBarMenu();
+
+    expect(navigation.screen()).toEqual({ kind: "tab-bar-menu" });
+    expect(navigation.activeTab()).toBe("sections");
+  });
+
+  test("keeps a module's open form to step back from", () => {
+    const isFormOpen = atom(true, "test.isFormOpen");
+    const navigation = startNavigation({
+      nestedBack: nestedBacks({
+        goals: {
+          canGoBack: () => isFormOpen(),
+          closesInPlace: () => true,
+          back: () => {
+            isFormOpen.set(false);
+          },
+        },
+      }),
+    });
+
+    navigation.openModule("goals");
+    navigation.setWide(true);
+    navigation.back();
+
+    expect(isFormOpen()).toBe(false);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+  });
+});
+
+function startSliding({ isWide = false }: { isWide?: boolean } = {}) {
   const button = { isAvailable: true, follow: () => noop };
   const slides: string[] = [];
   let nested: "none" | "form" | "record" = "none";
@@ -211,6 +438,7 @@ function startSliding() {
     base: "/family-hub/",
     slots: () => ["tasks", "recipes"],
     isSignedIn: () => true,
+    isWide: () => isWide,
     telegram: { backButton: button, settingsButton: button },
     nestedBack: nestedBacks({
       goals: {
@@ -301,5 +529,27 @@ describe("screen transitions", () => {
 
     expect(slides).toEqual([]);
     expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+  });
+
+  test("fade between sidebar items on a wide window", () => {
+    const { navigation, slides } = startSliding({ isWide: true });
+
+    navigation.openTab("goals");
+    navigation.openModule("recipes");
+    navigation.openProfile();
+
+    expect(slides).toEqual(["fade", "fade", "fade"]);
+    expect(navigation.screen()).toEqual({ kind: "profile" });
+  });
+
+  test("slide a record open inside a sidebar item and Back to its list on a wide window", () => {
+    const { navigation, slides } = startSliding({ isWide: true });
+
+    navigation.openTab("pet");
+    navigation.openPet("pet-1");
+    navigation.back();
+
+    expect(slides).toEqual(["fade", "forward", "back"]);
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet" });
   });
 });
