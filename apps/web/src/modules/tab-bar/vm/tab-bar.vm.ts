@@ -14,7 +14,7 @@ export type TabItem = { id: TabId; title: string; isActive: boolean };
 
 type TabBarDependencies = {
   modules: Pick<TabBarModules, "modules">;
-  activeTab: () => TabId;
+  activeTab: () => string;
   onOpen: (tab: TabId) => void;
   telegram: { haptics: Pick<Haptics, "select"> };
   // A slot may be renamed by its content, like the pet tab after the Family's only Pet.

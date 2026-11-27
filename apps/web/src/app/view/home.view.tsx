@@ -24,6 +24,7 @@ import type { PhotoStorageModel } from "@/modules/photo-storage";
 import { QuickAddButton, QuickAddSheet, type QuickAddModel } from "@/modules/quick-add";
 import { Recipes, type RecipesScreenModel } from "@/modules/recipes";
 import type { SessionModel } from "@/modules/session";
+import { Sidebar, type SidebarModel } from "@/modules/sidebar";
 import {
   Sections,
   TabBar,
@@ -34,6 +35,7 @@ import {
 } from "@/modules/tab-bar";
 import { Tasks, type TasksScreenModel } from "@/modules/tasks";
 import { Today, type TodayModel } from "@/modules/today";
+import { cn } from "@/modules/ui";
 import { ModulePage } from "@/pages/module.view.tsx";
 import { ProfilePage } from "@/pages/profile.view.tsx";
 
@@ -42,7 +44,9 @@ import type { NavigationModel, Screen } from "../app.route.ts";
 export type HomeProps = {
   navigation: NavigationModel;
   session: SessionModel;
+  isWide: () => boolean;
   tabBar: TabBarModel;
+  sidebar: SidebarModel;
   tabBarMenu: TabBarMenuModel;
   quickAdd: QuickAddModel;
   today: TodayModel;
@@ -130,18 +134,27 @@ function contentOf(props: HomeProps): ReactNode {
     : pageOf(props, contents[screen.module](props));
 }
 
-// Every screen keeps the tab bar and its «+»: there are no hidden modules any more.
+// Every screen keeps the tab bar and its «+», or the sidebar on a wide window: there are no
+// hidden modules any more.
 function screenOf(props: HomeProps): ReactNode {
   return (
     <>
       <div data-screen className="mx-auto max-w-lg">
         {contentOf(props)}
       </div>
-      <TabBar model={props.tabBar} center={<QuickAddButton model={props.quickAdd} />} />
+      {props.isWide() ? (
+        <Sidebar model={props.sidebar} />
+      ) : (
+        <TabBar model={props.tabBar} center={<QuickAddButton model={props.quickAdd} />} />
+      )}
       <QuickAddSheet model={props.quickAdd} />
     </>
   );
 }
+
+const narrowShell =
+  "has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]";
+const wideShell = "pl-64";
 
 const moduleScreenKeys: Record<AppModule, (props: HomeProps) => string> = {
   feed: () => "feed",
@@ -167,7 +180,12 @@ export const Home = reatomComponent((props: HomeProps) => {
   }, [screenKey]);
 
   return (
-    <main className="min-h-svh overflow-x-clip bg-secondary pt-safe-top pb-safe-bottom has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]">
+    <main
+      className={cn(
+        "min-h-svh overflow-x-clip bg-secondary pt-safe-top pb-safe-bottom",
+        props.isWide() ? wideShell : narrowShell,
+      )}
+    >
       {screenOf(props)}
     </main>
   );

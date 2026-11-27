@@ -29,6 +29,7 @@ export function reatomRouting(parts: Parts, screens: Screens) {
     slots: shared.tabBarModules.modules,
     onTodayShown: today.shown,
     isSignedIn: () => session.member() !== undefined,
+    isWide: dependencies.isWide,
     telegram,
     slide: dependencies.slide,
     nestedBack: {

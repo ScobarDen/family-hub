@@ -10,6 +10,9 @@ import type { Telegram } from "@/modules/telegram";
 
 export type Place = { module: AppModule; petId?: string };
 
+// On a wide window every module and the Profile are tabs of the sidebar.
+export type NavigationTab = TabId | AppModule | "profile";
+
 export type Screen =
   | { kind: "today" }
   | { kind: "sections" }
@@ -24,6 +27,7 @@ type NavigationDependencies = {
   base: string;
   slots: () => SlotModule[];
   isSignedIn: () => boolean;
+  isWide?: () => boolean;
   telegram: Pick<Telegram, "backButton" | "settingsButton">;
   // Screens inside a module or the Profile (a form, a Task's card) step back before the app does.
   nestedBack?: NestedBacks;
@@ -113,8 +117,10 @@ function goTo(routes: Routes, screen: Screen): void {
   route.go(undefined, true);
 }
 
-function rootOf(tab: TabId): Screen {
-  return tab === "today" || tab === "sections" ? { kind: tab } : { kind: "module", module: tab };
+function rootOf(tab: NavigationTab): Screen {
+  return tab === "today" || tab === "sections" || tab === "profile"
+    ? { kind: tab }
+    : { kind: "module", module: tab };
 }
 
 function placeScreen({ module, petId }: Place): Screen {
@@ -129,8 +135,22 @@ function isSameScreen(left: Screen, right: Screen): boolean {
   return left.kind === right.kind;
 }
 
+function trailTo(tab: NavigationTab, screen: Screen): Screen[] {
+  const root = rootOf(tab);
+
+  return isSameScreen(root, screen) ? [] : [root];
+}
+
+function wideTabOf(screen: Screen): NavigationTab {
+  if (screen.kind === "tab-bar-menu") {
+    return "sections";
+  }
+
+  return screen.kind === "module" ? screen.module : screen.kind;
+}
+
 // A reload lands on the tab whose root it is, or on top of the hub.
-function initialTabOf(screen: Screen, slots: SlotModule[]): TabId {
+function narrowTabOf(screen: Screen, slots: SlotModule[]): TabId {
   if (screen.kind === "sections" || screen.kind === "tab-bar-menu") {
     return "sections";
   }
@@ -142,74 +162,103 @@ function initialTabOf(screen: Screen, slots: SlotModule[]): TabId {
     : "today";
 }
 
+type StackDependencies = {
+  screen: () => Screen;
+  slots: () => SlotModule[];
+  isWide: () => boolean;
+  slide: Slide;
+};
+
+function reatomTabs(
+  go: (screen: Screen) => void,
+  { screen, slots, isWide, slide }: StackDependencies,
+) {
+  const tab = atom<NavigationTab | undefined>(undefined, "navigation.tab");
+  const trail = atom<Screen[]>([], "navigation.trail");
+  const activeTab = computed(
+    (): NavigationTab => tab() ?? (isWide() ? wideTabOf(screen()) : narrowTabOf(screen(), slots())),
+    "navigation.activeTab",
+  );
+
+  function settle(next: NavigationTab, nextScreen: Screen) {
+    tab.set(next);
+    trail.set(trailTo(next, nextScreen));
+    go(nextScreen);
+  }
+
+  function switchTo(next: NavigationTab, nextScreen: Screen) {
+    if (isSameScreen(screen(), nextScreen)) {
+      settle(next, nextScreen);
+    } else {
+      slide("forward", () => {
+        settle(next, nextScreen);
+      });
+    }
+  }
+
+  return { tab, trail, activeTab, settle, switchTo };
+}
+
+type Tabs = ReturnType<typeof reatomTabs>;
+
+function reatomPush(
+  go: (screen: Screen) => void,
+  { screen, slide }: Pick<StackDependencies, "screen" | "slide">,
+  { tab, trail, activeTab }: Tabs,
+) {
+  return action((next: Screen) => {
+    const current = screen();
+
+    if (!isSameScreen(current, next)) {
+      slide("forward", () => {
+        tab.set(activeTab());
+        trail.set([...trail(), current]);
+        go(next);
+      });
+    }
+  }, "navigation.push");
+}
+
+// A launch link opens on top of the hub, whatever the slots are; a wide window opens its module.
+function reatomLaunch(isWide: () => boolean, { settle }: Tabs) {
+  return action((place: Place | undefined) => {
+    if (place === undefined) {
+      settle("today", { kind: "today" });
+    } else {
+      settle(isWide() ? place.module : "today", placeScreen(place));
+    }
+  }, "navigation.launch");
+}
+
 // Each tab is a stack: a section opens on top of the current tab (a slot's opens its tab), Back
 // pops it, a tab tap goes to that tab's root. The stack lives in memory; the URL names only its
 // top screen.
-function reatomStack(
-  go: (screen: Screen) => void,
-  { screen, slots, slide }: { screen: () => Screen; slots: () => SlotModule[]; slide: Slide },
-) {
-  const tab = atom<TabId | undefined>(undefined, "navigation.tab");
-  const trail = atom<Screen[]>([], "navigation.trail");
-  const activeTab = computed(
-    () => tab() ?? initialTabOf(screen(), slots()),
-    "navigation.activeTab",
-  );
+function reatomStack(go: (screen: Screen) => void, dependencies: StackDependencies) {
+  const tabs = reatomTabs(go, dependencies);
+  const { trail, activeTab, switchTo } = tabs;
 
   return {
     activeTab,
     trail,
-    push: action((next: Screen) => {
-      const current = screen();
-
-      if (!isSameScreen(current, next)) {
-        slide("forward", () => {
-          tab.set(activeTab());
-          trail.set([...trail(), current]);
-          go(next);
-        });
-      }
-    }, "navigation.push"),
-    openTab: reatomOpenTab(go, { tab, trail, screen, slide }),
-    // A launch link opens on top of the hub, whatever the slots are.
-    launch: action((place: Place | undefined) => {
-      tab.set("today");
-      trail.set(place === undefined ? [] : [{ kind: "today" }]);
-      go(place === undefined ? { kind: "today" } : placeScreen(place));
-    }, "navigation.launch"),
-    pop: reatomPop(go, { trail, activeTab, slide }),
+    push: reatomPush(go, dependencies, tabs),
+    openTab: action((next: NavigationTab) => {
+      switchTo(next, rootOf(next));
+    }, "navigation.openTab"),
+    openIn: action((next: NavigationTab, nextScreen: Screen) => {
+      switchTo(next, nextScreen);
+    }, "navigation.openIn"),
+    launch: reatomLaunch(dependencies.isWide, tabs),
+    pop: reatomPop(go, { trail, activeTab, slide: dependencies.slide }),
   };
-}
-
-function reatomOpenTab(
-  go: (screen: Screen) => void,
-  {
-    tab,
-    trail,
-    screen,
-    slide,
-  }: { tab: Atom<TabId | undefined>; trail: Atom<Screen[]>; screen: () => Screen; slide: Slide },
-) {
-  return action((next: TabId) => {
-    const root = rootOf(next);
-
-    function open() {
-      tab.set(next);
-      trail.set([]);
-      go(root);
-    }
-
-    if (isSameScreen(screen(), root)) {
-      open();
-    } else {
-      slide("forward", open);
-    }
-  }, "navigation.openTab");
 }
 
 function reatomPop(
   go: (screen: Screen) => void,
-  { trail, activeTab, slide }: { trail: Atom<Screen[]>; activeTab: () => TabId; slide: Slide },
+  {
+    trail,
+    activeTab,
+    slide,
+  }: { trail: Atom<Screen[]>; activeTab: () => NavigationTab; slide: Slide },
 ) {
   return action(() => {
     const previous = trail().at(-1);
@@ -223,13 +272,37 @@ function reatomPop(
 
 type Stack = ReturnType<typeof reatomStack>;
 
+type OpeningDependencies = Pick<StackDependencies, "screen" | "slots" | "isWide">;
+
 // A section in a slot opens its own tab, so the highlighted tab is always the one on screen and
 // the section's one state lives in one stack; any other section goes on top of the current tab.
-function reatomOpening(
-  stack: Stack,
-  { screen, slots }: { screen: () => Screen; slots: () => SlotModule[] },
-) {
+// On a wide window every section is a tab, and a Pet's card lies over the Pets.
+function placing(stack: Stack, { slots, isWide }: OpeningDependencies) {
+  function openPet(petId: string) {
+    const card: Screen = { kind: "module", module: "pet", petId };
+
+    if (isWide() && stack.activeTab() !== "pet") {
+      stack.openIn("pet", card);
+    } else {
+      stack.push(card);
+    }
+  }
+
+  function placeWide(next: Place) {
+    if (next.petId === undefined) {
+      stack.openTab(next.module);
+    } else {
+      openPet(next.petId);
+    }
+  }
+
   function place(next: Place) {
+    if (isWide()) {
+      placeWide(next);
+
+      return;
+    }
+
     const slot = slots().find((module) => module === next.module);
 
     if (slot !== undefined && next.petId === undefined) {
@@ -239,6 +312,13 @@ function reatomOpening(
     }
   }
 
+  return { openPet, place };
+}
+
+function reatomOpening(stack: Stack, dependencies: OpeningDependencies) {
+  const { screen, isWide } = dependencies;
+  const { openPet, place } = placing(stack, dependencies);
+
   return {
     open: action((next: Place) => {
       place(next);
@@ -247,13 +327,15 @@ function reatomOpening(
       place({ module });
     }, "navigation.openModule"),
     openPet: action((petId: string) => {
-      stack.push({ kind: "module", module: "pet", petId });
+      openPet(petId);
     }, "navigation.openPet"),
     openTabBarMenu: action(() => {
       stack.push({ kind: "tab-bar-menu" });
     }, "navigation.openTabBarMenu"),
     openProfile: action(() => {
-      if (screen().kind !== "profile") {
+      if (isWide()) {
+        stack.openTab("profile");
+      } else if (screen().kind !== "profile") {
         stack.push({ kind: "profile" });
       }
     }, "navigation.openProfile"),
@@ -295,7 +377,7 @@ function nestedBackOf(
   return nested?.canGoBack() === true ? nested : undefined;
 }
 
-function isTabRoot(screen: Screen, tab: TabId): boolean {
+function isTabRoot(screen: Screen, tab: NavigationTab): boolean {
   return isSameScreen(screen, rootOf(tab));
 }
 
@@ -330,6 +412,7 @@ export function reatomNavigation({
   base,
   slots,
   isSignedIn,
+  isWide = () => false,
   telegram,
   nestedBack,
   onTodayShown = noop,
@@ -337,9 +420,14 @@ export function reatomNavigation({
 }: NavigationDependencies) {
   const routes = reatomRoutes(base);
   const screen = reatomScreen(routes);
-  const stack = reatomStack(goToNotifying(routes, onTodayShown), { screen, slots, slide });
+  const stack = reatomStack(goToNotifying(routes, onTodayShown), {
+    screen,
+    slots,
+    isWide,
+    slide,
+  });
   const back = reatomBack({ screen, nestedBack, slide }, stack);
-  const opening = reatomOpening(stack, { screen, slots });
+  const opening = reatomOpening(stack, { screen, slots, isWide });
 
   return {
     screen,

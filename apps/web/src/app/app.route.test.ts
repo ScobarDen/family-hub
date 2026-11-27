@@ -1,4 +1,4 @@
-import { context, noop } from "@reatom/core";
+import { atom, context, noop } from "@reatom/core";
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import type { SlotModule } from "@family-hub/contract";
@@ -39,13 +39,18 @@ function nestedBacks(own: Partial<Record<SlotModule | "profile", Steps>>) {
   };
 }
 
-function startNavigation() {
+function startNavigation({
+  isWide = false,
+  nestedBack,
+}: { isWide?: boolean; nestedBack?: ReturnType<typeof nestedBacks> } = {}) {
   const button = { isAvailable: true, follow: () => noop };
   const navigation = reatomNavigation({
     base: "/family-hub/",
     slots: () => ["tasks", "recipes"],
     isSignedIn: () => true,
+    isWide: () => isWide,
     telegram: { backButton: button, settingsButton: button },
+    ...(nestedBack === undefined ? {} : { nestedBack }),
   });
 
   navigation.screen.subscribe(noop);
@@ -200,6 +205,99 @@ describe("the tab stacks", () => {
     navigation.back();
 
     expect(navigation.screen()).toEqual({ kind: "today" });
+  });
+});
+
+describe("the sidebar on a wide window", () => {
+  test("switches to a module outside the slots opened from Today, and Back leads to its root", () => {
+    const isRecordOpen = atom(false, "test.isRecordOpen");
+    const navigation = startNavigation({
+      isWide: true,
+      nestedBack: nestedBacks({
+        goals: {
+          canGoBack: () => isRecordOpen(),
+          closesInPlace: () => false,
+          back: () => {
+            isRecordOpen.set(false);
+          },
+        },
+      }),
+    });
+
+    navigation.open({ module: "goals" });
+    isRecordOpen.set(true);
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+    expect(navigation.activeTab()).toBe("goals");
+    expect(navigation.canGoBack()).toBe(true);
+
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "goals" });
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("switches to a record's module when it is opened from another module", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("feed");
+    navigation.open({ module: "albums" });
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "albums" });
+    expect(navigation.activeTab()).toBe("albums");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("lays a Pet's card over the Pets, and Back returns to the list", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openPet("pet-1");
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet", petId: "pet-1" });
+    expect(navigation.activeTab()).toBe("pet");
+    expect(navigation.canGoBack()).toBe(true);
+
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet" });
+    expect(navigation.activeTab()).toBe("pet");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("returns to the root on a click on the active item", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("pet");
+    navigation.openPet("pet-1");
+    navigation.openTab("pet");
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet" });
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("opens the Profile as a root with no Back on it", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.openModule("goals");
+    navigation.openProfile();
+
+    expect(navigation.screen()).toEqual({ kind: "profile" });
+    expect(navigation.activeTab()).toBe("profile");
+    expect(navigation.canGoBack()).toBe(false);
+  });
+
+  test("lands a launch link under its module", () => {
+    const navigation = startNavigation({ isWide: true });
+
+    navigation.launch({ module: "pet", petId: "pet-1" });
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet", petId: "pet-1" });
+    expect(navigation.activeTab()).toBe("pet");
+
+    navigation.back();
+
+    expect(navigation.screen()).toEqual({ kind: "module", module: "pet" });
+    expect(navigation.canGoBack()).toBe(false);
   });
 });
 
