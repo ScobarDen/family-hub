@@ -85,10 +85,11 @@ export function reatomOptimistic<Params extends unknown[]>(
   }, name).extend(withAsync(), withTransaction());
 }
 
-type SlideDirection = "forward" | "back";
+// A sidebar switch on a wide window fades: the items are side by side, not pages in a row.
+type ScreenTransition = "forward" | "back" | "fade";
 
-export type Slide = (direction: SlideDirection, update: () => void) => void;
+export type Slide = (transition: ScreenTransition, update: () => void) => void;
 
-export function instantly(_direction: SlideDirection, update: () => void): void {
+export function instantly(_transition: ScreenTransition, update: () => void): void {
   update();
 }
