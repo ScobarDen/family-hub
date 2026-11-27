@@ -134,7 +134,9 @@ function contentOf(props: HomeProps): ReactNode {
 function screenOf(props: HomeProps): ReactNode {
   return (
     <>
-      <div data-screen>{contentOf(props)}</div>
+      <div data-screen className="mx-auto max-w-lg">
+        {contentOf(props)}
+      </div>
       <TabBar model={props.tabBar} center={<QuickAddButton model={props.quickAdd} />} />
       <QuickAddSheet model={props.quickAdd} />
     </>

@@ -460,3 +460,15 @@ describe("a Photo deleted in the viewer", () => {
     });
   });
 });
+
+describe("a wide window", () => {
+  test("reaches the shell and follows the window across 1024px", () => {
+    const { app, setWide } = startApp({}, { isWide: true });
+
+    expect(app.home.isWide()).toBe(true);
+
+    setWide(false);
+
+    expect(app.home.isWide()).toBe(false);
+  });
+});

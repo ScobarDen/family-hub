@@ -1,3 +1,4 @@
+import { readOnly } from "@/modules/changes";
 import { reatomQuickAdd } from "@/modules/quick-add";
 import { reatomSections, reatomTabBar, reatomTabBarMenu } from "@/modules/tab-bar";
 
@@ -14,6 +15,7 @@ export function reatomShell(
   const modules = shared.tabBarModules;
 
   return {
+    isWide: readOnly(dependencies.isWide),
     navigation,
     tabBar: reatomTabBar({
       modules,
