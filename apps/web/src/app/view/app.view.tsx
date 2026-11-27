@@ -6,14 +6,13 @@ import { WideWindow } from "@/modules/ui";
 import { Home, type HomeProps } from "./home.view.tsx";
 
 type AppProps = HomeProps & {
-  isWide: () => boolean;
   familyRequest: FamilyRequestModel;
   joinFamily: JoinFamilyModel;
 };
 
-export function App({ isWide, familyRequest, joinFamily, ...home }: AppProps) {
+export function App({ familyRequest, joinFamily, ...home }: AppProps) {
   return (
-    <WideWindow isWide={isWide}>
+    <WideWindow isWide={home.isWide}>
       <Session
         model={home.session}
         familyRequest={<FamilyRequest model={familyRequest} />}
