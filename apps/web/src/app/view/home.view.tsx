@@ -39,7 +39,8 @@ import { cn } from "@/modules/ui";
 import { ModulePage } from "@/pages/module.view.tsx";
 import { ProfilePage } from "@/pages/profile.view.tsx";
 
-import type { NavigationModel, Screen } from "../app.route.ts";
+import type { NavigationModel } from "../route/app.route.ts";
+import type { Screen } from "../route/screen.route.ts";
 
 export type HomeProps = {
   navigation: NavigationModel;
