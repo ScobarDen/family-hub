@@ -139,7 +139,13 @@ function contentOf(props: HomeProps): ReactNode {
 function screenOf(props: HomeProps): ReactNode {
   return (
     <>
-      <div data-screen className="mx-auto max-w-lg">
+      <div
+        data-screen
+        className={cn(
+          "mx-auto max-w-lg lg:max-w-3xl",
+          props.navigation.screen().kind === "today" && "xl:max-w-5xl",
+        )}
+      >
         {contentOf(props)}
       </div>
       {props.isWide() ? (
@@ -154,7 +160,8 @@ function screenOf(props: HomeProps): ReactNode {
 
 const narrowShell =
   "has-[>nav]:pb-[calc(var(--safe-area-bottom)+6rem)] has-[>nav]:has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+10rem)]";
-const wideShell = "pl-64";
+const wideShell =
+  "pl-64 [--content-start:16rem] has-[[data-undo]]:pb-[calc(var(--safe-area-bottom)+5rem)]";
 
 const moduleScreenKeys: Record<AppModule, (props: HomeProps) => string> = {
   feed: () => "feed",
